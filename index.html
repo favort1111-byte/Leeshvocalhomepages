@@ -24,11 +24,11 @@
     <a href="#top" class="logo serif">이송희<span>보컬레슨</span></a>
     <nav class="pillnav" id="nav">
       <a href="#top" class="is-home">home</a>
-      <a href="#tracks">학원소개</a>
+      <a href="#tracks" class="is-u">학원소개</a>
       <a href="#results">합격실적</a>
-      <a href="#curriculum">커리큘럼</a>
+      <a href="#curriculum" class="is-u">커리큘럼</a>
       <a href="#pricing">수강료</a>
-      <a href="#location">오시는 길</a>
+      <a href="#location" class="is-u">오시는 길</a>
     </nav>
     <a href="#consult" class="btn btn--fill btn--sm header__cta">상담 신청</a>
     <button class="hamburger" id="hamburger" aria-label="메뉴 열기" aria-expanded="false">
@@ -41,6 +41,7 @@
 
   <!-- HERO -->
   <section class="hero">
+    <div class="hero-blob" aria-hidden="true"></div>
     <div class="wrap hero__inner">
       <p class="eyebrow">강남 선릉역 1:1 보컬학원</p>
       <h1>정확한 정보로,<br><em>제대로</em> 준비하는 오디션</h1>
@@ -74,7 +75,7 @@
         <span class="dicon__label">트리플에스_데뷔.jpg</span>
       </div>
       <div class="dicon dicon--4">
-        <div class="dicon__thumb dicon__thumb--mauve">
+        <div class="dicon__thumb dicon__thumb--mauve dicon__thumb--sm">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="m10 10 5 3-5 3z" fill="currentColor" stroke="none"/></svg>
         </div>
         <span class="dicon__label">유튜브_212만.jpg</span>
@@ -86,7 +87,7 @@
         <span class="dicon__label">카카오톡 상담</span>
       </div>
       <div class="dicon dicon--6">
-        <div class="dicon__thumb dicon__thumb--folder">
+        <div class="dicon__thumb dicon__thumb--folder dicon__thumb--sm">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5V5a2 2 0 0 1 2-2h9l5 5v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v5h5"/></svg>
         </div>
         <span class="dicon__label">커리큘럼_4STEP</span>
@@ -98,41 +99,94 @@
         <span class="dicon__label">선릉역_찾아오는길</span>
       </div>
       <div class="dicon dicon--8">
-        <div class="dicon__thumb dicon__thumb--mauve">
+        <div class="dicon__thumb dicon__thumb--mauve dicon__thumb--sm">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
         <span class="dicon__label">무료 상담</span>
+      </div>
+      <div class="dicon dicon--9">
+        <div class="dicon__thumb dicon__thumb--folder dicon__thumb--sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        </div>
+        <span class="dicon__label">수강료.pdf</span>
+      </div>
+      <div class="dicon dicon--10">
+        <div class="dicon__thumb dicon__thumb--mauve">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l4-4 4 4 6-6 4 4"/></svg>
+        </div>
+        <span class="dicon__label">합격_트랙.jpg</span>
       </div>
     </div>
   </section>
 
   <!-- TRACKS -->
   <section class="section section--paper tex" id="tracks">
-    <div class="wrap">
+    <div class="wrap" style="text-align:center;">
       <p class="section__eyebrow">학원 소개</p>
-      <h2 class="section__title">목표에 맞는 <em>3가지</em> 진입로</h2>
-      <p class="section__desc">모든 반은 담임제로 운영됩니다. 담당 선생님이 상담부터 레슨, 레슨 후 1:1 맞춤형 피드백까지 직접 진행합니다.</p>
+      <h2 class="section__title" style="margin:0 auto 18px;">목표에 맞는 <em>3가지</em> 진입로</h2>
+      <p class="section__desc" style="margin-left:auto;margin-right:auto;">모든 반은 담임제로 운영됩니다. 담당 선생님이 상담부터 레슨, 레슨 후 1:1 맞춤형 피드백까지 직접 진행합니다.</p>
 
-      <div class="grid grid--3 tracks">
-        <div class="folder">
-          <span class="folder__tag">오디션·입시반</span>
-          <div class="folder__card">
-            <h3>기획사 오디션 · 예고/대학 입시</h3>
-            <p>대형 기획사 연습생 레슨 커리큘럼 적용. 월 학원 내방 오디션, 본사 비공개 오디션, 영상 캐스팅 오디션까지 실전 기회를 제공합니다.</p>
+      <div class="grid grid--3 tracks" style="text-align:left;">
+        <div>
+          <div class="folderstack">
+            <div class="folderstack__photo folderstack__photo--a">
+              <div class="folder-photo-fill folder-photo-fill--1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2 15 9l7 1-5 5 1.5 7L12 18.5 5.5 22 7 15 2 10l7-1 3-7z"/></svg>
+              </div>
+            </div>
+            <div class="folderstack__photo folderstack__photo--b">
+              <div class="folder-photo-fill folder-photo-fill--2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              </div>
+            </div>
+            <div class="folderstack__base"></div>
+          </div>
+          <div class="folder-caption">
+            <span class="folder-caption__eyebrow">오디션·입시반</span>
+            <h3>기획사 오디션 · 입시</h3>
+            <p>대형 기획사 연습생 커리큘럼과 월 내방 오디션, 비공개 오디션까지 실전 기회를 제공합니다.</p>
           </div>
         </div>
-        <div class="folder">
-          <span class="folder__tag">전문반</span>
-          <div class="folder__card">
-            <h3>실력을 한 단계 끌어올리는 트레이닝</h3>
-            <p>기본기부터 디테일까지 체계적인 4 STEP 커리큘럼으로 프로가수 같은 톤 메이킹과 감정표현을 훈련합니다.</p>
+
+        <div>
+          <div class="folderstack">
+            <div class="folderstack__photo folderstack__photo--a">
+              <div class="folder-photo-fill folder-photo-fill--3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 19.5V5a2 2 0 0 1 2-2h9l5 5v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v5h5"/></svg>
+              </div>
+            </div>
+            <div class="folderstack__photo folderstack__photo--b">
+              <div class="folder-photo-fill folder-photo-fill--4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+              </div>
+            </div>
+            <div class="folderstack__base"></div>
+          </div>
+          <div class="folder-caption">
+            <span class="folder-caption__eyebrow">전문반</span>
+            <h3>실력 향상 트레이닝</h3>
+            <p>기본기부터 디테일까지 4 STEP 커리큘럼으로 프로가수 같은 톤 메이킹을 훈련합니다.</p>
           </div>
         </div>
-        <div class="folder">
-          <span class="folder__tag">취미반</span>
-          <div class="folder__card">
-            <h3>제대로 배우는 노래 실력</h3>
-            <p>발성 기초부터 고음, 호흡압력, 비음 제거까지 — 노래방에서도 바로 써먹는 확실한 발성 훈련을 받습니다.</p>
+
+        <div>
+          <div class="folderstack">
+            <div class="folderstack__photo folderstack__photo--a">
+              <div class="folder-photo-fill folder-photo-fill--5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              </div>
+            </div>
+            <div class="folderstack__photo folderstack__photo--b">
+              <div class="folder-photo-fill folder-photo-fill--6">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m3 12 7-9 4 5 4-3 3 10"/></svg>
+              </div>
+            </div>
+            <div class="folderstack__base"></div>
+          </div>
+          <div class="folder-caption">
+            <span class="folder-caption__eyebrow">취미반</span>
+            <h3>제대로 배우는 노래</h3>
+            <p>발성 기초부터 고음, 호흡압력까지 — 노래방에서 바로 써먹는 발성 훈련을 받습니다.</p>
           </div>
         </div>
       </div>
@@ -406,8 +460,72 @@
     </div>
   </section>
 
+  <!-- CONNECT -->
+  <section class="section section--card tex" id="connect">
+    <div class="wrap connect">
+      <div class="connect__text">
+        <p class="section__eyebrow">함께 시작해요</p>
+        <h2 class="section__title">let's <em>connect</em></h2>
+        <p>오디션 준비는 혼자 판단하기 어렵습니다. 지금 실력이 어디쯤인지, 어떤 반이 맞는지 — 무료 방문 상담에서 담당 선생님과 직접 확인해보세요. 카카오톡으로도 24시간 편하게 문의하실 수 있습니다.</p>
+        <a href="#consult" class="btn btn--fill">상담 신청하기</a>
+      </div>
+      <div class="collage" aria-hidden="true">
+        <div class="collage__panel"></div>
+        <span class="collage__label">합격 실적 모음</span>
+        <div class="collage__photo collage__photo--1">
+          <div class="folder-photo-fill folder-photo-fill--1" style="width:100%;height:100%;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2 15 9l7 1-5 5 1.5 7L12 18.5 5.5 22 7 15 2 10l7-1 3-7z"/></svg>
+          </div>
+        </div>
+        <div class="collage__photo collage__photo--2">
+          <div class="folder-photo-fill folder-photo-fill--4" style="width:100%;height:100%;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l4-4 4 4 6-6 4 4"/></svg>
+          </div>
+        </div>
+        <div class="collage__photo collage__photo--3">
+          <div class="folder-photo-fill folder-photo-fill--5" style="width:100%;height:100%;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+          </div>
+        </div>
+        <div class="collage__photo collage__photo--4">
+          <div class="folder-photo-fill folder-photo-fill--3" style="width:100%;height:100%;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+        </div>
+        <div class="collage__receipt"><span></span><span></span><span></span><span style="width:60%;"></span></div>
+        <svg class="collage__pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2a5 5 0 0 0-5 5v6a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5z"/></svg>
+      </div>
+    </div>
+  </section>
+
   <!-- CONSULT -->
   <section class="consult-band tex" id="consult">
+    <div class="desktop-icons" aria-hidden="true">
+      <div class="dicon dicon--edge-l">
+        <div class="dicon__thumb dicon__thumb--folder dicon__thumb--sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        </div>
+        <span class="dicon__label">합격실적</span>
+      </div>
+      <div class="dicon dicon--edge-l2">
+        <div class="dicon__thumb dicon__thumb--mauve dicon__thumb--sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 15 9l7 1-5 5 1.5 7L12 18.5 5.5 22 7 15 2 10l7-1 3-7z"/></svg>
+        </div>
+        <span class="dicon__label">SM_1차합격.jpg</span>
+      </div>
+      <div class="dicon dicon--edge-r">
+        <div class="dicon__thumb dicon__thumb--kakao dicon__thumb--sm">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.5 3 2 6.5 2 10.9c0 2.7 1.7 5.1 4.4 6.6-.2.7-.7 2.5-.8 2.9-.1.5.2.5.4.4.2-.1 2.7-1.8 3.8-2.5.7.1 1.4.2 2.2.2 5.5 0 10-3.5 10-7.9C22 6.5 17.5 3 12 3z"/></svg>
+        </div>
+        <span class="dicon__label">카카오톡</span>
+      </div>
+      <div class="dicon dicon--edge-r2">
+        <div class="dicon__thumb dicon__thumb--folder dicon__thumb--sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5V5a2 2 0 0 1 2-2h9l5 5v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v5h5"/></svg>
+        </div>
+        <span class="dicon__label">커리큘럼</span>
+      </div>
+    </div>
     <div class="wrap consult">
       <p class="section__eyebrow">상담 신청</p>
       <h2 class="section__title serif">무료 방문 상담, <em>지금</em> 신청하세요</h2>
