@@ -3,13 +3,13 @@
   var nav = document.getElementById("nav");
 
   hamburger.addEventListener("click", function () {
-    var isOpen = nav.classList.toggle("nav--open");
+    var isOpen = nav.classList.toggle("pillnav--open");
     hamburger.setAttribute("aria-expanded", isOpen ? "true" : "false");
   });
 
   nav.querySelectorAll("a").forEach(function (link) {
     link.addEventListener("click", function () {
-      nav.classList.remove("nav--open");
+      nav.classList.remove("pillnav--open");
       hamburger.setAttribute("aria-expanded", "false");
     });
   });
