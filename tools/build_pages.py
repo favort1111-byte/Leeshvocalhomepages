@@ -208,7 +208,8 @@ RECEIPT = ('    <div class="receipt">'
 
 collage = "\n".join([
     '    <div class="bigfolder"><div class="bigfolder__back"></div>'
-    '<div class="bigfolder__tab">from lessons to stages</div><div class="bigfolder__front"></div></div>',
+    '<div class="bigfolder__tab"></div><div class="bigfolder__front"></div></div>',
+    '    <div class="folder-label">from lessons to stages</div>',
     cph(251, 145, 88, 104, 4, "white", 14, 4),
     RECEIPT,
     cph(137, 270, 190, 175, 1, "polaroid", -12, 6),

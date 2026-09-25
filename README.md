@@ -24,6 +24,7 @@ js/booking.js     연습실 예약
 
 backend/          구글시트에 붙이는 앱스스크립트 코드 + 설치 안내 (backend/README.md)
 tools/build_pages.py  HTML 5개를 생성하는 스크립트 (페이지 수정은 여기서)
+assets/img/           사진 20장 (번호는 아래 표)
 tools/dev-server.js   배포 없이 예약·상담까지 미리보기: node tools/dev-server.js
 ```
 
@@ -50,10 +51,10 @@ python3 tools/build_pages.py           # HTML 다시 생성
 
 ## 사진
 
-사진 20장은 Higgsfield(Soul 2.0)로 생성했고, 지금은 Higgsfield CDN 주소를 직접 연결하고 있습니다.
-CDN 파일이 지워지면 사진도 사라지니, 가능하면 파일을 받아 저장소에 넣는 걸 권장합니다.
+사진 20장은 Higgsfield(Soul 2.0)로 생성했고, `assets/img/00.webp ~ 19.webp`로 저장소에 들어 있습니다
+(웹용으로 줄여서 전체 약 1.7MB). 원본 CDN 주소는 `tools/images_source.json`에 기록만 남겨 두었습니다.
 
-사진 교체 방법: `tools/images.json`의 주소를 바꾸고 `python3 tools/build_pages.py` 실행.
+사진 교체 방법: `assets/img/`에 파일을 넣고 `tools/images.json`의 경로를 바꾼 뒤 `python3 tools/build_pages.py` 실행.
 HTML을 직접 고치면 다음 빌드 때 덮어써지니 페이지 내용 수정도 `tools/build_pages.py`에서 하세요.
 
 | 번호 | 내용 | 쓰이는 곳 |

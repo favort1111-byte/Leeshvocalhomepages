@@ -28,7 +28,7 @@
   --f-hand:"Caveat","Nanum Pen Script",cursive;
 
   --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  --fibers:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.04' numOctaves='4' seed='7'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23f)'/></svg>");
+  --fibers:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1600'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.0125 0.04' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23f)'/></svg>");
 }
 
 *,*::before,*::after{box-sizing:border-box;}
@@ -207,8 +207,12 @@ img{display:block;}
   position:absolute;left:calc(150 * var(--s));top:calc(-24 * var(--s));
   width:calc(150 * var(--s));height:calc(30 * var(--s));
   background:var(--manila-light);border-radius:calc(6 * var(--s)) calc(6 * var(--s)) 0 0;
-  display:flex;align-items:flex-start;justify-content:center;padding-top:calc(4 * var(--s));
-  font-family:var(--f-hand);font-size:calc(13 * var(--s));color:#4B3B2E;
+}
+/* Label sits outside the rotated folder so it can layer above the photo next to it. */
+.folder-label{
+  position:absolute;z-index:5;left:calc(318 * var(--s));top:calc(252 * var(--s));
+  transform:rotate(20deg);transform-origin:left top;white-space:nowrap;
+  font-family:var(--f-hand);font-size:calc(11 * var(--s));color:#4B3B2E;
 }
 .bigfolder__front{
   position:absolute;left:0;right:0;bottom:0;height:62%;
@@ -255,9 +259,9 @@ img{display:block;}
 .modal small{display:block;margin-top:10px;text-align:center;font-family:var(--f-serif);font-size:13px;}
 
 /* ---------- BOOKING (practice rooms, paper theme) ---------- */
-.booking{min-height:100vh;background-color:var(--paper);padding:calc(90 * var(--s)) 20px 60px;}
+.booking{min-height:100vh;background-color:var(--paper);padding:calc(90 * var(--s)) 0 60px;}
 .booking::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:var(--fibers);opacity:.14;mix-blend-mode:multiply;}
-.booking__inner{position:relative;z-index:2;max-width:720px;margin:0 auto;}
+.booking__inner{position:relative;z-index:2;max-width:760px;margin:0 auto;padding:0 20px;}
 .booking__title{margin:0 0 8px;font-family:var(--f-display);font-weight:400;font-size:clamp(40px, calc(55 * var(--s)), 72px);line-height:1;letter-spacing:-.015em;}
 .booking__note{margin:0 0 24px;color:var(--ink-body);}
 
@@ -284,7 +288,7 @@ img{display:block;}
   .fcap p{font-size:calc(12.5 * var(--s));max-width:calc(250 * var(--s));}
 
   /* contact: text first, collage below at its own scale */
-  .contact{height:auto;}
+  .contact{height:auto;min-height:100vh;}
   .contact__text{position:relative;left:auto;top:auto;width:auto;padding:calc(34 * var(--s)) calc(24 * var(--s)) 0;}
   .contact__text p{font-size:calc(13 * var(--s));}
   .pill-btn{height:calc(30 * var(--s));font-size:calc(12.5 * var(--s));padding:0 calc(20 * var(--s));}
