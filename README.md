@@ -29,6 +29,7 @@ supabase/         데이터베이스 설계(schema.sql) + 연결 안내 (supabas
 assets/img/       사진 20장 (번호는 아래 표)
 tools/build_pages.py  HTML 5개를 생성하는 스크립트 (페이지 문구·내용 수정은 여기서)
 tools/dev-server.js   계정 없이 예약·관리자까지 미리보기: node tools/dev-server.js
+tools/build_preview.py  체험 모드 사본 만들기 (가짜 데이터, 비공개 아티팩트 미리보기용 · js/demo.js)
 ```
 
 ### 디자인을 바꿀 때 지켜야 할 것

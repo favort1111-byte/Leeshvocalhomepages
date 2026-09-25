@@ -88,18 +88,26 @@
       var li = el("li", "sys-item");
       li.appendChild(el("span", "sys-item__main", dayLabel(b.date) + " " + b.start + "~" + b.end + " · " + b.room));
       if (b.cancellable) {
+        // Two taps instead of confirm(): dialogs are blocked in some embedded viewers.
         var btn = el("button", "sys-link", "취소");
         btn.type = "button";
+        var note = el("span", "sys-item__err");
         btn.addEventListener("click", function () {
-          if (!confirm(dayLabel(b.date) + " " + b.start + " " + b.room + " 예약을 취소할까요?")) return;
+          if (btn.getAttribute("data-armed") !== "1") {
+            btn.setAttribute("data-armed", "1");
+            btn.textContent = "한 번 더 누르면 취소";
+            setTimeout(function () { if (!btn.disabled) { btn.removeAttribute("data-armed"); btn.textContent = "취소"; } }, 4000);
+            return;
+          }
           busy(btn, true);
           LeeshAPI.rpc("booking_cancel", Object.assign({ p_booking: b.id }, creds())).then(function (res) {
-            if (!res.ok) { busy(btn, false); alert(res.error); return; }
+            if (!res.ok) { busy(btn, false); note.textContent = res.error; return; }
             refreshMine();
             loadDay(state.date);
           });
         });
         li.appendChild(btn);
+        li.appendChild(note);
       } else {
         li.appendChild(el("span", "sys-note", "취소 마감"));
       }

@@ -221,6 +221,8 @@
     msg($("#slotMsg"), "");
     $("#slotNew").hidden = !!b;
     $("#slotExisting").hidden = !b;
+    $("#slotCancel").removeAttribute("data-armed");
+    $("#slotCancel").textContent = "이 예약 취소";
     if (b) {
       $("#slotTitle").textContent = room.name + " · " + dayLabel(state.day) + " " + hhmm(b.start_min) + "~" + hhmm(b.end_min);
       $("#slotInfo").textContent = b.member_id
@@ -262,7 +264,14 @@
 
   $("#slotCancel").addEventListener("click", function () {
     var b = state.slot && state.slot.booking;
-    if (!b || !confirm("이 예약을 취소할까요? 학생에게는 따로 연락해주세요.")) return;
+    if (!b) return;
+    var btn = this;
+    if (btn.getAttribute("data-armed") !== "1") {
+      btn.setAttribute("data-armed", "1");
+      btn.textContent = "한 번 더 누르면 취소돼요";
+      msg($("#slotMsg"), "학생에게는 따로 연락해주세요.");
+      return;
+    }
     api("bookings?id=eq." + b.id, { method: "PATCH", body: {
       status: "취소", cancelled_at: new Date().toISOString(), memo: (b.memo ? b.memo + " / " : "") + "관리자 취소"
     } }).then(function (res) {

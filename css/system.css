@@ -68,8 +68,10 @@
 .sys-chip__count{font-size:12px;opacity:.7;}
 
 .sys-list{list-style:none;margin:0;padding:0;}
-.sys-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sys-line);font-variant-numeric:tabular-nums;}
+.sys-item{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--sys-line);font-variant-numeric:tabular-nums;}
 .sys-empty{color:var(--sys-muted);padding:6px 0;}
+.sys-item__err{flex-basis:100%;font-size:14px;color:var(--sys-error);}
+.sys-item__err:empty{display:none;}
 
 .sys-pick{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:18px;padding-top:18px;border-top:1px solid var(--sys-line);}
 .sys-pick select{width:auto;min-width:110px;}

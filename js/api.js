@@ -38,7 +38,8 @@
   /** Call a database function. Functions answer { ok, ... } themselves. */
   function rpc(fn, args, token) {
     if (!enabled()) return Promise.resolve({ ok: false, error: "disabled" });
-    return request("/rest/v1/rpc/" + fn, {
+    // Through the exported object so the preview's demo backend (js/demo.js) can stand in.
+    return window.LeeshAPI.request("/rest/v1/rpc/" + fn, {
       method: "POST", headers: headers(token), body: JSON.stringify(args || {})
     }).then(function (res) {
       if (res.ok && res.data && typeof res.data === "object") return res.data;
