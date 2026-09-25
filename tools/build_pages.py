@@ -1,5 +1,4 @@
-"""Generate the site pages. Image URLs come from images.json; texts marked with
-data-content are defaults that the 콘텐츠 sheet overrides at runtime (js/content.js)."""
+"""Generate the site pages. Image paths come from images.json; all page text lives here."""
 import json, os, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,13 +40,8 @@ def head(title, desc):
 """
 
 def foot(*extra):
-    scripts = ["config", "api", "content"] + list(extra)
+    scripts = ["config", "api"] + list(extra)
     return "".join(f'<script src="js/{n}.js"></script>\n' for n in scripts) + "</body>\n</html>\n"
-
-
-def C(key, text):
-    """Default text for a content key; the sheet value replaces it at runtime."""
-    return f'data-content="{key}">{text}'
 
 
 SR = '<h1 class="sr-only">{}</h1>'
@@ -153,8 +147,8 @@ def fgroup(n, tab, photos, title, text):
             + "\n".join(photos) + "\n"
             f'    </div>\n'
             f'    <div class="fcap fcap--{n}">\n'
-            f'      <h2 {C(f"class{n}.name", title)}</h2>\n'
-            f'      <p {C(f"class{n}.desc", text)}</p>\n'
+            f'      <h2>{title}</h2>\n'
+            f'      <p>{text}</p>\n'
             f'    </div>\n'
             f'  </div>')
 
@@ -187,7 +181,7 @@ about = (head("About | 이송희보컬레슨",
               "이송희보컬레슨의 오디션·입시반, 전문반, 취미반 소개.")
          + '<main class="stage about">\n'
          + nav("about", "cardboard") + "\n"
-         + f'  <h1 class="about__title" {C("about.title", "our vocal<br>classes")}</h1>\n'
+         +   '  <h1 class="about__title">our vocal<br>classes</h1>\n'
          + about_groups + "\n</main>\n" + foot())
 
 # ---------- CONTACT (reference 800x612) ----------
@@ -227,8 +221,8 @@ contact = (head("Contact | 이송희보컬레슨",
            + '<main class="stage contact">\n'
            + nav("contact", "dark") + "\n"
            + '  <div class="contact__text">\n'
-           + "    <h1 " + C("contact.title", "let's connect") + "</h1>\n"
-           + f"    <p {C('contact.body', '')}노래는 늘 깔끔하게 완성된 채로 오지 않아요. 오디션 전날 밤의 연습, 무심코 흥얼거린 가사, "
+           + "    <h1>let's connect</h1>\n"
+           + "    <p>노래는 늘 깔끔하게 완성된 채로 오지 않아요. 오디션 전날 밤의 연습, 무심코 흥얼거린 가사, "
              "처음 잡아본 마이크에서 시작되죠. 지금 어디쯤인지부터 함께 확인해요. "
              "선릉역 7번 출구 도보 2분 · 카카오톡 24시간 문의 · 010-4458-5448</p>\n"
            + f'    <a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">contact</a>\n'
@@ -237,7 +231,7 @@ contact = (head("Contact | 이송희보컬레슨",
            + "</main>\n" + foot())
 
 CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
-    <h1 {C("consult.title", "Book a free consultation")}</h1>
+    <h1>Book a free consultation</h1>
     <div class="sys-row">
       <label class="sys-field"><span>이름</span><input name="name" autocomplete="name" required></label>
       <label class="sys-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
@@ -250,43 +244,41 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
         <option>취미반</option>
       </select>
     </label>
-    <fieldset class="sys-radios" data-needs-api>
+    <fieldset class="sys-radios">
       <legend>상담 방식</legend>
       <label><input type="radio" name="method" value="전화 상담" checked> 전화 상담</label>
       <label><input type="radio" name="method" value="방문 상담"> 방문 상담</label>
       <label><input type="radio" name="method" value="체험 레슨"> 체험 레슨</label>
     </fieldset>
-    <div id="slotPicker" hidden>
-      <div class="sys-chips" id="slotDays"></div>
-      <div class="sys-slots" id="slotTimes"></div>
-    </div>
+    <label class="sys-field" id="consultWish" hidden><span>희망 날짜·시간</span><input name="wish" maxlength="100" placeholder="예) 토요일 오후 2시 이후"></label>
     <label class="sys-field"><span>문의 내용 (선택)</span><textarea name="message" rows="3"></textarea></label>
     <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
     <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
     <p class="sys-msg" id="consultMsg" role="status"></p>
-    <small {C("consult.note", "번호는 상담 안내에만 사용돼요.")}</small>
+    <small>번호는 상담 안내에만 사용돼요.</small>
   </form>
 """
 
 BOOKING_APP = f"""  <div class="booking__inner">
-    <h1 class="booking__title" {C("booking.title", "practice room")}</h1>
-    <p class="booking__note" {C("booking.note", "수강생 전용 · 365일 24시간 연습실을 사전예약제로 운영합니다.")}</p>
+    <h1 class="booking__title">practice room</h1>
+    <p class="booking__note">수강생 전용 · 연습실 5개와 춤연습실을 365일 24시간 사전예약제로 운영합니다.</p>
     <section class="sys sys-card" id="bookingApp" aria-live="polite">
       <div id="bookingOff" hidden>
         <p>연습실 예약 시스템을 준비하고 있습니다. 그동안은 카카오톡으로 예약해주세요.</p>
         <a class="sys-btn" href="{KAKAO}" target="_blank" rel="noopener">카카오톡으로 예약하기</a>
       </div>
       <form id="whoForm">
-        <h2 class="sys-h">본인 확인</h2>
+        <h2 class="sys-h">로그인</h2>
         <div class="sys-row">
-          <label class="sys-field"><span>이름</span><input name="name" autocomplete="name" required></label>
-          <label class="sys-field"><span>전화번호 뒤 4자리</span><input name="phone4" inputmode="numeric" pattern="[0-9]{{4}}" maxlength="4" required></label>
+          <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
+          <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{{4}}" maxlength="4" required></label>
         </div>
-        <button class="sys-btn" type="submit">확인</button>
+        <button class="sys-btn" type="submit">로그인</button>
+        <p class="sys-note">수강 ID는 학원에서 발급해드려요. 비밀번호를 잊었으면 학원에 문의해주세요.</p>
         <p class="sys-msg" id="whoMsg" role="status"></p>
       </form>
       <div id="bookArea" hidden>
-        <p><strong id="hello"></strong> <button class="sys-link" type="button" id="switchUser">다른 사람으로 예약</button></p>
+        <p><strong id="hello"></strong> <button class="sys-link" type="button" id="switchUser">로그아웃</button></p>
         <div class="sys-section">
           <h2 class="sys-h">내 예약</h2>
           <ul class="sys-list" id="myList"></ul>

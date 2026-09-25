@@ -1,0 +1,62 @@
+/* Admin page (admin.html). Plain and dense on purpose: it is a work tool, used on a phone as often as on a PC. */
+:root{--ink:#2B2522;--brown:#6E3B28;--rose:#C9A095;--f-sans:"Jost","Noto Sans KR",sans-serif;--f-serif:"Cormorant Garamond","Noto Sans KR",serif;}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;}
+body.adm{background:#EDE8E0;min-height:100vh;}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+.adm__main{max-width:1180px;margin:0 auto;padding:20px 16px 60px;}
+.adm__head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:16px;}
+.adm__head h1{margin:0;font-family:var(--f-serif);font-weight:500;font-size:26px;color:var(--brown);}
+.adm__head p{margin:0;}
+.adm__login{max-width:420px;margin:40px auto;}
+
+.adm__tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center;}
+.adm__tabs [role=tab]{min-height:42px;padding:0 18px;border:1px solid var(--sys-line);border-radius:999px;background:#fff;font:inherit;color:var(--ink);cursor:pointer;}
+.adm__tabs [role=tab][aria-selected=true]{background:var(--brown);border-color:var(--brown);color:#fff;}
+.adm__logout{margin-left:auto;}
+
+.adm__bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
+.adm__bar input,.adm__bar select{width:auto;flex:0 1 220px;}
+.adm__bar .sys-btn{margin-left:auto;}
+
+/* booking grid: rooms across, hours down */
+.adm__gridwrap,.adm__tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -8px;padding:0 8px;}
+.adm__grid{border-collapse:collapse;width:100%;min-width:620px;font-size:13px;font-variant-numeric:tabular-nums;}
+.adm__grid th{position:sticky;top:0;background:var(--sys-card);padding:6px 4px;font-weight:500;white-space:nowrap;border-bottom:1px solid var(--sys-line);}
+.adm__grid tbody th{position:sticky;left:0;z-index:1;text-align:right;padding-right:8px;color:var(--sys-muted);font-weight:400;border-bottom:0;}
+.adm__grid td{padding:1px;height:30px;border-left:1px solid #EFE7E1;}
+.adm__cell{display:block;width:100%;height:100%;min-height:28px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12px;color:var(--ink);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adm__cell:hover{background:var(--sys-accent-soft);}
+.adm__cell.is-booked{background:#E7C9BE;color:#4A2418;}
+.adm__cell.is-blocked{background:#D9D3CC;color:#4A443C;}
+
+.adm__drawer{margin:16px 0;padding:16px;border:1px solid var(--sys-line);border-radius:12px;background:#fff;}
+.adm__drawer .sys-h{font-size:19px;}
+.adm__actions{display:flex;gap:12px;align-items:center;}
+
+.adm__table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px;}
+.adm__table th{text-align:left;font-weight:500;color:var(--sys-muted);padding:8px 6px;border-bottom:1px solid var(--sys-line);white-space:nowrap;}
+.adm__table td{padding:8px 6px;border-bottom:1px solid #EFE7E1;vertical-align:middle;}
+.adm__table input{min-height:38px !important;padding:6px 8px !important;}
+.adm__table input[type=checkbox]{width:22px;height:22px;min-height:0 !important;}
+.adm__num{max-width:70px;}
+.adm__status--재원{color:var(--sys-ok);}
+.adm__status--외부{color:#8A5A12;}
+.adm__status--휴원,.adm__status--종료{color:var(--sys-muted);}
+
+.adm__cards{list-style:none;margin:0;padding:0;display:grid;gap:10px;}
+.adm__card{padding:14px;border:1px solid var(--sys-line);border-radius:12px;background:#fff;}
+.adm__card p{margin:6px 0;}
+.adm__cardtop{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;}
+.adm__cardtop a{color:var(--sys-accent);}
+.adm__cardtop .sys-note{margin-left:auto;}
+.adm__quote{white-space:pre-wrap;padding:8px 10px;background:#F7F3EF;border-radius:8px;}
+.adm__cardrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.adm__cardrow select{width:auto;}
+.adm__cardrow input{flex:1 1 160px;width:auto;}
+.adm__cardrow .sys-btn{min-height:44px;}
+
+section[data-panel] .sys-h + .adm__tablewrap{margin-bottom:6px;}
+section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
+.adm__grid tr > :first-child{width:58px;}

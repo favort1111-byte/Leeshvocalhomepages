@@ -64,9 +64,8 @@
 .sys-slot{border-radius:8px;min-width:68px;}
 .sys-chip[aria-pressed=true], .sys-slot[aria-pressed=true]{background:var(--sys-accent);border-color:var(--sys-accent);color:#fff;}
 
-.sys-room{padding:14px 0;border-top:1px solid var(--sys-line);}
-.sys-room:first-child{border-top:0;padding-top:0;}
-.sys-room__name{margin:0 0 8px;font-weight:500;}
+.sys-rooms{padding-top:16px;border-top:1px solid var(--sys-line);}
+.sys-chip__count{font-size:12px;opacity:.7;}
 
 .sys-list{list-style:none;margin:0;padding:0;}
 .sys-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sys-line);font-variant-numeric:tabular-nums;}

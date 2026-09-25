@@ -1,4 +1,4 @@
-// Practice-room booking for enrolled students (booking.html).
+// Practice-room booking for members with a 수강 ID (booking.html).
 (function () {
   var app = document.getElementById("bookingApp");
   if (!app) return;
@@ -8,7 +8,7 @@
   var whoForm = app.querySelector("#whoForm");
   var area = app.querySelector("#bookArea");
   var off = app.querySelector("#bookingOff");
-  var state = { who: null, date: null, rooms: null, pick: null };
+  var state = { who: null, date: null, rooms: null, room: null, pick: null };
 
   if (!LeeshAPI.enabled()) {
     whoForm.hidden = true;
@@ -43,18 +43,18 @@
   /* ---------- identity ---------- */
   whoForm.addEventListener("submit", function (e) {
     e.preventDefault();
-    var who = { name: field(whoForm, "name").value.trim(), phone4: field(whoForm, "phone4").value.trim() };
+    var who = { id: field(whoForm, "memberId").value.trim(), pin: field(whoForm, "pin").value.trim() };
     signIn(who, whoForm.querySelector("button"));
   });
 
   function signIn(who, btn) {
     if (btn) busy(btn, true);
     msg($("#whoMsg"), "확인 중…");
-    LeeshAPI.post("booking.mine", who).then(function (res) {
+    LeeshAPI.rpc("member_login", { p_id: who.id, p_pin: who.pin }).then(function (res) {
       if (btn) busy(btn, false);
       if (!res.ok) { msg($("#whoMsg"), res.error, "error"); clearWho(); return; }
       msg($("#whoMsg"), "");
-      state.who = { name: res.name, phone4: who.phone4 };
+      state.who = { id: res.id, pin: who.pin };
       saveWho(state.who);
       whoForm.hidden = true;
       area.hidden = false;
@@ -70,12 +70,14 @@
     area.hidden = true;
     whoForm.hidden = false;
     whoForm.reset();
-    field(whoForm, "name").focus();
+    field(whoForm, "memberId").focus();
   });
 
   /* ---------- my bookings ---------- */
+  function creds() { return { p_id: state.who.id, p_pin: state.who.pin }; }
+
   function refreshMine() {
-    LeeshAPI.post("booking.mine", state.who).then(function (res) { if (res.ok) renderMine(res.bookings); });
+    LeeshAPI.rpc("member_login", creds()).then(function (res) { if (res.ok) renderMine(res.bookings); });
   }
 
   function renderMine(list) {
@@ -91,7 +93,7 @@
         btn.addEventListener("click", function () {
           if (!confirm(dayLabel(b.date) + " " + b.start + " " + b.room + " 예약을 취소할까요?")) return;
           busy(btn, true);
-          LeeshAPI.post("booking.cancel", Object.assign({ id: b.id }, state.who)).then(function (res) {
+          LeeshAPI.rpc("booking_cancel", Object.assign({ p_booking: b.id }, creds())).then(function (res) {
             if (!res.ok) { busy(btn, false); alert(res.error); return; }
             refreshMine();
             loadDay(state.date);
@@ -112,7 +114,7 @@
     box.appendChild(el("p", "sys-note", "빈 시간을 불러오는 중…"));
     state.pick = null;
     updatePick();
-    LeeshAPI.get("rooms", date ? { date: date } : {}).then(function (res) {
+    LeeshAPI.rpc("rooms_day", date ? { p_date: date } : {}).then(function (res) {
       if (!res.ok) { box.textContent = ""; box.appendChild(el("p", "sys-msg sys-msg--error", res.error)); return; }
       state.date = res.date;
       state.rooms = res;
@@ -135,31 +137,47 @@
     });
   }
 
+  /** Room chips first, then only the chosen room's free hours — keeps the page short on phones. */
   function renderRooms(res) {
     var box = $("#rooms");
     box.textContent = "";
     if (!res.rooms.length) { box.appendChild(el("p", "sys-note", "예약할 수 있는 연습실이 없습니다.")); return; }
+    var names = res.rooms.map(function (r) { return r.name; });
+    if (names.indexOf(state.room) === -1) state.room = names[0];
+
+    var chips = el("div", "sys-chips sys-rooms");
     res.rooms.forEach(function (room) {
-      var group = el("div", "sys-room");
-      var title = el("p", "sys-room__name", room.name + (room.type ? " · " + room.type : ""));
-      group.appendChild(title);
-      var slots = el("div", "sys-slots");
-      if (!room.free.length) slots.appendChild(el("span", "sys-note", "남은 시간이 없습니다."));
-      room.free.forEach(function (t) {
-        var b = el("button", "sys-slot", t);
-        b.type = "button";
-        b.setAttribute("aria-pressed", "false");
-        b.addEventListener("click", function () {
-          app.querySelectorAll(".sys-slot[aria-pressed=true]").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
-          b.setAttribute("aria-pressed", "true");
-          state.pick = { room: room.name, start: t, free: room.free };
-          updatePick();
-        });
-        slots.appendChild(b);
+      var b = el("button", "sys-chip");
+      b.type = "button";
+      b.appendChild(document.createTextNode(room.name + " "));
+      b.appendChild(el("small", "sys-chip__count", room.free.length ? "빈 " + room.free.length : "마감"));
+      b.setAttribute("aria-pressed", room.name === state.room ? "true" : "false");
+      b.addEventListener("click", function () {
+        state.room = room.name;
+        state.pick = null;
+        updatePick();
+        renderRooms(res);
       });
-      group.appendChild(slots);
-      box.appendChild(group);
+      chips.appendChild(b);
     });
+    box.appendChild(chips);
+
+    var room = res.rooms[names.indexOf(state.room)];
+    var slots = el("div", "sys-slots");
+    if (!room.free.length) slots.appendChild(el("span", "sys-note", "이날은 남은 시간이 없습니다. 다른 방이나 날짜를 골라주세요."));
+    room.free.forEach(function (t) {
+      var b = el("button", "sys-slot", t);
+      b.type = "button";
+      b.setAttribute("aria-pressed", state.pick && state.pick.start === t ? "true" : "false");
+      b.addEventListener("click", function () {
+        app.querySelectorAll(".sys-slot[aria-pressed=true]").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+        b.setAttribute("aria-pressed", "true");
+        state.pick = { room: room.name, start: t, free: room.free };
+        updatePick();
+      });
+      slots.appendChild(b);
+    });
+    box.appendChild(slots);
   }
 
   /** Only offer lengths whose every unit is free, so the student can't pick a doomed request. */
@@ -192,9 +210,9 @@
     var btn = this;
     busy(btn, true);
     msg($("#bookMsg"), "예약하는 중…");
-    LeeshAPI.post("booking.create", Object.assign({
-      room: state.pick.room, date: state.date, start: state.pick.start, hours: Number($("#hours").value)
-    }, state.who)).then(function (res) {
+    LeeshAPI.rpc("booking_create", Object.assign({
+      p_room: state.pick.room, p_date: state.date, p_start: state.pick.start, p_hours: Number($("#hours").value)
+    }, creds())).then(function (res) {
       busy(btn, false);
       if (!res.ok) { msg($("#bookMsg"), res.error, "error"); loadDay(state.date); return; }
       var b = res.booking;
@@ -205,5 +223,5 @@
   });
 
   var saved = loadWho();
-  if (saved && saved.name && saved.phone4) signIn(saved, null);
+  if (saved && saved.id && saved.pin) signIn(saved, null);
 })();

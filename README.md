@@ -2,8 +2,9 @@
 
 강남 선릉역 1:1 보컬학원 이송희보컬레슨 홈페이지.
 
-**시스템과 디자인을 분리한 구조**입니다. 문구·목록·예약 같은 데이터와 기능은 구글시트 + 앱스스크립트가 맡고,
+**시스템과 디자인을 분리한 구조**입니다. 연습실 예약·상담 신청은 Supabase 데이터베이스가 맡고,
 HTML/CSS는 그걸 보여주는 "테마"라서 디자인을 바꿔도 기능은 그대로 둘 수 있습니다.
+(선생님 수업 예약용 구글시트와는 별개입니다)
 
 ## 구조
 
@@ -11,38 +12,38 @@ HTML/CSS는 그걸 보여주는 "테마"라서 디자인을 바꿔도 기능은 
 index.html        home    — 블러 인물사진 배경 + 바탕화면 아이콘
 about.html        about   — "our vocal classes", 폴더 3개(오디션·입시 / 전문 / 취미)
 contact.html      contact — "let's connect" + 폴더 콜라주
-consult.html      consult — 상담 신청 (전화 / 방문 상담 / 체험 레슨 예약)
-booking.html      booking — 수강생 연습실 예약
+consult.html      consult — 상담 신청 (전화 / 방문 상담 / 체험 레슨)
+booking.html      booking — 연습실 예약 (수강 ID 로그인, 연습실 5개 + 춤연습실)
+admin.html        관리자  — 예약 현황, 수강 ID, 상담 신청, 설정 (메뉴에는 안 보이는 주소)
 
 css/style.css     테마(디자인). 새 시안이 오면 이 파일과 HTML 틀만 바꾸면 됩니다
 css/system.css    기능 화면(폼·예약 버튼 등) 기본 스타일. 테마가 --sys-* 변수로 덮어쓸 수 있음
-js/config.js      앱스스크립트 웹 앱 주소 (비어 있으면 예약·상담은 카카오톡 안내로 대체)
-js/api.js         서버 통신
-js/content.js     data-content / data-list 가 붙은 요소를 콘텐츠 시트 값으로 채움
+css/admin.css     관리자 화면
+js/config.js      Supabase 주소와 공개 키 (비어 있으면 예약은 카카오톡 안내, 상담은 카카오톡으로 복사)
+js/api.js         데이터베이스 통신
 js/consult.js     상담 신청
 js/booking.js     연습실 예약
+js/admin.js       관리자 화면
 
-backend/          구글시트에 붙이는 앱스스크립트 코드 + 설치 안내 (backend/README.md)
-tools/build_pages.py  HTML 5개를 생성하는 스크립트 (페이지 수정은 여기서)
-assets/img/           사진 20장 (번호는 아래 표)
-tools/dev-server.js   배포 없이 예약·상담까지 미리보기: node tools/dev-server.js
+supabase/         데이터베이스 설계(schema.sql) + 연결 안내 (supabase/README.md) + 테스트
+assets/img/       사진 20장 (번호는 아래 표)
+tools/build_pages.py  HTML 5개를 생성하는 스크립트 (페이지 문구·내용 수정은 여기서)
+tools/dev-server.js   계정 없이 예약·관리자까지 미리보기: node tools/dev-server.js
 ```
 
 ### 디자인을 바꿀 때 지켜야 할 것
 
 새 테마의 HTML에 아래만 유지하면 기능이 그대로 붙습니다.
 
-- 문구: `data-content="키"` (키 목록은 구글시트 **콘텐츠** 탭)
-- 목록: `<ul data-list="results|pricing" data-group="입시">` 안에 `<template>` + `data-field`
-- 상담 폼: `id="consultForm"` 안의 name, phone, track, method, message, website 입력칸과 `#slotPicker`, `#consultMsg`
+- 상담 폼: `id="consultForm"` 안의 name, phone, track, method, wish(`#consultWish`), message, website 입력칸과 `#consultMsg`
 - 연습실 예약: `id="bookingApp"` 블록 (tools/build_pages.py의 BOOKING_APP 그대로)
-- 스크립트: config.js → api.js → content.js → (consult.js | booking.js)
+- 스크립트: config.js → api.js → (consult.js | booking.js)
 
 ## 실행 · 테스트
 
 ```bash
-node tools/dev-server.js               # http://localhost:8020 (체험 로그인: 김시우 / 5678)
-node --test backend/test/*.test.js     # 예약 규칙 + 서버 API 테스트
+node tools/dev-server.js               # http://localhost:8020 (예약 S001 / 5678, 관리자 owner@example.com / admin1234)
+node --test supabase/test/*.test.js    # 예약 규칙 + 권한 테스트 (Postgres·PostgREST 필요, supabase/README.md)
 python3 tools/build_pages.py           # HTML 다시 생성
 ```
 

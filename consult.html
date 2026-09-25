@@ -43,7 +43,7 @@
     </a>
   </div>
   <form class="modal sys" id="consultForm" novalidate>
-    <h1 data-content="consult.title">Book a free consultation</h1>
+    <h1>Book a free consultation</h1>
     <div class="sys-row">
       <label class="sys-field"><span>이름</span><input name="name" autocomplete="name" required></label>
       <label class="sys-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
@@ -56,26 +56,22 @@
         <option>취미반</option>
       </select>
     </label>
-    <fieldset class="sys-radios" data-needs-api>
+    <fieldset class="sys-radios">
       <legend>상담 방식</legend>
       <label><input type="radio" name="method" value="전화 상담" checked> 전화 상담</label>
       <label><input type="radio" name="method" value="방문 상담"> 방문 상담</label>
       <label><input type="radio" name="method" value="체험 레슨"> 체험 레슨</label>
     </fieldset>
-    <div id="slotPicker" hidden>
-      <div class="sys-chips" id="slotDays"></div>
-      <div class="sys-slots" id="slotTimes"></div>
-    </div>
+    <label class="sys-field" id="consultWish" hidden><span>희망 날짜·시간</span><input name="wish" maxlength="100" placeholder="예) 토요일 오후 2시 이후"></label>
     <label class="sys-field"><span>문의 내용 (선택)</span><textarea name="message" rows="3"></textarea></label>
     <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
     <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
     <p class="sys-msg" id="consultMsg" role="status"></p>
-    <small data-content="consult.note">번호는 상담 안내에만 사용돼요.</small>
+    <small>번호는 상담 안내에만 사용돼요.</small>
   </form>
 </main>
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
-<script src="js/content.js"></script>
 <script src="js/consult.js"></script>
 </body>
 </html>
