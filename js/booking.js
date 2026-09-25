@@ -12,6 +12,7 @@
 
   if (!LeeshAPI.enabled()) {
     whoForm.hidden = true;
+    app.querySelector("#boardWrap").hidden = true;
     off.hidden = false;
     return;
   }
@@ -60,7 +61,7 @@
       area.hidden = false;
       $("#hello").textContent = res.name + "님, 안녕하세요.";
       renderMine(res.bookings);
-      loadDay(state.date);
+      if (state.rooms) { renderRooms(state.rooms); updatePick(); } else loadDay(state.date);
     });
   }
 
@@ -117,16 +118,17 @@
 
   /* ---------- availability ---------- */
   function loadDay(date) {
-    var box = $("#rooms");
+    var box = $("#rooms"), board = $("#board");
     box.textContent = "";
-    box.appendChild(el("p", "sys-note", "빈 시간을 불러오는 중…"));
+    if (!board.firstChild) board.appendChild(el("p", "sys-note", "빈 시간을 불러오는 중…"));
     state.pick = null;
     updatePick();
     LeeshAPI.rpc("rooms_day", date ? { p_date: date } : {}).then(function (res) {
-      if (!res.ok) { box.textContent = ""; box.appendChild(el("p", "sys-msg sys-msg--error", res.error)); return; }
+      if (!res.ok) { board.textContent = ""; board.appendChild(el("p", "sys-msg sys-msg--error", res.error)); return; }
       state.date = res.date;
       state.rooms = res;
       renderDays(res.days, res.date);
+      renderBoard(res);
       renderRooms(res);
       $("#rules").textContent = "한 번에 최대 " + res.maxHours + "시간 · 하루 최대 " + res.dailyMaxHours + "시간 · " +
         res.unit + "분 단위";
@@ -145,6 +147,83 @@
     });
   }
 
+  /**
+   * The whole day at a glance: one row per room, one cell per time unit.
+   * Tapping a free cell picks that room and hour (after sign-in it is ready to book).
+   */
+  function renderBoard(res) {
+    var board = $("#board");
+    board.textContent = "";
+    if (!res.rooms.length) { board.appendChild(el("p", "sys-note", "예약할 수 있는 연습실이 없습니다.")); return; }
+    var open = toMin(res.open), close = toMin(res.close), unit = res.unit;
+    var cols = (close - open) / unit;
+    var nowCut = res.now == null ? -1 : Math.floor(res.now / unit) * unit;
+    var grid = el("div", "sys-board__grid");
+    grid.style.gridTemplateColumns = "var(--board-name) repeat(" + cols + ", minmax(0, 1fr))";
+
+    grid.appendChild(el("span", "sys-board__corner"));
+    for (var h = open; h < close; h += unit) {
+      var tick = el("span", "sys-board__tick");
+      if (h % 180 === 0) {
+        tick.textContent = String(h / 60);
+        if (h % 360 !== 0) tick.className += " is-minor";
+      }
+      grid.appendChild(tick);
+    }
+
+    res.rooms.forEach(function (room) {
+      var name = el("button", "sys-board__name", room.name);
+      name.type = "button";
+      name.setAttribute("aria-pressed", room.name === state.room ? "true" : "false");
+      name.addEventListener("click", function () { chooseRoom(room.name); });
+      grid.appendChild(name);
+      var free = room.free.map(toMin);
+      for (var t = open; t < close; t += unit) {
+        var label = room.name + " " + hhmm(t);
+        if (free.indexOf(t) !== -1) {
+          var cell = el("button", "sys-board__cell is-free");
+          cell.type = "button";
+          cell.title = label + " 빈 시간";
+          cell.setAttribute("aria-label", label + " 예약 가능");
+          if (state.pick && state.pick.room === room.name && state.pick.start === hhmm(t)) cell.className += " is-picked";
+          cell.addEventListener("click", pickFromBoard.bind(null, room, hhmm(t)));
+          grid.appendChild(cell);
+        } else {
+          var past = t < nowCut;
+          var span = el("span", "sys-board__cell " + (past ? "is-past" : "is-taken"));
+          span.title = label + (past ? " 지난 시간" : " 예약됨");
+          grid.appendChild(span);
+        }
+      }
+    });
+    board.appendChild(grid);
+  }
+
+  function hhmm(m) { return (m < 600 ? "0" : "") + Math.floor(m / 60) + ":" + (m % 60 < 10 ? "0" : "") + m % 60; }
+
+  function chooseRoom(name) {
+    state.room = name;
+    state.pick = null;
+    updatePick();
+    renderBoard(state.rooms);
+    renderRooms(state.rooms);
+  }
+
+  function pickFromBoard(room, t) {
+    state.room = room.name;
+    state.pick = { room: room.name, start: t, free: room.free };
+    renderBoard(state.rooms);
+    renderRooms(state.rooms);
+    updatePick();
+    if (!state.who) {
+      msg($("#whoMsg"), room.name + " " + t + " 선택했어요. 로그인하면 바로 예약할 수 있어요.");
+      field(whoForm, "memberId").focus({ preventScroll: true });
+      whoForm.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    } else {
+      $("#bookBtn").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
   /** Room chips first, then only the chosen room's free hours — keeps the page short on phones. */
   function renderRooms(res) {
     var box = $("#rooms");
@@ -160,12 +239,7 @@
       b.appendChild(document.createTextNode(room.name + " "));
       b.appendChild(el("small", "sys-chip__count", room.free.length ? "빈 " + room.free.length : "마감"));
       b.setAttribute("aria-pressed", room.name === state.room ? "true" : "false");
-      b.addEventListener("click", function () {
-        state.room = room.name;
-        state.pick = null;
-        updatePick();
-        renderRooms(res);
-      });
+      b.addEventListener("click", function () { chooseRoom(room.name); });
       chips.appendChild(b);
     });
     box.appendChild(chips);
@@ -182,6 +256,7 @@
         b.setAttribute("aria-pressed", "true");
         state.pick = { room: room.name, start: t, free: room.free };
         updatePick();
+        renderBoard(res);
       });
       slots.appendChild(b);
     });
@@ -230,6 +305,7 @@
     });
   });
 
+  loadDay(null);
   var saved = loadWho();
   if (saved && saved.id && saved.pin) signIn(saved, null);
 })();

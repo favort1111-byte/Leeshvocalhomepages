@@ -47,6 +47,7 @@ test('rooms_day lists six rooms and hides past hours today', async () => {
   const r = await rpc('rooms_day', {});
   assert.equal(r.ok, true);
   assert.equal(r.date, '2026-10-01');
+  assert.equal(r.now, 620); // 10:20, so the page can grey out past hours
   assert.equal(r.rooms.length, 6);
   assert.equal(r.rooms[5].name, '춤연습실');
   assert.equal(r.rooms[0].free[0], '10:00'); // the hour in progress is still bookable
@@ -54,6 +55,7 @@ test('rooms_day lists six rooms and hides past hours today', async () => {
   const later = await rpc('rooms_day', { p_date: '2026-10-02' });
   assert.equal(later.rooms[0].free[0], '00:00');
   assert.equal(later.rooms[0].free.length, 24);
+  assert.equal(later.now, null);
   assert.equal((await rpc('rooms_day', { p_date: '2026-10-20' })).ok, false);
   assert.equal((await rpc('rooms_day', { p_date: 'nope' })).ok, false);
 });

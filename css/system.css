@@ -84,3 +84,36 @@
 .sys-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
 
 @media (prefers-reduced-motion:reduce){.sys *{transition:none !important;}}
+
+/* ---------- day board: rooms down, hours across ---------- */
+.sys-board{--board-name:84px;--board-free:#fff;--board-taken:#D8B9AD;--board-past:#EFEAE5;}
+.sys-board__grid{display:grid;gap:2px;align-items:stretch;font-variant-numeric:tabular-nums;}
+.sys-board__corner{grid-column:1;}
+.sys-board__tick{position:relative;height:18px;font-size:11px;color:var(--sys-muted);white-space:nowrap;}
+.sys-board__tick:not(:empty){transform:translateX(-50%);}
+.sys-board__name{
+  min-height:34px;padding:0 6px 0 0;border:0;background:none;text-align:left;
+  font:inherit;font-size:13px;color:var(--sys-ink);cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.sys-board__name[aria-pressed=true]{font-weight:500;color:var(--sys-accent);}
+.sys-board__cell{display:block;min-height:34px;border-radius:3px;padding:0;border:0;}
+.sys-board__cell.is-free{background:var(--board-free);box-shadow:inset 0 0 0 1px var(--sys-line);cursor:pointer;}
+.sys-board__cell.is-free:hover{background:var(--sys-accent-soft);}
+.sys-board__cell.is-picked{background:var(--sys-accent);box-shadow:none;}
+.sys-board__cell.is-taken{background:var(--board-taken);}
+.sys-board__cell.is-past{background:repeating-linear-gradient(135deg,var(--board-past) 0 3px,#E2DBD4 3px 5px);}
+.sys-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 0;font-size:13px;color:var(--sys-muted);}
+.sys-legend span{display:inline-flex;align-items:center;gap:6px;}
+.sys-legend span::before{content:"";width:14px;height:14px;border-radius:3px;}
+.sys-legend .is-free::before{background:var(--board-free);box-shadow:inset 0 0 0 1px var(--sys-line);}
+.sys-legend .is-taken::before{background:var(--board-taken);}
+.sys-legend .is-past::before{background:repeating-linear-gradient(135deg,var(--board-past) 0 3px,#E2DBD4 3px 5px);}
+#boardWrap .sys-chips{margin-bottom:14px;}
+.sys-board + .sys-section{padding-top:24px;border-top:1px solid var(--sys-line);}
+@media (max-width:520px){
+  .sys-board{--board-name:62px;}
+  .sys-board__grid{gap:1px;}
+  .sys-board__tick.is-minor{visibility:hidden;}
+  .sys-board__name{font-size:12px;}
+}

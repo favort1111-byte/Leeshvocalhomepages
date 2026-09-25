@@ -90,7 +90,7 @@
       var days = [];
       for (var i = 0; i <= s.max_days; i++) days.push(addDays(n.today, i));
       return {
-        ok: true, date: d, days: days, unit: s.unit_min, open: hhmm(s.open_min), close: hhmm(s.close_min),
+        ok: true, date: d, now: ahead === 0 ? n.min : null, days: days, unit: s.unit_min, open: hhmm(s.open_min), close: hhmm(s.close_min),
         maxHours: s.max_minutes / 60, dailyMaxHours: s.daily_max_minutes / 60,
         rooms: db.rooms.filter(function (r) { return r.active; })
           .sort(function (x, y) { return x.sort - y.sort || x.id - y.id; })

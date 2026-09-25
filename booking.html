@@ -28,8 +28,14 @@
         <p>연습실 예약 시스템을 준비하고 있습니다. 그동안은 카카오톡으로 예약해주세요.</p>
         <a class="sys-btn" href="https://pf.kakao.com/_xgNYbK" target="_blank" rel="noopener">카카오톡으로 예약하기</a>
       </div>
-      <form id="whoForm">
-        <h2 class="sys-h">로그인</h2>
+      <div class="sys-board" id="boardWrap">
+        <h2 class="sys-h">빈 시간 보기</h2>
+        <div class="sys-chips" id="days"></div>
+        <div id="board" aria-live="polite"></div>
+        <p class="sys-legend" aria-hidden="true"><span class="is-free">빈 시간</span><span class="is-taken">예약됨</span><span class="is-past">지난 시간</span></p>
+      </div>
+      <form id="whoForm" class="sys-section">
+        <h2 class="sys-h">로그인하고 예약하기</h2>
         <div class="sys-row">
           <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
           <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label>
@@ -38,7 +44,7 @@
         <p class="sys-note">수강 ID는 학원에서 발급해드려요. 비밀번호를 잊었으면 학원에 문의해주세요.</p>
         <p class="sys-msg" id="whoMsg" role="status"></p>
       </form>
-      <div id="bookArea" hidden>
+      <div id="bookArea" class="sys-section" hidden>
         <p><strong id="hello"></strong> <button class="sys-link" type="button" id="switchUser">로그아웃</button></p>
         <div class="sys-section">
           <h2 class="sys-h">내 예약</h2>
@@ -47,7 +53,6 @@
         <div class="sys-section">
           <h2 class="sys-h">새 예약</h2>
           <p class="sys-note" id="rules"></p>
-          <div class="sys-chips" id="days"></div>
           <div id="rooms"></div>
           <div class="sys-pick">
             <span class="sys-pick__label" id="pickLabel">연습실과 시작 시간을 골라주세요.</span>

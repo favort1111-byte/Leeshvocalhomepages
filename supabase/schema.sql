@@ -231,6 +231,7 @@ begin
   return jsonb_build_object(
     'ok', true,
     'date', d,
+    'now', case when d = today then now_min end,   -- lets the page grey out hours already gone
     'days', (select jsonb_agg(today + i order by i) from generate_series(0, s.max_days) i),
     'unit', s.unit_min,
     'open', private.hhmm(s.open_min),
