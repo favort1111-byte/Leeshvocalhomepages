@@ -95,7 +95,7 @@ test('booking: create, shows in my list, blocks the slot for everyone', async ()
 });
 
 test('booking rules: max length, daily max, same person two rooms, past, unit, range, room', async () => {
-  assert.match((await book({ p_hours: 3 })).error, /최대 2시간/);
+  assert.match((await book({ p_hours: 4 })).error, /최대 3시간/);
   assert.equal((await book({ p_start: '12:00', p_hours: 2 })).ok, true);
   assert.match((await book({ p_room: '연습실 2', p_start: '13:00' })).error, /다른 연습실/);
   assert.match((await book({ p_start: '18:00', p_hours: 2 })).error, /하루 최대 3시간.*이미 2시간/);
@@ -188,7 +188,7 @@ test('admin: reads bookings with names, blocks a slot, cannot read PIN hashes', 
   assert.equal((await call('/members?select=id,name', { method: 'GET', token: ADMIN })).data.length, 4);
   assert.notEqual((await call('/members?select=pin_hash', { method: 'GET', token: ADMIN })).status, 200);
 
-  const upd = await call('/settings?id=eq.1', { method: 'PATCH', body: { max_minutes: 180 }, token: ADMIN });
+  const upd = await call('/settings?id=eq.1', { method: 'PATCH', body: { max_minutes: 60 }, token: ADMIN });
   assert.equal(upd.status, 200);
-  assert.equal((await book({ p_room: '연습실 2', p_start: '17:00', p_hours: 2 }, { p_id: 'S002', p_pin: '9999' })).ok, true);
+  assert.match((await book({ p_room: '연습실 2', p_start: '17:00', p_hours: 2 }, { p_id: 'S002', p_pin: '9999' })).error, /최대 1시간/);
 });

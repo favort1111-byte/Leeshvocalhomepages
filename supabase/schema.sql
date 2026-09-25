@@ -27,7 +27,7 @@ create table if not exists public.settings (
   open_min          int not null default 0    check (open_min between 0 and 1440),
   close_min         int not null default 1440 check (close_min between 0 and 1440),
   unit_min          int not null default 60   check (unit_min in (30, 60)),
-  max_minutes       int not null default 120  check (max_minutes > 0 and max_minutes % 60 = 0),
+  max_minutes       int not null default 180  check (max_minutes > 0 and max_minutes % 60 = 0),
   daily_max_minutes int not null default 180  check (daily_max_minutes > 0),
   max_days          int not null default 7    check (max_days between 0 and 60),
   cancel_minutes    int not null default 60   check (cancel_minutes >= 0),

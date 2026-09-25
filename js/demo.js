@@ -7,6 +7,7 @@
   cfg.supabaseKey = "demo";
   cfg.local = true;
   var KEY = "leesh_demo_db";
+  var VERSION = 2; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -33,8 +34,9 @@
   function seed() {
     var t = nowKst().today;
     var db = {
+      version: VERSION,
       next: 100,
-      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 180, max_days: 7, cancel_minutes: 60 },
+      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 180, daily_max_minutes: 180, max_days: 7, cancel_minutes: 60 },
       rooms: [["연습실 1", "연습실"], ["연습실 2", "연습실"], ["연습실 3", "연습실"], ["연습실 4", "연습실"], ["연습실 5", "연습실"], ["춤연습실", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
       members: [
@@ -60,7 +62,7 @@
   var db;
   function load() {
     try { db = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { db = null; }
-    if (!db || !db.settings) db = seed();
+    if (!db || db.version !== VERSION) db = seed(); // new defaults replace old demo data
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();
