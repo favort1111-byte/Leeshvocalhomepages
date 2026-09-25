@@ -234,44 +234,39 @@ img{display:block;}
 .clip{position:absolute;z-index:9;left:calc(150 * var(--s));top:calc(252 * var(--s));width:calc(26 * var(--s));transform:rotate(-20deg);}
 
 /* ---------- CONSULT (subscribe modal) ---------- */
+/* The card grows with the form, so the stage grows with it. */
+.consult{height:auto;min-height:max(calc(450 * var(--s)), 100vh);padding:calc(83 * var(--s)) 0 calc(40 * var(--s));}
 .modal{
-  position:absolute;z-index:10;
-  left:calc(199 * var(--s));top:calc(83 * var(--s));
-  width:calc(402 * var(--s));height:calc(296 * var(--s));
+  position:relative;z-index:10;
+  margin-left:calc(199 * var(--s));
+  width:calc(402 * var(--s));min-width:min(420px, 92vw);
   background:var(--card);
   border:calc(1.5 * var(--s)) solid #E6DEDA;
   border-radius:calc(10 * var(--s));
   box-shadow:0 calc(2 * var(--s)) calc(10 * var(--s)) rgba(60,40,35,.12);
-  padding:calc(30 * var(--s)) calc(29 * var(--s)) 0;
+  padding:calc(30 * var(--s)) calc(29 * var(--s)) calc(22 * var(--s));
   color:var(--brown);
 }
 .modal h1{
-  margin:0 0 calc(24 * var(--s));
+  margin:0 0 calc(18 * var(--s));
   font-family:var(--f-serif);font-weight:500;
-  font-size:calc(29 * var(--s));line-height:1.1;color:var(--brown);
+  font-size:max(26px, calc(29 * var(--s)));line-height:1.1;color:var(--brown);
 }
-.modal label{display:block;margin-bottom:calc(9 * var(--s));font-family:var(--f-serif);font-size:calc(15.5 * var(--s));}
-.modal input{
-  display:block;width:100%;height:calc(36 * var(--s));
-  border:1px solid #A58C80;border-radius:calc(5 * var(--s));
-  background:#fff;padding:0 calc(10 * var(--s));
-  font-family:var(--f-sans);font-size:calc(12 * var(--s));color:var(--ink);
-}
-.modal input:focus{outline:2px solid var(--rose);outline-offset:1px;}
-.modal button{
-  display:block;width:100%;height:calc(41 * var(--s));margin-top:calc(51 * var(--s));
-  border:0;border-radius:999px;background:var(--rose);cursor:pointer;
-  font-family:var(--f-serif);font-size:calc(19 * var(--s));color:var(--brown);
-}
-.modal button:hover{filter:brightness(.97);}
-.modal small{display:block;margin-top:calc(8 * var(--s));text-align:center;font-family:var(--f-serif);font-size:calc(9.5 * var(--s));}
+.modal small{display:block;margin-top:10px;text-align:center;font-family:var(--f-serif);font-size:13px;}
+
+/* ---------- BOOKING (practice rooms, paper theme) ---------- */
+.booking{min-height:100vh;background-color:var(--paper);padding:calc(90 * var(--s)) 20px 60px;}
+.booking::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:var(--fibers);opacity:.14;mix-blend-mode:multiply;}
+.booking__inner{position:relative;z-index:2;max-width:720px;margin:0 auto;}
+.booking__title{margin:0 0 8px;font-family:var(--f-display);font-weight:400;font-size:clamp(40px, calc(55 * var(--s)), 72px);line-height:1;letter-spacing:-.015em;}
+.booking__note{margin:0 0 24px;color:var(--ink-body);}
 
 /* ---------- phones: reflow each stage ---------- */
 @media (max-width:760px){
   :root{--s:calc(100vw / 400);}
 
   .nav{position:relative;top:auto;padding:calc(16 * var(--s)) 0 0;gap:calc(6 * var(--s));flex-wrap:wrap;}
-  .nav a{width:calc(84 * var(--s));height:calc(28 * var(--s));font-size:calc(12.5 * var(--s));}
+  .nav a{width:calc(71 * var(--s));height:calc(28 * var(--s));font-size:calc(12 * var(--s));}
 
   /* home: icons become a loose grid over the photo */
   .wall{height:auto;min-height:100vh;padding-bottom:calc(30 * var(--s));background-position:60% center;}
@@ -296,13 +291,12 @@ img{display:block;}
   .collage{--s:calc(100vw / 720);position:relative;inset:auto;height:calc(612 * var(--s));margin:calc(-90 * var(--s)) 0 0 calc(-30 * var(--s));}
 
   /* consult: modal in the flow */
+  .consult{padding-top:0;}
   .consult .icons{display:none;}
-  .modal{position:relative;left:auto;top:auto;width:calc(360 * var(--s));height:auto;margin:calc(40 * var(--s)) auto 0;padding:calc(26 * var(--s)) calc(22 * var(--s)) calc(20 * var(--s));}
-  .modal h1{font-size:calc(28 * var(--s));}
-  .modal label{font-size:calc(15 * var(--s));}
-  .modal input{height:calc(42 * var(--s));font-size:calc(15 * var(--s));}
-  .modal button{height:calc(46 * var(--s));margin-top:calc(26 * var(--s));font-size:calc(18 * var(--s));}
-  .modal small{font-size:calc(11 * var(--s));}
+  .modal{margin:calc(30 * var(--s)) auto 0;width:auto;min-width:0;max-width:calc(370 * var(--s));padding:24px 18px 18px;}
+
+  .booking{padding-top:0;}
+  .booking__inner{padding-top:calc(30 * var(--s));}
 }
 
 @media (prefers-reduced-motion:reduce){*{transition:none !important;}}

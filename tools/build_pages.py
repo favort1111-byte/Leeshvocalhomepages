@@ -1,4 +1,5 @@
-"""Generate the four stage pages. Image URLs come from images.json."""
+"""Generate the site pages. Image URLs come from images.json; texts marked with
+data-content are defaults that the 콘텐츠 sheet overrides at runtime (js/content.js)."""
 import json, os, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,7 +15,8 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
          'family=Gloock&family=Gowun+Batang&family=Jost:wght@400;500&family=Nanum+Pen+Script&'
          'family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">')
 
-PAGES = [("home", "index.html"), ("about", "about.html"), ("contact", "contact.html"), ("consult", "consult.html")]
+PAGES = [("home", "index.html"), ("about", "about.html"), ("contact", "contact.html"),
+         ("consult", "consult.html"), ("booking", "booking.html")]
 
 def nav(current, theme):
     cur = ' aria-current="page"'
@@ -33,14 +35,20 @@ def head(title, desc):
 <meta name="description" content="{desc}">
 {FONTS}
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/system.css">
 </head>
 <body>
 """
 
-FOOT = """<script src="js/main.js"></script>
-</body>
-</html>
-"""
+def foot(*extra):
+    scripts = ["config", "api", "content"] + list(extra)
+    return "".join(f'<script src="js/{n}.js"></script>\n' for n in scripts) + "</body>\n</html>\n"
+
+
+def C(key, text):
+    """Default text for a content key; the sheet value replaces it at runtime."""
+    return f'data-content="{key}">{text}'
+
 
 SR = '<h1 class="sr-only">{}</h1>'
 
@@ -128,7 +136,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + f'<main class="stage wall" style="background-image:url(\'{img(0)}\')">\n'
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n</main>\n" + FOOT)
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n</main>\n" + foot())
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -145,8 +153,8 @@ def fgroup(n, tab, photos, title, text):
             + "\n".join(photos) + "\n"
             f'    </div>\n'
             f'    <div class="fcap fcap--{n}">\n'
-            f'      <h2>{title}</h2>\n'
-            f'      <p>{text}</p>\n'
+            f'      <h2 {C(f"class{n}.name", title)}</h2>\n'
+            f'      <p {C(f"class{n}.desc", text)}</p>\n'
             f'    </div>\n'
             f'  </div>')
 
@@ -179,8 +187,8 @@ about = (head("About | 이송희보컬레슨",
               "이송희보컬레슨의 오디션·입시반, 전문반, 취미반 소개.")
          + '<main class="stage about">\n'
          + nav("about", "cardboard") + "\n"
-         + '  <h1 class="about__title">our vocal<br>classes</h1>\n'
-         + about_groups + "\n</main>\n" + FOOT)
+         + f'  <h1 class="about__title" {C("about.title", "our vocal<br>classes")}</h1>\n'
+         + about_groups + "\n</main>\n" + foot())
 
 # ---------- CONTACT (reference 800x612) ----------
 def cph(left, top, w, h, i, kind, rot, z):
@@ -218,14 +226,86 @@ contact = (head("Contact | 이송희보컬레슨",
            + '<main class="stage contact">\n'
            + nav("contact", "dark") + "\n"
            + '  <div class="contact__text">\n'
-           + "    <h1>let's connect</h1>\n"
-           + "    <p>노래는 늘 깔끔하게 완성된 채로 오지 않아요. 오디션 전날 밤의 연습, 무심코 흥얼거린 가사, "
+           + "    <h1 " + C("contact.title", "let's connect") + "</h1>\n"
+           + f"    <p {C('contact.body', '')}노래는 늘 깔끔하게 완성된 채로 오지 않아요. 오디션 전날 밤의 연습, 무심코 흥얼거린 가사, "
              "처음 잡아본 마이크에서 시작되죠. 지금 어디쯤인지부터 함께 확인해요. "
              "선릉역 7번 출구 도보 2분 · 카카오톡 24시간 문의 · 010-4458-5448</p>\n"
            + f'    <a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">contact</a>\n'
            + "  </div>\n"
            + '  <div class="collage" aria-hidden="true">\n' + collage + "\n  </div>\n"
-           + "</main>\n" + FOOT)
+           + "</main>\n" + foot())
+
+CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
+    <h1 {C("consult.title", "Book a free consultation")}</h1>
+    <div class="sys-row">
+      <label class="sys-field"><span>이름</span><input name="name" autocomplete="name" required></label>
+      <label class="sys-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+    </div>
+    <label class="sys-field"><span>관심 있는 반</span>
+      <select name="track">
+        <option value="">아직 모르겠어요</option>
+        <option>오디션·입시반</option>
+        <option>전문반</option>
+        <option>취미반</option>
+      </select>
+    </label>
+    <fieldset class="sys-radios" data-needs-api>
+      <legend>상담 방식</legend>
+      <label><input type="radio" name="method" value="전화 상담" checked> 전화 상담</label>
+      <label><input type="radio" name="method" value="방문 상담"> 방문 상담</label>
+      <label><input type="radio" name="method" value="체험 레슨"> 체험 레슨</label>
+    </fieldset>
+    <div id="slotPicker" hidden>
+      <div class="sys-chips" id="slotDays"></div>
+      <div class="sys-slots" id="slotTimes"></div>
+    </div>
+    <label class="sys-field"><span>문의 내용 (선택)</span><textarea name="message" rows="3"></textarea></label>
+    <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
+    <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
+    <p class="sys-msg" id="consultMsg" role="status"></p>
+    <small {C("consult.note", "번호는 상담 안내에만 사용돼요.")}</small>
+  </form>
+"""
+
+BOOKING_APP = f"""  <div class="booking__inner">
+    <h1 class="booking__title" {C("booking.title", "practice room")}</h1>
+    <p class="booking__note" {C("booking.note", "수강생 전용 · 365일 24시간 연습실을 사전예약제로 운영합니다.")}</p>
+    <section class="sys sys-card" id="bookingApp" aria-live="polite">
+      <div id="bookingOff" hidden>
+        <p>연습실 예약 시스템을 준비하고 있습니다. 그동안은 카카오톡으로 예약해주세요.</p>
+        <a class="sys-btn" href="{KAKAO}" target="_blank" rel="noopener">카카오톡으로 예약하기</a>
+      </div>
+      <form id="whoForm">
+        <h2 class="sys-h">본인 확인</h2>
+        <div class="sys-row">
+          <label class="sys-field"><span>이름</span><input name="name" autocomplete="name" required></label>
+          <label class="sys-field"><span>전화번호 뒤 4자리</span><input name="phone4" inputmode="numeric" pattern="[0-9]{{4}}" maxlength="4" required></label>
+        </div>
+        <button class="sys-btn" type="submit">확인</button>
+        <p class="sys-msg" id="whoMsg" role="status"></p>
+      </form>
+      <div id="bookArea" hidden>
+        <p><strong id="hello"></strong> <button class="sys-link" type="button" id="switchUser">다른 사람으로 예약</button></p>
+        <div class="sys-section">
+          <h2 class="sys-h">내 예약</h2>
+          <ul class="sys-list" id="myList"></ul>
+        </div>
+        <div class="sys-section">
+          <h2 class="sys-h">새 예약</h2>
+          <p class="sys-note" id="rules"></p>
+          <div class="sys-chips" id="days"></div>
+          <div id="rooms"></div>
+          <div class="sys-pick">
+            <span class="sys-pick__label" id="pickLabel">연습실과 시작 시간을 골라주세요.</span>
+            <select id="hours" aria-label="이용 시간" disabled></select>
+            <button class="sys-btn" type="button" id="bookBtn" disabled>예약하기</button>
+          </div>
+          <p class="sys-msg" id="bookMsg" role="status"></p>
+        </div>
+      </div>
+    </section>
+  </div>
+"""
 
 # ---------- CONSULT (reference 800x450) ----------
 consult_icons = "\n".join([
@@ -241,16 +321,18 @@ consult = (head("Consult | 이송희보컬레슨",
            + f'<main class="stage wall consult" style="background-image:url(\'{img(0)}\')">\n'
            + nav("consult", "light") + "\n"
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
-           + '  <form class="modal" id="consultForm">\n'
-           + "    <h1>Book a free consultation</h1>\n"
-           + '    <label for="phone">연락처를 남겨주세요</label>\n'
-           + '    <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required>\n'
-           + '    <button type="submit">상담 신청하기</button>\n'
-           + "    <small>번호는 상담 안내에만 사용돼요. 카카오톡 채널로 연결됩니다.</small>\n"
-           + "  </form>\n"
-           + "</main>\n" + FOOT)
+           + CONSULT_FORM
+           + "</main>\n" + foot("consult"))
 
-out = {"index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult}
+# ---------- BOOKING (practice rooms, paper theme) ----------
+booking = (head("Booking | 이송희보컬레슨",
+                "이송희보컬레슨 수강생 연습실 예약. 365일 24시간 연습실을 사전예약제로 운영합니다.")
+           + '<main class="stage booking">\n'
+           + nav("booking", "dark") + "\n"
+           + BOOKING_APP
+           + "</main>\n" + foot("booking"))
+
+out = {"index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking}
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:

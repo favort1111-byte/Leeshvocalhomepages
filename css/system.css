@@ -1,0 +1,85 @@
+/*
+  Functional UI (forms, booking grid, messages). Kept apart from the theme in
+  style.css so a new design can restyle these by overriding the --sys-* tokens
+  or the .sys-* classes without touching the booking/consult logic.
+  Sizes are in px, not stage units: controls must stay tappable on any screen.
+*/
+.sys{
+  --sys-ink:var(--ink, #2B2522);
+  --sys-muted:#6E625B;
+  --sys-line:#CDBFB5;
+  --sys-card:#FBFAF7;
+  --sys-accent:var(--brown, #6E3B28);
+  --sys-accent-soft:#F0E1D9;
+  --sys-ok:#2E6B45;
+  --sys-error:#A33A22;
+  font-family:var(--f-sans, sans-serif);
+  color:var(--sys-ink);
+  font-size:15px;
+  line-height:1.55;
+}
+.sys [hidden]{display:none !important;}
+
+.sys-card{background:var(--sys-card);border:1px solid var(--sys-line);border-radius:14px;padding:24px;}
+.sys-h{margin:0 0 12px;font-family:var(--f-serif, serif);font-weight:500;font-size:22px;color:var(--sys-accent);}
+.sys-h + .sys-h, .sys-section + .sys-section{margin-top:28px;}
+.sys-section{margin-top:28px;}
+
+.sys-row{display:flex;gap:12px;flex-wrap:wrap;}
+.sys-field{display:flex;flex-direction:column;gap:6px;flex:1 1 180px;margin-bottom:14px;}
+.sys-field > span{font-size:14px;color:var(--sys-muted);}
+.sys input:not([type=radio]), .sys select, .sys textarea{
+  width:100%;box-sizing:border-box;
+  min-height:44px;padding:10px 12px;
+  border:1px solid var(--sys-line);border-radius:8px;background:#fff;
+  font:inherit;color:var(--sys-ink);
+}
+.sys textarea{min-height:84px;resize:vertical;}
+.sys input:focus-visible, .sys select:focus-visible, .sys textarea:focus-visible,
+.sys button:focus-visible{outline:2px solid var(--sys-accent);outline-offset:2px;}
+
+.sys-radios{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;border:0;padding:0;}
+.sys-radios legend{font-size:14px;color:var(--sys-muted);margin-bottom:6px;padding:0;}
+.sys-radios label{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid var(--sys-line);border-radius:999px;background:#fff;cursor:pointer;}
+.sys-radios label:has(input:checked){border-color:var(--sys-accent);background:var(--sys-accent-soft);}
+
+.sys-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:46px;padding:0 26px;border:0;border-radius:999px;
+  background:var(--rose, #C9A095);color:var(--sys-accent);
+  font:inherit;font-weight:500;cursor:pointer;
+}
+.sys-btn--block{width:100%;}
+.sys-btn:disabled{opacity:.5;cursor:default;}
+.sys-link{border:0;background:none;padding:6px 4px;font:inherit;font-size:14px;color:var(--sys-accent);text-decoration:underline;cursor:pointer;}
+
+.sys-chips, .sys-slots{display:flex;flex-wrap:wrap;gap:8px;}
+.sys-chips{margin-bottom:16px;}
+#slotPicker{margin-bottom:16px;}
+.sys-chip, .sys-slot{
+  min-height:40px;padding:0 14px;border:1px solid var(--sys-line);border-radius:999px;
+  background:#fff;font:inherit;font-size:14px;color:var(--sys-ink);cursor:pointer;
+  font-variant-numeric:tabular-nums;
+}
+.sys-slot{border-radius:8px;min-width:68px;}
+.sys-chip[aria-pressed=true], .sys-slot[aria-pressed=true]{background:var(--sys-accent);border-color:var(--sys-accent);color:#fff;}
+
+.sys-room{padding:14px 0;border-top:1px solid var(--sys-line);}
+.sys-room:first-child{border-top:0;padding-top:0;}
+.sys-room__name{margin:0 0 8px;font-weight:500;}
+
+.sys-list{list-style:none;margin:0;padding:0;}
+.sys-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sys-line);font-variant-numeric:tabular-nums;}
+.sys-empty{color:var(--sys-muted);padding:6px 0;}
+
+.sys-pick{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:18px;padding-top:18px;border-top:1px solid var(--sys-line);}
+.sys-pick select{width:auto;min-width:110px;}
+.sys-pick__label{flex:1 1 200px;font-weight:500;}
+
+.sys-note{color:var(--sys-muted);font-size:14px;}
+.sys-msg{min-height:1.4em;margin:10px 0 0;font-size:14px;}
+.sys-msg--ok{color:var(--sys-ok);}
+.sys-msg--error{color:var(--sys-error);}
+.sys-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+
+@media (prefers-reduced-motion:reduce){.sys *{transition:none !important;}}

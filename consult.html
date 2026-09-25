@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Cormorant+Garamond:wght@500&family=Gloock&family=Gowun+Batang&family=Jost:wght@400;500&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/system.css">
 </head>
 <body>
 <main class="stage wall consult" style="background-image:url('https://d8j0ntlcm91z4.cloudfront.net/user_3H1UZpXRXoEl8Dn9EishzYdgLWZ/hf_20260923_021420_14f03649-b315-4c24-95fa-d9d2b081d729.png')">
@@ -17,6 +18,7 @@
     <a href="about.html">about</a>
     <a href="contact.html">contact</a>
     <a href="consult.html" aria-current="page">consult</a>
+    <a href="booking.html">booking</a>
   </nav>
   <div class="icons">
     <a class="icon" href="https://www.youtube.com/@vocallesson1533" target="_blank" rel="noopener" style="left:calc(97 * var(--s));top:calc(110 * var(--s));width:calc(48 * var(--s))">
@@ -40,14 +42,40 @@
       <span class="icon__label">이송희보컬</span>
     </a>
   </div>
-  <form class="modal" id="consultForm">
-    <h1>Book a free consultation</h1>
-    <label for="phone">연락처를 남겨주세요</label>
-    <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required>
-    <button type="submit">상담 신청하기</button>
-    <small>번호는 상담 안내에만 사용돼요. 카카오톡 채널로 연결됩니다.</small>
+  <form class="modal sys" id="consultForm" novalidate>
+    <h1 data-content="consult.title">Book a free consultation</h1>
+    <div class="sys-row">
+      <label class="sys-field"><span>이름</span><input name="name" autocomplete="name" required></label>
+      <label class="sys-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+    </div>
+    <label class="sys-field"><span>관심 있는 반</span>
+      <select name="track">
+        <option value="">아직 모르겠어요</option>
+        <option>오디션·입시반</option>
+        <option>전문반</option>
+        <option>취미반</option>
+      </select>
+    </label>
+    <fieldset class="sys-radios" data-needs-api>
+      <legend>상담 방식</legend>
+      <label><input type="radio" name="method" value="전화 상담" checked> 전화 상담</label>
+      <label><input type="radio" name="method" value="방문 상담"> 방문 상담</label>
+      <label><input type="radio" name="method" value="체험 레슨"> 체험 레슨</label>
+    </fieldset>
+    <div id="slotPicker" hidden>
+      <div class="sys-chips" id="slotDays"></div>
+      <div class="sys-slots" id="slotTimes"></div>
+    </div>
+    <label class="sys-field"><span>문의 내용 (선택)</span><textarea name="message" rows="3"></textarea></label>
+    <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
+    <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
+    <p class="sys-msg" id="consultMsg" role="status"></p>
+    <small data-content="consult.note">번호는 상담 안내에만 사용돼요.</small>
   </form>
 </main>
-<script src="js/main.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/content.js"></script>
+<script src="js/consult.js"></script>
 </body>
 </html>
