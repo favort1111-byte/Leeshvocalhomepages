@@ -1,0 +1,280 @@
+<title>메뉴 아이디어 보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Jost:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#EFE9E1; --surface:#FBF8F4; --ink:#2B2522; --muted:#6E625B; --line:#DCD1C7;
+  --accent:#6E3B28; --rose:#E8CFC6; --manila:#EFDDB3; --star:#A8562E;
+  --need-text:#EFE6DA; --need-voice:#F3DCD3; --need-student:#E3DAEE; --need-dev:#D8E6E4;
+  --f-display:"Gloock","Noto Serif KR",Georgia,serif;
+  --f-body:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-label:"Jost","Noto Sans KR",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#1E1A18; --surface:#29231F; --ink:#F1E8DE; --muted:#B7A99D; --line:#40362F;
+    --accent:#E0A88F; --rose:#4A3029; --manila:#4A3F28; --star:#F0B08C;
+    --need-text:#3A322A; --need-voice:#47302A; --need-student:#383049; --need-dev:#2B3D3A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#1E1A18; --surface:#29231F; --ink:#F1E8DE; --muted:#B7A99D; --line:#40362F;
+  --accent:#E0A88F; --rose:#4A3029; --manila:#4A3F28; --star:#F0B08C;
+  --need-text:#3A322A; --need-voice:#47302A; --need-student:#383049; --need-dev:#2B3D3A;
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 var(--f-body);-webkit-font-smoothing:antialiased;}
+.page{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:36px 64px;display:grid;gap:40px;}
+h1,h2,h3{text-wrap:balance;margin:0;}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(34px,6vw,52px);line-height:1.05;letter-spacing:-.01em;}
+h2{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.2;}
+h3{font-size:17px;font-weight:700;line-height:1.35;}
+p{margin:0;}
+.eyebrow{font:500 12px/1 var(--f-label);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+.lede{max-width:62ch;color:var(--muted);}
+header{display:grid;gap:14px;}
+
+/* summary */
+.pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.pick__box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:grid;gap:10px;align-content:start;}
+.pick__box ol,.pick__box ul{margin:0;padding-left:1.2em;display:grid;gap:6px;}
+.pick__box b{color:var(--accent);font-weight:700;}
+.pick__box--main{background:var(--rose);border-color:transparent;}
+
+/* groups */
+.group{display:grid;gap:16px;}
+.group__head{display:grid;gap:4px;border-top:1px solid var(--line);padding-top:18px;}
+.group__head p{color:var(--muted);max-width:62ch;}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:grid;gap:8px;align-content:start;}
+.card__top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;}
+.card__top h3{flex:1 1 auto;}
+.src{font:500 11.5px/1 var(--f-label);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 8px;white-space:nowrap;}
+.star{font:700 12px/1 var(--f-label);color:var(--star);white-space:nowrap;}
+.card p{font-size:14.5px;}
+.card .merge{font-size:13.5px;color:var(--muted);}
+.card .merge b{color:var(--ink);font-weight:500;}
+.needs{display:flex;flex-wrap:wrap;gap:6px;}
+.need{font-size:12.5px;line-height:1;padding:6px 9px;border-radius:6px;}
+.need--text{background:var(--need-text);}
+.need--voice{background:var(--need-voice);}
+.need--student{background:var(--need-student);}
+.need--dev{background:var(--need-dev);}
+.card--fav{border-color:var(--star);}
+.card--skip{opacity:.8;}
+
+/* table */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface);}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+th{font:500 12.5px/1.3 var(--f-label);color:var(--muted);letter-spacing:.04em;}
+tr:last-child td{border-bottom:0;}
+td:first-child{white-space:nowrap;}
+.note{color:var(--muted);font-size:13.5px;}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px;}
+</style>
+
+<main class="page">
+  <header>
+    <span class="eyebrow">이송희보컬레슨 · 메뉴 논의용</span>
+    <h1>메뉴 아이디어 보드</h1>
+    <p class="lede">GPT 기본 메뉴표, GPT 특색 메뉴 5가지, GPT 해외 사이트 조사 5가지, Claude 아이디어 4가지를 한곳에 모았어요. 방문자가 무엇을 원해서 들어오는지에 따라 묶었고, 카드마다 만들 때 필요한 자료를 표시했어요. 아직 아무것도 사이트에 적용하지 않았어요.</p>
+    <div class="needs" aria-label="필요 자료 표시">
+      <span class="need need--text">글만 있으면 됨</span>
+      <span class="need need--voice">원장님 녹음·영상</span>
+      <span class="need need--student">수강생 동의 녹음</span>
+      <span class="need need--dev">기능 개발</span>
+    </div>
+  </header>
+
+  <section class="pick" aria-label="지금까지의 의견">
+    <div class="pick__box pick__box--main">
+      <span class="eyebrow">원장님 선호</span>
+      <ul>
+        <li><b>내 목소리 사용설명서</b></li>
+        <li><b>오디션 대기실</b></li>
+      </ul>
+      <p class="note">GPT 해외 조사 의견: 보이스 컬러바가 가장 새롭고, 인생곡 찾기가 가장 실용적, Listening Room이 디자인에 가장 잘 맞음.</p>
+    </div>
+    <div class="pick__box">
+      <span class="eyebrow">Claude 추천 순서</span>
+      <ol>
+        <li><b>바탕화면 창</b>을 틀로 쓰고, 그 안에 아래 메뉴를 담기</li>
+        <li><b>목소리 사용설명서 + 인생곡 찾기</b>를 하나로 합쳐 취미·일반 입구로</li>
+        <li><b>오디션 대기실 + 합격 실적 + 오디션 달력</b>을 오디션·입시 입구로</li>
+        <li>다니는 학생용 <b>레슨 노트</b></li>
+        <li>녹음이 모이면 <b>보이스 컬러바 → Listening Room</b></li>
+      </ol>
+    </div>
+    <div class="pick__box">
+      <span class="eyebrow">빼기로 한 것</span>
+      <ul>
+        <li>수강료 안내 (기본 메뉴표 1번에 들어 있던 항목)</li>
+      </ul>
+      <p class="note">합칠 수 있는 아이디어가 많아서, 실제 메뉴는 4~6개로 줄일 수 있어요.</p>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <span class="eyebrow">틀</span>
+      <h2>메뉴를 담는 방식</h2>
+      <p>메뉴 버튼을 늘리지 않고 지금 디자인 안에 내용을 넣는 방법이에요.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <div class="card__top"><h3>바탕화면 아이콘을 진짜 파일로</h3><span class="src">Claude</span></div>
+        <p>첫 화면의 합격.jpg, 데뷔.jpg, 오디션.jpg 아이콘을 누르면 창이 열리고 실제 내용이 나와요. about 페이지의 Audition·Hobby 폴더도 같은 방식으로 이어져요.</p>
+        <div class="needs"><span class="need need--dev">기능 개발</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <span class="eyebrow">취미·일반 방문자</span>
+      <h2>"나한테 뭐가 필요하지?"</h2>
+      <p>유튜브에서 넘어오는 사람이 가장 많은 쪽이에요. 고민이나 목표를 고르면 맞는 안내와 상담으로 이어져요.</p>
+    </div>
+    <div class="cards">
+      <article class="card card--fav">
+        <div class="card__top"><h3>내 목소리 사용설명서</h3><span class="star">★ 원장님 선호</span><span class="src">GPT 특색</span></div>
+        <p>고민(고음에 힘이 들어감, 음정 불안, 음색 찾기) 선택 + 질문 3~4개 → 관련 레슨·연습 팁·사례 안내 → 고른 고민을 담아 상담 신청.</p>
+        <p class="merge">유튜브 인기 영상(코노 212만, 고음 158만, 비음, 음치탈출)을 고민별로 연결하면 새로 만들 게 적어요.</p>
+        <div class="needs"><span class="need need--text">글만 있으면 됨</span><span class="need need--dev">기능 개발</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>나의 인생곡 찾기</h3><span class="src">GPT 해외 · Singing Carrots</span></div>
+        <p>목적(노래방·축가·커버·오디션)과 장르를 고르면 원장님이 고른 추천곡과 "이 곡으로 연습할 수 있는 것"을 보여줘요.</p>
+        <p class="merge"><b>합치기:</b> 목소리 사용설명서의 결과 화면에 추천곡을 넣으면 한 메뉴가 돼요.</p>
+        <div class="needs"><span class="need need--text">추천곡 목록</span><span class="need need--dev">기능 개발</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>나의 첫 완곡</h3><span class="src">GPT 특색</span></div>
+        <p>"이 노래 한 곡을 끝까지"라는 목표로 선곡 → 어려운 구간 → 표현 → 녹음 과정을 보여줘요.</p>
+        <p class="merge"><b>합치기:</b> 목소리 사용설명서의 목표 중 하나로.</p>
+        <div class="needs"><span class="need need--text">글만 있으면 됨</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>보이스 컬러바</h3><span class="src">GPT 해외 · CVI</span></div>
+        <p>같은 짧은 멜로디를 담백하게·공기감 있게·선명하게·리듬감 있게 부른 버전을 바꿔 들으며 차이를 설명해요.</p>
+        <p class="merge">가수 클로이로 활동한 원장님이 직접 부르면 다른 학원이 따라 하기 어려워요. 멜로디 1개 × 4버전이면 시작할 수 있어요.</p>
+        <div class="needs"><span class="need need--voice">원장님 녹음 4개</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <span class="eyebrow">오디션·입시 준비생</span>
+      <h2>"여기서 준비하면 붙을까?"</h2>
+      <p>원장님의 신인개발팀 오디션 경험이 가장 잘 드러나는 쪽이에요. 합격 실적과 함께 있어야 믿음이 생겨요.</p>
+    </div>
+    <div class="cards">
+      <article class="card card--fav">
+        <div class="card__top"><h3>오디션 대기실</h3><span class="star">★ 원장님 선호</span><span class="src">GPT 특색</span></div>
+        <p>30초 자기소개 점검, 1·2곡 고르는 기준, 카메라 위치·시선·반주 체크리스트, 원장님이 말하는 "자주 놓치는 부분".</p>
+        <div class="needs"><span class="need need--text">원장님 경험 글</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>합격·데뷔</h3><span class="src">GPT 기본표</span></div>
+        <p>기획사·학교별 사례, 연도, 합격 단계. 트리플에스 김유언 데뷔, 60여 기획사, 서울예대 등. 지금 사이트에 아예 없는 내용이에요.</p>
+        <div class="needs"><span class="need need--text">글만 있으면 됨</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>최단 3주 합격 기록</h3><span class="src">Claude</span></div>
+        <p>"최단 3주 합격"을 주차별 과정으로 보여줘요. 이름 없이 과정만.</p>
+        <div class="needs"><span class="need need--text">글만 있으면 됨</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>오디션 달력</h3><span class="src">Claude</span></div>
+        <p>내방 오디션, 비공개 오디션, 월말평가 일정. 관리자 화면에서 원장님이 입력해요. "학원 소식"을 가볍게 대신해요.</p>
+        <p class="merge"><b>합치기:</b> 오디션 대기실과 한 페이지로.</p>
+        <div class="needs"><span class="need need--dev">기능 개발</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <span class="eyebrow">가르치는 방식 보여주기</span>
+      <h2>"어떻게 가르치지?"</h2>
+      <p>설득력은 가장 크지만, 대부분 녹음이나 영상이 먼저 있어야 해요.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <div class="card__top"><h3>한 소절의 변화</h3><span class="src">GPT 특색</span></div>
+        <p>레슨 전 → 피드백 한 가지 → 다시 부르기. 고음·음정·리듬·감정별로 골라 들어요.</p>
+        <div class="needs"><span class="need need--student">수강생 동의 녹음</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>선생님의 귀</h3><span class="src">GPT 특색</span></div>
+        <p>시범 영상에서 음정·호흡·리듬·표현 버튼을 누르면 선생님 해설이 나와요.</p>
+        <p class="merge"><b>겹침:</b> 한 곡 해부실과 비슷해요. 하나만 고르면 돼요.</p>
+        <div class="needs"><span class="need need--voice">시범 영상</span><span class="need need--dev">기능 개발</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>한 곡 해부실</h3><span class="src">GPT 해외 · Singeo</span></div>
+        <p>인기곡 한 곡의 난관 3곳(첫 소절 음정, 후렴 직전 호흡, 마지막 후렴 표현)을 구간별 설명·시범으로.</p>
+        <div class="needs"><span class="need need--text">글</span><span class="need need--voice">구간 시범</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>원장·강사진</h3><span class="src">GPT 기본표</span></div>
+        <p>경력, 담당 과정, 지도 스타일, 짧은 시범 영상. 원장님 경력은 이미 정리돼 있어요.</p>
+        <div class="needs"><span class="need need--text">글만 있으면 됨</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <span class="eyebrow">다시 찾게 만들기</span>
+      <h2>"다니는 동안 계속 쓰는 곳"</h2>
+      <p>상담할 때만 오는 홈페이지가 아니라, 학생이 자주 들어오는 홈페이지로 만드는 아이디어예요.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <div class="card__top"><h3>수강생 레슨 노트</h3><span class="src">Claude</span></div>
+        <p>수업 후 선생님이 "오늘 한 것 / 다음 주 연습"을 적고, 학생이 수강 ID로 로그인해서 봐요. 연습실 예약과 같은 화면에서.</p>
+        <div class="needs"><span class="need need--dev">기능 개발</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>오늘의 3분 보컬</h3><span class="src">GPT 해외 · Singeo</span></div>
+        <p>노래 부르기 전 / 음정 / 리듬 중 골라 짧은 시범과 따라 하기. 3~5개로 시작.</p>
+        <p class="merge">기존 유튜브 영상 중 짧은 워밍업을 골라 쓰면 바로 시작할 수 있어요.</p>
+        <div class="needs"><span class="need need--voice">영상 3~5개</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>LEESH Listening Room</h3><span class="src">GPT 해외 · School of Rock</span></div>
+        <p>앨범·카세트를 골라 듣는 수강생 녹음 공간. 사연과 선생님 한 줄 코멘트, 순위·점수 없음.</p>
+        <p class="merge"><b>합치기:</b> 수강 후기와 한 소절의 변화를 담는 그릇으로 쓸 수 있어요.</p>
+        <div class="needs"><span class="need need--student">수강생 동의 녹음</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <span class="eyebrow">기본 안내</span>
+      <h2>어느 학원에나 있어야 하는 것</h2>
+      <p>GPT 기본 메뉴표에서 위 묶음에 들어가지 않은 항목이에요.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>메뉴</th><th>꼭 들어갈 내용</th><th>지금 사이트</th></tr></thead>
+        <tbody>
+          <tr><td>레슨 안내</td><td>취미·오디션·입시·전문반, 추천 대상, 수업 방식, 시간·횟수, 커리큘럼 4 STEP, FAQ (수강료 제외)</td><td class="note">about 페이지에 반 소개 3개만 있음</td></tr>
+          <tr><td>수강 후기</td><td>반별 후기, 수강 기간과 고민, 외부 후기 연결</td><td class="note">없음 · Listening Room과 합칠 수 있음</td></tr>
+          <tr><td>공간·오시는 길</td><td>레슨실·연습실 사진, 지도, 7번 출구부터 오는 길, 건물 입구</td><td class="note">contact에 주소 한 줄 · 연습실 예약은 있음</td></tr>
+          <tr><td>학원 소식</td><td>내방 오디션, 모집·일정, 블로그 연결</td><td class="note">없음 · 오디션 달력으로 대신 가능</td></tr>
+          <tr><td>상담하기 버튼</td><td>카카오톡 우선, 전화 보조, 방문 상담 절차</td><td class="note">consult 페이지 있음</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>원본 기록: 저장소 docs/menu-ideas.md · 2026년 9월 26일 정리</footer>
+</main>
