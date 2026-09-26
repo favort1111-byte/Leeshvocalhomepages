@@ -81,7 +81,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <header>
     <span class="eyebrow">이송희보컬레슨 · 메뉴 논의용</span>
     <h1>메뉴 아이디어 보드</h1>
-    <p class="lede">GPT 기본 메뉴표, GPT 특색 메뉴 5가지, GPT 해외 사이트 조사 5가지, Claude 아이디어 4가지를 한곳에 모았어요. 방문자가 무엇을 원해서 들어오는지에 따라 묶었고, 카드마다 만들 때 필요한 자료를 표시했어요. 아직 아무것도 사이트에 적용하지 않았어요.</p>
+    <p class="lede">GPT 기본 메뉴표, GPT 특색 메뉴 5가지, GPT 해외 사이트 조사 5가지, Claude 아이디어 8가지를 한곳에 모았어요. 방문자가 무엇을 원해서 들어오는지에 따라 묶었고, 카드마다 만들 때 필요한 자료를 표시했어요. 아직 아무것도 사이트에 적용하지 않았어요.</p>
     <div class="needs" aria-label="필요 자료 표시">
       <span class="need need--text">글만 있으면 됨</span>
       <span class="need need--voice">원장님 녹음·영상</span>
@@ -102,18 +102,19 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     <div class="pick__box">
       <span class="eyebrow">Claude 추천 순서</span>
       <ol>
-        <li><b>바탕화면 창</b>을 틀로 쓰고, 그 안에 아래 메뉴를 담기</li>
-        <li><b>목소리 사용설명서 + 인생곡 찾기</b>를 하나로 합쳐 취미·일반 입구로</li>
-        <li><b>오디션 대기실 + 합격 실적 + 오디션 달력</b>을 오디션·입시 입구로</li>
-        <li>다니는 학생용 <b>레슨 노트</b></li>
-        <li>녹음이 모이면 <b>보이스 컬러바 → Listening Room</b></li>
+        <li>지금 바로: <b>합격 파일</b>(이전 버전 내용 복구), <b>클로이의 서랍</b>(링크만)</li>
+        <li>원장님 인터뷰 한 번 뒤: <b>오디션 대기실</b> 글 (심사관의 3초 + 3주 합격 기록)</li>
+        <li>그다음: <b>내 목소리 사용설명서</b> (고민 → 유튜브 → 상담 폼 자동 채우기)</li>
+        <li>Supabase 연결 뒤: <b>오디션 달력</b>, <b>월말평가 성적표</b></li>
       </ol>
+      <p class="note">최종 후보 5개: 사용설명서 · 오디션 대기실 · 합격 파일 · 클로이의 서랍 · 월말평가 성적표. 모두 <b>바탕화면 창</b> 형식으로.</p>
     </div>
     <div class="pick__box">
       <span class="eyebrow">빼기로 한 것</span>
       <ul>
         <li>수강료 안내 (기본 메뉴표 1번에 들어 있던 항목)</li>
       </ul>
+      <p class="note">Claude 2차 의견 · 빼도 되는 것: 한 소절의 변화, 선생님의 귀, 보이스 컬러바, 오늘의 3분 보컬, 한 곡 해부실. 새 녹음·촬영이 계속 필요해서 혼자 운영에 부담. Listening Room은 나중에, 수강 후기 게시판은 특색이 안 됨.</p>
       <p class="note">합칠 수 있는 아이디어가 많아서, 실제 메뉴는 4~6개로 줄일 수 있어요.</p>
     </div>
   </section>
@@ -180,6 +181,12 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         <div class="needs"><span class="need need--text">원장님 경험 글</span></div>
       </article>
       <article class="card">
+        <div class="card__top"><h3>심사관의 3초</h3><span class="src">Claude 2차</span></div>
+        <p>신인개발팀 담당자가 지원 영상·사진·자기소개에서 실제로 먼저 보는 것 체크리스트. "이건 떨어지는 이유" 항목도. 원장님이 심사하는 쪽에 있었던 사람이라 쓸 수 있어요.</p>
+        <p class="merge"><b>합치기:</b> 오디션 대기실 안의 한 코너로. 대기실 = 3초 + 3주 합격 기록 + 오디션 달력.</p>
+        <div class="needs"><span class="need need--text">원장님 인터뷰 30분</span></div>
+      </article>
+      <article class="card">
         <div class="card__top"><h3>합격·데뷔</h3><span class="src">GPT 기본표</span></div>
         <p>기획사·학교별 사례, 연도, 합격 단계. 트리플에스 김유언 데뷔, 60여 기획사, 서울예대 등. 지금 사이트에 아예 없는 내용이에요.</p>
         <div class="needs"><span class="need need--text">글만 있으면 됨</span></div>
@@ -226,6 +233,12 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         <p>경력, 담당 과정, 지도 스타일, 짧은 시범 영상. 원장님 경력은 이미 정리돼 있어요.</p>
         <div class="needs"><span class="need need--text">글만 있으면 됨</span></div>
       </article>
+      <article class="card">
+        <div class="card__top"><h3>클로이의 서랍</h3><span class="src">Claude 2차</span></div>
+        <p>원장님이 가수 클로이로 낸 앨범 2장, 가이드 녹음(백아연·현아·펀치), OST 제작 참여를 "서랍 속 카세트"처럼 꺼내 들어요. 강사 소개를 경력표 대신 소리로.</p>
+        <p class="merge"><b>합치기:</b> 원장·강사진 + Listening Room의 카세트 형식. 수강생 녹음 대신 원장님 음원으로 시작하면 동의 관리가 없어요.</p>
+        <div class="needs"><span class="need need--text">기존 음원·영상 링크만</span></div>
+      </article>
     </div>
   </section>
 
@@ -242,6 +255,12 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         <div class="needs"><span class="need need--dev">기능 개발</span></div>
       </article>
       <article class="card">
+        <div class="card__top"><h3>월말평가 성적표</h3><span class="src">Claude 2차</span></div>
+        <p>수강 ID로 로그인하면 이번 달 월말평가 피드백을 봐요. 원장님은 관리자 화면에서 한 달에 한 번만 입력.</p>
+        <p class="merge"><b>레슨 노트의 가벼운 버전:</b> 매주 → 매월. 월말평가는 이미 하고 있어서 새로 할 일이 없어요.</p>
+        <div class="needs"><span class="need need--dev">기능 개발 (로그인·관리자 화면 재사용)</span></div>
+      </article>
+      <article class="card">
         <div class="card__top"><h3>오늘의 3분 보컬</h3><span class="src">GPT 해외 · Singeo</span></div>
         <p>노래 부르기 전 / 음정 / 리듬 중 골라 짧은 시범과 따라 하기. 3~5개로 시작.</p>
         <p class="merge">기존 유튜브 영상 중 짧은 워밍업을 골라 쓰면 바로 시작할 수 있어요.</p>
@@ -252,6 +271,12 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
         <p>앨범·카세트를 골라 듣는 수강생 녹음 공간. 사연과 선생님 한 줄 코멘트, 순위·점수 없음.</p>
         <p class="merge"><b>합치기:</b> 수강 후기와 한 소절의 변화를 담는 그릇으로 쓸 수 있어요.</p>
         <div class="needs"><span class="need need--student">수강생 동의 녹음</span></div>
+      </article>
+      <article class="card">
+        <div class="card__top"><h3>연습실 사용설명서</h3><span class="src">Claude 2차</span></div>
+        <p>방 6개를 하나씩 소개(피아노·컴퓨터·50cm 방음·1인 춤연습실)하고 "새벽 2시에도 열려 있어요" 같은 실제 장면. 24시간 자체 연습실 6개는 다른 학원이 못 따라 해요.</p>
+        <p class="merge"><b>합치기:</b> 따로 메뉴를 만들지 않고 booking 페이지 위쪽에 사진 몇 장 + 한 문단으로.</p>
+        <div class="needs"><span class="need need--text">글 + 사진 몇 장</span></div>
       </article>
     </div>
   </section>
