@@ -17,6 +17,11 @@
 - main 병합은 원장님이 말할 때만 합니다.
 - 수강료 내용은 넣지 않습니다.
 
+## 도메인
+- `leeshlesson.com` — **카페24(cafe24)**에 등록되어 있음 (원장님 확인, 2026-09-29).
+- 배포할 때: 카페24 도메인 관리 → DNS 관리에서 GitHub Pages로 연결 (A 레코드 185.199.108.153 / .109.153 / .110.153 / .111.153, `www`는 CNAME `favort1111-byte.github.io`),
+  저장소에는 `CNAME` 파일 추가 + GitHub Pages 설정에서 사용자 도메인·HTTPS 켜기. 운영 전이라 아직 하지 않음.
+
 ## 보관 자료
 - `docs/menu-ideas.md`: 메뉴 아이디어 원본 기록 (GPT 기본표·특색 5개·해외 조사 5개, Claude 아이디어). **메뉴 구성을 논의할 때 먼저 꺼내서 보여줍니다.**
 - 메뉴 아이디어 보드 아티팩트: https://claude.ai/artifact/XHhi3x4pqGu8mRmwUb2B3G (원본 `docs/menu-ideas.html`). 아이디어가 추가되면 md와 이 보드를 같이 고쳐서 다시 올립니다.
