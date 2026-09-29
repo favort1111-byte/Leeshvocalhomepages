@@ -42,7 +42,7 @@
       <span class="icon__img" style="height:calc(68 * var(--s))"><img src="assets/img/04.webp" alt="" loading="lazy"></span>
       <span class="icon__label">오디션.jpg</span>
     </a>
-    <a class="icon" href="about.html" style="left:calc(319 * var(--s));top:calc(324 * var(--s));width:calc(37 * var(--s))">
+    <a class="icon" href="#win-results" data-window="win-results" aria-haspopup="dialog" style="left:calc(319 * var(--s));top:calc(324 * var(--s));width:calc(37 * var(--s))">
       <span class="icon__img" style="height:calc(37 * var(--s))"><img src="assets/img/05.webp" alt="" loading="lazy"></span>
       <span class="icon__label">합격.jpg</span>
     </a>
@@ -71,8 +71,44 @@
       <span class="icon__label">이송희보컬</span>
     </a>
   </div>
+  <section class="win" id="win-results" role="dialog" aria-labelledby="win-results-title" hidden>
+    <header class="win__bar" data-drag>
+      <button class="win__close" type="button" data-close aria-label="합격.jpg 닫기"></button>
+      <h2 class="win__title" id="win-results-title">합격.jpg</h2>
+    </header>
+    <div class="win__body">
+      <p class="win__lede"><b>최단 3주</b>, 대형 기획사 합격까지.<br>60여 개 기획사 오디션 합격생을 배출했어요.</p>
+      <h3 class="win__h">데뷔 · 최종 합격</h3>
+      <ul class="win__list">
+        <li><b>트리플에스(tripleS) 김유언</b> 데뷔</li>
+        <li>SM 엔터테인먼트 최종 합격</li>
+        <li>JYP 연습생 최종 합격</li>
+        <li>CUBE 연습생 최종 합격</li>
+        <li>FNC · 모어비전 · 후너스 최종 합격</li>
+        <li>CJ ENM 비공개 오디션 최종 합격</li>
+        <li>투엘슨 Ent. 최종 합격 · 앨범 데뷔</li>
+        <li>MBC 〈방과후 설렘〉 파이널 진출</li>
+      </ul>
+      <h3 class="win__h">동시 합격</h3>
+      <ul class="win__list">
+        <li>SM · YG 1차 동시 합격</li>
+        <li>SM · CUBE 1차 동시 합격</li>
+      </ul>
+      <h3 class="win__h">합격 배출 기획사</h3>
+      <p class="win__chips"><span>SM</span><span>JYP</span><span>YG</span><span>HYBE</span><span>ADOR</span><span>CUBE</span><span>PLEDIS</span><span>STARSHIP</span><span>FNC</span><span>P NATION</span><span>THE BLACK LABEL</span><span>WAKEONE</span><span>BE:LIFT</span><span>Woollim</span><span>JellyFish</span><span>MYSTIC STORY</span><span>fantagio</span><span>Kakao Ent.</span><span>CJ ENM</span><span>Mnet</span><span>SBS</span><span>JTBC</span><span>외 40여 곳</span></p>
+      <h3 class="win__h">입시</h3>
+      <ul class="win__list">
+        <li>서울예술대학교 최종 합격 3명</li>
+        <li>한양대 수시 · 경희대 정시 합격</li>
+        <li>동아방송예대 · 명지전문대 · 동서울대 · 한양여대</li>
+        <li>서울예고 · 한림예고 합격</li>
+      </ul>
+      <p class="win__foot"><a class="win__btn" href="consult.html">오디션 상담 신청</a></p>
+    </div>
+  </section>
 </main>
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/desktop.js"></script>
 </body>
 </html>

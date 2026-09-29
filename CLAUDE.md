@@ -8,7 +8,7 @@
   1. `python3 tools/build_pages.py` (페이지를 고쳤다면)
   2. `python3 tools/build_preview.py <스크래치 폴더>/preview` — 체험 모드 사본 (js/demo.js, 가짜 데이터)
   3. Artifact 도구로 `preview/index.html` 게시, `url`은 위 주소, `root`는 preview 폴더, `files`에 나머지 파일 전부
-     (다른 html 5개, css/*, js/*, assets/img/*)
+     (다른 html 5개, css/*, js/* — desktop.js 포함, assets/img/*)
 - 예전 레트로 시안 아티팩트(VLT52RjsQ56ofw8tPRwCiA)는 구버전이라 여기엔 쓰지 않습니다.
 - 올린 뒤 링크를 알려주고 "새로고침하면 보여요"라고 말합니다.
 
