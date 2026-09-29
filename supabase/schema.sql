@@ -95,6 +95,35 @@ create table if not exists public.consults (
 );
 create index if not exists consults_phone_idx on public.consults (phone, created_at);
 
+-- 레슨 노트: 수업이 끝나면 선생님이 적고, 학생은 수강 ID로 로그인해서 봅니다.
+create table if not exists public.lesson_notes (
+  id          bigint generated always as identity primary key,
+  member_id   text not null references public.members (id) on update cascade on delete cascade,
+  lesson_date date not null,
+  teacher     text,
+  did         text not null check (length(trim(did)) > 0),   -- 오늘 한 것
+  practice    text,                                          -- 다음 수업까지 연습할 것
+  created_at  timestamptz not null default now()
+);
+create index if not exists lesson_notes_member_idx on public.lesson_notes (member_id, lesson_date desc);
+
+-- 월말평가: 한 사람당 한 달에 하나. 점수는 1~5.
+create table if not exists public.monthly_evals (
+  id         bigint generated always as identity primary key,
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  month      date not null check (extract(day from month) = 1),
+  pitch      smallint not null check (pitch between 1 and 5),       -- 음정
+  rhythm     smallint not null check (rhythm between 1 and 5),      -- 박자·리듬
+  breath     smallint not null check (breath between 1 and 5),      -- 호흡·발성
+  expression smallint not null check (expression between 1 and 5),  -- 표현·감정
+  stage      smallint not null check (stage between 1 and 5),       -- 무대·태도
+  comment    text,
+  goal       text,                                                  -- 다음 달 목표
+  teacher    text,
+  created_at timestamptz not null default now(),
+  unique (member_id, month)
+);
+
 -- 관리자 화면에 로그인할 수 있는 이메일 (Supabase Authentication에 만든 계정)
 create table if not exists public.admins (
   email text primary key check (email = lower(email))
@@ -427,6 +456,37 @@ begin
   return jsonb_build_object('ok', true, 'method', v_method);
 end $$;
 
+-- 내 노트: 로그인한 학생 본인의 레슨 노트(최근 30개)와 월말평가(최근 12개월)
+create or replace function public.member_notebook(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_member(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  return jsonb_build_object(
+    'ok', true,
+    'id', who ->> 'id',
+    'name', who ->> 'name',
+    'notes', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'practice', n.practice
+      ) order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = who ->> 'id'
+            order by lesson_date desc, id desc limit 30) n
+    ), '[]'::jsonb),
+    'evals', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(e.month, 'YYYY-MM'), 'teacher', e.teacher,
+        'scores', jsonb_build_object('pitch', e.pitch, 'rhythm', e.rhythm, 'breath', e.breath,
+                                     'expression', e.expression, 'stage', e.stage),
+        'comment', e.comment, 'goal', e.goal
+      ) order by e.month desc)
+      from (select * from public.monthly_evals where member_id = who ->> 'id'
+            order by month desc limit 12) e
+    ), '[]'::jsonb)
+  );
+end $$;
+
 -- ---------------------------------------------------------------- 관리자용 함수
 
 -- 수강 ID 추가·수정. p_pin을 주면 비밀번호도 바꿉니다 (새 ID는 필수).
@@ -469,12 +529,14 @@ alter table public.members  enable row level security;
 alter table public.bookings enable row level security;
 alter table public.consults enable row level security;
 alter table public.admins   enable row level security;
+alter table public.lesson_notes  enable row level security;
+alter table public.monthly_evals enable row level security;
 
 -- 손님(anon)은 표를 직접 볼 수 없고, 관리자로 로그인한 사람만 모든 표를 다룹니다.
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults'] loop
+  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals'] loop
     execute format('drop policy if exists admin_all on public.%I', tbl);
     execute format('create policy admin_all on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', tbl);
   end loop;
@@ -484,23 +546,25 @@ create policy admin_read on public.members for select to authenticated using (pu
 drop policy if exists admin_read on public.admins;
 create policy admin_read on public.admins for select to authenticated using (public.is_admin());
 
-revoke all on public.settings, public.rooms, public.members, public.bookings, public.consults, public.admins from anon;
+revoke all on public.settings, public.rooms, public.members, public.bookings, public.consults, public.admins,
+  public.lesson_notes, public.monthly_evals from anon;
 revoke all on public.members from authenticated;
 -- 비밀번호 해시는 관리자에게도 내보내지 않습니다. 수정은 admin_save_member로만.
 grant select (id, name, phone, status, expires_on, memo, created_at) on public.members to authenticated;
 grant delete on public.members to authenticated;
 drop policy if exists admin_delete on public.members;
 create policy admin_delete on public.members for delete to authenticated using (public.is_admin());
-grant select, insert, update, delete on public.settings, public.rooms, public.bookings, public.consults to authenticated;
+grant select, insert, update, delete on public.settings, public.rooms, public.bookings, public.consults,
+  public.lesson_notes, public.monthly_evals to authenticated;
 grant select on public.admins to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 
 revoke all on all functions in schema private from public, anon, authenticated;
-revoke execute on function public.rooms_day(text), public.member_login(text, text),
+revoke execute on function public.rooms_day(text), public.member_login(text, text), public.member_notebook(text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text),
   public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() from public;
-grant execute on function public.rooms_day(text), public.member_login(text, text),
+grant execute on function public.rooms_day(text), public.member_login(text, text), public.member_notebook(text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text) to anon, authenticated;
 grant execute on function public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() to authenticated;

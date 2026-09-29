@@ -90,7 +90,7 @@
     return token().then(function (t) {
       if (!t) return { ok: false, status: 401, data: null };
       var h = LeeshAPI.headers(t);
-      if (opts.method && opts.method !== "GET") h.Prefer = "return=representation";
+      if (opts.method && opts.method !== "GET") h.Prefer = "return=representation" + (opts.upsert ? ",resolution=merge-duplicates" : "");
       return LeeshAPI.request("/rest/v1/" + path, {
         method: opts.method || "GET", headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined
       });
@@ -145,6 +145,7 @@
     if (name === "bookings") loadDay(state.day || todayKst());
     if (name === "members") loadMembers();
     if (name === "consults") loadConsults();
+    if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
   }
   document.querySelectorAll("[data-tab]").forEach(function (b) {
@@ -381,6 +382,138 @@
       field(f, "id").readOnly = true;
       field(f, "pin").value = "";
       loadMembers();
+    });
+  });
+
+  /* ---------------- 수업 기록 (레슨 노트 + 월말평가) ---------------- */
+
+  var SCORE_NAMES = [["pitch", "음정"], ["rhythm", "박자"], ["breath", "호흡"], ["expression", "표현"], ["stage", "무대"]];
+
+  (function fillScoreSelects() {
+    document.querySelectorAll(".adm__scores select").forEach(function (sel) {
+      for (var v = 5; v >= 1; v--) { var o = el("option", null, v + "점"); o.value = v; sel.appendChild(o); }
+      sel.value = "3";
+    });
+  })();
+
+  function recMember() { return $("#recMember").value; }
+
+  function loadRecords() {
+    var sel = $("#recMember"), keep = sel.value;
+    api("members?select=id,name,status&order=id").then(function (res) {
+      if (!res.ok) return;
+      sel.textContent = "";
+      res.data.filter(function (m) { return m.status !== "종료"; }).forEach(function (m) {
+        var o = el("option", null, m.name + " (" + m.id + ")");
+        o.value = m.id;
+        sel.appendChild(o);
+      });
+      if (keep) sel.value = keep;
+      var f = $("#noteForm");
+      if (!field(f, "date").value) field(f, "date").value = todayKst();
+      if (!field($("#evalForm"), "month").value) field($("#evalForm"), "month").value = todayKst().slice(0, 7);
+      loadMemberRecords();
+    });
+  }
+
+  function loadMemberRecords() {
+    var id = recMember();
+    var notes = $("#noteList"), evals = $("#evalList");
+    notes.textContent = "";
+    evals.textContent = "";
+    if (!id) { notes.appendChild(el("li", "sys-empty", "수강 ID를 먼저 발급해주세요.")); return; }
+    var q = "member_id=eq." + encodeURIComponent(id);
+    api("lesson_notes?" + q + "&order=lesson_date.desc,id.desc&limit=50").then(function (res) {
+      if (!res.ok) { notes.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) notes.appendChild(el("li", "sys-empty", "아직 노트가 없어요."));
+      res.data.forEach(function (n) {
+        var li = el("li", "adm__card");
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, n.lesson_date));
+        if (n.teacher) top.appendChild(el("span", "sys-note", n.teacher));
+        top.appendChild(deleteButton("lesson_notes", n.id, loadMemberRecords));
+        li.appendChild(top);
+        li.appendChild(el("p", "adm__quote", n.did));
+        if (n.practice) li.appendChild(el("p", null, "연습: " + n.practice));
+        notes.appendChild(li);
+      });
+    });
+    api("monthly_evals?" + q + "&order=month.desc&limit=24").then(function (res) {
+      if (!res.ok) { evals.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) evals.appendChild(el("li", "sys-empty", "아직 평가가 없어요."));
+      res.data.forEach(function (e) {
+        var li = el("li", "adm__card");
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, e.month.slice(0, 7)));
+        if (e.teacher) top.appendChild(el("span", "sys-note", e.teacher));
+        var edit = el("button", "sys-link", "고치기");
+        edit.type = "button";
+        edit.addEventListener("click", function () { fillEval(e); });
+        top.appendChild(edit);
+        top.appendChild(deleteButton("monthly_evals", e.id, loadMemberRecords));
+        li.appendChild(top);
+        li.appendChild(el("p", "adm__dots", SCORE_NAMES.map(function (s) { return s[1] + " " + e[s[0]]; }).join(" · ")));
+        if (e.comment) li.appendChild(el("p", "adm__quote", e.comment));
+        if (e.goal) li.appendChild(el("p", null, "다음 달 목표: " + e.goal));
+        evals.appendChild(li);
+      });
+    });
+  }
+
+  /** Delete takes a second tap, like cancelling a booking. */
+  function deleteButton(table, id, after) {
+    var b = el("button", "sys-link adm__del", "삭제");
+    b.type = "button";
+    b.addEventListener("click", function () {
+      if (b.getAttribute("data-armed") !== "1") { b.setAttribute("data-armed", "1"); b.textContent = "한 번 더 누르면 삭제"; return; }
+      api(table + "?id=eq." + id, { method: "DELETE" }).then(function (res) {
+        if (!res.ok) { b.textContent = friendly(res, "삭제하지 못했습니다."); return; }
+        after();
+      });
+    });
+    return b;
+  }
+
+  function fillEval(e) {
+    var f = $("#evalForm");
+    field(f, "month").value = e.month.slice(0, 7);
+    field(f, "teacher").value = e.teacher || "";
+    SCORE_NAMES.forEach(function (s) { field(f, s[0]).value = String(e[s[0]]); });
+    field(f, "comment").value = e.comment || "";
+    field(f, "goal").value = e.goal || "";
+    f.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  $("#recMember").addEventListener("change", loadMemberRecords);
+
+  $("#noteForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    api("lesson_notes", { method: "POST", body: {
+      member_id: recMember(), lesson_date: field(f, "date").value,
+      teacher: field(f, "teacher").value.trim() || null,
+      did: field(f, "did").value.trim(), practice: field(f, "practice").value.trim() || null
+    } }).then(function (res) {
+      if (!res.ok) { msg($("#noteMsg"), friendly(res), "error"); return; }
+      msg($("#noteMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
+      field(f, "did").value = "";
+      field(f, "practice").value = "";
+      loadMemberRecords();
+    });
+  });
+
+  $("#evalForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, body = {
+      member_id: recMember(), month: field(f, "month").value + "-01",
+      teacher: field(f, "teacher").value.trim() || null,
+      comment: field(f, "comment").value.trim() || null, goal: field(f, "goal").value.trim() || null
+    };
+    SCORE_NAMES.forEach(function (s) { body[s[0]] = Number(field(f, s[0]).value); });
+    api("monthly_evals?on_conflict=member_id,month", { method: "POST", upsert: true, body: body }).then(function (res) {
+      if (!res.ok) { msg($("#evalMsg"), friendly(res), "error"); return; }
+      msg($("#evalMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
+      loadMemberRecords();
     });
   });
 

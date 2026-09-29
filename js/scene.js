@@ -27,6 +27,7 @@
         { duration: 750, easing: "cubic-bezier(.7,0,.2,1)" });
     }
     scene.querySelector("[data-leave]").focus({ preventScroll: true });
+    scene.dispatchEvent(new CustomEvent("scene:open"));
   }
 
   function leave() {

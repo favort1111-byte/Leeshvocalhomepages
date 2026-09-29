@@ -37,9 +37,9 @@
       <span class="icon__img" style="height:calc(50 * var(--s))"><img src="assets/img/08.webp" alt="" loading="lazy"></span>
       <span class="icon__label">데뷔.jpg</span>
     </a>
-    <a class="icon" href="#scene-about" data-scene="scene-about" aria-haspopup="dialog" style="left:calc(641 * var(--s));top:calc(338 * var(--s));width:calc(58 * var(--s))">
+    <a class="icon" href="#scene-me" data-scene="scene-me" aria-haspopup="dialog" style="left:calc(641 * var(--s));top:calc(338 * var(--s));width:calc(58 * var(--s))">
       <span class="icon__img" style="height:calc(48 * var(--s))"><svg viewBox="0 0 58 48" aria-hidden="true"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6ACCF8"/><stop offset="1" stop-color="#2EA3EE"/></linearGradient></defs><path d="M2 6a4 4 0 0 1 4-4h14l5 5h27a4 4 0 0 1 4 4v31a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#2294DD"/><path d="M1 15a4 4 0 0 1 4-4h48a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4z" fill="url(#fg)"/><path d="M5 13h48" stroke="#A9E4FC" stroke-width="1.2" opacity=".8"/></svg></span>
-      <span class="icon__label">이송희보컬</span>
+      <span class="icon__label">내 폴더</span>
     </a>
   </div>
   <form class="modal sys" id="consultForm" novalidate>
@@ -137,20 +137,30 @@
       </div>
     </div>
   </section>
-  <section class="scene" id="scene-about" role="dialog" aria-label="학원 이야기" hidden>
-    <div class="scene__photo" style="background-image:url('assets/img/12.webp')"></div>
+  <section class="scene scene--book" id="scene-me" role="dialog" aria-label="내 폴더" hidden>
+    <div class="scene__photo"></div>
     <button class="scene__back" type="button" data-leave>← 바탕화면</button>
-    <div class="scene__notes">
-      <div class="scene__col scene__col--a">
-        <p class="note note--big" style="--d:.55s;--r:-3deg">강남 선릉,<br>1:1<br>보컬 레슨.</p>
-      </div>
-      <div class="scene__col scene__col--b">
-        <p class="note" style="--d:1.4s;--r:2deg">오디션 · 입시반</p>
-        <p class="note" style="--d:1.8s;--r:-1.5deg">전문반 — 실력 향상 트레이닝</p>
-        <p class="note" style="--d:2.2s;--r:1deg">취미반 — 제대로 배우는 노래</p>
-        <p class="note" style="--d:2.6s;--r:-2deg">모든 반 1:1 담임제</p>
-        <p class="note" style="--d:3.0s;--r:1.5deg">카카오톡 24시간 문의</p>
-        <a class="note note--cta" href="about.html" style="--d:3.6s;--r:-2deg">반 소개 보기 →</a>
+    <div class="book" id="myBook">
+      <form class="book__login sys" id="myLogin">
+        <h2 class="book__title">내 폴더</h2>
+        <p class="book__lede">수강생은 레슨 노트와 월말평가를 여기서 봐요.</p>
+        <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
+        <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label>
+        <button class="sys-btn sys-btn--block" type="submit">폴더 열기</button>
+        <p class="sys-msg" id="myLoginMsg" role="status"></p>
+      </form>
+      <div class="book__open" id="myOpen" hidden>
+        <header class="book__head">
+          <h2 class="book__title" id="myTitle"></h2>
+          <button class="book__logout" type="button" id="myLogout">로그아웃</button>
+        </header>
+        <div class="book__tabs" role="tablist">
+          <button type="button" role="tab" aria-selected="true" data-book-tab="notes">레슨 노트</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
+          <a class="book__tablink" href="booking.html">연습실 예약 →</a>
+        </div>
+        <div class="book__page" data-book-page="notes" id="myNotes"></div>
+        <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
       </div>
     </div>
   </section>
@@ -159,5 +169,6 @@
 <script src="js/api.js"></script>
 <script src="js/consult.js"></script>
 <script src="js/scene.js"></script>
+<script src="js/mynotes.js"></script>
 </body>
 </html>

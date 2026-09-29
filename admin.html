@@ -35,6 +35,7 @@
     <nav class="adm__tabs" role="tablist">
       <button type="button" role="tab" data-tab="bookings" aria-selected="true">예약 현황</button>
       <button type="button" role="tab" data-tab="members" aria-selected="false">수강 ID</button>
+      <button type="button" role="tab" data-tab="records" aria-selected="false">수업 기록</button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
       <button type="button" class="sys-link adm__logout" id="logout">로그아웃</button>
@@ -105,6 +106,55 @@
       </form>
 
       <div class="adm__tablewrap"><table class="adm__table" id="memberTable"></table></div>
+    </section>
+
+    <!-- 수업 기록: 레슨 노트 + 월말평가 -->
+    <section class="sys-card" data-panel="records" hidden>
+      <div class="adm__bar">
+        <label class="sr-only" for="recMember">수강생</label>
+        <select id="recMember"></select>
+        <span class="sys-note">학생이 "내 폴더"에서 보는 내용이에요.</span>
+      </div>
+
+      <div class="adm__cols">
+        <div>
+          <h3 class="sys-h">레슨 노트</h3>
+          <form id="noteForm" class="adm__drawer">
+            <div class="sys-row">
+              <label class="sys-field"><span>수업 날짜</span><input name="date" type="date" required></label>
+              <label class="sys-field"><span>선생님</span><input name="teacher" maxlength="20" placeholder="이송희"></label>
+            </div>
+            <label class="sys-field"><span>오늘 한 것</span><textarea name="did" rows="3" required maxlength="800"></textarea></label>
+            <label class="sys-field"><span>다음 수업까지 연습할 것</span><textarea name="practice" rows="2" maxlength="400"></textarea></label>
+            <button class="sys-btn" type="submit">노트 저장</button>
+            <p class="sys-msg" id="noteMsg" role="status"></p>
+          </form>
+          <ul class="adm__cards" id="noteList"></ul>
+        </div>
+
+        <div>
+          <h3 class="sys-h">월말평가</h3>
+          <form id="evalForm" class="adm__drawer">
+            <div class="sys-row">
+              <label class="sys-field"><span>평가 달</span><input name="month" type="month" required></label>
+              <label class="sys-field"><span>선생님</span><input name="teacher" maxlength="20" placeholder="이송희"></label>
+            </div>
+            <div class="adm__scores">
+              <label><span>음정</span><select name="pitch"></select></label>
+              <label><span>박자 · 리듬</span><select name="rhythm"></select></label>
+              <label><span>호흡 · 발성</span><select name="breath"></select></label>
+              <label><span>표현 · 감정</span><select name="expression"></select></label>
+              <label><span>무대 · 태도</span><select name="stage"></select></label>
+            </div>
+            <label class="sys-field"><span>코멘트</span><textarea name="comment" rows="2" maxlength="600"></textarea></label>
+            <label class="sys-field"><span>다음 달 목표</span><input name="goal" maxlength="100"></label>
+            <button class="sys-btn" type="submit">평가 저장</button>
+            <p class="sys-note">같은 달을 다시 저장하면 고쳐져요.</p>
+            <p class="sys-msg" id="evalMsg" role="status"></p>
+          </form>
+          <ul class="adm__cards" id="evalList"></ul>
+        </div>
+      </div>
     </section>
 
     <!-- 상담 신청 -->

@@ -30,7 +30,7 @@ test.before(async () => {
 test.after(() => pg && pg.stop());
 
 test.beforeEach(async () => {
-  L.psql('truncate public.bookings, public.consults, private.login_fails; delete from public.members');
+  L.psql('truncate public.bookings, public.consults, public.lesson_notes, public.monthly_evals, private.login_fails; delete from public.members');
   L.setClock('2026-10-01 10:20');
   for (const m of [
     { p_id: 'S001', p_name: '김시우', p_pin: '5678' },
@@ -193,4 +193,29 @@ test('admin: reads bookings with names, blocks a slot, cannot read PIN hashes', 
   const upd = await call('/settings?id=eq.1', { method: 'PATCH', body: { max_minutes: 60 }, token: ADMIN });
   assert.equal(upd.status, 200);
   assert.match((await book({ p_room: '연습실 2', p_start: '17:00', p_hours: 2 }, { p_id: 'S002', p_pin: '9999' })).error, /최대 1시간/);
+});
+
+test('notebook: a student sees only their own lesson notes and monthly evaluations', async () => {
+  const add = (path, body) => call(path, { body, token: ADMIN });
+  assert.equal((await add('/lesson_notes', { member_id: 'S001', lesson_date: '2026-09-20', teacher: '이송희', did: '고음 호흡 연결', practice: '립트릴 5분' })).status, 201);
+  assert.equal((await add('/lesson_notes', { member_id: 'S001', lesson_date: '2026-09-27', did: '후렴 끝음 처리' })).status, 201);
+  assert.equal((await add('/lesson_notes', { member_id: 'S002', lesson_date: '2026-09-27', did: '다른 학생 노트' })).status, 201);
+  const ev = { member_id: 'S001', month: '2026-09-01', pitch: 4, rhythm: 3, breath: 4, expression: 5, stage: 3, comment: '표현이 좋아졌어요', goal: '박자 안정' };
+  assert.equal((await add('/monthly_evals', ev)).status, 201);
+  assert.ok((await add('/monthly_evals', ev)).status >= 400, 'one evaluation per month');
+  assert.ok((await add('/monthly_evals', { ...ev, month: '2026-10-01', pitch: 6 })).status >= 400, 'scores are 1-5');
+
+  const mine = await rpc('member_notebook', SIWOO);
+  assert.equal(mine.ok, true);
+  assert.equal(mine.name, '김시우');
+  assert.deepEqual(mine.notes.map((n) => n.did), ['후렴 끝음 처리', '고음 호흡 연결']);
+  assert.equal(mine.notes[1].practice, '립트릴 5분');
+  assert.equal(mine.evals.length, 1);
+  assert.equal(mine.evals[0].month, '2026-09');
+  assert.deepEqual(mine.evals[0].scores, { pitch: 4, rhythm: 3, breath: 4, expression: 5, stage: 3 });
+
+  assert.equal((await rpc('member_notebook', { p_id: 'S002', p_pin: '9999' })).notes.length, 1);
+  assert.match((await rpc('member_notebook', { p_id: 'S001', p_pin: '0000' })).error, /맞지 않습니다/);
+  assert.equal((await call('/lesson_notes', { method: 'GET' })).status, 401);
+  assert.equal((await call('/monthly_evals', { method: 'GET', token: STRANGER })).data.length, 0);
 });

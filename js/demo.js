@@ -7,7 +7,7 @@
   cfg.supabaseKey = "demo";
   cfg.local = true;
   var KEY = "leesh_demo_db";
-  var VERSION = 2; // bump when the demo defaults change
+  var VERSION = 3; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -50,6 +50,16 @@
         { id: 2, room_id: 6, member_id: "G001", day: t, start_min: 1140, end_min: 1260, status: "확정", memo: null },
         { id: 3, room_id: 3, member_id: null, day: addDays(t, 1), start_min: 600, end_min: 660, status: "확정", memo: "청소" },
         { id: 4, room_id: 2, member_id: "S001", day: addDays(t, 1), start_min: 1080, end_min: 1200, status: "확정", memo: null }
+      ],
+      lesson_notes: [
+        { id: 11, member_id: "S001", lesson_date: addDays(t, -2), teacher: "이송희", did: "후렴 고음에서 턱에 힘 빼기.\n호흡을 먼저 채우고 소리를 얹는 연습.", practice: "립트릴 5분 → 후렴 두 줄만 천천히 3번", created_at: new Date().toISOString() },
+        { id: 12, member_id: "S001", lesson_date: addDays(t, -9), teacher: "이송희", did: "첫 소절 시작 음정 잡기. 반주 없이 첫 음 듣고 들어가기.", practice: "피아노로 첫 음 치고 따라 부르기 10번", created_at: new Date().toISOString() },
+        { id: 13, member_id: "S001", lesson_date: addDays(t, -16), teacher: "김하람", did: "노래 진단. 중음은 안정적, 고음에서 목이 조임.", practice: "하품하듯 입 벌리고 '아' 길게 5번", created_at: new Date().toISOString() },
+        { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "이송희", did: "입시곡 2절 감정선 정리", practice: "2절 녹음해서 들어보기", created_at: new Date().toISOString() }
+      ],
+      monthly_evals: [
+        { id: 21, member_id: "S001", month: t.slice(0, 7) + "-01", pitch: 4, rhythm: 3, breath: 4, expression: 4, stage: 3, comment: "고음에서 힘이 많이 빠졌어요! 박자만 조금 더 안정되면 좋겠어요.", goal: "메트로놈 켜고 연습하기", teacher: "이송희", created_at: new Date().toISOString() },
+        { id: 22, member_id: "S001", month: addDays(t.slice(0, 7) + "-01", -1).slice(0, 7) + "-01", pitch: 3, rhythm: 3, breath: 3, expression: 3, stage: 2, comment: "첫 평가 수고했어요. 음정은 좋은 편이에요.", goal: "고음 호흡 연결", teacher: "이송희", created_at: new Date().toISOString() }
       ],
       consults: [
         { id: 1, status: "접수", method: "체험 레슨", wish: "토요일 오후", name: "홍길동", phone: "010-1111-2222", track: "취미반", message: "고음이 잘 안 올라가요.", memo: null, created_at: new Date(Date.now() - 3600000).toISOString() },
@@ -201,6 +211,24 @@
       save();
       return { ok: true, id: id, created: created };
     },
+    member_notebook: function (a) {
+      var who = checkMember(a.p_id, a.p_pin);
+      if (!who.ok) return who;
+      return {
+        ok: true, id: who.id, name: who.name,
+        notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
+          .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
+          .slice(0, 30)
+          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice }; }),
+        evals: db.monthly_evals.filter(function (e) { return e.member_id === who.id; })
+          .sort(function (x, y) { return x.month < y.month ? 1 : -1; })
+          .slice(0, 12)
+          .map(function (e) {
+            return { month: e.month.slice(0, 7), teacher: e.teacher, comment: e.comment, goal: e.goal,
+              scores: { pitch: e.pitch, rhythm: e.rhythm, breath: e.breath, expression: e.expression, stage: e.stage } };
+          })
+      };
+    },
     is_admin: function () { return true; }
   };
 
@@ -259,6 +287,17 @@
       hit.forEach(function (r) { Object.assign(r, body); });
       save();
       return { status: 200, data: hit };
+    }
+    if (method === "DELETE") {
+      var gone = select(list, p.params);
+      db[p.table] = rows.filter(function (r) { return gone.indexOf(r) === -1; });
+      save();
+      return { status: 200, data: gone };
+    }
+    if (method === "POST" && p.params.on_conflict) {
+      var keys = p.params.on_conflict.split(",");
+      var same = rows.filter(function (r) { return keys.every(function (k) { return String(r[k]) === String(body[k]); }); })[0];
+      if (same) { Object.assign(same, body); save(); return { status: 200, data: [same] }; }
     }
     if (method === "POST") {
       if (p.table === "bookings") {

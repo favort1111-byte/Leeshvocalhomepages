@@ -60,3 +60,12 @@ body.adm{background:#EDE8E0;min-height:100vh;}
 section[data-panel] .sys-h + .adm__tablewrap{margin-bottom:6px;}
 section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 .adm__grid tr > :first-child{width:58px;}
+
+/* 수업 기록 */
+.adm__cols{display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:24px;align-items:start;}
+.adm__cols .adm__drawer{margin-top:0;}
+.adm__scores{display:grid;grid-template-columns:repeat(auto-fit, minmax(118px, 1fr));gap:8px;margin-bottom:14px;}
+.adm__scores label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--sys-muted);}
+.adm__scores select{min-height:40px;}
+.adm__card .adm__dots{letter-spacing:.12em;color:var(--sys-accent);}
+.adm__card .adm__del{margin-left:auto;}

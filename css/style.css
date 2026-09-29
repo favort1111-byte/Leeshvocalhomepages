@@ -349,3 +349,76 @@ img{display:block;}
   .scene__photo::after{background:radial-gradient(ellipse 80% 60% at 50% 50%, rgba(30,10,6,.2), rgba(30,10,6,.5)), rgba(30,14,10,.3);}
 }
 @media (prefers-reduced-motion:reduce){.note{clip-path:none;}.scene.is-open .note{animation:none;}}
+
+/* ---------- 내 폴더: the student's folder (lesson notes + monthly evaluations) ---------- */
+.scene--book{color:var(--ink);}
+.scene--book .scene__photo{background:var(--paper);}
+.scene--book .scene__photo::before{content:"";position:absolute;inset:0;background-image:var(--fibers);opacity:.16;mix-blend-mode:multiply;}
+.scene--book .scene__photo::after{background:none;}
+.scene--book .scene__back{border-color:rgba(43,37,34,.5);background:rgba(255,255,255,.4);}
+.scene--book .scene__back:hover{background:rgba(43,37,34,.06);}
+.scene--book .scene__back:focus-visible{outline-color:var(--brown);}
+.book{
+  position:absolute;left:50%;top:calc(84px + env(safe-area-inset-top, 0px));bottom:24px;
+  width:min(680px, calc(100% - 32px));transform:translateX(-50%);
+  display:flex;flex-direction:column;
+  background:linear-gradient(175deg, var(--manila-light), var(--manila));
+  border-radius:4px 12px 12px 12px;padding:22px 22px 0;
+  box-shadow:0 18px 40px rgba(60,40,20,.22);
+  animation:book-in .45s ease-out .35s both;
+}
+.book::before{content:"";position:absolute;left:0;top:-20px;width:170px;height:22px;background:var(--manila-light);border-radius:10px 10px 0 0;}
+@keyframes book-in{from{opacity:0;transform:translate(-50%, 18px);}to{opacity:1;transform:translate(-50%, 0);}}
+.book__title{margin:0;font-family:"Nanum Pen Script","Caveat",cursive;font-weight:400;font-size:38px;line-height:1.1;color:#3E2A1E;}
+.book__lede{margin:4px 0 18px;color:#5A4636;font-size:14px;}
+.book__login{max-width:380px;overflow:auto;padding-bottom:22px;}
+.book__open{display:flex;flex-direction:column;min-height:0;flex:1;}
+.book__head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.book__logout{border:0;background:none;padding:6px 0;font:inherit;font-size:13px;color:#5A4636;text-decoration:underline;cursor:pointer;}
+.book__tabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0 14px;}
+.book__tabs [role=tab]{min-height:38px;padding:0 16px;border:1px solid rgba(62,42,30,.35);border-radius:999px;background:rgba(255,255,255,.5);font:inherit;font-size:14px;color:#3E2A1E;cursor:pointer;}
+.book__tabs [role=tab][aria-selected=true]{background:#3E2A1E;border-color:#3E2A1E;color:#FBF3E4;}
+.book__tabs [role=tab]:focus-visible,.book__logout:focus-visible{outline:2px solid var(--brown);outline-offset:2px;}
+.book__tablink{margin-left:auto;font-size:13px;color:#5A4636;}
+.book__page{flex:1;min-height:0;overflow:auto;padding:2px 2px 22px;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px;}
+.book__page[hidden]{display:none;}
+.book__empty{margin:8px 0;color:#5A4636;}
+
+/* a page of lined notebook paper per lesson / per month */
+.lnote,.evalc{
+  background:#FFFDF8 repeating-linear-gradient(transparent 0 27px, #EDE3D4 27px 28px);
+  background-position:0 10px;
+  border-radius:3px;padding:14px 18px 16px;
+  box-shadow:0 2px 6px rgba(60,40,20,.12);
+  font-size:15px;line-height:28px;color:#2B2522;
+}
+.lnote:nth-child(odd){transform:rotate(-.3deg);}
+.lnote:nth-child(even){transform:rotate(.25deg);}
+.lnote p,.evalc p{margin:0;}
+.lnote__date,.evalc__month{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-weight:500;}
+.lnote__teacher{font-size:13px;font-weight:400;color:#7A6656;}
+.lnote__label{margin-top:4px !important;font-size:12px;letter-spacing:.06em;color:#8A7564;}
+.lnote__did{white-space:pre-wrap;}
+.lnote__practice{
+  font-family:"Nanum Pen Script","Caveat",cursive;font-size:24px;color:var(--brown);white-space:pre-wrap;
+  background:linear-gradient(transparent 58%, rgba(246,214,110,.55) 58%);display:inline;
+}
+.evalc__month{font-family:"Nanum Pen Script","Caveat",cursive;font-weight:400;font-size:28px;}
+.evalc__scores{list-style:none;margin:6px 0 4px;padding:0;}
+.evalc__scores li{display:grid;grid-template-columns:7.5em auto 3em;align-items:center;gap:10px;}
+.evalc__name{font-size:14px;}
+.evalc__dots{display:inline-flex;gap:5px;}
+.evalc__dots i{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--brown);}
+.evalc__dots i.is-on{background:var(--brown);}
+.evalc__delta{font-size:12px;color:#8A7564;font-variant-numeric:tabular-nums;}
+.evalc__delta.is-up{color:#2E6B45;}
+.evalc__delta.is-down{color:#A33A22;}
+.evalc__comment{font-family:"Nanum Pen Script","Caveat",cursive;font-size:24px;line-height:28px;color:var(--brown);white-space:pre-wrap;}
+.evalc__goal{font-size:14px;}
+.evalc__goal b{font-weight:500;color:#5A4636;}
+@media (max-width:760px){
+  .book{top:calc(76px + env(safe-area-inset-top, 0px));bottom:14px;width:calc(100% - 24px);padding:18px 14px 0;}
+  .book__title{font-size:32px;}
+  .book__tablink{margin-left:0;flex-basis:100%;}
+}
+@media (prefers-reduced-motion:reduce){.book{animation:none;}}

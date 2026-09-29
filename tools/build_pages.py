@@ -179,11 +179,38 @@ SCENES = {
         ["강남구 테헤란로55길 21, 태원빌딩 2층", "7번 출구 직진 → 파리바게뜨에서 왼쪽", "청춘화로 · 서초동연가 사이로 오른쪽",
          "왼쪽, 1층 볼빨간딱새우 건물 2층", "전화 010-4458-5448"],
         "네이버 지도로 보기 →", MAP, external=True),
-    "about": scene("about", 12, "학원 이야기", "강남 선릉,<br>1:1<br>보컬 레슨.",
-        ["오디션 · 입시반", "전문반 — 실력 향상 트레이닝", "취미반 — 제대로 배우는 노래",
-         "모든 반 1:1 담임제", "카카오톡 24시간 문의"],
-        "반 소개 보기 →", "about.html"),
 }
+
+
+# The folder on the desktop is the student's own folder: 수강 ID login, then 레슨 노트 / 월말평가 (js/mynotes.js).
+MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" aria-label="내 폴더" hidden>
+    <div class="scene__photo"></div>
+    <button class="scene__back" type="button" data-leave>← 바탕화면</button>
+    <div class="book" id="myBook">
+      <form class="book__login sys" id="myLogin">
+        <h2 class="book__title">내 폴더</h2>
+        <p class="book__lede">수강생은 레슨 노트와 월말평가를 여기서 봐요.</p>
+        <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
+        <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label>
+        <button class="sys-btn sys-btn--block" type="submit">폴더 열기</button>
+        <p class="sys-msg" id="myLoginMsg" role="status"></p>
+      </form>
+      <div class="book__open" id="myOpen" hidden>
+        <header class="book__head">
+          <h2 class="book__title" id="myTitle"></h2>
+          <button class="book__logout" type="button" id="myLogout">로그아웃</button>
+        </header>
+        <div class="book__tabs" role="tablist">
+          <button type="button" role="tab" aria-selected="true" data-book-tab="notes">레슨 노트</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
+          <a class="book__tablink" href="booking.html">연습실 예약 →</a>
+        </div>
+        <div class="book__page" data-book-page="notes" id="myNotes"></div>
+        <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
+      </div>
+    </div>
+  </section>
+"""
 
 def scenes(*ids):
     return "".join(SCENES[i] for i in ids)
@@ -201,7 +228,7 @@ home_icons = "\n".join([
     thumb(563, 256.5, 61.5, 47.5, 6, "취미반.jpg", scene="hobby"),
     thumb(637.5, 119.5, 73.5, 43, 9, "입시.jpg", scene="exam"),
     thumb(699, 150, 43.5, 49, 8, "데뷔.jpg", scene="debut"),
-    icon(674.5, 339.5, 58, 48.5, "이송희보컬", "about.html", FOLDER, scene="about"),
+    icon(674.5, 339.5, 58, 48.5, "내 폴더", "booking.html", FOLDER, scene="me"),
 ])
 
 home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
@@ -209,7 +236,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + f'<main class="stage wall" style="background-image:url(\'{img(0)}\')">\n'
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + scenes(*SCENES) + "</main>\n" + foot("scene"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + scenes(*SCENES) + MY_FOLDER + "</main>\n" + foot("scene", "mynotes"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -390,7 +417,7 @@ consult_icons = "\n".join([
     thumb(70, 248, 37, 37, 1, "무대.jpg", scene="stage"),
     thumb(128, 320, 37, 38, 2, "레슨.jpg", scene="lesson"),
     thumb(709, 205, 43, 50, 8, "데뷔.jpg", scene="debut"),
-    icon(641, 338, 58, 48, "이송희보컬", "about.html", FOLDER, scene="about"),
+    icon(641, 338, 58, 48, "내 폴더", "booking.html", FOLDER, scene="me"),
 ])
 
 consult = (head("Consult | 이송희보컬레슨",
@@ -399,8 +426,8 @@ consult = (head("Consult | 이송희보컬레슨",
            + nav("consult", "light") + "\n"
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
            + CONSULT_FORM
-           + scenes("youtube", "stage", "lesson", "debut", "about")
-           + "</main>\n" + foot("consult", "scene"))
+           + scenes("youtube", "stage", "lesson", "debut") + MY_FOLDER
+           + "</main>\n" + foot("consult", "scene", "mynotes"))
 
 # ---------- BOOKING (practice rooms, paper theme) ----------
 booking = (head("Booking | 이송희보컬레슨",
