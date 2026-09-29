@@ -94,20 +94,50 @@ CLIP = ('<svg class="clip" viewBox="0 0 26 60" aria-hidden="true">'
         '<path d="M9 44V12a6 6 0 0 1 12 0v36a9 9 0 0 1-18 0V16" fill="none" stroke="#9FA1A3" stroke-width="2.4" stroke-linecap="round"/>'
         '</svg>')
 
-def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra=""):
+def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", scene=None):
     target = ' target="_blank" rel="noopener"' if external else ""
+    if scene:  # zooms into the photo in place (js/scene.js); the #anchor keeps it reachable without JS
+        href, target = f"#scene-{scene}", f' data-scene="scene-{scene}" aria-haspopup="dialog"'
     return (f'    <a class="icon" href="{href}"{target} style="left:calc({left} * var(--s));top:calc({top} * var(--s));width:calc({w} * var(--s))">\n'
             f'      <span class="{img_class}" style="height:calc({h} * var(--s))">{inner}</span>\n'
             f'      <span class="icon__label">{label}</span>\n'
             f'    </a>')
 
-def thumb(left, top, w, h, i, label, href="about.html"):
+def thumb(left, top, w, h, i, label, href="about.html", scene=None):
     inner = f'<img src="{img(i)}" alt="" loading="lazy">'
-    return icon(left, top, w, h, label, href, inner)
+    return icon(left, top, w, h, label, href, inner, scene=scene)
 
 YT = "https://www.youtube.com/@vocallesson1533"
 MAP = "https://map.naver.com/p/search/%EC%9D%B4%EC%86%A1%ED%9D%AC%EB%B3%B4%EC%BB%AC%EB%A0%88%EC%8A%A8"
 KAKAO = "https://pf.kakao.com/_xgNYbK"
+
+
+# ---------- photo scenes: an icon's photo grows to fill the screen, notes are handwritten on it ----------
+def scene(sid, photo, label, left, right, cta):
+    def notes(items, side):
+        return "".join(
+            f'        <p class="note{" note--big" if big else ""}" style="--d:{d}s;--r:{r}deg">{text}</p>\n'
+            for text, big, d, r in items)
+    return (f'  <section class="scene" id="scene-{sid}" role="dialog" aria-label="{label}" hidden>\n'
+            f'    <div class="scene__photo" style="background-image:url(\'{img(photo)}\')"></div>\n'
+            f'    <button class="scene__back" type="button" data-leave>← 바탕화면</button>\n'
+            f'    <div class="scene__notes">\n'
+            f'      <div class="scene__col scene__col--a">\n{notes(left, "a")}      </div>\n'
+            f'      <div class="scene__col scene__col--b">\n{notes(right, "b")}'
+            f'        <a class="note note--cta" href="consult.html" style="--d:{cta[1]}s;--r:-2deg">{cta[0]}</a>\n'
+            f'      </div>\n'
+            f'    </div>\n'
+            f'  </section>\n')
+
+# (text, big, delay seconds, tilt degrees)
+RESULTS_SCENE = scene("results", 5, "합격 이야기",
+    [("최단 3주,<br>대형 기획사<br>합격까지.", True, 0.55, -3)],
+    [("tripleS 김유언 — 데뷔 ♪", False, 1.5, 2),
+     ("SM · JYP · CUBE 최종 합격", False, 1.9, -1.5),
+     ("SM · YG 1차 동시 합격", False, 2.3, 1),
+     ("서울예대 최종 합격 3명", False, 2.7, -2),
+     ("오디션 합격 기획사만 60여 곳", False, 3.1, 1.5)],
+    ("나도 준비해볼까? → 오디션 상담", 3.7))
 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
@@ -116,7 +146,7 @@ home_icons = "\n".join([
     thumb(285.5, 216, 37, 37, 2, "레슨.jpg"),
     thumb(169, 263.5, 37, 38, 3, "연습실.jpg"),
     thumb(90, 296, 49, 68, 4, "오디션.jpg"),
-    thumb(319, 324, 37, 37, 5, "합격.jpg"),
+    thumb(319, 324, 37, 37, 5, "합격.jpg", scene="results"),
     thumb(464, 349.5, 83.5, 46.5, 7, "보컬.jpg"),
     icon(504.5, 152.5, 48, 48, "오시는길", MAP, FINDER, external=True),
     thumb(563, 256.5, 61.5, 47.5, 6, "취미반.jpg"),
@@ -130,7 +160,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + f'<main class="stage wall" style="background-image:url(\'{img(0)}\')">\n'
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n</main>\n" + foot())
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + RESULTS_SCENE + "</main>\n" + foot("scene"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):

@@ -304,3 +304,47 @@ img{display:block;}
 }
 
 @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+
+/* ---------- photo scenes (home): step into a photo, notes handwritten on it ---------- */
+.scene{position:fixed;inset:0;z-index:30;overflow:hidden;color:#FFF4EA;}
+.scene[hidden]{display:none;}
+.scene__photo{position:absolute;inset:0;background:#8E1E1C center/cover no-repeat;will-change:clip-path,transform;}
+.scene__photo::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 70% at 50% 45%, transparent 35%, rgba(45,6,6,.38));}
+.scene__back{
+  position:absolute;z-index:2;top:calc(22px + env(safe-area-inset-top, 0px));left:22px;
+  padding:6px 16px;border:1px solid rgba(255,244,234,.75);border-radius:999px;background:rgba(60,10,10,.18);
+  font-family:var(--f-sans);font-size:14px;color:inherit;cursor:pointer;
+  transition:opacity .3s ease;
+}
+.scene__back:hover{background:rgba(255,244,234,.14);}
+.scene__back:focus-visible{outline:2px solid #FFF4EA;outline-offset:3px;}
+.scene__notes{
+  position:absolute;inset:0;display:grid;grid-template-columns:1fr minmax(240px, 30vw) 1fr;
+  align-items:center;padding:14vh 5vw 10vh;pointer-events:none;
+}
+.scene__col{display:flex;flex-direction:column;gap:1.6vh;}
+.scene__col--a{grid-column:1;align-items:flex-start;padding-left:2vw;}
+.scene__col--b{grid-column:3;align-items:flex-start;}
+.note{
+  margin:0;font-family:"Nanum Pen Script","Caveat",cursive;font-weight:400;
+  font-size:clamp(26px, 2.5vw, 42px);line-height:1.1;letter-spacing:.01em;
+  transform:rotate(var(--r, 0deg));text-shadow:0 1px 10px rgba(70,0,0,.35);
+  clip-path:inset(-30% 100% -30% 0);
+}
+.note--big{font-size:clamp(52px, 6.4vw, 108px);line-height:.95;}
+@media (min-width:761px){.note{white-space:nowrap;}}
+.note--cta{margin-top:2.4vh;color:#FFE3A0;text-decoration:underline;text-underline-offset:.2em;text-decoration-thickness:1px;pointer-events:auto;}
+.note--cta:hover{color:#FFF4EA;}
+.scene.is-open .note{animation:note-write 1s cubic-bezier(.5,0,.4,1) var(--d, 0s) forwards;}
+.scene.is-done .note{animation-delay:0s;animation-duration:.15s;}
+.scene.is-leaving .note,.scene.is-leaving .scene__back{opacity:0;transition:opacity .2s ease;}
+@keyframes note-write{to{clip-path:inset(-30% -8% -30% 0);}}
+@media (max-width:760px){
+  .scene__notes{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;padding:86px 26px calc(34px + env(safe-area-inset-bottom, 0px));align-items:start;}
+  .scene__col--a{grid-row:1;grid-column:1;padding-left:0;}
+  .scene__col--b{grid-row:3;grid-column:1;gap:6px;}
+  .note{font-size:clamp(22px, 6.4vw, 28px);}
+  .note--big{font-size:clamp(46px, 13vw, 64px);}
+  .note--cta{margin-top:10px;}
+}
+@media (prefers-reduced-motion:reduce){.note{clip-path:none;}.scene.is-open .note{animation:none;}}

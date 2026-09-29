@@ -316,7 +316,8 @@
       "padding:5px 12px;font:inherit;text-decoration:none;cursor:pointer;white-space:nowrap;}" +
       ".demo-bar a:hover,.demo-bar button:hover{background:rgba(246,235,221,.12);}" +
       ".demo-bar[data-min] span,.demo-bar[data-min] a,.demo-bar[data-min] .demo-reset{display:none;}" +
-      "body{padding-bottom:84px;}";
+      "body{padding-bottom:84px;}" +
+      "body:has(.scene:not([hidden])) .demo-bar{display:none;}";
     document.head.appendChild(css);
     var bar = document.createElement("div");
     bar.className = "demo-bar";

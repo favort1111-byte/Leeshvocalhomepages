@@ -42,7 +42,7 @@
       <span class="icon__img" style="height:calc(68 * var(--s))"><img src="assets/img/04.webp" alt="" loading="lazy"></span>
       <span class="icon__label">오디션.jpg</span>
     </a>
-    <a class="icon" href="about.html" style="left:calc(319 * var(--s));top:calc(324 * var(--s));width:calc(37 * var(--s))">
+    <a class="icon" href="#scene-results" data-scene="scene-results" aria-haspopup="dialog" style="left:calc(319 * var(--s));top:calc(324 * var(--s));width:calc(37 * var(--s))">
       <span class="icon__img" style="height:calc(37 * var(--s))"><img src="assets/img/05.webp" alt="" loading="lazy"></span>
       <span class="icon__label">합격.jpg</span>
     </a>
@@ -71,8 +71,26 @@
       <span class="icon__label">이송희보컬</span>
     </a>
   </div>
+  <section class="scene" id="scene-results" role="dialog" aria-label="합격 이야기" hidden>
+    <div class="scene__photo" style="background-image:url('assets/img/05.webp')"></div>
+    <button class="scene__back" type="button" data-leave>← 바탕화면</button>
+    <div class="scene__notes">
+      <div class="scene__col scene__col--a">
+        <p class="note note--big" style="--d:0.55s;--r:-3deg">최단 3주,<br>대형 기획사<br>합격까지.</p>
+      </div>
+      <div class="scene__col scene__col--b">
+        <p class="note" style="--d:1.5s;--r:2deg">tripleS 김유언 — 데뷔 ♪</p>
+        <p class="note" style="--d:1.9s;--r:-1.5deg">SM · JYP · CUBE 최종 합격</p>
+        <p class="note" style="--d:2.3s;--r:1deg">SM · YG 1차 동시 합격</p>
+        <p class="note" style="--d:2.7s;--r:-2deg">서울예대 최종 합격 3명</p>
+        <p class="note" style="--d:3.1s;--r:1.5deg">오디션 합격 기획사만 60여 곳</p>
+        <a class="note note--cta" href="consult.html" style="--d:3.7s;--r:-2deg">나도 준비해볼까? → 오디션 상담</a>
+      </div>
+    </div>
+  </section>
 </main>
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/scene.js"></script>
 </body>
 </html>
