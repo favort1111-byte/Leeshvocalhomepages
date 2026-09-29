@@ -94,66 +94,20 @@ CLIP = ('<svg class="clip" viewBox="0 0 26 60" aria-hidden="true">'
         '<path d="M9 44V12a6 6 0 0 1 12 0v36a9 9 0 0 1-18 0V16" fill="none" stroke="#9FA1A3" stroke-width="2.4" stroke-linecap="round"/>'
         '</svg>')
 
-def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", window=None):
+def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra=""):
     target = ' target="_blank" rel="noopener"' if external else ""
-    if window:  # opens an in-page window (js/desktop.js); the #anchor keeps it reachable without JS
-        href, target = f"#win-{window}", f' data-window="win-{window}" aria-haspopup="dialog"'
     return (f'    <a class="icon" href="{href}"{target} style="left:calc({left} * var(--s));top:calc({top} * var(--s));width:calc({w} * var(--s))">\n'
             f'      <span class="{img_class}" style="height:calc({h} * var(--s))">{inner}</span>\n'
             f'      <span class="icon__label">{label}</span>\n'
             f'    </a>')
 
-def thumb(left, top, w, h, i, label, href="about.html", window=None):
+def thumb(left, top, w, h, i, label, href="about.html"):
     inner = f'<img src="{img(i)}" alt="" loading="lazy">'
-    return icon(left, top, w, h, label, href, inner, window=window)
+    return icon(left, top, w, h, label, href, inner)
 
 YT = "https://www.youtube.com/@vocallesson1533"
 MAP = "https://map.naver.com/p/search/%EC%9D%B4%EC%86%A1%ED%9D%AC%EB%B3%B4%EC%BB%AC%EB%A0%88%EC%8A%A8"
 KAKAO = "https://pf.kakao.com/_xgNYbK"
-
-
-# ---------- desktop windows (icons that open in place) ----------
-def window(wid, title, body):
-    return (f'  <section class="win" id="win-{wid}" role="dialog" aria-labelledby="win-{wid}-title" hidden>\n'
-            f'    <header class="win__bar" data-drag>\n'
-            f'      <button class="win__close" type="button" data-close aria-label="{title} 닫기"></button>\n'
-            f'      <h2 class="win__title" id="win-{wid}-title">{title}</h2>\n'
-            f'    </header>\n'
-            f'    <div class="win__body">\n{body}    </div>\n'
-            f'  </section>\n')
-
-AGENCIES = ["SM", "JYP", "YG", "HYBE", "ADOR", "CUBE", "PLEDIS", "STARSHIP", "FNC", "P NATION",
-            "THE BLACK LABEL", "WAKEONE", "BE:LIFT", "Woollim", "JellyFish", "MYSTIC STORY", "fantagio",
-            "Kakao Ent.", "CJ ENM", "Mnet", "SBS", "JTBC"]
-
-RESULTS_WINDOW = window("results", "합격.jpg", f"""      <p class="win__lede"><b>최단 3주</b>, 대형 기획사 합격까지.<br>60여 개 기획사 오디션 합격생을 배출했어요.</p>
-      <h3 class="win__h">데뷔 · 최종 합격</h3>
-      <ul class="win__list">
-        <li><b>트리플에스(tripleS) 김유언</b> 데뷔</li>
-        <li>SM 엔터테인먼트 최종 합격</li>
-        <li>JYP 연습생 최종 합격</li>
-        <li>CUBE 연습생 최종 합격</li>
-        <li>FNC · 모어비전 · 후너스 최종 합격</li>
-        <li>CJ ENM 비공개 오디션 최종 합격</li>
-        <li>투엘슨 Ent. 최종 합격 · 앨범 데뷔</li>
-        <li>MBC 〈방과후 설렘〉 파이널 진출</li>
-      </ul>
-      <h3 class="win__h">동시 합격</h3>
-      <ul class="win__list">
-        <li>SM · YG 1차 동시 합격</li>
-        <li>SM · CUBE 1차 동시 합격</li>
-      </ul>
-      <h3 class="win__h">합격 배출 기획사</h3>
-      <p class="win__chips">{"".join(f"<span>{a}</span>" for a in AGENCIES)}<span>외 40여 곳</span></p>
-      <h3 class="win__h">입시</h3>
-      <ul class="win__list">
-        <li>서울예술대학교 최종 합격 3명</li>
-        <li>한양대 수시 · 경희대 정시 합격</li>
-        <li>동아방송예대 · 명지전문대 · 동서울대 · 한양여대</li>
-        <li>서울예고 · 한림예고 합격</li>
-      </ul>
-      <p class="win__foot"><a class="win__btn" href="consult.html">오디션 상담 신청</a></p>
-""")
 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
@@ -162,7 +116,7 @@ home_icons = "\n".join([
     thumb(285.5, 216, 37, 37, 2, "레슨.jpg"),
     thumb(169, 263.5, 37, 38, 3, "연습실.jpg"),
     thumb(90, 296, 49, 68, 4, "오디션.jpg"),
-    thumb(319, 324, 37, 37, 5, "합격.jpg", window="results"),
+    thumb(319, 324, 37, 37, 5, "합격.jpg"),
     thumb(464, 349.5, 83.5, 46.5, 7, "보컬.jpg"),
     icon(504.5, 152.5, 48, 48, "오시는길", MAP, FINDER, external=True),
     thumb(563, 256.5, 61.5, 47.5, 6, "취미반.jpg"),
@@ -176,7 +130,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + f'<main class="stage wall" style="background-image:url(\'{img(0)}\')">\n'
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + RESULTS_WINDOW + "</main>\n" + foot("desktop"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n</main>\n" + foot())
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
