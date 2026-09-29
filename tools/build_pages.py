@@ -113,46 +113,95 @@ KAKAO = "https://pf.kakao.com/_xgNYbK"
 
 
 # ---------- photo scenes: an icon's photo grows to fill the screen, notes are handwritten on it ----------
-def scene(sid, photo, label, left, right, cta):
-    def notes(items, side):
-        return "".join(
-            f'        <p class="note{" note--big" if big else ""}" style="--d:{d}s;--r:{r}deg">{text}</p>\n'
-            for text, big, d, r in items)
+def scene(sid, photo, label, big, lines, cta_text, cta_href, external=False):
+    """big: headline (left on PC, top on phones); lines: short notes written one after another."""
+    tilts = [2, -1.5, 1, -2, 1.5, -1]
+    notes = "".join(
+        f'        <p class="note" style="--d:{1.4 + i * 0.4:.1f}s;--r:{tilts[i % len(tilts)]}deg">{t}</p>\n'
+        for i, t in enumerate(lines))
+    cta_d = 1.4 + len(lines) * 0.4 + 0.2
+    target = ' target="_blank" rel="noopener"' if external else ""
     return (f'  <section class="scene" id="scene-{sid}" role="dialog" aria-label="{label}" hidden>\n'
             f'    <div class="scene__photo" style="background-image:url(\'{img(photo)}\')"></div>\n'
             f'    <button class="scene__back" type="button" data-leave>← 바탕화면</button>\n'
             f'    <div class="scene__notes">\n'
-            f'      <div class="scene__col scene__col--a">\n{notes(left, "a")}      </div>\n'
-            f'      <div class="scene__col scene__col--b">\n{notes(right, "b")}'
-            f'        <a class="note note--cta" href="consult.html" style="--d:{cta[1]}s;--r:-2deg">{cta[0]}</a>\n'
+            f'      <div class="scene__col scene__col--a">\n'
+            f'        <p class="note note--big" style="--d:.55s;--r:-3deg">{big}</p>\n'
+            f'      </div>\n'
+            f'      <div class="scene__col scene__col--b">\n{notes}'
+            f'        <a class="note note--cta" href="{cta_href}"{target} style="--d:{cta_d:.1f}s;--r:-2deg">{cta_text}</a>\n'
             f'      </div>\n'
             f'    </div>\n'
             f'  </section>\n')
 
-# (text, big, delay seconds, tilt degrees)
-RESULTS_SCENE = scene("results", 5, "합격 이야기",
-    [("최단 3주,<br>대형 기획사<br>합격까지.", True, 0.55, -3)],
-    [("tripleS 김유언 — 데뷔 ♪", False, 1.5, 2),
-     ("SM · JYP · CUBE 최종 합격", False, 1.9, -1.5),
-     ("SM · YG 1차 동시 합격", False, 2.3, 1),
-     ("서울예대 최종 합격 3명", False, 2.7, -2),
-     ("오디션 합격 기획사만 60여 곳", False, 3.1, 1.5)],
-    ("나도 준비해볼까? → 오디션 상담", 3.7))
+SCENES = {
+    "results": scene("results", 5, "합격 이야기", "최단 3주,<br>대형 기획사<br>합격까지.",
+        ["tripleS 김유언 — 데뷔 ♪", "SM · JYP · CUBE 최종 합격", "SM · YG 1차 동시 합격",
+         "서울예대 최종 합격 3명", "오디션 합격 기획사만 60여 곳"],
+        "나도 준비해볼까? → 오디션 상담", "consult.html"),
+    "stage": scene("stage", 1, "원장 이야기", "무대에 서본<br>사람이<br>가르쳐요.",
+        ["가수 클로이(Klloy) — 앨범 2장", "백아연 · 현아 · 펀치 가이드 녹음", "호텔 델루나 · 김사부 OST 디렉션",
+         "MBC 〈셔플 오디션〉 전담 트레이너", "대형 기획사 보컬 트레이너 9년차"],
+        "원장님께 직접 배우기 → 상담", "consult.html"),
+    "lesson": scene("lesson", 2, "레슨 이야기", "진단부터<br>플래닝까지,<br>4 STEP.",
+        ["1 · 노래 진단 — 지금 내 소리 듣기", "2 · 실전 수업 — 기본기를 노래에", "3 · 디테일 레슨 — 톤 · 감정 · 끝음",
+         "4 · 플래닝 — 선곡부터 무대까지", "담당 선생님이 끝까지, 1:1 담임제"],
+        "첫 진단 받아보기 → 상담", "consult.html"),
+    "room": scene("room", 3, "연습실 이야기", "새벽 2시에도<br>열려 있는<br>연습실.",
+        ["365일 24시간 · 사전 예약제", "연습실 5개 + 춤연습실 1개", "피아노 · 컴퓨터 · 에어컨 완비",
+         "50cm 방음벽, 스튜디오급 방음", "수강생은 무료"],
+        "빈 시간 보기 → 연습실 예약", "booking.html"),
+    "audition": scene("audition", 4, "오디션 이야기", "오디션은<br>많이보다<br>제대로.",
+        ["매월 학원 내방 오디션", "신인개발팀 담당자 대면 심사", "본사 비공개 오디션 연결",
+         "영상 캐스팅 오디션", "분기마다 실전 같은 월말평가"],
+        "다음 오디션 준비하기 → 상담", "consult.html"),
+    "voice": scene("voice", 7, "목소리 이야기", "고민은<br>달라도<br>시작은 같아요.",
+        ["고음에서 목이 조여요", "음정이 자꾸 흔들려요", "비음 · 콧소리가 신경 쓰여요",
+         "내 음색이 뭔지 모르겠어요", "→ 먼저 지금 소리를 진단해요"],
+        "내 고민 말해보기 → 상담", "consult.html"),
+    "hobby": scene("hobby", 6, "취미반 이야기", "노래방에서<br>바로 써먹는<br>발성.",
+        ["고음 · 호흡 · 음정 기초부터", "좋아하는 노래로 배워요", "부담 없는 1:1 수업",
+         "퇴근 후 연습실도 24시간", "한 곡 끝까지 부르는 날까지"],
+        "취미로 시작하기 → 상담", "consult.html"),
+    "exam": scene("exam", 9, "입시 이야기", "학교마다<br>전략이<br>달라요.",
+        ["서울예대 최종 합격 3명", "한양대 수시 · 경희대 정시 합격", "서울예고 · 한림예고 합격",
+         "학교별 선곡 · 자기소개 스피치", "분기별 모의 실기 평가"],
+        "입시 상담 받기 → 상담", "consult.html"),
+    "debut": scene("debut", 8, "데뷔 이야기", "연습생에서<br>무대까지.",
+        ["tripleS 김유언 데뷔", "투엘슨 Ent. 합격 · 앨범 데뷔", "액팅 · 시선 · 표정 모니터링",
+         "퍼스널 컬러 · 스타일링 체크", "전속 계약서 검토까지"],
+        "데뷔 준비 이야기하기 → 상담", "consult.html"),
+    "youtube": scene("youtube", 11, "유튜브 이야기", "9만 명이 보는<br>보컬 레슨.",
+        ["코노에서 노래 잘 부르는 법 · 212만", "고음 진짜 바로 올리는 법 · 158만", "하루 만에 노래 잘 부르는 법 · 28만",
+         "호흡압력법 · 음치탈출 · 비음 없애기", "영상 356개, 계속 올라가는 중"],
+        "유튜브 채널 보러 가기 →", YT, external=True),
+    "map": scene("map", 16, "오시는 길", "선릉역<br>7번 출구,<br>걸어서 2분.",
+        ["강남구 테헤란로55길 21, 태원빌딩 2층", "7번 출구 직진 → 파리바게뜨에서 왼쪽", "청춘화로 · 서초동연가 사이로 오른쪽",
+         "왼쪽, 1층 볼빨간딱새우 건물 2층", "전화 010-4458-5448"],
+        "네이버 지도로 보기 →", MAP, external=True),
+    "about": scene("about", 12, "학원 이야기", "강남 선릉,<br>1:1<br>보컬 레슨.",
+        ["오디션 · 입시반", "전문반 — 실력 향상 트레이닝", "취미반 — 제대로 배우는 노래",
+         "모든 반 1:1 담임제", "카카오톡 24시간 문의"],
+        "반 소개 보기 →", "about.html"),
+}
+
+def scenes(*ids):
+    return "".join(SCENES[i] for i in ids)
 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
-    icon(74, 110, 50, 50, "유튜브", YT, globe_svg(), external=True),
-    thumb(228.5, 136, 37, 37, 1, "무대.jpg"),
-    thumb(285.5, 216, 37, 37, 2, "레슨.jpg"),
-    thumb(169, 263.5, 37, 38, 3, "연습실.jpg"),
-    thumb(90, 296, 49, 68, 4, "오디션.jpg"),
+    icon(74, 110, 50, 50, "유튜브", YT, globe_svg(), scene="youtube"),
+    thumb(228.5, 136, 37, 37, 1, "무대.jpg", scene="stage"),
+    thumb(285.5, 216, 37, 37, 2, "레슨.jpg", scene="lesson"),
+    thumb(169, 263.5, 37, 38, 3, "연습실.jpg", scene="room"),
+    thumb(90, 296, 49, 68, 4, "오디션.jpg", scene="audition"),
     thumb(319, 324, 37, 37, 5, "합격.jpg", scene="results"),
-    thumb(464, 349.5, 83.5, 46.5, 7, "보컬.jpg"),
-    icon(504.5, 152.5, 48, 48, "오시는길", MAP, FINDER, external=True),
-    thumb(563, 256.5, 61.5, 47.5, 6, "취미반.jpg"),
-    thumb(637.5, 119.5, 73.5, 43, 9, "입시.jpg"),
-    thumb(699, 150, 43.5, 49, 8, "데뷔.jpg"),
-    icon(674.5, 339.5, 58, 48.5, "이송희보컬", "about.html", FOLDER),
+    thumb(464, 349.5, 83.5, 46.5, 7, "보컬.jpg", scene="voice"),
+    icon(504.5, 152.5, 48, 48, "오시는길", MAP, FINDER, scene="map"),
+    thumb(563, 256.5, 61.5, 47.5, 6, "취미반.jpg", scene="hobby"),
+    thumb(637.5, 119.5, 73.5, 43, 9, "입시.jpg", scene="exam"),
+    thumb(699, 150, 43.5, 49, 8, "데뷔.jpg", scene="debut"),
+    icon(674.5, 339.5, 58, 48.5, "이송희보컬", "about.html", FOLDER, scene="about"),
 ])
 
 home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
@@ -160,7 +209,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + f'<main class="stage wall" style="background-image:url(\'{img(0)}\')">\n'
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + RESULTS_SCENE + "</main>\n" + foot("scene"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + scenes(*SCENES) + "</main>\n" + foot("scene"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -337,11 +386,11 @@ BOOKING_APP = f"""  <div class="booking__inner">
 
 # ---------- CONSULT (reference 800x450) ----------
 consult_icons = "\n".join([
-    icon(97, 110, 48, 48, "유튜브", YT, globe_svg(), external=True),
-    thumb(70, 248, 37, 37, 1, "무대.jpg"),
-    thumb(128, 320, 37, 38, 2, "레슨.jpg"),
-    thumb(709, 205, 43, 50, 8, "데뷔.jpg"),
-    icon(641, 338, 58, 48, "이송희보컬", "about.html", FOLDER),
+    icon(97, 110, 48, 48, "유튜브", YT, globe_svg(), scene="youtube"),
+    thumb(70, 248, 37, 37, 1, "무대.jpg", scene="stage"),
+    thumb(128, 320, 37, 38, 2, "레슨.jpg", scene="lesson"),
+    thumb(709, 205, 43, 50, 8, "데뷔.jpg", scene="debut"),
+    icon(641, 338, 58, 48, "이송희보컬", "about.html", FOLDER, scene="about"),
 ])
 
 consult = (head("Consult | 이송희보컬레슨",
@@ -350,7 +399,8 @@ consult = (head("Consult | 이송희보컬레슨",
            + nav("consult", "light") + "\n"
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
            + CONSULT_FORM
-           + "</main>\n" + foot("consult"))
+           + scenes("youtube", "stage", "lesson", "debut", "about")
+           + "</main>\n" + foot("consult", "scene"))
 
 # ---------- BOOKING (practice rooms, paper theme) ----------
 booking = (head("Booking | 이송희보컬레슨",
