@@ -406,6 +406,7 @@
       res.data.filter(function (m) { return m.status !== "종료"; }).forEach(function (m) {
         var o = el("option", null, m.name + " (" + m.id + ")");
         o.value = m.id;
+        o.setAttribute("data-name", m.name);
         sel.appendChild(o);
       });
       if (keep) sel.value = keep;
@@ -484,7 +485,74 @@
     f.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
-  $("#recMember").addEventListener("change", loadMemberRecords);
+  $("#recMember").addEventListener("change", function () {
+    $("#noteShare").hidden = true;
+    $("#evalShare").hidden = true;
+    loadMemberRecords();
+  });
+
+  /* ---------------- 카카오톡으로 보낼 주소 ---------------- */
+
+  // Links straight into a screen (js/scene.js reads the #hash). Saved sign-ins open them without a login.
+  var LINKS = [["레슨 노트", "#notes"], ["월말평가", "#evals"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]];
+  function siteLink(to) { return new URL(to.charAt(0) === "#" ? "./" + to : to, location.href).href; }
+  function openHref(to) { return to.charAt(0) === "#" ? "index.html" + to : to; }
+
+  /** Copy to the clipboard; if the browser refuses, select the text so it can be copied by hand. */
+  function copyText(text, btn, box) {
+    function done(ok) {
+      var was = btn.textContent;
+      btn.textContent = ok ? "복사했어요" : "길게 눌러 복사하세요";
+      setTimeout(function () { btn.textContent = was; }, 1800);
+      if (!ok && box) { box.focus(); box.select(); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    } else done(false);
+  }
+
+  function linkRow(label, to) {
+    var li = el("li");
+    li.appendChild(el("b", null, label));
+    li.appendChild(el("code", null, siteLink(to)));
+    var copy = el("button", "sys-link", "주소 복사");
+    copy.type = "button";
+    copy.addEventListener("click", function () { copyText(siteLink(to), copy); });
+    li.appendChild(copy);
+    var a = el("a", "sys-link", "열어보기");
+    a.href = openHref(to);
+    a.target = "_blank";
+    a.rel = "noopener";
+    li.appendChild(a);
+    return li;
+  }
+  LINKS.forEach(function (l) { $("#linkList").appendChild(linkRow(l[0], l[1])); });
+
+  /** After saving a note or evaluation: a ready-to-send 카카오톡 message for that student. */
+  function showShare(box, to, line) {
+    var opt = $("#recMember").selectedOptions[0];
+    var name = opt ? opt.getAttribute("data-name") : "";
+    var text = "[이송희보컬레슨] " + name + "님, " + line + "\n👉 " + siteLink(to);
+    box.textContent = "";
+    box.appendChild(el("p", null, "학생에게 카톡으로 알려주세요."));
+    var ta = el("textarea");
+    ta.readOnly = true;
+    ta.rows = 2;
+    ta.value = text;
+    box.appendChild(ta);
+    var row = el("div", "adm__sharerow");
+    var copy = el("button", "sys-btn", "문구 복사");
+    copy.type = "button";
+    copy.addEventListener("click", function () { copyText(text, copy, ta); });
+    row.appendChild(copy);
+    var a = el("a", "sys-link", "학생 화면으로 열어보기");
+    a.href = openHref(to);
+    a.target = "_blank";
+    a.rel = "noopener";
+    row.appendChild(a);
+    box.appendChild(row);
+    box.hidden = false;
+  }
 
   $("#noteForm").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -496,6 +564,7 @@
     } }).then(function (res) {
       if (!res.ok) { msg($("#noteMsg"), friendly(res), "error"); return; }
       msg($("#noteMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
+      showShare($("#noteShare"), "#notes", "오늘 레슨 노트가 올라왔어요.");
       field(f, "did").value = "";
       field(f, "practice").value = "";
       loadMemberRecords();
@@ -513,6 +582,7 @@
     api("monthly_evals?on_conflict=member_id,month", { method: "POST", upsert: true, body: body }).then(function (res) {
       if (!res.ok) { msg($("#evalMsg"), friendly(res), "error"); return; }
       msg($("#evalMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
+      showShare($("#evalShare"), "#evals", Number(body.month.slice(5, 7)) + "월 월말평가가 나왔어요.");
       loadMemberRecords();
     });
   });

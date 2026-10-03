@@ -128,6 +128,7 @@
             <label class="sys-field"><span>다음 수업까지 연습할 것</span><textarea name="practice" rows="2" maxlength="400"></textarea></label>
             <button class="sys-btn" type="submit">노트 저장</button>
             <p class="sys-msg" id="noteMsg" role="status"></p>
+            <div class="adm__share" id="noteShare" hidden></div>
           </form>
           <ul class="adm__cards" id="noteList"></ul>
         </div>
@@ -151,6 +152,7 @@
             <button class="sys-btn" type="submit">평가 저장</button>
             <p class="sys-note">같은 달을 다시 저장하면 고쳐져요.</p>
             <p class="sys-msg" id="evalMsg" role="status"></p>
+            <div class="adm__share" id="evalShare" hidden></div>
           </form>
           <ul class="adm__cards" id="evalList"></ul>
         </div>
@@ -169,6 +171,10 @@
 
     <!-- 설정 -->
     <section class="sys-card" data-panel="settings" hidden>
+      <h3 class="sys-h">카카오톡에 넣을 주소</h3>
+      <p class="sys-note">카카오톡 채널 메뉴나 단톡방 공지에 넣으세요. 누르면 그 화면이 바로 열려요. 한 번 로그인한 학생은 다시 로그인하지 않아도 돼요.</p>
+      <ul class="adm__links" id="linkList"></ul>
+
       <h3 class="sys-h">연습실</h3>
       <div class="adm__tablewrap"><table class="adm__table" id="roomTable"></table></div>
       <button type="button" class="sys-link" id="roomAdd">+ 방 추가</button>

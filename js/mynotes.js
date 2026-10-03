@@ -1,6 +1,7 @@
 // "내 폴더" on the desktop: a student signs in with 수강 ID + PIN (the same
 // sign-in as 연습실 예약) and reads their lesson notes and monthly evaluations.
-// Once signed in, the folder on the desktop carries the student's name.
+// Once signed in, the folder on the desktop carries the student's name, and the
+// sign-in stays on this device (LeeshAPI.who) so a link from 카카오톡 opens straight in.
 (function () {
   var scene = document.getElementById("scene-me");
   if (!scene || !window.LeeshAPI) return;
@@ -23,9 +24,6 @@
     m.textContent = text || "";
     m.className = "sys-msg" + (kind ? " sys-msg--" + kind : "");
   }
-  // shared with js/booking.js so signing in once works on both
-  function saveWho(w) { try { if (w) sessionStorage.setItem("leesh_who", JSON.stringify(w)); else sessionStorage.removeItem("leesh_who"); } catch (e) {} }
-  function loadWho() { try { return JSON.parse(sessionStorage.getItem("leesh_who") || "null"); } catch (e) { return null; } }
   function dayLabel(d) {
     var dt = new Date(d + "T00:00:00Z");
     return (dt.getUTCMonth() + 1) + "월 " + dt.getUTCDate() + "일 (" + WD[dt.getUTCDay()] + ")";
@@ -40,16 +38,27 @@
     setLabel("내 폴더");
   }
 
-  function load(creds, fromForm) {
+  function showTab(name) {
+    scene.querySelectorAll("[data-book-tab]").forEach(function (t) { t.setAttribute("aria-selected", t.getAttribute("data-book-tab") === name ? "true" : "false"); });
+    scene.querySelectorAll("[data-book-page]").forEach(function (p) { p.hidden = p.getAttribute("data-book-page") !== name; });
+  }
+
+  // creds: { id, key } where key is the saved token, or the PIN typed into the form (keep = remember choice)
+  function load(creds, keep) {
+    var fromForm = keep != null;
     if (fromForm) msg("여는 중…");
-    return LeeshAPI.rpc("member_notebook", { p_id: creds.id, p_pin: creds.pin }).then(function (res) {
+    return LeeshAPI.rpc("member_notebook", { p_id: creds.id, p_pin: creds.key }).then(function (res) {
       if (!res.ok) {
-        if (fromForm) msg(res.error, "error"); else { saveWho(null); showLogin(); }
+        if (fromForm) { msg(res.error, "error"); return; }
+        // the saved sign-in no longer works (logged out elsewhere, PIN changed): ask again
+        if (res.error !== LeeshAPI.NETWORK_ERROR) LeeshAPI.who.clear();
+        showLogin();
+        msg(res.error, "error");
         return;
       }
       msg("");
-      who = { id: res.id, pin: creds.pin };
-      saveWho(who);
+      who = { id: res.id, key: res.token || creds.key };
+      if (res.token) LeeshAPI.who.set(who, keep);
       setLabel(res.name);
       scene.querySelector("#myTitle").textContent = res.name + "의 폴더";
       renderNotes(res.notes);
@@ -120,29 +129,30 @@
     e.preventDefault();
     var btn = form.querySelector("button[type=submit]");
     btn.disabled = true;
-    load({ id: field("memberId").value.trim(), pin: field("pin").value.trim() }, true).then(function () {
+    load({ id: field("memberId").value.trim(), key: field("pin").value.trim() }, field("keep").checked).then(function () {
       btn.disabled = false;
-      form.reset();
+      field("memberId").value = "";
+      field("pin").value = "";
     });
   });
 
   scene.querySelector("#myLogout").addEventListener("click", function () {
-    saveWho(null);
+    LeeshAPI.who.clear();
     showLogin();
     field("memberId").focus();
   });
 
   scene.querySelectorAll("[data-book-tab]").forEach(function (tab) {
-    tab.addEventListener("click", function () {
-      var name = tab.getAttribute("data-book-tab");
-      scene.querySelectorAll("[data-book-tab]").forEach(function (t) { t.setAttribute("aria-selected", t === tab ? "true" : "false"); });
-      scene.querySelectorAll("[data-book-page]").forEach(function (p) { p.hidden = p.getAttribute("data-book-page") !== name; });
-    });
+    tab.addEventListener("click", function () { showTab(tab.getAttribute("data-book-tab")); });
   });
 
   // Refresh each time the folder opens, so a note written a minute ago shows up.
-  scene.addEventListener("scene:open", function () {
-    if (who) load(who, false); else setTimeout(function () { field("memberId").focus({ preventScroll: true }); }, 50);
+  // A link like index.html#evals opens the folder on that tab (js/scene.js passes it on).
+  var pending = null;
+  scene.addEventListener("scene:open", function (e) {
+    if (e.detail && e.detail.tab) showTab(e.detail.tab);
+    if (who) load(who);
+    else if (!pending) setTimeout(function () { field("memberId").focus({ preventScroll: true }); }, 50);
   });
 
   if (!LeeshAPI.enabled()) {
@@ -150,6 +160,12 @@
     msg("아직 준비 중이에요. 곧 열려요.");
     return;
   }
-  var saved = loadWho();
-  if (saved && saved.id && saved.pin) load(saved, false);
+  var saved = LeeshAPI.who.get();
+  if (saved) {
+    // signed in on this device before: open straight to the notes, no form flash
+    form.hidden = true;
+    open.hidden = false;
+    scene.querySelector("#myTitle").textContent = "여는 중…";
+    pending = load(saved).then(function () { pending = null; });
+  }
 })();

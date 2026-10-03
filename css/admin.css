@@ -69,3 +69,13 @@ section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 .adm__scores select{min-height:40px;}
 .adm__card .adm__dots{letter-spacing:.12em;color:var(--sys-accent);}
 .adm__card .adm__del{margin-left:auto;}
+
+/* 카카오톡으로 보낼 문구·주소 */
+.adm__share{margin-top:12px;padding:12px;border-radius:10px;background:#FEF6D8;border:1px solid #EBD98F;}
+.adm__share p{margin:0 0 8px;font-size:14px;}
+.adm__share textarea{width:100%;min-height:64px;font-size:14px;resize:vertical;}
+.adm__sharerow{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:8px;}
+.adm__links{list-style:none;margin:0 0 22px;padding:0;display:grid;gap:8px;}
+.adm__links li{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:10px 12px;border:1px solid var(--sys-line);border-radius:10px;background:#fff;}
+.adm__links b{font-weight:500;min-width:84px;}
+.adm__links code{flex:1 1 220px;font-size:13px;color:var(--sys-muted);word-break:break-all;}

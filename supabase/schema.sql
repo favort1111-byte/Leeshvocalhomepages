@@ -135,6 +135,15 @@ create table if not exists private.login_fails (
 );
 create index if not exists login_fails_idx on private.login_fails (member_id, at);
 
+-- "이 기기에서 로그인 유지": 휴대폰에는 비밀번호 대신 이 열쇠를 저장합니다.
+-- 열쇠 자체는 저장하지 않고 해시만 둡니다. 비밀번호를 바꾸면 모든 기기에서 풀립니다.
+create table if not exists private.member_tokens (
+  hash       bytea primary key,
+  member_id  text not null references public.members (id) on delete cascade on update cascade,
+  expires_at timestamptz not null
+);
+create index if not exists member_tokens_member_idx on private.member_tokens (member_id);
+
 create table if not exists private.telegram (
   id        int primary key default 1 check (id = 1),
   bot_token text,
@@ -202,30 +211,44 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 /*
-  수강 ID + 비밀번호 확인. 맞으면 {ok, id, name}, 아니면 {ok:false, error}.
+  수강 ID + 비밀번호 확인. 맞으면 {ok, id, name, via}, 아니면 {ok:false, error}.
+  p_pin 자리에는 비밀번호 4자리 또는 "로그인 유지" 열쇠(48자)가 올 수 있습니다. via = 'pin' | 'token'.
   예외를 던지지 않고 값을 돌려주는 이유: 틀린 기록(login_fails)이 롤백되지 않고 남아야
-  15분에 10번 제한이 동작합니다.
+  15분에 10번 제한이 동작합니다. 열쇠는 맞힐 수 없을 만큼 길어서 틀려도 기록하지 않습니다.
 */
 create or replace function private.check_member(p_id text, p_pin text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   mid text := upper(trim(coalesce(p_id, '')));
-  pin text := regexp_replace(coalesce(p_pin, ''), '\D', '', 'g');
+  raw text := trim(coalesce(p_pin, ''));
+  pin text := regexp_replace(raw, '\D', '', 'g');
+  via text := case when length(raw) >= 32 then 'token' else 'pin' end;
   m public.members;
   fails int;
 begin
-  if mid = '' or length(pin) <> 4 then
-    return private.fail('수강 ID와 비밀번호 4자리를 입력해주세요.');
-  end if;
-  select count(*) into fails from private.login_fails
-   where member_id = mid and at > now() - interval '15 minutes';
-  if fails >= 10 then
-    return private.fail('비밀번호를 여러 번 틀렸습니다. 15분 뒤에 다시 시도하거나 학원에 문의해주세요.');
-  end if;
-  select * into m from public.members where id = mid;
-  if m.id is null or m.pin_hash <> extensions.crypt(pin, m.pin_hash) then
-    insert into private.login_fails (member_id) values (mid);
-    return private.fail('수강 ID 또는 비밀번호가 맞지 않습니다.');
+  if via = 'token' then
+    select mb.* into m from private.member_tokens t join public.members mb on mb.id = t.member_id
+     where t.hash = extensions.digest(raw, 'sha256') and t.member_id = mid and t.expires_at > now();
+    if m.id is null then
+      return private.fail('로그인이 풀렸어요. 수강 ID와 비밀번호로 다시 로그인해주세요.');
+    end if;
+    -- 쓰는 동안은 계속 유지 (한 달에 한 번쯤 기한을 뒤로 미룸)
+    update private.member_tokens set expires_at = now() + interval '180 days'
+     where hash = extensions.digest(raw, 'sha256') and expires_at < now() + interval '150 days';
+  else
+    if mid = '' or length(pin) <> 4 then
+      return private.fail('수강 ID와 비밀번호 4자리를 입력해주세요.');
+    end if;
+    select count(*) into fails from private.login_fails
+     where member_id = mid and at > now() - interval '15 minutes';
+    if fails >= 10 then
+      return private.fail('비밀번호를 여러 번 틀렸습니다. 15분 뒤에 다시 시도하거나 학원에 문의해주세요.');
+    end if;
+    select * into m from public.members where id = mid;
+    if m.id is null or m.pin_hash <> extensions.crypt(pin, m.pin_hash) then
+      insert into private.login_fails (member_id) values (mid);
+      return private.fail('수강 ID 또는 비밀번호가 맞지 않습니다.');
+    end if;
   end if;
   if m.status not in ('재원', '외부') then
     return private.fail('현재 이용 중인 수강 ID가 아닙니다. 학원에 문의해주세요.');
@@ -233,8 +256,38 @@ begin
   if m.expires_on is not null and m.expires_on < private.now_kst()::date then
     return private.fail('사용 기한이 지난 ID입니다. 학원에 문의해주세요.');
   end if;
-  return jsonb_build_object('ok', true, 'id', m.id, 'name', m.name);
+  return jsonb_build_object('ok', true, 'id', m.id, 'name', m.name, 'via', via);
 end $$;
+
+-- 비밀번호로 로그인했을 때 새 "로그인 유지" 열쇠를 만들어 돌려줍니다. 한 사람당 기기 5대까지.
+create or replace function private.issue_token(mid text) returns text
+language plpgsql security definer set search_path = '' as $$
+declare
+  tok text := encode(extensions.gen_random_bytes(24), 'hex');
+begin
+  delete from private.member_tokens where member_id = mid
+     and (expires_at <= now() or hash in (
+       select hash from private.member_tokens where member_id = mid order by expires_at desc offset 4));
+  insert into private.member_tokens (hash, member_id, expires_at)
+  values (extensions.digest(tok, 'sha256'), mid, now() + interval '180 days');
+  return tok;
+end $$;
+
+-- 로그인한 응답에 붙일 열쇠: 비밀번호로 들어왔을 때만 새로 만듭니다.
+create or replace function private.with_token(who jsonb, body jsonb) returns jsonb
+language sql security definer set search_path = '' as $$
+  select case when who ->> 'via' = 'pin'
+              then body || jsonb_build_object('token', private.issue_token(who ->> 'id'))
+              else body end;
+$$;
+
+-- 로그아웃: 이 기기의 열쇠를 지웁니다.
+create or replace function public.member_logout(p_id text, p_token text) returns jsonb
+language sql security definer set search_path = '' as $$
+  delete from private.member_tokens
+   where member_id = upper(trim(coalesce(p_id, ''))) and hash = extensions.digest(trim(coalesce(p_token, '')), 'sha256');
+  select jsonb_build_object('ok', true);
+$$;
 
 -- ---------------------------------------------------------------- 홈페이지용 함수
 
@@ -297,7 +350,7 @@ declare
 begin
   if not (who ->> 'ok')::boolean then return who; end if;
   select * into s from public.settings where id = 1;
-  return jsonb_build_object(
+  return private.with_token(who, jsonb_build_object(
     'ok', true,
     'id', who ->> 'id',
     'name', who ->> 'name',
@@ -311,7 +364,7 @@ begin
       where b.member_id = who ->> 'id' and b.status = '확정'
         and (b.day > today or (b.day = today and b.end_min > now_min))
     ), '[]'::jsonb)
-  );
+  ));
 end $$;
 
 create or replace function public.booking_create(
@@ -463,7 +516,7 @@ declare
   who jsonb := private.check_member(p_id, p_pin);
 begin
   if not (who ->> 'ok')::boolean then return who; end if;
-  return jsonb_build_object(
+  return private.with_token(who, jsonb_build_object(
     'ok', true,
     'id', who ->> 'id',
     'name', who ->> 'name',
@@ -484,7 +537,7 @@ begin
       from (select * from public.monthly_evals where member_id = who ->> 'id'
             order by month desc limit 12) e
     ), '[]'::jsonb)
-  );
+  ));
 end $$;
 
 -- ---------------------------------------------------------------- 관리자용 함수
@@ -516,7 +569,10 @@ begin
       status = p_status, expires_on = p_expires_on, memo = nullif(trim(coalesce(p_memo, '')), ''),
       pin_hash = case when pin <> '' then extensions.crypt(pin, extensions.gen_salt('bf')) else pin_hash end
     where id = mid;
-    if pin <> '' then delete from private.login_fails where member_id = mid; end if;
+    if pin <> '' then
+      delete from private.login_fails where member_id = mid;
+      delete from private.member_tokens where member_id = mid;  -- 모든 기기에서 로그아웃
+    end if;
   end if;
   return jsonb_build_object('ok', true, 'id', mid, 'created', exists_ is null);
 end $$;
@@ -561,10 +617,12 @@ grant usage, select on all sequences in schema public to authenticated;
 
 revoke all on all functions in schema private from public, anon, authenticated;
 revoke execute on function public.rooms_day(text), public.member_login(text, text), public.member_notebook(text, text),
+  public.member_logout(text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text),
   public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() from public;
 grant execute on function public.rooms_day(text), public.member_login(text, text), public.member_notebook(text, text),
+  public.member_logout(text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text) to anon, authenticated;
 grant execute on function public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() to authenticated;

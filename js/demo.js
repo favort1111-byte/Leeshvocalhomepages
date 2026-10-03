@@ -7,7 +7,7 @@
   cfg.supabaseKey = "demo";
   cfg.local = true;
   var KEY = "leesh_demo_db";
-  var VERSION = 3; // bump when the demo defaults change
+  var VERSION = 4; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -61,6 +61,7 @@
         { id: 21, member_id: "S001", month: t.slice(0, 7) + "-01", pitch: 4, rhythm: 3, breath: 4, expression: 4, stage: 3, comment: "고음에서 힘이 많이 빠졌어요! 박자만 조금 더 안정되면 좋겠어요.", goal: "메트로놈 켜고 연습하기", teacher: "이송희", created_at: new Date().toISOString() },
         { id: 22, member_id: "S001", month: addDays(t.slice(0, 7) + "-01", -1).slice(0, 7) + "-01", pitch: 3, rhythm: 3, breath: 3, expression: 3, stage: 2, comment: "첫 평가 수고했어요. 음정은 좋은 편이에요.", goal: "고음 호흡 연결", teacher: "이송희", created_at: new Date().toISOString() }
       ],
+      tokens: [], // "로그인 유지" keys: { key, member_id }
       consults: [
         { id: 1, status: "접수", method: "체험 레슨", wish: "토요일 오후", name: "홍길동", phone: "010-1111-2222", track: "취미반", message: "고음이 잘 안 올라가요.", memo: null, created_at: new Date(Date.now() - 3600000).toISOString() },
         { id: 2, status: "연락완료", method: "전화 상담", wish: null, name: "최유나", phone: "010-3333-4444", track: "오디션·입시반", message: null, memo: "다음 주 방문 예정", created_at: new Date(Date.now() - 86400000 * 2).toISOString() }
@@ -81,13 +82,30 @@
 
   function checkMember(id, pin) {
     id = String(id || "").trim().toUpperCase();
-    pin = String(pin || "").replace(/\D/g, "");
-    if (!id || pin.length !== 4) return fail("수강 ID와 비밀번호 4자리를 입력해주세요.");
-    var m = db.members.filter(function (x) { return x.id === id; })[0];
-    if (!m || m.pin !== pin) return fail("수강 ID 또는 비밀번호가 맞지 않습니다.");
+    var raw = String(pin || "").trim(), via = raw.length >= 32 ? "token" : "pin", m;
+    if (via === "token") {
+      var t = db.tokens.filter(function (x) { return x.key === raw && x.member_id === id; })[0];
+      m = t && db.members.filter(function (x) { return x.id === id; })[0];
+      if (!m) return fail("로그인이 풀렸어요. 수강 ID와 비밀번호로 다시 로그인해주세요.");
+    } else {
+      pin = raw.replace(/\D/g, "");
+      if (!id || pin.length !== 4) return fail("수강 ID와 비밀번호 4자리를 입력해주세요.");
+      m = db.members.filter(function (x) { return x.id === id; })[0];
+      if (!m || m.pin !== pin) return fail("수강 ID 또는 비밀번호가 맞지 않습니다.");
+    }
     if (m.status !== "재원" && m.status !== "외부") return fail("현재 이용 중인 수강 ID가 아닙니다. 학원에 문의해주세요.");
     if (m.expires_on && m.expires_on < nowKst().today) return fail("사용 기한이 지난 ID입니다. 학원에 문의해주세요.");
-    return { ok: true, id: m.id, name: m.name };
+    return { ok: true, id: m.id, name: m.name, via: via };
+  }
+  // signing in with the PIN hands back a new "stay signed in" key, like private.with_token
+  function withToken(who, body) {
+    if (who.via !== "pin") return body;
+    var key = "";
+    for (var i = 0; i < 48; i++) key += "0123456789abcdef"[Math.floor(Math.random() * 16)];
+    db.tokens.push({ key: key, member_id: who.id });
+    save();
+    body.token = key;
+    return body;
   }
   function live() { return db.bookings.filter(function (b) { return b.status === "확정"; }); }
   function room(id) { return db.rooms.filter(function (r) { return r.id === id; })[0]; }
@@ -122,7 +140,7 @@
       var mine = live().filter(function (b) {
         return b.member_id === who.id && (b.day > n.today || (b.day === n.today && b.end_min > n.min));
       }).sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); });
-      return {
+      return withToken(who, {
         ok: true, id: who.id, name: who.name,
         bookings: mine.map(function (b) {
           return {
@@ -130,7 +148,7 @@
             cancellable: diffDays(n.today, b.day) * 1440 + b.start_min - n.min >= s.cancel_minutes
           };
         })
-      };
+      });
     },
     booking_create: function (a) {
       var who = checkMember(a.p_id, a.p_pin);
@@ -207,14 +225,17 @@
       m.status = a.p_status || "재원";
       m.expires_on = a.p_expires_on || null;
       m.memo = String(a.p_memo || "").trim() || null;
-      if (pin) m.pin = pin;
+      if (pin) {
+        m.pin = pin;
+        db.tokens = db.tokens.filter(function (x) { return x.member_id !== id; }); // signs out every device
+      }
       save();
       return { ok: true, id: id, created: created };
     },
     member_notebook: function (a) {
       var who = checkMember(a.p_id, a.p_pin);
       if (!who.ok) return who;
-      return {
+      return withToken(who, {
         ok: true, id: who.id, name: who.name,
         notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
@@ -227,7 +248,13 @@
             return { month: e.month.slice(0, 7), teacher: e.teacher, comment: e.comment, goal: e.goal,
               scores: { pitch: e.pitch, rhythm: e.rhythm, breath: e.breath, expression: e.expression, stage: e.stage } };
           })
-      };
+      });
+    },
+    member_logout: function (a) {
+      var id = String(a.p_id || "").trim().toUpperCase();
+      db.tokens = db.tokens.filter(function (x) { return !(x.key === a.p_token && x.member_id === id); });
+      save();
+      return { ok: true };
     },
     is_admin: function () { return true; }
   };
@@ -366,7 +393,7 @@
     bar.querySelector(".demo-reset").addEventListener("click", function () {
       db = seed();
       save();
-      try { sessionStorage.clear(); } catch (e) { /* ignore */ }
+      try { sessionStorage.clear(); localStorage.removeItem("leesh_who"); } catch (e) { /* ignore */ }
       location.reload();
     });
     bar.querySelector(".demo-min").addEventListener("click", function () {

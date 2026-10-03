@@ -47,5 +47,32 @@
     });
   }
 
-  window.LeeshAPI = { enabled: enabled, rpc: rpc, request: request, headers: headers, NETWORK_ERROR: NETWORK_ERROR };
+  /*
+    The signed-in student, shared by 연습실 예약 and 내 폴더: { id, key }.
+    key is the "stay signed in" token from member_login / member_notebook, sent in place of the PIN.
+    "이 기기에서 로그인 유지" keeps it in localStorage; otherwise only until the browser closes.
+  */
+  var WHO = "leesh_who";
+  var who = {
+    get: function () {
+      var w = null;
+      try { w = JSON.parse(localStorage.getItem(WHO) || sessionStorage.getItem(WHO) || "null"); } catch (e) { w = null; }
+      return w && w.id && w.key ? w : null;
+    },
+    set: function (w, keep) {
+      try {
+        localStorage.removeItem(WHO);
+        sessionStorage.removeItem(WHO);
+        (keep ? localStorage : sessionStorage).setItem(WHO, JSON.stringify({ id: w.id, key: w.key }));
+      } catch (e) { /* private mode: signed in for this page only */ }
+    },
+    kept: function () { try { return !!localStorage.getItem(WHO); } catch (e) { return false; } },
+    clear: function () {
+      var w = who.get();
+      try { localStorage.removeItem(WHO); sessionStorage.removeItem(WHO); } catch (e) { /* ignore */ }
+      if (w) rpc("member_logout", { p_id: w.id, p_token: w.key }); // forget this device on the server too
+    }
+  };
+
+  window.LeeshAPI = { enabled: enabled, rpc: rpc, request: request, headers: headers, who: who, NETWORK_ERROR: NETWORK_ERROR };
 })();

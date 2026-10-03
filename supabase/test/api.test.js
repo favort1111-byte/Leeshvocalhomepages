@@ -1,6 +1,6 @@
 // End-to-end tests: schema.sql on a local Postgres, called over HTTP through
 // PostgREST exactly the way the website and admin page call Supabase.
-//   node --test supabase/test/
+//   node --test supabase/test/*.test.js
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const L = require('./local.js');
@@ -30,7 +30,7 @@ test.before(async () => {
 test.after(() => pg && pg.stop());
 
 test.beforeEach(async () => {
-  L.psql('truncate public.bookings, public.consults, public.lesson_notes, public.monthly_evals, private.login_fails; delete from public.members');
+  L.psql('truncate public.bookings, public.consults, public.lesson_notes, public.monthly_evals, private.login_fails, private.member_tokens; delete from public.members');
   L.setClock('2026-10-01 10:20');
   for (const m of [
     { p_id: 'S001', p_name: '김시우', p_pin: '5678' },
@@ -62,6 +62,8 @@ test('rooms_day lists six rooms and hides past hours today', async () => {
 
 test('login: ID is case-insensitive, wrong PIN / inactive / expired are refused', async () => {
   const ok = await rpc('member_login', SIWOO);
+  assert.match(ok.token, /^[0-9a-f]{48}$/);
+  delete ok.token;
   assert.deepEqual(ok, { ok: true, id: 'S001', name: '김시우', bookings: [] });
   assert.match((await rpc('member_login', { p_id: 'S001', p_pin: '0000' })).error, /맞지 않습니다/);
   assert.match((await rpc('member_login', { p_id: 'NOPE', p_pin: '0000' })).error, /맞지 않습니다/);
@@ -218,4 +220,32 @@ test('notebook: a student sees only their own lesson notes and monthly evaluatio
   assert.match((await rpc('member_notebook', { p_id: 'S001', p_pin: '0000' })).error, /맞지 않습니다/);
   assert.equal((await call('/lesson_notes', { method: 'GET' })).status, 401);
   assert.equal((await call('/monthly_evals', { method: 'GET', token: STRANGER })).data.length, 0);
+});
+
+test('stay signed in: the token stands in for the PIN until logout or a PIN change', async () => {
+  const first = await rpc('member_notebook', SIWOO);
+  const key = { p_id: 'S001', p_pin: first.token };
+  const again = await rpc('member_notebook', key);
+  assert.equal(again.ok, true);
+  assert.equal(again.token, undefined, 'no new token when signing in with one');
+  assert.equal((await rpc('member_login', key)).name, '김시우');
+  assert.equal((await book({}, key)).ok, true);
+  assert.equal((await rpc('member_notebook', { p_id: 'S002', p_pin: first.token })).ok, false, 'tied to its own ID');
+
+  // a wrong token is not a wrong PIN: it never locks the ID
+  for (let i = 0; i < 12; i++) assert.match((await rpc('member_login', { p_id: 'S001', p_pin: 'f'.repeat(48) })).error, /다시 로그인/);
+  assert.equal((await rpc('member_login', SIWOO)).ok, true);
+
+  // logging out removes only this device
+  const other = (await rpc('member_login', SIWOO)).token;
+  assert.equal((await rpc('member_logout', { p_id: 'S001', p_token: first.token })).ok, true);
+  assert.equal((await rpc('member_login', key)).ok, false);
+  assert.equal((await rpc('member_login', { p_id: 'S001', p_pin: other })).ok, true);
+
+  // a paused student is refused even with a token; a new PIN signs out every device
+  await rpc('admin_save_member', { p_id: 'S001', p_name: '김시우', p_status: '휴원' }, ADMIN);
+  assert.match((await rpc('member_login', { p_id: 'S001', p_pin: other })).error, /이용 중인/);
+  await rpc('admin_save_member', { p_id: 'S001', p_name: '김시우', p_pin: '4321' }, ADMIN);
+  assert.equal((await rpc('member_login', { p_id: 'S001', p_pin: other })).ok, false);
+  assert.equal((await call('/rpc/member_tokens', {})).status >= 400, true);
 });

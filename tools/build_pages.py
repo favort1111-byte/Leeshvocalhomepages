@@ -192,6 +192,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
         <p class="book__lede">수강생은 레슨 노트와 월말평가를 여기서 봐요.</p>
         <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
         <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label>
+        <label class="sys-keep"><input type="checkbox" name="keep" checked> 이 기기에서 로그인 유지</label>
         <button class="sys-btn sys-btn--block" type="submit">폴더 열기</button>
         <p class="sys-msg" id="myLoginMsg" role="status"></p>
       </form>
@@ -385,6 +386,7 @@ BOOKING_APP = f"""  <div class="booking__inner">
           <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
           <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{{4}}" maxlength="4" required></label>
         </div>
+        <label class="sys-keep"><input type="checkbox" name="keep" checked> 이 기기에서 로그인 유지</label>
         <button class="sys-btn" type="submit">로그인</button>
         <p class="sys-note">수강 ID는 학원에서 발급해드려요. 비밀번호를 잊었으면 학원에 문의해주세요.</p>
         <p class="sys-msg" id="whoMsg" role="status"></p>

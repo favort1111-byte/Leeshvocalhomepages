@@ -373,6 +373,7 @@ img{display:block;}
 .book__lede{margin:4px 0 18px;color:#5A4636;font-size:14px;}
 .book__login{max-width:380px;overflow:auto;padding-bottom:22px;}
 .book__open{display:flex;flex-direction:column;min-height:0;flex:1;}
+.book__open[hidden],.book__login[hidden]{display:none;}
 .book__head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
 .book__logout{border:0;background:none;padding:6px 0;font:inherit;font-size:13px;color:#5A4636;text-decoration:underline;cursor:pointer;}
 .book__tabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0 14px;}

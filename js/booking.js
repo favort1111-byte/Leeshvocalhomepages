@@ -37,26 +37,31 @@
   function toMin(t) { var p = t.split(":"); return +p[0] * 60 + +p[1]; }
   function busy(btn, on) { btn.disabled = on; btn.setAttribute("aria-busy", on ? "true" : "false"); }
 
-  function saveWho(w) { try { sessionStorage.setItem("leesh_who", JSON.stringify(w)); } catch (e) {} }
-  function loadWho() { try { return JSON.parse(sessionStorage.getItem("leesh_who") || "null"); } catch (e) { return null; } }
-  function clearWho() { try { sessionStorage.removeItem("leesh_who"); } catch (e) {} }
 
   /* ---------- identity ---------- */
   whoForm.addEventListener("submit", function (e) {
     e.preventDefault();
-    var who = { id: field(whoForm, "memberId").value.trim(), pin: field(whoForm, "pin").value.trim() };
-    signIn(who, whoForm.querySelector("button"));
+    var who = { id: field(whoForm, "memberId").value.trim(), key: field(whoForm, "pin").value.trim() };
+    signIn(who, whoForm.querySelector("button[type=submit]"), field(whoForm, "keep").checked);
   });
 
-  function signIn(who, btn) {
+  // who: { id, key } — key is the PIN from the form, or the saved token (shared with 내 폴더, LeeshAPI.who)
+  function signIn(who, btn, keep) {
     if (btn) busy(btn, true);
     msg($("#whoMsg"), "확인 중…");
-    LeeshAPI.rpc("member_login", { p_id: who.id, p_pin: who.pin }).then(function (res) {
+    LeeshAPI.rpc("member_login", { p_id: who.id, p_pin: who.key }).then(function (res) {
       if (btn) busy(btn, false);
-      if (!res.ok) { msg($("#whoMsg"), res.error, "error"); clearWho(); return; }
+      if (!res.ok) {
+        msg($("#whoMsg"), res.error, "error");
+        if (!btn) {
+          whoForm.hidden = false;
+          if (res.error !== LeeshAPI.NETWORK_ERROR) LeeshAPI.who.clear(); // saved sign-in no longer works
+        }
+        return;
+      }
       msg($("#whoMsg"), "");
-      state.who = { id: res.id, pin: who.pin };
-      saveWho(state.who);
+      state.who = { id: res.id, key: res.token || who.key };
+      if (res.token) LeeshAPI.who.set(state.who, keep);
       whoForm.hidden = true;
       area.hidden = false;
       $("#hello").textContent = res.name + "님, 안녕하세요.";
@@ -66,7 +71,7 @@
   }
 
   $("#switchUser").addEventListener("click", function () {
-    clearWho();
+    LeeshAPI.who.clear();
     state.who = null;
     area.hidden = true;
     whoForm.hidden = false;
@@ -75,7 +80,7 @@
   });
 
   /* ---------- my bookings ---------- */
-  function creds() { return { p_id: state.who.id, p_pin: state.who.pin }; }
+  function creds() { return { p_id: state.who.id, p_pin: state.who.key }; }
 
   function refreshMine() {
     LeeshAPI.rpc("member_login", creds()).then(function (res) { if (res.ok) renderMine(res.bookings); });
@@ -306,6 +311,6 @@
   });
 
   loadDay(null);
-  var saved = loadWho();
-  if (saved && saved.id && saved.pin) signIn(saved, null);
+  var saved = LeeshAPI.who.get();
+  if (saved) { whoForm.hidden = true; signIn(saved, null); } // signed in on this device before
 })();

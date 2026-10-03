@@ -28,7 +28,9 @@
 .sys-row{display:flex;gap:12px;flex-wrap:wrap;}
 .sys-field{display:flex;flex-direction:column;gap:6px;flex:1 1 180px;margin-bottom:14px;}
 .sys-field > span{font-size:14px;color:var(--sys-muted);}
-.sys input:not([type=radio]), .sys select, .sys textarea{
+.sys-keep{display:flex;align-items:center;gap:8px;margin:-4px 0 14px;font-size:14px;color:var(--sys-muted);cursor:pointer;}
+.sys-keep input{width:18px;height:18px;margin:0;accent-color:currentColor;}
+.sys input:not([type=radio]):not([type=checkbox]), .sys select, .sys textarea{
   width:100%;box-sizing:border-box;
   min-height:44px;padding:10px 12px;
   border:1px solid var(--sys-line);border-radius:8px;background:#fff;
