@@ -503,3 +503,172 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
   .boot{display:none;}
   .wavebed *, .wall--live .icon, .boot ~ .icons .icon{animation:none !important;}
 }
+
+/* ---------- about / contact: the blog's content as a scrapbook (tools/blog_content.py) ----------
+   Flows below the reference stage, in plain px so long text stays readable on any screen. */
+.scrap{
+  position:relative;padding:8px 20px 90px;
+  background-color:var(--cardboard);color:var(--cream);
+  font-family:var(--f-sans);font-size:16px;line-height:1.6;
+}
+.scrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:var(--fibers);opacity:.22;mix-blend-mode:overlay;}
+.scrap > *{position:relative;}
+.scrap a{color:inherit;}
+.scrap--paper{background-color:var(--paper);color:var(--ink);padding-top:40px;}
+.scrap--paper::before{background-image:var(--grain);opacity:.12;mix-blend-mode:multiply;}
+
+.scrap__index{position:sticky;top:0;z-index:10;margin:0 -20px;padding:12px 20px;background:rgba(98,55,43,.92);backdrop-filter:blur(6px);}
+.scrap__index ul{list-style:none;margin:0 auto;padding:0;max-width:1080px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+.scrap__index a{display:block;white-space:nowrap;padding:6px 14px;border:1px solid rgba(246,235,221,.6);border-radius:999px;font-size:14px;text-decoration:none;}
+.scrap__index a:hover{background:rgba(246,235,221,.12);}
+
+.scrap__block{max-width:1080px;margin:0 auto;padding-top:56px;}
+.scrap__head{scroll-margin-top:70px;margin-bottom:22px;}
+.scrap__kicker{margin:0;font-family:var(--f-hand);font-size:26px;line-height:1;color:var(--pink);transform:rotate(-2deg);transform-origin:left;}
+.scrap--paper .scrap__kicker{color:var(--brown);}
+.scrap__title{margin:6px 0 0;font-family:"Gowun Batang",var(--f-display);font-weight:400;font-size:clamp(28px,4vw,42px);line-height:1.2;}
+.scrap__sub{margin:36px 0 12px;font-family:"Gowun Batang",serif;font-weight:400;font-size:22px;}
+.scrap__lede{max-width:760px;margin:0 0 18px;font-size:17px;}
+.scrap__note{margin:18px 0 0;font-size:14px;opacity:.85;}
+.scrap__note a{text-underline-offset:3px;}
+.scrap__cta{margin:26px 0 0;}
+.pill-btn--light{height:auto;padding:10px 22px;font-size:15px;color:var(--cream);border-color:var(--cream);}
+.pill-btn--light:hover{background:rgba(246,235,221,.12);}
+
+/* photos: polaroid snaps with a strip of tape */
+.snap{position:relative;margin:0;padding:8px 8px 10px;background:#FBFAF7;color:var(--ink);box-shadow:0 6px 18px rgba(20,10,5,.35);}
+.snap::before{content:"";position:absolute;top:-10px;left:50%;width:70px;height:20px;transform:translateX(-50%) rotate(-3deg);background:rgba(240,228,200,.75);box-shadow:0 1px 2px rgba(0,0,0,.08);}
+.snap img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;}
+.snap figcaption{margin-top:7px;font-family:var(--f-hand);font-size:19px;line-height:1.2;text-align:center;}
+.snap--tilt-l{transform:rotate(-3deg);}
+.snap--tilt-r{transform:rotate(3deg);}
+.snap--small{max-width:150px;}
+
+/* paper cards */
+.card{border-radius:4px;}
+.card--paper{padding:24px 26px;background:var(--cream);color:var(--ink);box-shadow:0 8px 24px rgba(20,10,5,.3);}
+.card--paper ul{margin:0;padding-left:1.1em;}
+.card--paper li{margin:3px 0;}
+.card__name{margin:0 0 10px;font-size:15px;color:var(--taupe);}
+.card__name b{font-family:"Gowun Batang",serif;font-weight:400;font-size:30px;color:var(--ink);margin:0 6px;}
+.card__name span{font-family:var(--f-hand);font-size:22px;color:var(--brown);}
+.card__lead{list-style:none;padding:0 !important;margin:0 0 18px !important;display:flex;flex-wrap:wrap;gap:6px 18px;font-weight:500;color:var(--brown);}
+.card__lead li::before{content:"✓ ";}
+.card__cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px 28px;font-size:15px;}
+.card h4,.card__col h4{margin:0 0 6px;font-family:"Gowun Batang",serif;font-weight:400;font-size:18px;color:var(--brown);}
+.card__chips{list-style:none;padding:0 !important;margin:0;display:flex;flex-wrap:wrap;gap:6px;}
+.card__chips li{margin:0;padding:3px 11px;border:1px solid rgba(110,59,40,.35);border-radius:999px;font-size:14px;}
+.card__chips--light li{border-color:rgba(246,235,221,.5);}
+.card__more{margin-top:16px;font-size:14px;}
+.card__more summary{cursor:pointer;color:var(--brown);font-weight:500;}
+.card__history{list-style:none;padding:0 !important;margin:10px 0 0 !important;columns:2 320px;column-gap:28px;}
+.card__history li{break-inside:avoid;margin:0 0 6px;}
+.card__history b{display:inline-block;min-width:82px;color:var(--brown);font-weight:500;}
+
+/* teacher */
+.teacher{display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:30px;align-items:start;margin-bottom:34px;}
+.teacher__photos{display:flex;flex-direction:column;align-items:center;gap:22px;padding-top:12px;}
+.teacher__photos .snap img{aspect-ratio:1;}
+.teacher--dance .teacher__photos .snap img{aspect-ratio:9/10;object-position:top;}
+
+/* curriculum */
+.classes{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-wrap:wrap;gap:10px;}
+.classes li{padding:8px 20px;border-radius:999px;background:var(--manila-light);color:var(--ink);font-family:"Gowun Batang",serif;font-size:18px;}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;}
+.step{position:relative;padding:22px 22px 18px;background:var(--cream);color:var(--ink);border-radius:3px;box-shadow:0 6px 18px rgba(20,10,5,.3);
+  background-image:repeating-linear-gradient(transparent 0 27px,rgba(110,59,40,.12) 27px 28px);background-position:0 58px;}
+.step:nth-child(odd){transform:rotate(-.6deg);}
+.step:nth-child(even){transform:rotate(.6deg);}
+.step--wide{grid-column:1 / -1;}
+.step__no{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--brown);color:var(--cream);font-size:12px;letter-spacing:.12em;}
+.step h3{margin:8px 0 8px;font-family:"Gowun Batang",serif;font-weight:400;font-size:24px;}
+.step ul{margin:0;padding-left:1.1em;font-size:15px;line-height:28px;}
+.step--wide ul{columns:2 360px;column-gap:32px;}
+
+/* why us */
+.whys{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;}
+.why{padding:20px;border:1px solid rgba(246,235,221,.45);border-radius:6px;background:rgba(0,0,0,.08);}
+.why__no{font-family:var(--f-display);font-size:28px;color:var(--pink);}
+.why h3{margin:4px 0 8px;font-family:"Gowun Batang",serif;font-weight:400;font-size:21px;}
+.why ul{margin:0;padding-left:1.1em;font-size:15px;}
+.faq{margin:30px 0 0;padding:22px 26px;background:var(--manila-light);color:var(--ink);transform:rotate(-.5deg);box-shadow:0 6px 18px rgba(20,10,5,.3);}
+.faq__q{margin:0 0 8px;font-family:var(--f-hand);font-size:28px;line-height:1.2;color:var(--brown);}
+.faq__a{margin:0;padding-left:1.1em;}
+.motto{margin:34px auto 0;max-width:760px;text-align:center;}
+.motto p{margin:0;font-family:"Gowun Batang",serif;font-size:clamp(20px,2.6vw,26px);line-height:1.5;}
+.motto footer{margin-top:10px;font-size:14px;opacity:.8;}
+
+/* audition care */
+.care-wrap{display:grid;grid-template-columns:1fr minmax(200px,300px);gap:30px;align-items:start;}
+.cares{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
+.care{padding:20px;background:var(--cream);color:var(--ink);border-radius:3px;box-shadow:0 6px 18px rgba(20,10,5,.3);}
+.care h3{margin:0 0 8px;font-family:"Gowun Batang",serif;font-weight:400;font-size:21px;color:var(--brown);}
+.care ul{margin:0;padding-left:1.1em;font-size:15px;}
+.care-photos{display:flex;flex-direction:column;gap:26px;padding-top:10px;}
+.partners{margin:28px 0 0;}
+.partners p{margin:0 0 10px;}
+.partners .card__chips li{border-color:rgba(246,235,221,.5);}
+.online{margin-top:30px;}
+.online p{margin:0 0 14px;}
+.online__dance{list-style:none;padding:0 !important;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:4px 24px;font-size:15px;}
+.online__dance b{color:var(--brown);font-weight:500;margin-right:4px;}
+
+/* results */
+.debuts{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-wrap:wrap;gap:16px;}
+.debut{display:flex;flex-direction:column;padding:16px 22px;background:#1E1A18;color:var(--cream);border-radius:4px;transform:rotate(-1deg);box-shadow:0 6px 18px rgba(0,0,0,.35);}
+.debut:nth-child(2){transform:rotate(1.2deg);}
+.debut b{font-family:var(--f-display);font-weight:400;font-size:28px;line-height:1.1;color:#E8C27A;}
+.debut span{font-family:"Gowun Batang",serif;font-size:22px;}
+.debut small{font-size:13px;opacity:.8;}
+.stats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+.stats li{padding:14px 18px;border-top:2px solid rgba(246,235,221,.5);}
+.stats b{display:block;font-family:var(--f-display);font-weight:400;font-size:40px;line-height:1.1;}
+.stats span{font-size:14px;opacity:.85;}
+.agencies{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+.agency{padding:12px 14px;background:#FBFAF7;color:var(--ink);border-radius:8px;box-shadow:0 3px 10px rgba(20,10,5,.25);}
+.agency h4{margin:0 0 4px;font-size:15px;font-weight:500;}
+.agency ul{margin:0;padding:0;list-style:none;font-size:13px;line-height:1.5;color:var(--taupe);}
+.more{margin-top:10px;}
+.more summary{cursor:pointer;display:inline-block;margin-bottom:12px;padding:6px 16px;border:1px solid rgba(246,235,221,.6);border-radius:999px;font-size:14px;}
+
+/* rooms */
+.facts{list-style:none;margin:0 0 26px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 24px;}
+.facts li::before{content:"✓ ";color:var(--pink);}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:30px 22px;padding-top:12px;align-items:start;}
+.gallery .snap:nth-child(3n+1){transform:rotate(-1.6deg);}
+.gallery .snap:nth-child(3n+2){transform:rotate(1.2deg);}
+.gallery .snap:nth-child(3n){transform:rotate(-.6deg);}
+.gallery .snap--wide{grid-column:span 2;}
+.gallery .snap--wide img{aspect-ratio:2/1;}
+
+/* one-point lessons + channels */
+.tips{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px 24px;}
+.tips a{display:block;padding:10px 0;border-bottom:1px dashed rgba(246,235,221,.4);text-decoration:none;}
+.tips a::before{content:"♪ ";color:var(--pink);}
+.tips a:hover{text-decoration:underline;}
+.channels{list-style:none;margin:26px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
+.channels a{display:block;padding:7px 15px;border:1px solid currentColor;border-radius:999px;font-size:14px;text-decoration:none;}
+
+/* contact: find us */
+.findus{display:grid;grid-template-columns:minmax(260px,1fr) 1fr;gap:34px;align-items:start;}
+.findus .snap img{aspect-ratio:auto;}
+.findus__addr{margin:0 0 4px;font-family:"Gowun Batang",serif;font-size:22px;}
+.findus__steps{margin:14px 0;padding-left:1.3em;}
+.findus a{color:var(--brown);}
+
+@media (max-width:760px){
+  .scrap{font-size:15px;padding:0 16px 70px;}
+  .scrap__index{margin:0 -16px;padding:10px 16px;}
+  .scrap__block{padding-top:44px;}
+  .teacher,.care-wrap,.findus{grid-template-columns:1fr;}
+  .teacher__photos{flex-direction:row;justify-content:center;align-items:flex-start;}
+  .teacher__photos .snap{max-width:200px;}
+  .teacher__photos .snap--small{max-width:130px;}
+  .care-photos{flex-direction:row;}
+  .care-photos .snap{flex:1;}
+  .card--paper{padding:20px 18px;}
+  .gallery{grid-template-columns:1fr 1fr;gap:22px 14px;}
+  .gallery .snap figcaption{font-size:16px;}
+  .agencies{grid-template-columns:1fr 1fr;}
+  .stats b{font-size:32px;}
+}

@@ -31,6 +31,7 @@ js/admin.js       관리자 화면
 supabase/         데이터베이스 설계(schema.sql) + 연결 안내 (supabase/README.md) + 테스트
 assets/img/       사진 20장 (번호는 아래 표)
 tools/build_pages.py  HTML 5개를 생성하는 스크립트 (페이지 문구·내용 수정은 여기서)
+tools/blog_content.py  블로그에서 가져온 학원 정보 (about 아래 섹션 · contact 오시는 길) — 원본 정리는 docs/blog.md
 tools/dev-server.js   계정 없이 예약·관리자까지 미리보기: node tools/dev-server.js
 tools/build_preview.py  체험 모드 사본 만들기 (가짜 데이터, 비공개 아티팩트 미리보기용 · js/demo.js)
 ```

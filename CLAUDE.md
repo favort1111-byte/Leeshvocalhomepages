@@ -30,6 +30,8 @@
   배포 날이 가까워지면 앱·확장 설치부터 먼저 안내. (대안: 네임서버를 Cloudflare로 옮기고 API 토큰으로 관리 — 준비가 많아 보류)
 
 ## 보관 자료
+- **네이버 블로그(blog.naver.com/o_oa8)가 학원 정보의 원본**입니다 (원장님: "심혈을 기울여 만든 블로그, 웬만한 건 다 사용"). 정리본 `docs/blog.md`, 홈페이지 데이터 `tools/blog_content.py`, 사진 `assets/img/blog/`.
+  블로그 접속은 환경 허용 도메인 `*.naver.com`, `*.pstatic.net`이 필요해요 (원장님이 추가함). 블로그 글은 대부분 이미지 안내판이라 직접 읽어서 옮겨야 해요.
 - `docs/menu-ideas.md`: 메뉴 아이디어 원본 기록 (GPT 기본표·특색 5개·해외 조사 5개, Claude 아이디어). **메뉴 구성을 논의할 때 먼저 꺼내서 보여줍니다.**
 - 메뉴 아이디어 보드 아티팩트: https://claude.ai/artifact/XHhi3x4pqGu8mRmwUb2B3G (원본 `docs/menu-ideas.html`). 아이디어가 추가되면 md와 이 보드를 같이 고쳐서 다시 올립니다.
 

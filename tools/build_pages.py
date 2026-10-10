@@ -3,6 +3,8 @@ import json, math, os, re, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import blog_content as blog  # facts from the academy's Naver blog
 IMG = {int(k): v for k, v in json.load(open(os.path.join(HERE, "images.json"))).items()}
 
 def img(i):
@@ -134,49 +136,50 @@ def scene(sid, photo, label, big, lines, cta_text, cta_href, external=False):
             f'    </div>\n'
             f'  </section>\n')
 
+# Each scene ends on a link to the matching part of the about page (blog content), not always 상담.
 SCENES = {
     "results": scene("results", 5, "합격 이야기", "최단 3주,<br>대형 기획사<br>합격까지.",
-        ["tripleS 김유언 — 데뷔 ♪", "SM · JYP · CUBE 최종 합격", "SM · YG 1차 동시 합격",
-         "서울예대 최종 합격 3명", "오디션 합격 기획사만 60여 곳"],
-        "나도 준비해볼까? → 오디션 상담", "consult.html"),
+        ["tripleS 김유연 · MEOVV 나린 데뷔 ♪", "SM · JYP · CUBE · FNC 최종 합격", "2025 웨이크원 · 스타쉽 · 피네이션 합격",
+         "서울예대 · 한양대 · 경희대 합격", "합격 기획사 · 방송 70곳 이상"],
+        "합격 소식 전체 보기 →", "about.html#results"),
     "stage": scene("stage", 1, "원장 이야기", "무대에 서본<br>사람이<br>가르쳐요.",
         ["가수 클로이(Klloy) — 앨범 2장", "백아연 · 현아 · 펀치 가이드 녹음", "호텔 델루나 · 김사부 OST 디렉션",
          "MBC 〈셔플 오디션〉 전담 트레이너", "대형 기획사 보컬 트레이너 9년차"],
-        "원장님께 직접 배우기 → 상담", "consult.html"),
+        "원장님 · 강사진 프로필 보기 →", "about.html#teacher"),
     "lesson": scene("lesson", 2, "레슨 이야기", "진단부터<br>플래닝까지,<br>4 STEP.",
         ["1 · 노래 진단 — 지금 내 소리 듣기", "2 · 실전 수업 — 기본기를 노래에", "3 · 디테일 레슨 — 톤 · 감정 · 끝음",
-         "4 · 플래닝 — 선곡부터 무대까지", "담당 선생님이 끝까지, 1:1 담임제"],
-        "첫 진단 받아보기 → 상담", "consult.html"),
+         "4 · 플래닝 — 선곡부터 무대까지", "레슨마다 레슨일지 공유, 1:1 담임제"],
+        "커리큘럼 자세히 보기 →", "about.html#steps"),
     "room": scene("room", 3, "연습실 이야기", "새벽 2시에도<br>열려 있는<br>연습실.",
-        ["365일 24시간 · 사전 예약제", "연습실 5개 + 춤연습실 1개", "피아노 · 컴퓨터 · 에어컨 완비",
-         "50cm 방음벽, 스튜디오급 방음", "수강생은 무료"],
+        ["365일 24시간 · 사전 예약제", "스튜디오형 연습실 + C hall 댄스 연습실", "50인치 모니터 · 피아노 · 삼각대 완비",
+         "50cm 방음벽, 1인 단독 사용", "수강생은 무료 · 하루 최대 3시간"],
         "빈 시간 보기 → 연습실 예약", "booking.html"),
     "audition": scene("audition", 4, "오디션 이야기", "오디션은<br>많이보다<br>제대로.",
-        ["매월 학원 내방 오디션", "신인개발팀 담당자 대면 심사", "본사 비공개 오디션 연결",
-         "영상 캐스팅 오디션", "분기마다 실전 같은 월말평가"],
-        "다음 오디션 준비하기 → 상담", "consult.html"),
+        ["매월 학원 내방 오디션 · 오디션 세미나", "신인개발팀 담당자 대면 심사", "본사 비공개 · 영상 캐스팅 오디션",
+         "선곡 레퍼토리 · 무반주 구간 편집", "분기마다 실전 같은 월말평가"],
+        "오디션 케어 자세히 보기 →", "about.html#care"),
     "voice": scene("voice", 7, "목소리 이야기", "고민은<br>달라도<br>시작은 같아요.",
         ["고음에서 목이 조여요", "음정이 자꾸 흔들려요", "비음 · 콧소리가 신경 쓰여요",
          "내 음색이 뭔지 모르겠어요", "→ 먼저 지금 소리를 진단해요"],
         "내 고민 말해보기 → 상담", "consult.html"),
     "hobby": scene("hobby", 6, "취미반 이야기", "노래방에서<br>바로 써먹는<br>발성.",
         ["고음 · 호흡 · 음정 기초부터", "좋아하는 노래로 배워요", "부담 없는 1:1 수업",
-         "퇴근 후 연습실도 24시간", "한 곡 끝까지 부르는 날까지"],
-        "취미로 시작하기 → 상담", "consult.html"),
+         "퇴근 후 연습실도 24시간", "원포인트 레슨 꿀팁도 블로그에"],
+        "원포인트 레슨 보기 →", "about.html#tips"),
     "exam": scene("exam", 9, "입시 이야기", "학교마다<br>전략이<br>달라요.",
-        ["서울예대 최종 합격 3명", "한양대 수시 · 경희대 정시 합격", "서울예고 · 한림예고 합격",
+        ["서울예대 1차 합격 3명", "한양대 수시 · 경희대 정시 합격", "서울예고 · 한림예고 · 리라아트고 합격",
          "학교별 선곡 · 자기소개 스피치", "분기별 모의 실기 평가"],
         "입시 상담 받기 → 상담", "consult.html"),
     "debut": scene("debut", 8, "데뷔 이야기", "연습생에서<br>무대까지.",
-        ["tripleS 김유언 데뷔", "투엘슨 Ent. 합격 · 앨범 데뷔", "액팅 · 시선 · 표정 모니터링",
-         "퍼스널 컬러 · 스타일링 체크", "전속 계약서 검토까지"],
-        "데뷔 준비 이야기하기 → 상담", "consult.html"),
+        ["tripleS 김유연 데뷔", "MEOVV(미야오) 나린 데뷔", "투엘슨 Ent. 합격 · 앨범 데뷔",
+         "액팅 · 스타일링 · 다이어트 케어", "전속 계약서 검토까지"],
+        "데뷔까지의 케어 보기 →", "about.html#care"),
     "youtube": scene("youtube", 11, "유튜브 이야기", "9만 명이 보는<br>보컬 레슨.",
         ["코노에서 노래 잘 부르는 법 · 212만", "고음 진짜 바로 올리는 법 · 158만", "하루 만에 노래 잘 부르는 법 · 28만",
-         "호흡압력법 · 음치탈출 · 비음 없애기", "영상 356개, 계속 올라가는 중"],
+         "호흡압력법 · 음치탈출 · 비음 없애기", "오디션 채널 @leesh_audition 도"],
         "유튜브 채널 보러 가기 →", YT, external=True),
     "map": scene("map", 16, "오시는 길", "선릉역<br>7번 출구,<br>걸어서 2분.",
-        ["강남구 테헤란로55길 21, 태원빌딩 2층", "7번 출구 직진 → 파리바게뜨에서 왼쪽", "청춘화로 · 서초동연가 사이로 오른쪽",
+        ["테헤란로55길 21 미승(태원)빌딩 2층", "7번 출구 직진 → 파리바게뜨에서 왼쪽", "배스킨라빈스 · 청춘화로 사이 골목으로",
          "왼쪽, 1층 볼빨간딱새우 건물 2층", "전화 010-4458-5448"],
         "네이버 지도로 보기 →", MAP, external=True),
 }
@@ -336,7 +339,7 @@ about = (head("About | 이송희보컬레슨",
          + '<main class="stage about">\n'
          + nav("about", "cardboard") + "\n"
          +   '  <h1 class="about__title">our vocal<br>classes</h1>\n'
-         + about_groups + "\n</main>\n" + foot())
+         + about_groups + "\n</main>\n" + blog.about_sections() + foot())
 
 # ---------- CONTACT (reference 800x612) ----------
 def cph(left, top, w, h, i, kind, rot, z):
@@ -382,7 +385,7 @@ contact = (head("Contact | 이송희보컬레슨",
            + f'    <a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">contact</a>\n'
            + "  </div>\n"
            + '  <div class="collage" aria-hidden="true">\n' + collage + "\n  </div>\n"
-           + "</main>\n" + foot())
+           + "</main>\n" + blog.find_us_section() + foot())
 
 CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
     <h1>Book a free consultation</h1>
