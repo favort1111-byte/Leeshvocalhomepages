@@ -423,3 +423,83 @@ img{display:block;}
   .book__tablink{margin-left:0;flex-basis:100%;}
 }
 @media (prefers-reduced-motion:reduce){.book{animation:none;}}
+
+/* ---------- home motion 1: the screen switching on (first visit, js/intro.js) ----------
+   0–0.6s a line of light opens into the screen · 0.6–2.3s the name and a voice meter ·
+   2.3–2.9s the screen lets go · then the desktop icons pop in one by one. */
+.boot{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  background:#0B0908;cursor:pointer;
+  animation:boot-out .6s cubic-bezier(.6,0,.4,1) 2.3s forwards;
+}
+.boot__screen{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  background:radial-gradient(ellipse at center,#2C221E 0%,#17110F 62%,#0B0908 100%);
+  animation:crt-on .6s cubic-bezier(.2,.7,.2,1) both;
+}
+.boot__screen::after{ /* scan lines */
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px);
+}
+.boot__en{margin:0;font-family:var(--f-sans);font-size:12px;letter-spacing:.42em;color:#D9B26A;opacity:0;animation:boot-rise .7s ease .55s forwards;}
+.boot__ko{margin:0;font-family:"Gowun Batang",var(--f-display);font-size:clamp(34px,6vw,64px);color:var(--cream);letter-spacing:.06em;opacity:0;animation:boot-name .9s cubic-bezier(.2,.7,.2,1) .7s forwards;}
+.boot__sub{margin:0;font-family:var(--f-sans);font-size:13px;letter-spacing:.2em;color:rgba(246,235,221,.6);opacity:0;animation:boot-rise .7s ease 1.2s forwards;}
+.boot__meter{display:flex;align-items:center;gap:4px;height:64px;}
+.boot__meter i{
+  display:block;width:4px;height:100%;border-radius:2px;background:#D9B26A;
+  transform:scaleY(.04);opacity:.9;
+  animation:meter .3s ease-in-out calc(.8s + var(--k) * 12ms) 6 alternate both;
+}
+.boot__skip{position:absolute;bottom:28px;margin:0;font-size:12px;letter-spacing:.1em;color:rgba(246,235,221,.4);opacity:0;animation:boot-rise .5s ease 1s forwards;}
+@keyframes crt-on{
+  0%{transform:scale(0,.004);filter:brightness(4);}
+  40%{transform:scale(1,.004);filter:brightness(3);}
+  100%{transform:scale(1,1);filter:brightness(1);}
+}
+@keyframes boot-rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes boot-name{from{opacity:0;letter-spacing:.5em;filter:blur(6px);}to{opacity:1;letter-spacing:.06em;filter:blur(0);}}
+@keyframes meter{from{transform:scaleY(.06);}to{transform:scaleY(var(--h));}}
+@keyframes boot-out{
+  0%{opacity:1;transform:none;}
+  100%{opacity:0;transform:scale(1.06);visibility:hidden;}
+}
+/* the desktop arrives after the screen lets go */
+.boot ~ .nav{animation:boot-rise .6s ease 2.5s both;}
+.boot ~ .wavebed{animation:fade-in 1.2s ease 2.6s both;}
+.boot ~ .icons .icon{
+  animation:icon-pop .55s cubic-bezier(.34,1.56,.64,1) calc(2.55s + var(--i) * 75ms) both,
+            icon-float calc(5s + var(--i) * .37s) ease-in-out calc(var(--i) * -.9s) infinite alternate;
+}
+@keyframes icon-pop{from{opacity:0;scale:.4;}to{opacity:1;scale:1;}}
+@keyframes fade-in{from{opacity:0;}to{opacity:1;}}
+
+/* ---------- home motion 2: a desktop that breathes ----------
+   A voice line drifts along the bottom, the icons float a little. */
+.wavebed{
+  position:absolute;left:0;right:0;bottom:0;z-index:2;
+  height:calc(56 * var(--s));pointer-events:none;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+          mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+}
+.wavebed__line{position:absolute;inset:0;animation:wave-breath var(--breath) ease-in-out infinite alternate;}
+.wavebed svg{display:block;width:200%;height:100%;animation:wave-flow var(--dur) linear infinite;}
+.wavebed path{fill:none;stroke:rgba(255,246,236,var(--o));stroke-width:1.6;vector-effect:non-scaling-stroke;}
+@keyframes wave-flow{to{transform:translateX(-50%);}}
+@keyframes wave-breath{from{transform:scaleY(.45);}to{transform:scaleY(1.1);}}
+.wall--live .icon{animation:icon-float calc(5s + var(--i) * .37s) ease-in-out calc(var(--i) * -.9s) infinite alternate;}
+@keyframes icon-float{from{translate:0 0;}to{translate:0 calc(-4 * var(--s));}}
+/* nothing moves behind an open photo scene */
+body:has(.scene:not([hidden])) .wavebed *,
+body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
+
+@media (max-width:760px){
+  .wavebed{height:calc(90 * var(--s));}
+  .boot__meter{height:44px;gap:3px;}
+  .boot__meter i{width:3px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .boot{display:none;}
+  .wavebed *, .wall--live .icon, .boot ~ .icons .icon{animation:none !important;}
+}

@@ -1,5 +1,5 @@
 """Generate the site pages. Image paths come from images.json; all page text lives here."""
-import json, os, sys
+import json, math, os, re, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -232,11 +232,58 @@ home_icons = "\n".join([
     icon(674.5, 339.5, 58, 48.5, "내 폴더", "booking.html", FOLDER, scene="me"),
 ])
 
+# Each icon gets --i, which staggers its pop-in after the intro and its float on the desktop.
+_n = iter(range(100))
+home_icons = re.sub(r'(<a class="icon" [^>]*?style=")', lambda m: m.group(1) + f"--i:{next(_n)};", home_icons)
+
+
+# ---------- motion: the screen switching on (first visit), then a desktop that breathes ----------
+def boot_intro():
+    """Old monitor switching on: a line of light opens into the screen, the name, a voice level meter.
+    Pure CSS timing (css/style.css .boot); js/intro.js only skips it (seen before, link, tap)."""
+    n = 31
+    bars = "".join(
+        f'<i style="--k:{k};--h:{0.18 + 0.82 * abs(math.sin(k * 0.73) * math.sin(k * 0.21 + 0.4)) * math.sin(math.pi * (k + 0.5) / n) ** 0.6:.2f}"></i>'
+        for k in range(n))
+    return ('  <div class="boot" id="boot" aria-hidden="true">\n'
+            '    <div class="boot__screen">\n'
+            '      <p class="boot__en">LEESH VOCAL LESSON</p>\n'
+            '      <p class="boot__ko">이송희보컬레슨</p>\n'
+            f'      <div class="boot__meter">{bars}</div>\n'
+            '      <p class="boot__sub">강남 선릉역 · 1:1 보컬</p>\n'
+            '    </div>\n'
+            '    <p class="boot__skip">탭하면 넘어가요</p>\n'
+            '  </div>\n'
+            '  <script src="js/intro.js"></script>\n')
+
+
+def wave_path(period, amp, phase, env_phase):
+    """A voice-like line across 1600 units. Every component repeats within 800 units,
+    so sliding it left by half (CSS) loops without a seam."""
+    pts = []
+    for x in range(0, 1601, 8):
+        env = 0.55 + 0.45 * math.sin(2 * math.pi * x / 800 + env_phase)
+        y = 60 + amp * env * (math.sin(2 * math.pi * x / period + phase) + 0.35 * math.sin(2 * math.pi * x / 400 + phase * 2))
+        pts.append(f"{x},{y:.1f}")
+    return "M" + " L".join(pts)
+
+
+def wavebed():
+    layers = [(160, 26, 0.0, 0.0, 22, 7, 0.7), (100, 18, 1.3, 2.1, 15, 5, 0.45), (200, 34, 2.4, 4.0, 31, 9, 0.3)]
+    out = []
+    for period, amp, ph, eph, dur, breath, op in layers:
+        out.append(f'    <div class="wavebed__line" style="--dur:{dur}s;--breath:{breath}s;--o:{op}">'
+                   f'<svg viewBox="0 0 1600 120" preserveAspectRatio="none"><path d="{wave_path(period, amp, ph, eph)}"/></svg></div>\n')
+    return '  <div class="wavebed" aria-hidden="true">\n' + "".join(out) + "  </div>\n"
+
+
 home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
              "강남 선릉역 1:1 보컬학원 이송희보컬레슨. 대형 기획사 보컬 트레이너 원장의 오디션·입시·전문·취미반.")
-        + f'<main class="stage wall" style="background-image:url(\'{img(0)}\')">\n'
+        + f'<main class="stage wall wall--live" style="background-image:url(\'{img(0)}\')">\n'
+        + boot_intro()
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
+        + wavebed()
         + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + scenes(*SCENES) + MY_FOLDER + "</main>\n" + foot("scene", "mynotes"))
 
 # ---------- ABOUT (reference 800x797) ----------
