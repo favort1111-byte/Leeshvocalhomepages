@@ -97,9 +97,13 @@ CLIP = ('<svg class="clip" viewBox="0 0 26 60" aria-hidden="true">'
         '</svg>')
 
 def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", scene=None):
-    target = ' target="_blank" rel="noopener"' if external else ""
-    if scene:  # zooms into the photo in place (js/scene.js); the #anchor keeps it reachable without JS
-        href, target = f"#scene-{scene}", f' data-scene="scene-{scene}" aria-haspopup="dialog"'
+    target = ""
+    if scene == "me":  # the student folder opens in place (js/scene.js); the #anchor keeps it reachable without JS
+        href, target = "#scene-me", ' data-scene="scene-me" aria-haspopup="dialog"'
+    elif scene:
+        href, external = ICON_LINKS[scene]
+    if external:
+        target = ' target="_blank" rel="noopener"'
     return (f'    <a class="icon" href="{href}"{target} style="left:calc({left} * var(--s));top:calc({top} * var(--s));width:calc({w} * var(--s))">\n'
             f'      <span class="{img_class}" style="height:calc({h} * var(--s))">{inner}</span>\n'
             f'      <span class="icon__label">{label}</span>\n'
@@ -114,74 +118,21 @@ MAP = "https://map.naver.com/p/search/%EC%9D%B4%EC%86%A1%ED%9D%AC%EB%B3%B4%EC%BB
 KAKAO = "https://pf.kakao.com/_xgNYbK"
 
 
-# ---------- photo scenes: an icon's photo grows to fill the screen, notes are handwritten on it ----------
-def scene(sid, photo, label, big, lines, cta_text, cta_href, external=False):
-    """big: headline (left on PC, top on phones); lines: short notes written one after another."""
-    tilts = [2, -1.5, 1, -2, 1.5, -1]
-    notes = "".join(
-        f'        <p class="note" style="--d:{1.4 + i * 0.4:.1f}s;--r:{tilts[i % len(tilts)]}deg">{t}</p>\n'
-        for i, t in enumerate(lines))
-    cta_d = 1.4 + len(lines) * 0.4 + 0.2
-    target = ' target="_blank" rel="noopener"' if external else ""
-    return (f'  <section class="scene" id="scene-{sid}" role="dialog" aria-label="{label}" hidden>\n'
-            f'    <div class="scene__photo" style="background-image:url(\'{img(photo)}\')"></div>\n'
-            f'    <button class="scene__back" type="button" data-leave>← 바탕화면</button>\n'
-            f'    <div class="scene__notes">\n'
-            f'      <div class="scene__col scene__col--a">\n'
-            f'        <p class="note note--big" style="--d:.55s;--r:-3deg">{big}</p>\n'
-            f'      </div>\n'
-            f'      <div class="scene__col scene__col--b">\n{notes}'
-            f'        <a class="note note--cta" href="{cta_href}"{target} style="--d:{cta_d:.1f}s;--r:-2deg">{cta_text}</a>\n'
-            f'      </div>\n'
-            f'    </div>\n'
-            f'  </section>\n')
-
-# Each scene ends on a link to the matching part of the about page (blog content), not always 상담.
-SCENES = {
-    "results": scene("results", 5, "합격 이야기", "최단 3주,<br>대형 기획사<br>합격까지.",
-        ["tripleS 김유연 · MEOVV 나린 데뷔 ♪", "SM · JYP · CUBE · FNC 최종 합격", "2025 웨이크원 · 스타쉽 · 피네이션 합격",
-         "서울예대 · 한양대 · 경희대 합격", "합격 기획사 · 방송 70곳 이상"],
-        "합격 소식 전체 보기 →", "about.html#results"),
-    "stage": scene("stage", 1, "원장 이야기", "무대에 서본<br>사람이<br>가르쳐요.",
-        ["가수 클로이(Klloy) — 앨범 2장", "백아연 · 현아 · 펀치 가이드 녹음", "호텔 델루나 · 김사부 OST 디렉션",
-         "MBC 〈셔플 오디션〉 전담 트레이너", "대형 기획사 보컬 트레이너 11년차"],
-        "원장님 · 강사진 프로필 보기 →", "about.html#teacher"),
-    "lesson": scene("lesson", 2, "레슨 이야기", "진단부터<br>플래닝까지,<br>4 STEP.",
-        ["1 · 노래 진단 — 지금 내 소리 듣기", "2 · 실전 수업 — 기본기를 노래에", "3 · 디테일 레슨 — 톤 · 감정 · 끝음",
-         "4 · 플래닝 — 선곡부터 무대까지", "레슨마다 레슨일지 공유, 1:1 담임제"],
-        "커리큘럼 자세히 보기 →", "about.html#steps"),
-    "room": scene("room", 3, "연습실 이야기", "새벽 2시에도<br>열려 있는<br>연습실.",
-        ["365일 24시간 · 사전 예약제", "스튜디오형 연습실 + C hall 댄스 연습실", "50인치 모니터 · 피아노 · 삼각대 완비",
-         "50cm 방음벽, 1인 단독 사용", "수강생은 무료 · 하루 최대 3시간"],
-        "빈 시간 보기 → 연습실 예약", "booking.html"),
-    "audition": scene("audition", 4, "오디션 이야기", "오디션은<br>많이보다<br>제대로.",
-        ["매월 학원 내방 오디션 · 오디션 세미나", "신인개발팀 담당자 대면 심사", "본사 비공개 · 영상 캐스팅 오디션",
-         "선곡 레퍼토리 · 무반주 구간 편집", "분기마다 실전 같은 월말평가"],
-        "오디션 케어 자세히 보기 →", "about.html#care"),
-    "voice": scene("voice", 7, "목소리 이야기", "고민은<br>달라도<br>시작은 같아요.",
-        ["고음에서 목이 조여요", "음정이 자꾸 흔들려요", "비음 · 콧소리가 신경 쓰여요",
-         "내 음색이 뭔지 모르겠어요", "→ 먼저 지금 소리를 진단해요"],
-        "내 고민 말해보기 → 상담", "consult.html"),
-    "hobby": scene("hobby", 6, "취미반 이야기", "노래방에서<br>바로 써먹는<br>발성.",
-        ["고음 · 호흡 · 음정 기초부터", "좋아하는 노래로 배워요", "부담 없는 1:1 수업",
-         "퇴근 후 연습실도 24시간", "원포인트 레슨 꿀팁도 블로그에"],
-        "원포인트 레슨 보기 →", "about.html#tips"),
-    "exam": scene("exam", 9, "입시 이야기", "학교마다<br>전략이<br>달라요.",
-        ["서울예대 1차 합격 3명", "한양대 수시 · 경희대 정시 합격", "서울예고 · 한림예고 · 리라아트고 합격",
-         "학교별 선곡 · 자기소개 스피치", "분기별 모의 실기 평가"],
-        "입시 상담 받기 → 상담", "consult.html"),
-    "debut": scene("debut", 8, "데뷔 이야기", "연습생에서<br>무대까지.",
-        ["tripleS 김유연 데뷔", "MEOVV(미야오) 나린 데뷔", "투엘슨 Ent. 합격 · 앨범 데뷔",
-         "액팅 · 스타일링 · 다이어트 케어", "전속 계약서 검토까지"],
-        "데뷔까지의 케어 보기 →", "about.html#care"),
-    "youtube": scene("youtube", 11, "유튜브 이야기", "9만 명이 보는<br>보컬 레슨.",
-        ["코노에서 노래 잘 부르는 법 · 212만", "고음 진짜 바로 올리는 법 · 158만", "하루 만에 노래 잘 부르는 법 · 28만",
-         "호흡압력법 · 음치탈출 · 비음 없애기", "오디션 채널 @leesh_audition 도"],
-        "유튜브 채널 보러 가기 →", YT, external=True),
-    "map": scene("map", 16, "오시는 길", "선릉역<br>7번 출구,<br>걸어서 2분.",
-        ["테헤란로55길 21 미승(태원)빌딩 2층", "7번 출구 직진 → 파리바게뜨에서 왼쪽", "배스킨라빈스 · 청춘화로 사이 골목으로",
-         "왼쪽, 1층 볼빨간딱새우 건물 2층", "전화 010-4458-5448"],
-        "네이버 지도로 보기 →", MAP, external=True),
+# ---------- where each desktop icon goes ----------
+# Icons open their detail straight away (원장님 2026-10-18: no photo scene in between).
+# These are the pages the old scenes' "자세히" buttons pointed to.
+ICON_LINKS = {
+    "results": ("about.html#results", False),
+    "stage": ("about.html#teacher", False),
+    "lesson": ("about.html#steps", False),
+    "room": ("booking.html", False),
+    "audition": ("about.html#care", False),
+    "voice": ("consult.html", False),
+    "hobby": ("about.html#tips", False),
+    "exam": ("consult.html", False),
+    "debut": ("about.html#care", False),
+    "youtube": (YT, True),
+    "map": (MAP, True),
 }
 
 
@@ -215,9 +166,6 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
     </div>
   </section>
 """
-
-def scenes(*ids):
-    return "".join(SCENES[i] for i in ids)
 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
@@ -287,7 +235,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
         + wavebed()
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + scenes(*SCENES) + MY_FOLDER + "</main>\n" + foot("scene", "mynotes"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "mynotes"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -478,7 +426,7 @@ consult = (head("Consult | 이송희보컬레슨",
            + nav("consult", "light") + "\n"
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
            + CONSULT_FORM
-           + scenes("youtube", "stage", "lesson", "debut") + MY_FOLDER
+           + MY_FOLDER
            + "</main>\n" + foot("consult", "scene", "mynotes"))
 
 # ---------- BOOKING (practice rooms, paper theme) ----------

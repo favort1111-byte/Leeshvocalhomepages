@@ -1,7 +1,7 @@
-// Photo scenes (home). An icon with data-scene="scene-x" grows its photo from
-// the icon's spot to the whole screen, then the notes write themselves on it.
-// Leaving shrinks the photo back into the icon. Tap while writing to finish.
-// A link straight into a scene (for 카카오톡): index.html#notes, #evals, #me, or #scene-<name>.
+// The student folder (home, consult): the icon with data-scene="scene-me" grows its picture from
+// the icon's spot to the whole screen and the folder opens on it; leaving shrinks it back.
+// The other desktop icons are plain links now. A link straight into the folder (for 카카오톡):
+// index.html#notes, #evals or #me.
 (function () {
   var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   var current = null;
