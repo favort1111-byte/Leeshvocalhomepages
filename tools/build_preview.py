@@ -5,7 +5,7 @@ Used for private previews before launch; the real pages are never touched."""
 import os, shutil, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGES = ["index.html", "about.html", "contact.html", "consult.html", "booking.html", "admin.html"]
+PAGES = ["index.html", "about.html", "contact.html", "consult.html", "booking.html", "games.html", "admin.html"]
 API = '<script src="js/api.js"></script>\n'
 
 out = sys.argv[1]

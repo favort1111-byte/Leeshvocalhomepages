@@ -84,6 +84,15 @@ FINDER = ('<svg viewBox="0 0 48 48" aria-hidden="true">'
           '<path d="M13.5 16.5a7.5 7.5 0 0 1 6-5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>'
           '</svg>')
 
+# 게임.exe on the desktop: a pixel game pad
+GAME_ICON = ('<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">'
+             '<path d="M3 4h10v1h1v1h1v5h-1v1h-3v-1h-1v-1H6v1H5v1H2v-1H1V6h1V5h1z" fill="#1E1A18"/>'
+             '<path d="M3 5h10v1h1v5h-2v-1h-1V9H5v1H4v1H2V6h1z" fill="#F2C14E"/>'
+             '<path d="M4 6h1v1h1v1H5v1H4V8H3V7h1z" fill="#6E3B28"/>'
+             '<rect x="11" y="6" width="1" height="1" fill="#C0392B"/><rect x="12" y="7" width="1" height="1" fill="#2E6B45"/>'
+             '<rect x="10" y="7" width="1" height="1" fill="#1D6FB8"/><rect x="11" y="8" width="1" height="1" fill="#E07A3F"/>'
+             '</svg>')
+
 FOLDER = ('<svg viewBox="0 0 58 48" aria-hidden="true">'
           '<defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">'
           '<stop offset="0" stop-color="#6ACCF8"/><stop offset="1" stop-color="#2EA3EE"/></linearGradient></defs>'
@@ -181,6 +190,7 @@ home_icons = "\n".join([
     thumb(637.5, 119.5, 73.5, 43, 9, "입시.jpg", scene="exam"),
     thumb(699, 150, 43.5, 49, 8, "데뷔.jpg", scene="debut"),
     icon(674.5, 339.5, 58, 48.5, "내 폴더", "booking.html", FOLDER, scene="me"),
+    icon(590, 352, 44, 44, "게임.exe", "games.html", GAME_ICON),
 ])
 
 # Each icon gets --i, which staggers its pop-in after the intro and its float on the desktop.
@@ -437,7 +447,103 @@ booking = (head("Booking | 이송희보컬레슨",
            + BOOKING_APP
            + "</main>\n" + foot("booking"))
 
-out = {"index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking}
+# ---------- GAMES: 보컬 오락실 (js/games.js) ----------
+GAME_LIST = [
+    ("fly", "🎤", "목소리로 날아라", "높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.", "음정 조절"),
+    ("pitch", "🎹", "음정 퀴즈", "두 소리 중 더 높은 쪽은? 맞힐수록 어려워져요.", "귀 훈련"),
+    ("rhythm", "🥁", "리듬 탭", "박자에 맞춰 톡톡. 빠른지 늦은지 알려줘요.", "박자감"),
+    ("breath", "💨", "숨 참기 챌린지", "한 음으로 '아~' 얼마나 길게 할 수 있을까?", "호흡"),
+]
+
+def game_window(gid, title, body):
+    return (f'    <section class="game" data-panel="{gid}" hidden aria-label="{title}">\n'
+            f'      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span>'
+            f'<h2>{title}.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>\n'
+            f'      <div class="game__body">\n{body}'
+            f'        <div class="game__result" role="status" hidden></div>\n'
+            f'      </div>\n    </section>\n')
+
+GAMES_BODY = {
+    "fly": """        <div class="game__screen">
+          <canvas aria-label="게임 화면"></canvas>
+          <div class="game__overlay">
+            <p class="game__msg"></p>
+            <div class="game__row">
+              <button type="button" class="game__btn" data-start="voice">🎤 목소리로 하기</button>
+              <button type="button" class="game__btn game__btn--ghost" data-start="tap">👆 터치로 하기</button>
+            </div>
+          </div>
+        </div>
+        <p class="game__note">목소리는 이 기기 안에서만 쓰이고, 녹음되거나 어디로 보내지지 않아요. 이어폰을 끼면 더 잘 돼요.</p>
+""",
+    "pitch": """        <div class="pitch">
+          <p class="pitch__lives" aria-label="남은 기회">♥♥♥</p>
+          <p class="pitch__level"></p>
+          <p class="pitch__status" role="status"></p>
+          <div class="game__row pitch__choices">
+            <button type="button" class="game__btn pitch__choice" data-answer="1" disabled>첫 번째 소리</button>
+            <button type="button" class="game__btn pitch__choice" data-answer="2" disabled>두 번째 소리</button>
+          </div>
+          <div class="game__row">
+            <button type="button" class="game__btn" data-start>시작</button>
+            <button type="button" class="game__btn game__btn--ghost" data-replay>🔁 다시 듣기</button>
+          </div>
+        </div>
+""",
+    "rhythm": """        <div class="rhythm">
+          <fieldset class="game__row rhythm__opts">
+            <legend class="sr-only">빠르기</legend>
+            <label><input type="radio" name="bpm" value="80"> 느리게</label>
+            <label><input type="radio" name="bpm" value="100" checked> 보통</label>
+            <label><input type="radio" name="bpm" value="120"> 빠르게</label>
+            <label class="rhythm__quiet"><input type="checkbox" name="quiet"> 후반 8박은 소리 끄기 (도전)</label>
+          </fieldset>
+          <p class="rhythm__grade" aria-live="polite">준비</p>
+          <button type="button" class="rhythm__pad" aria-label="박자에 맞춰 누르기">TAP</button>
+          <p class="rhythm__dots" aria-hidden="true"></p>
+          <div class="game__row">
+            <button type="button" class="game__btn" data-start>시작 (4박 세고 시작해요)</button>
+          </div>
+          <p class="game__note">PC는 스페이스바로도 돼요. 소리가 나는 순간에 맞춰 누르세요.</p>
+        </div>
+""",
+    "breath": """        <div class="breath">
+          <p class="breath__secs">0.0</p>
+          <p class="breath__unit">초</p>
+          <p class="breath__medal">10초면 동메달</p>
+          <div class="breath__graph"><canvas aria-label="음높이 그래프"></canvas></div>
+          <p class="breath__status" role="status">숨을 크게 들이쉬고, 편한 음으로 '아~' 길게 내 보세요. 선이 평평할수록 안정적이에요.</p>
+          <div class="game__row">
+            <button type="button" class="game__btn" data-start>🎤 시작</button>
+          </div>
+          <p class="game__note">🥉 10초 · 🥈 15초 · 🥇 20초 · 👑 25초 · 목소리는 이 기기 안에서만 쓰여요.</p>
+        </div>
+""",
+}
+
+games_menu = "\n".join(
+    f'      <li><button type="button" class="arcade__cart" data-game="{gid}" aria-pressed="false">'
+    f'<span class="arcade__emoji" aria-hidden="true">{emo}</span><b>{name}</b><span>{desc}</span>'
+    f'<small class="arcade__tag">{tag}</small><small class="arcade__best" data-best="{gid}"></small></button></li>'
+    for gid, emo, name, desc, tag in GAME_LIST)
+
+games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬레슨 미니게임: 목소리로 날아라, 음정 퀴즈, 리듬 탭, 숨 참기 챌린지.")
+              .replace("</head>", '<link rel="stylesheet" href="css/games.css">\n</head>')
+              + '<main class="stage arcade-page">\n'
+              + nav("games", "light") + "\n"
+              + '  <div class="arcade" id="arcade">\n'
+              + '    <header class="arcade__head">\n'
+              + '      <p class="arcade__kicker">mini games</p>\n'
+              + '      <h1>보컬 오락실</h1>\n'
+              + '      <p>놀면서 귀랑 목소리를 깨워요. 기록은 이 기기에만 저장돼요.</p>\n'
+              + '    </header>\n'
+              + f'    <ul class="arcade__menu">\n{games_menu}\n    </ul>\n'
+              + "".join(game_window(gid, name, GAMES_BODY[gid]) for gid, _, name, _, _ in GAME_LIST)
+              + '    <p class="arcade__more">진짜 노래 실력은 레슨에서 키워요 → <a href="about.html#steps">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
+              + "  </div>\n"
+              + "</main>\n" + foot("games"))
+
+out = {"index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:

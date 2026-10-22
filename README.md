@@ -26,6 +26,7 @@ js/booking.js     연습실 예약
 js/intro.js       첫 화면 인트로 (처음 한 번만, 탭하면 넘김 — 움직임은 css/style.css)
 js/scene.js       바탕화면 아이콘 → 사진 속으로 들어가는 장면
 js/mynotes.js     내 폴더 (수강생 레슨 노트 · 월말평가)
+js/games.js       보컬 오락실 미니게임 4개 (games.html · 마이크는 기기 안에서만 사용)
 js/admin.js       관리자 화면
 
 supabase/         데이터베이스 설계(schema.sql) + 연결 안내 (supabase/README.md) + 테스트
