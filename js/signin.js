@@ -63,6 +63,9 @@
         k.addEventListener("click", function () { k.disabled = true; LeeshAPI.kakao.start(); });
         box.appendChild(k);
         box.appendChild(el("p", "sys-note signin__hint", "처음이면 카카오로 로그인한 뒤 이름을 알려주세요. 원장님이 확인하면 바로 쓸 수 있어요."));
+        var pl = el("a", "signin__policy", "개인정보처리방침");
+        pl.href = "privacy.html";
+        box.appendChild(pl);
       }
       var alt = el("details", "signin__alt");
       if (!kakaoOk) alt.open = true;

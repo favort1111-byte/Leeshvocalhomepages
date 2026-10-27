@@ -137,3 +137,4 @@
 .signin__row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:14px;}
 .signin__other{display:block;margin-top:14px;}
 .book__login .signin__kakao{max-width:none;}
+.signin__policy{display:inline-block;margin:-2px 0 10px;font-size:12.5px;color:var(--sys-muted, #7a6a60);}

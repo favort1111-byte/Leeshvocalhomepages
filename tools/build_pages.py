@@ -5,6 +5,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import blog_content as blog  # facts from the academy's Naver blog
+import privacy
 IMG = {int(k): v for k, v in json.load(open(os.path.join(HERE, "images.json"))).items()}
 
 def img(i):
@@ -41,9 +42,13 @@ def head(title, desc):
 <body>
 """
 
+# 개인정보처리방침 link on every page (the law asks for it to be easy to find, in bold)
+LEGAL = ('<footer class="legal"><a href="privacy.html"><b>개인정보처리방침</b></a>'
+         f'<span>© 이송희보컬레슨 · {blog.DIRECTIONS["address"]}</span></footer>\n')
+
 def foot(*extra):
     scripts = ["config", "api"] + list(extra)
-    return "".join(f'<script src="js/{n}.js"></script>\n' for n in scripts) + "</body>\n</html>\n"
+    return LEGAL + "".join(f'<script src="js/{n}.js"></script>\n' for n in scripts) + "</body>\n</html>\n"
 
 
 SR = '<h1 class="sr-only">{}</h1>'
@@ -362,7 +367,7 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
     <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
     <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
     <p class="sys-msg" id="consultMsg" role="status"></p>
-    <small>번호는 상담 안내에만 사용돼요.</small>
+    <small>번호는 상담 안내에만 사용돼요. <a href="privacy.html">개인정보처리방침</a></small>
   </form>
 """
 
@@ -525,7 +530,14 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + "  </div>\n"
               + "</main>\n" + foot("games"))
 
-out = {"index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+# ---------- PRIVACY (paper theme, like booking) ----------
+privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송희보컬레슨 홈페이지 개인정보처리방침.")
+                + '<main class="stage booking">\n'
+                + nav("privacy", "dark") + "\n"
+                + '  <div class="booking__inner">\n' + privacy.body() + "  </div>\n"
+                + "</main>\n" + foot())
+
+out = {"privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:

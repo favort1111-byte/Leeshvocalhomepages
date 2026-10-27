@@ -63,6 +63,9 @@ create table if not exists public.members (
 alter table public.members add column if not exists must_change_pin boolean not null default false;
 -- 카카오로 로그인: 원장님이 승인한 카카오 계정(Supabase Auth 사용자)과 수강 ID를 잇습니다.
 alter table public.members add column if not exists kakao_user uuid unique;
+-- 수강이 끝난 날 (상태가 '종료'가 된 때). 개인정보처리방침: 끝난 날로부터 1년 뒤 지웁니다 (private.cleanup).
+alter table public.members add column if not exists ended_at timestamptz;
+update public.members set ended_at = now() where status = '종료' and ended_at is null;
 
 -- 처음 카카오로 들어온 학생의 "저는 ○○○예요" 요청. 원장님이 관리자 화면에서 승인합니다.
 create table if not exists public.link_requests (
@@ -712,6 +715,59 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
+-- ---------------------------------------------------------------- 보관 기간 (개인정보처리방침, tools/privacy.py)
+
+create or replace function private.track_ended() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if new.status = '종료' and (tg_op = 'INSERT' or old.status is distinct from '종료') then new.ended_at := now();
+  elsif new.status <> '종료' then new.ended_at := null;
+  end if;
+  return new;
+end $$;
+drop trigger if exists members_track_ended on public.members;
+create trigger members_track_ended before insert or update of status on public.members
+  for each row execute function private.track_ended();
+
+-- 매일 새벽 4시(한국)에 보관 기간이 지난 정보를 지웁니다. 기간을 바꾸면 tools/privacy.py도 같이 고치기.
+create or replace function private.cleanup() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  today date := private.now_kst()::date;
+  gone_members text[];
+  n_consults int; n_bookings int; n_users int; n_members int;
+begin
+  delete from public.consults where created_at < now() - interval '1 year';
+  get diagnostics n_consults = row_count;
+  delete from public.bookings where day < today - 365;
+  get diagnostics n_bookings = row_count;
+  delete from private.login_fails where at < now() - interval '1 day';
+  delete from private.member_tokens where expires_at <= now();
+
+  -- 수강이 끝나고 1년: 학생 정보와 그 학생의 예약·평가·노트, 연결된 카카오 계정까지
+  select coalesce(array_agg(id), '{}') into gone_members from public.members
+   where status = '종료' and ended_at < now() - interval '1 year';
+  delete from auth.users where id in (select kakao_user from public.members where id = any (gone_members) and kakao_user is not null)
+    and id not in (select user_id from public.admins);
+  delete from public.bookings where member_id = any (gone_members);
+  delete from public.members where id = any (gone_members);
+  get diagnostics n_members = row_count;
+
+  -- 카카오로 들어왔지만 3개월 넘게 승인되지 않은 계정 (요청을 안 보냈거나, 대기·거절)
+  delete from auth.users u
+   where u.created_at < now() - interval '3 months'
+     and u.id not in (select kakao_user from public.members where kakao_user is not null)
+     and u.id not in (select user_id from public.admins)
+     and u.id not in (select user_id from public.link_requests where status = '승인')
+     and coalesce(u.raw_app_meta_data ->> 'provider', '') = 'kakao';
+  get diagnostics n_users = row_count;
+  delete from public.link_requests r where r.status <> '승인' and r.created_at < now() - interval '3 months';
+  delete from public.link_requests r where r.status = '승인'
+     and not exists (select 1 from public.members m where m.kakao_user = r.user_id);
+
+  return jsonb_build_object('consults', n_consults, 'bookings', n_bookings, 'members', n_members, 'kakao_users', n_users);
+end $$;
+
 -- ---------------------------------------------------------------- 권한
 
 alter table public.settings enable row level security;
@@ -767,3 +823,7 @@ grant execute on function public.rooms_day(text), public.member_login(text, text
 grant execute on function public.admin_save_member(text, text, text, text, date, text, text), public.is_admin(),
   public.kakao_status(), public.kakao_link_request(text, text),
   public.admin_kakao_decide(bigint, text, boolean), public.admin_kakao_unlink(text) to authenticated;
+
+-- 보관 기간 정리를 매일 19:00 UTC (= 한국 새벽 4시)에. 같은 이름이면 덮어씁니다.
+create extension if not exists pg_cron;
+select cron.schedule('leesh_cleanup', '0 19 * * *', 'select private.cleanup()');
