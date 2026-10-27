@@ -755,7 +755,7 @@ drop trigger if exists members_track_ended on public.members;
 create trigger members_track_ended before insert or update of status on public.members
   for each row execute function private.track_ended();
 
--- 매일 새벽 4시(한국)에 보관 기간이 지난 정보를 지웁니다. 기간을 바꾸면 tools/privacy.py도 같이 고치기.
+-- 보관 기간이 지난 정보를 지웁니다 (지금은 예약 실행 안 함, 맨 아래 참고). 기간을 바꾸면 tools/privacy.py도 같이 고치기.
 create or replace function private.cleanup() returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -851,9 +851,9 @@ grant execute on function public.admin_save_member(text, text, text, text, date,
   public.kakao_status(), public.kakao_link_request(text, text),
   public.admin_kakao_decide(bigint, text, boolean), public.admin_kakao_unlink(text) to authenticated;
 
--- 보관 기간 정리를 매일 19:00 UTC (= 한국 새벽 4시)에. 같은 이름이면 덮어씁니다.
-create extension if not exists pg_cron;
-select cron.schedule('leesh_cleanup', '0 19 * * *', 'select private.cleanup()');
+-- 자동 정리는 켜지 않습니다 (원장님 결정, 2026-10-27). 켜려면 원장님 허락을 받은 뒤 아래 두 줄을 따로 실행:
+--   create extension if not exists pg_cron;
+--   select cron.schedule('leesh_cleanup', '0 19 * * *', 'select private.cleanup()');
 
 -- 월말평가 평가지 사진: 비공개 버킷. 원장님은 올리고 지우고, 학생은 카카오로 로그인했을 때 자기 폴더만 봅니다.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
