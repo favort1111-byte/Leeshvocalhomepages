@@ -7,7 +7,7 @@
   cfg.supabaseKey = "demo";
   cfg.local = true;
   var KEY = "leesh_demo_db";
-  var VERSION = 7; // bump when the demo defaults change
+  var VERSION = 8; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -37,7 +37,7 @@
     var db = {
       version: VERSION,
       next: 100,
-      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 120, max_days: 0, cancel_minutes: 180 },
+      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 120, max_days: 0, cancel_minutes: 60 },
       rooms: [["B1", "연습실"], ["B2", "연습실"], ["B3", "연습실"], ["B4", "연습실"], ["B5", "연습실"], ["C hall", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
       members: [

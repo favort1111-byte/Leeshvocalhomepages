@@ -30,7 +30,7 @@ create table if not exists public.settings (
   max_minutes       int not null default 120  check (max_minutes > 0 and max_minutes % 60 = 0),
   daily_max_minutes int not null default 120  check (daily_max_minutes > 0),
   max_days          int not null default 0    check (max_days between 0 and 60),
-  cancel_minutes    int not null default 180  check (cancel_minutes >= 0),
+  cancel_minutes    int not null default 60   check (cancel_minutes >= 0),
   check (close_min > open_min)
 );
 insert into public.settings (id) values (1) on conflict do nothing;
