@@ -12,6 +12,14 @@
 - 예전 레트로 시안 아티팩트(VLT52RjsQ56ofw8tPRwCiA)는 구버전이라 여기엔 쓰지 않습니다.
 - 올린 뒤 링크를 알려주고 "새로고침하면 보여요"라고 말합니다.
 
+## Supabase (2026-10-27 연결)
+- 프로젝트 **LeeshVocal**, ref `lsdmokkecmymtxpmiwbm`, 지역 도쿄(ap-northeast-1, 서울 대신 그대로 쓰기로 함), 조직 "리쉬보컬" 무료 요금제. 주인 favort1111@gmail.com.
+- `supabase/schema.sql`을 마이그레이션 `leesh_initial_schema` + `leesh_hardening`(pg_net을 extensions로, rls_auto_enable 실행 권한 회수)으로 설치함. `js/config.js`에 주소와 **publishable 키만** 넣음.
+- Claude 접근: 환경 **Network secrets**에 Bearer 토큰(호스트 `api.supabase.com`, 90일 기한, 최소 권한)이 들어 있어서 Management API(`/v1/projects/<ref>/database/query`, `/database/migrations`, `/advisors/security`, `/api-keys`)를 바로 호출할 수 있음. 토큰 값은 보지도, 저장하지도 않음.
+  토큰으로 **못 하는 것**: Auth 설정 변경(`project_admin_write` 필요), 사용자 만들기 → 원장님이 대시보드에서.
+- 지우기·되돌리기 어려운 작업은 원장님께 먼저 묻고, 큰 변경 전에는 백업. 설정을 바꾼 뒤에는 결과를 확인하고 다음 단계로 (2026-10-27, 확인 없이 가입 시험을 보내 시험 계정이 생겼던 일이 있음 → 바로 삭제).
+- 원장님 할 일(대시보드): Authentication → Sign In / Providers에서 **새 가입 막기**, Authentication → Users → Add user(Auto Confirm)로 관리자 계정 → 그 이메일을 `public.admins`에 넣기(Claude가 함).
+
 ## 배포·병합
 - **순서: 만들기가 먼저, 배포는 나중.** 지금은 운영 전입니다. 필요한 메뉴를 다 짠 뒤에 Supabase 연결 → 테스트 → 배포 순서로 갑니다.
 - main 병합은 원장님이 말할 때만 합니다.

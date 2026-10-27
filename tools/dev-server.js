@@ -70,6 +70,7 @@ async function seed(rest) {
     if (url.pathname === '/auth/v1/token') return auth(req, res);
     if (url.pathname === '/js/config.js') {
       const src = fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8')
+        .replace(/supabaseUrl:\s*"[^"]*"/, 'supabaseUrl: ""') // same origin: never the real project
         .replace(/supabaseKey:\s*"[^"]*"/, 'supabaseKey: "local", local: true');
       res.writeHead(200, { 'content-type': TYPES['.js'] });
       return res.end(src);

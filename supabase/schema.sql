@@ -12,7 +12,7 @@ create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 create extension if not exists btree_gist with schema extensions;
 do $$ begin
-  create extension if not exists pg_net;          -- 텔레그램 알림용 (Supabase에 기본 포함)
+  create extension if not exists pg_net with schema extensions;  -- 텔레그램 알림용 (Supabase에 기본 포함)
 exception when others then
   raise notice 'pg_net 없음: 텔레그램 알림은 꺼진 채로 설치합니다.';
 end $$;
