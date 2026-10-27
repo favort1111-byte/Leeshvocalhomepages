@@ -59,6 +59,8 @@ create table if not exists public.members (
   memo       text,
   created_at timestamptz not null default now()
 );
+-- 0000 is a temporary PIN: the student picks their own at first sign-in (member_change_pin).
+alter table public.members add column if not exists must_change_pin boolean not null default false;
 
 -- 같은 방·같은 시간, 같은 사람·같은 시간이 겹치는 예약은 데이터베이스가 거절합니다 (동시에 눌러도).
 -- member_id가 비어 있는 예약은 원장님이 막아 둔 시간(청소·레슨 등)입니다.
@@ -256,7 +258,19 @@ begin
   if m.expires_on is not null and m.expires_on < private.now_kst()::date then
     return private.fail('사용 기한이 지난 ID입니다. 학원에 문의해주세요.');
   end if;
-  return jsonb_build_object('ok', true, 'id', m.id, 'name', m.name, 'via', via);
+  return jsonb_build_object('ok', true, 'id', m.id, 'name', m.name, 'via', via, 'mustChange', m.must_change_pin);
+end $$;
+
+-- 예약 · 취소 · 내 폴더용: 임시 비밀번호(0000) 상태면 먼저 새 비밀번호를 정하게 합니다.
+create or replace function private.check_ready(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_member(p_id, p_pin);
+begin
+  if (who ->> 'ok')::boolean and (who ->> 'mustChange')::boolean then
+    return jsonb_build_object('ok', false, 'code', 'must_change', 'error', '처음 비밀번호를 새로 정해주세요.');
+  end if;
+  return who;
 end $$;
 
 -- 비밀번호로 로그인했을 때 새 "로그인 유지" 열쇠를 만들어 돌려줍니다. 한 사람당 기기 5대까지.
@@ -280,6 +294,25 @@ language sql security definer set search_path = '' as $$
               then body || jsonb_build_object('token', private.issue_token(who ->> 'id'))
               else body end;
 $$;
+
+-- 학생이 직접 비밀번호를 바꿉니다 (처음 0000으로 로그인했을 때). 다른 기기는 모두 로그아웃되고 이 기기에 새 열쇠를 줍니다.
+create or replace function public.member_change_pin(p_id text, p_pin text, p_new text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_member(p_id, p_pin);
+  pin text := regexp_replace(coalesce(p_new, ''), '\D', '', 'g');
+  mid text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if length(pin) <> 4 or length(coalesce(p_new, '')) <> 4 then return private.fail('새 비밀번호는 숫자 4자리로 정해주세요.'); end if;
+  if pin = '0000' then return private.fail('0000은 쓸 수 없어요. 다른 4자리로 정해주세요.'); end if;
+  if pin ~ '^(.)\1{3}$' or pin in ('1234', '4321') then return private.fail('너무 쉬운 번호예요. 다른 4자리로 정해주세요.'); end if;
+  update public.members set pin_hash = extensions.crypt(pin, extensions.gen_salt('bf')), must_change_pin = false where id = mid;
+  delete from private.login_fails where member_id = mid;
+  delete from private.member_tokens where member_id = mid;
+  return jsonb_build_object('ok', true, 'id', mid, 'name', who ->> 'name', 'token', private.issue_token(mid));
+end $$;
 
 -- 로그아웃: 이 기기의 열쇠를 지웁니다.
 create or replace function public.member_logout(p_id text, p_token text) returns jsonb
@@ -354,6 +387,7 @@ begin
     'ok', true,
     'id', who ->> 'id',
     'name', who ->> 'name',
+    'mustChange', (who ->> 'mustChange')::boolean,
     'bookings', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', b.id, 'room', r.name, 'date', b.day,
@@ -372,7 +406,7 @@ create or replace function public.booking_create(
 ) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  who jsonb := private.check_member(p_id, p_pin);
+  who jsonb := private.check_ready(p_id, p_pin);
   mid text;
   s public.settings;
   t timestamp := private.now_kst();
@@ -450,7 +484,7 @@ end $$;
 create or replace function public.booking_cancel(p_id text, p_pin text, p_booking bigint) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  who jsonb := private.check_member(p_id, p_pin);
+  who jsonb := private.check_ready(p_id, p_pin);
   s public.settings;
   t timestamp := private.now_kst();
   today date := t::date;
@@ -513,7 +547,7 @@ end $$;
 create or replace function public.member_notebook(p_id text, p_pin text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  who jsonb := private.check_member(p_id, p_pin);
+  who jsonb := private.check_ready(p_id, p_pin);
 begin
   if not (who ->> 'ok')::boolean then return who; end if;
   return private.with_token(who, jsonb_build_object(
@@ -561,13 +595,14 @@ begin
   select true into exists_ from public.members where id = mid;
   if exists_ is null then
     if pin = '' then return private.fail('새 수강 ID에는 비밀번호 4자리가 필요합니다.'); end if;
-    insert into public.members (id, name, phone, status, expires_on, memo, pin_hash)
+    insert into public.members (id, name, phone, status, expires_on, memo, pin_hash, must_change_pin)
     values (mid, trim(p_name), nullif(trim(coalesce(p_phone, '')), ''), p_status, p_expires_on,
-            nullif(trim(coalesce(p_memo, '')), ''), extensions.crypt(pin, extensions.gen_salt('bf')));
+            nullif(trim(coalesce(p_memo, '')), ''), extensions.crypt(pin, extensions.gen_salt('bf')), pin = '0000');
   else
     update public.members set name = trim(p_name), phone = nullif(trim(coalesce(p_phone, '')), ''),
       status = p_status, expires_on = p_expires_on, memo = nullif(trim(coalesce(p_memo, '')), ''),
-      pin_hash = case when pin <> '' then extensions.crypt(pin, extensions.gen_salt('bf')) else pin_hash end
+      pin_hash = case when pin <> '' then extensions.crypt(pin, extensions.gen_salt('bf')) else pin_hash end,
+      must_change_pin = case when pin <> '' then pin = '0000' else must_change_pin end
     where id = mid;
     if pin <> '' then
       delete from private.login_fails where member_id = mid;
@@ -606,7 +641,7 @@ revoke all on public.settings, public.rooms, public.members, public.bookings, pu
   public.lesson_notes, public.monthly_evals from anon;
 revoke all on public.members from authenticated;
 -- 비밀번호 해시는 관리자에게도 내보내지 않습니다. 수정은 admin_save_member로만.
-grant select (id, name, phone, status, expires_on, memo, created_at) on public.members to authenticated;
+grant select (id, name, phone, status, expires_on, memo, must_change_pin, created_at) on public.members to authenticated;
 grant delete on public.members to authenticated;
 drop policy if exists admin_delete on public.members;
 create policy admin_delete on public.members for delete to authenticated using (public.is_admin());
@@ -617,12 +652,12 @@ grant usage, select on all sequences in schema public to authenticated;
 
 revoke all on all functions in schema private from public, anon, authenticated;
 revoke execute on function public.rooms_day(text), public.member_login(text, text), public.member_notebook(text, text),
-  public.member_logout(text, text),
+  public.member_logout(text, text), public.member_change_pin(text, text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text),
   public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() from public;
 grant execute on function public.rooms_day(text), public.member_login(text, text), public.member_notebook(text, text),
-  public.member_logout(text, text),
+  public.member_logout(text, text), public.member_change_pin(text, text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text) to anon, authenticated;
 grant execute on function public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() to authenticated;

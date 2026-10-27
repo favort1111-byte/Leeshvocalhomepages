@@ -18,7 +18,9 @@
 - Claude 접근: 환경 **Network secrets**에 Bearer 토큰(호스트 `api.supabase.com`, 90일 기한, 최소 권한)이 들어 있어서 Management API(`/v1/projects/<ref>/database/query`, `/database/migrations`, `/advisors/security`, `/api-keys`)를 바로 호출할 수 있음. 토큰 값은 보지도, 저장하지도 않음.
   토큰으로 **못 하는 것**: Auth 설정 변경(`project_admin_write` 필요), 사용자 만들기 → 원장님이 대시보드에서.
 - 지우기·되돌리기 어려운 작업은 원장님께 먼저 묻고, 큰 변경 전에는 백업. 설정을 바꾼 뒤에는 결과를 확인하고 다음 단계로 (2026-10-27, 확인 없이 가입 시험을 보내 시험 계정이 생겼던 일이 있음 → 바로 삭제).
-- 원장님 할 일(대시보드): Authentication → Sign In / Providers에서 **새 가입 막기**, Authentication → Users → Add user(Auto Confirm)로 관리자 계정 → 그 이메일을 `public.admins`에 넣기(Claude가 함).
+- 2026-10-27 완료: 새 가입 막기(원장님), 관리자 favort1111@gmail.com 등록, 방 이름 **B1~B5(연습실) · C hall(춤연습실)**, 마이그레이션 `leesh_first_pin_change`(0000 = 임시 비밀번호, 첫 로그인 때 `member_change_pin`으로 바꿔야 예약·내 폴더 사용).
+- 수강생 명단 원본: 구글시트 "학생관리 통합 관리자"의 **수강ID 관리** 탭 (E001~). **읽기만, 절대 수정 금지** (원장님 지시). 아직 Supabase에 넣지 않음:
+  E번호가 학원 규모를 드러내서 로그인 방식(휴대폰 번호 / 무작위 코드) 결정 대기 중.
 
 ## 배포·병합
 - **순서: 만들기가 먼저, 배포는 나중.** 지금은 운영 전입니다. 필요한 메뉴를 다 짠 뒤에 Supabase 연결 → 테스트 → 배포 순서로 갑니다.
