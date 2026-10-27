@@ -150,15 +150,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
     <div class="scene__photo"></div>
     <button class="scene__back" type="button" data-leave>← 바탕화면</button>
     <div class="book" id="myBook">
-      <form class="book__login sys" id="myLogin">
-        <h2 class="book__title">내 폴더</h2>
-        <p class="book__lede">수강생은 레슨 노트와 월말평가를 여기서 봐요.</p>
-        <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
-        <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label>
-        <label class="sys-keep"><input type="checkbox" name="keep" checked> 이 기기에서 로그인 유지</label>
-        <button class="sys-btn sys-btn--block" type="submit">폴더 열기</button>
-        <p class="sys-msg" id="myLoginMsg" role="status"></p>
-      </form>
+      <div class="book__login sys" id="myLogin" aria-live="polite"></div>
       <div class="book__open" id="myOpen" hidden>
         <header class="book__head">
           <h2 class="book__title" id="myTitle"></h2>
@@ -245,7 +237,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
         + wavebed()
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "mynotes"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "signin", "mynotes"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -388,17 +380,7 @@ BOOKING_APP = f"""  <div class="booking__inner">
         <div id="board" aria-live="polite"></div>
         <p class="sys-legend" aria-hidden="true"><span class="is-free">빈 시간</span><span class="is-taken">예약됨</span><span class="is-past">지난 시간</span></p>
       </div>
-      <form id="whoForm" class="sys-section">
-        <h2 class="sys-h">로그인하고 예약하기</h2>
-        <div class="sys-row">
-          <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
-          <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{{4}}" maxlength="4" required></label>
-        </div>
-        <label class="sys-keep"><input type="checkbox" name="keep" checked> 이 기기에서 로그인 유지</label>
-        <button class="sys-btn" type="submit">로그인</button>
-        <p class="sys-note">수강 ID는 학원에서 발급해드려요. 비밀번호를 잊었으면 학원에 문의해주세요.</p>
-        <p class="sys-msg" id="whoMsg" role="status"></p>
-      </form>
+      <div id="whoBox" class="sys-section" aria-live="polite"></div>
       <div id="bookArea" class="sys-section" hidden>
         <p><strong id="hello"></strong> <button class="sys-link" type="button" id="switchUser">로그아웃</button></p>
         <div class="sys-section">
@@ -437,7 +419,7 @@ consult = (head("Consult | 이송희보컬레슨",
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
            + CONSULT_FORM
            + MY_FOLDER
-           + "</main>\n" + foot("consult", "scene", "mynotes"))
+           + "</main>\n" + foot("consult", "scene", "signin", "mynotes"))
 
 # ---------- BOOKING (practice rooms, paper theme) ----------
 booking = (head("Booking | 이송희보컬레슨",
@@ -445,7 +427,7 @@ booking = (head("Booking | 이송희보컬레슨",
            + '<main class="stage booking">\n'
            + nav("booking", "dark") + "\n"
            + BOOKING_APP
-           + "</main>\n" + foot("booking"))
+           + "</main>\n" + foot("signin", "booking"))
 
 # ---------- GAMES: 보컬 오락실 (js/games.js) ----------
 GAME_LIST = [

@@ -7,7 +7,7 @@
   cfg.supabaseKey = "demo";
   cfg.local = true;
   var KEY = "leesh_demo_db";
-  var VERSION = 4; // bump when the demo defaults change
+  var VERSION = 5; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -37,13 +37,19 @@
       version: VERSION,
       next: 100,
       settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 180, daily_max_minutes: 180, max_days: 7, cancel_minutes: 60 },
-      rooms: [["연습실 1", "연습실"], ["연습실 2", "연습실"], ["연습실 3", "연습실"], ["연습실 4", "연습실"], ["연습실 5", "연습실"], ["춤연습실", "춤연습실"]]
+      rooms: [["B1", "연습실"], ["B2", "연습실"], ["B3", "연습실"], ["B4", "연습실"], ["B5", "연습실"], ["C hall", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
       members: [
-        { id: "S001", name: "김시우", phone: "010-1234-5678", pin: "5678", status: "재원", expires_on: null, memo: null },
-        { id: "S002", name: "이하늘", phone: "010-2222-9999", pin: "9999", status: "재원", expires_on: null, memo: "입시반" },
-        { id: "S003", name: "박새봄", phone: "010-5555-7777", pin: "7777", status: "휴원", expires_on: null, memo: "10월 복귀 예정" },
-        { id: "G001", name: "외부 대관", phone: null, pin: "1234", status: "외부", expires_on: addDays(t, 14), memo: "댄스팀" }
+        { id: "S001", name: "김시우", phone: "010-1234-5678", pin: "5678", status: "재원", expires_on: null, memo: "담당 원장님", must_change_pin: false, kakao_user: null },
+        { id: "S002", name: "이하늘", phone: "010-2222-9999", pin: "9999", status: "재원", expires_on: null, memo: "입시반 · 담당 안유정", must_change_pin: false, kakao_user: "kakao-sample" },
+        { id: "S003", name: "박새봄", phone: "010-5555-7777", pin: "7777", status: "휴원", expires_on: null, memo: "10월 복귀 예정", must_change_pin: false, kakao_user: null },
+        { id: "S004", name: "정다온", phone: null, pin: "0000", status: "재원", expires_on: null, memo: "담당 이수빈", must_change_pin: true, kakao_user: null },
+        { id: "S005", name: "한지우", phone: null, pin: "0000", status: "재원", expires_on: null, memo: "담당 오은지", must_change_pin: true, kakao_user: null },
+        { id: "G001", name: "외부 대관", phone: null, pin: "1234", status: "외부", expires_on: addDays(t, 14), memo: "댄스팀", must_change_pin: false, kakao_user: null }
+      ],
+      // 카카오 연결 요청 (the director approves these in 관리자 → 수강 ID)
+      link_requests: [
+        { id: 31, user_id: "kakao-wait", kakao_name: "다온🎤", name: "정다온", teacher: "이수빈", status: "대기", member_id: null, created_at: new Date(Date.now() - 5400000).toISOString(), decided_at: null }
       ],
       bookings: [
         { id: 1, room_id: 1, member_id: "S002", day: t, start_min: 1200, end_min: 1320, status: "확정", memo: null },
@@ -80,10 +86,13 @@
 
   /* ---------------- database functions ---------------- */
 
-  function checkMember(id, pin) {
+  function checkMember(id, pin, uid) {
     id = String(id || "").trim().toUpperCase();
-    var raw = String(pin || "").trim(), via = raw.length >= 32 ? "token" : "pin", m;
-    if (via === "token") {
+    var raw = String(pin || "").trim(), via = raw.length >= 32 ? "token" : raw === "" && uid ? "kakao" : "pin", m;
+    if (via === "kakao") {
+      m = db.members.filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!m) return { ok: false, code: "not_linked", error: "아직 학원 승인 전이에요. 승인되면 바로 쓸 수 있어요." };
+    } else if (via === "token") {
       var t = db.tokens.filter(function (x) { return x.key === raw && x.member_id === id; })[0];
       m = t && db.members.filter(function (x) { return x.id === id; })[0];
       if (!m) return fail("로그인이 풀렸어요. 수강 ID와 비밀번호로 다시 로그인해주세요.");
@@ -95,13 +104,23 @@
     }
     if (m.status !== "재원" && m.status !== "외부") return fail("현재 이용 중인 수강 ID가 아닙니다. 학원에 문의해주세요.");
     if (m.expires_on && m.expires_on < nowKst().today) return fail("사용 기한이 지난 ID입니다. 학원에 문의해주세요.");
-    return { ok: true, id: m.id, name: m.name, via: via };
+    return { ok: true, id: m.id, name: m.name, via: via, mustChange: via !== "kakao" && !!m.must_change_pin };
+  }
+  // 예약 · 취소 · 내 폴더: a temporary 0000 PIN has to be changed first (private.check_ready)
+  function checkReady(id, pin, uid) {
+    var who = checkMember(id, pin, uid);
+    if (who.ok && who.mustChange) return { ok: false, code: "must_change", error: "처음 비밀번호를 새로 정해주세요." };
+    return who;
+  }
+  function newKey() {
+    var key = "";
+    for (var i = 0; i < 48; i++) key += "0123456789abcdef"[Math.floor(Math.random() * 16)];
+    return key;
   }
   // signing in with the PIN hands back a new "stay signed in" key, like private.with_token
   function withToken(who, body) {
     if (who.via !== "pin") return body;
-    var key = "";
-    for (var i = 0; i < 48; i++) key += "0123456789abcdef"[Math.floor(Math.random() * 16)];
+    var key = newKey();
     db.tokens.push({ key: key, member_id: who.id });
     save();
     body.token = key;
@@ -133,15 +152,15 @@
           })
       };
     },
-    member_login: function (a) {
-      var who = checkMember(a.p_id, a.p_pin);
+    member_login: function (a, uid) {
+      var who = checkMember(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       var n = nowKst(), s = db.settings;
       var mine = live().filter(function (b) {
         return b.member_id === who.id && (b.day > n.today || (b.day === n.today && b.end_min > n.min));
       }).sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); });
       return withToken(who, {
-        ok: true, id: who.id, name: who.name,
+        ok: true, id: who.id, name: who.name, mustChange: who.mustChange,
         bookings: mine.map(function (b) {
           return {
             id: b.id, room: room(b.room_id).name, date: b.day, start: hhmm(b.start_min), end: hhmm(b.end_min),
@@ -150,8 +169,8 @@
         })
       });
     },
-    booking_create: function (a) {
-      var who = checkMember(a.p_id, a.p_pin);
+    booking_create: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       var s = db.settings, n = nowKst(), d = a.p_date, ahead = diffDays(n.today, d);
       if (isNaN(ahead)) return fail("날짜 형식이 올바르지 않습니다.");
@@ -183,8 +202,8 @@
       save();
       return { ok: true, booking: { id: b.id, room: r.name, date: d, start: hhmm(st), end: hhmm(en) } };
     },
-    booking_cancel: function (a) {
-      var who = checkMember(a.p_id, a.p_pin);
+    booking_cancel: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       var n = nowKst(), s = db.settings;
       var b = live().filter(function (x) { return x.id === a.p_booking && x.member_id === who.id; })[0];
@@ -218,7 +237,7 @@
       if (pin && pin.length !== 4) return fail("비밀번호는 숫자 4자리입니다.");
       var m = db.members.filter(function (x) { return x.id === id; })[0];
       if (!m && !pin) return fail("새 수강 ID에는 비밀번호 4자리가 필요합니다.");
-      if (!m) { m = { id: id }; db.members.push(m); }
+      if (!m) { m = { id: id, kakao_user: null }; db.members.push(m); }
       var created = !m.name;
       m.name = String(a.p_name).trim();
       m.phone = String(a.p_phone || "").trim() || null;
@@ -227,13 +246,14 @@
       m.memo = String(a.p_memo || "").trim() || null;
       if (pin) {
         m.pin = pin;
+        m.must_change_pin = pin === "0000";
         db.tokens = db.tokens.filter(function (x) { return x.member_id !== id; }); // signs out every device
       }
       save();
       return { ok: true, id: id, created: created };
     },
-    member_notebook: function (a) {
-      var who = checkMember(a.p_id, a.p_pin);
+    member_notebook: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       return withToken(who, {
         ok: true, id: who.id, name: who.name,
@@ -256,8 +276,84 @@
       save();
       return { ok: true };
     },
+    member_change_pin: function (a) {
+      var who = checkMember(a.p_id, a.p_pin), pin = String(a.p_new || "");
+      if (!who.ok) return who;
+      if (!/^\d{4}$/.test(pin)) return fail("새 비밀번호는 숫자 4자리로 정해주세요.");
+      if (pin === "0000") return fail("0000은 쓸 수 없어요. 다른 4자리로 정해주세요.");
+      if (/^(.)\1{3}$/.test(pin) || pin === "1234" || pin === "4321") return fail("너무 쉬운 번호예요. 다른 4자리로 정해주세요.");
+      var m = db.members.filter(function (x) { return x.id === who.id; })[0];
+      m.pin = pin;
+      m.must_change_pin = false;
+      db.tokens = db.tokens.filter(function (x) { return x.member_id !== m.id; });
+      var key = newKey();
+      db.tokens.push({ key: key, member_id: m.id });
+      save();
+      return { ok: true, id: m.id, name: m.name, token: key };
+    },
+    kakao_status: function (a, uid) {
+      if (!uid) return fail("카카오 로그인이 필요해요.");
+      var m = db.members.filter(function (x) { return x.kakao_user === uid; })[0];
+      if (m) return { ok: true, linked: true, name: m.name, active: m.status === "재원" || m.status === "외부" };
+      var r = db.link_requests.filter(function (x) { return x.user_id === uid; })[0];
+      return { ok: true, linked: false, request: r ? { status: r.status, name: r.name, teacher: r.teacher } : null };
+    },
+    kakao_link_request: function (a, uid) {
+      if (!uid) return fail("카카오 로그인이 필요해요.");
+      if (db.members.some(function (x) { return x.kakao_user === uid; })) return fail("이미 연결된 계정이에요.");
+      var name = String(a.p_name || "").trim();
+      if (!name || name.length > 30) return fail("이름을 정확히 적어주세요.");
+      var r = db.link_requests.filter(function (x) { return x.user_id === uid; })[0];
+      if (!r) { r = { id: ++db.next, user_id: uid, kakao_name: "체험 카카오" }; db.link_requests.push(r); }
+      Object.assign(r, { name: name, teacher: String(a.p_teacher || "").trim() || null, status: "대기", member_id: null, created_at: new Date().toISOString(), decided_at: null });
+      save();
+      return { ok: true };
+    },
+    admin_kakao_decide: function (a) {
+      var r = db.link_requests.filter(function (x) { return x.id === a.p_request; })[0];
+      if (!r) return fail("요청을 찾을 수 없어요.");
+      r.decided_at = new Date().toISOString();
+      if (!a.p_approve) { r.status = "거절"; r.member_id = null; save(); return { ok: true, status: "거절" }; }
+      var mid = String(a.p_member || "").trim().toUpperCase();
+      var m = db.members.filter(function (x) { return x.id === mid; })[0];
+      if (!m) return fail("수강 ID를 골라주세요.");
+      var other = db.members.filter(function (x) { return x.kakao_user === r.user_id && x.id !== mid; })[0];
+      if (other) return fail("이 카카오 계정은 이미 " + other.id + "에 연결돼 있어요.");
+      m.kakao_user = r.user_id;
+      r.status = "승인";
+      r.member_id = mid;
+      save();
+      return { ok: true, status: "승인", member: mid };
+    },
+    admin_kakao_unlink: function (a) {
+      var m = db.members.filter(function (x) { return x.id === String(a.p_member || "").toUpperCase(); })[0];
+      if (m && m.kakao_user) {
+        db.link_requests.forEach(function (r) { if (r.user_id === m.kakao_user) r.status = "거절"; });
+        m.kakao_user = null;
+        save();
+      }
+      return { ok: true };
+    },
     is_admin: function () { return true; }
   };
+
+  /* ---------------- 카카오로 로그인 (pretend) ----------------
+     No real Kakao here: the button makes up a new Kakao account for this browser and comes back
+     signed in, so the first-time flow (이름 알려주기 → 원장님 승인) can be clicked through. */
+  var FAKE = "kakao:";
+  function kakaoUid(init) {
+    var h = (init && init.headers && init.headers.Authorization) || "";
+    return h.indexOf("Bearer " + FAKE) === 0 ? h.slice(7 + FAKE.length) : null;
+  }
+  function fakeKakao() {
+    var k = window.LeeshAPI && window.LeeshAPI.kakao;
+    if (!k) return;
+    k.available = function () { return true; };
+    k.start = function () {
+      k.save({ access: FAKE + "demo-" + Date.now().toString(36), refresh: "demo", expires: Math.floor(Date.now() / 1000) + 3650 * 86400 });
+      location.reload();
+    };
+  }
 
   /* ---------------- table requests from the admin page ---------------- */
 
@@ -359,10 +455,11 @@
       if (path.indexOf("/auth/v1/token") === 0) {
         return respond({ status: 200, data: { access_token: "demo", refresh_token: "demo", expires_in: 86400, user: { email: body.email || "demo@leesh" } } });
       }
+      if (path.indexOf("/auth/v1/") === 0) return respond({ status: 204, data: null });
       var rest = path.replace(/^\/rest\/v1\//, "");
       if (rest.indexOf("rpc/") === 0) {
         var fn = fns[rest.slice(4)];
-        return respond(fn ? { status: 200, data: fn(body) } : { status: 404, data: null });
+        return respond(fn ? { status: 200, data: fn(body, kakaoUid(init)) } : { status: 404, data: null });
       }
       return respond(table((init && init.method) || "GET", rest, body));
     };
@@ -387,7 +484,7 @@
     document.head.appendChild(css);
     var bar = document.createElement("div");
     bar.className = "demo-bar";
-    bar.innerHTML = "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 예약 로그인 S001 / 5678 · 관리자는 아무 이메일·비밀번호</span>" +
+    bar.innerHTML = "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 카카오 버튼은 가짜 계정으로 · 수강 ID S001/5678 · 첫 비번 체험 S005/0000 · 관리자는 아무 이메일</span>" +
       "<a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
       "<button type=\"button\" class=\"demo-min\" aria-label=\"안내 접기\">접기</button>";
     bar.querySelector(".demo-intro").addEventListener("click", function () {
@@ -397,7 +494,7 @@
     bar.querySelector(".demo-reset").addEventListener("click", function () {
       db = seed();
       save();
-      try { sessionStorage.clear(); localStorage.removeItem("leesh_who"); } catch (e) { /* ignore */ }
+      try { sessionStorage.clear(); localStorage.removeItem("leesh_who"); localStorage.removeItem("leesh_kakao"); } catch (e) { /* ignore */ }
       location.reload();
     });
     bar.querySelector(".demo-min").addEventListener("click", function () {
@@ -409,5 +506,6 @@
   }
 
   install(); // demo.js loads right after api.js, before the page scripts
+  fakeKakao();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", banner); else banner();
 })();

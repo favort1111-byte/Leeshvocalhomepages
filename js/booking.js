@@ -1,25 +1,23 @@
-// Practice-room booking for members with a 수강 ID (booking.html).
+// Practice-room booking for members with a 수강 ID (booking.html). Sign-in is js/signin.js.
 (function () {
   var app = document.getElementById("bookingApp");
   if (!app) return;
   var cfg = window.LEESH || {};
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
-  var whoForm = app.querySelector("#whoForm");
+  var whoBox = app.querySelector("#whoBox");
   var area = app.querySelector("#bookArea");
   var off = app.querySelector("#bookingOff");
   var state = { who: null, date: null, rooms: null, room: null, pick: null };
 
   if (!LeeshAPI.enabled()) {
-    whoForm.hidden = true;
+    whoBox.hidden = true;
     app.querySelector("#boardWrap").hidden = true;
     off.hidden = false;
     return;
   }
 
   function $(sel) { return app.querySelector(sel); }
-  // form.name is the form's own name attribute, so look inputs up explicitly
-  function field(f, n) { return f.querySelector("[name=" + n + "]"); }
   function msg(el, text, kind) {
     el.textContent = text || "";
     el.className = "sys-msg" + (kind ? " sys-msg--" + kind : "");
@@ -39,44 +37,23 @@
 
 
   /* ---------- identity ---------- */
-  whoForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    var who = { id: field(whoForm, "memberId").value.trim(), key: field(whoForm, "pin").value.trim() };
-    signIn(who, whoForm.querySelector("button[type=submit]"), field(whoForm, "keep").checked);
-  });
-
-  // who: { id, key } — key is the PIN from the form, or the saved token (shared with 내 폴더, LeeshAPI.who)
-  function signIn(who, btn, keep) {
-    if (btn) busy(btn, true);
-    msg($("#whoMsg"), "확인 중…");
-    LeeshAPI.rpc("member_login", { p_id: who.id, p_pin: who.key }).then(function (res) {
-      if (btn) busy(btn, false);
-      if (!res.ok) {
-        msg($("#whoMsg"), res.error, "error");
-        if (!btn) {
-          whoForm.hidden = false;
-          if (res.error !== LeeshAPI.NETWORK_ERROR) LeeshAPI.who.clear(); // saved sign-in no longer works
-        }
-        return;
-      }
-      msg($("#whoMsg"), "");
-      state.who = { id: res.id, key: res.token || who.key };
-      if (res.token) LeeshAPI.who.set(state.who, keep);
-      whoForm.hidden = true;
+  var sign = LeeshSignIn.mount(whoBox, {
+    title: "로그인하고 예약하기",
+    onSignedIn: function (res, who) {
+      state.who = who;
+      whoBox.hidden = true;
       area.hidden = false;
       $("#hello").textContent = res.name + "님, 안녕하세요.";
       renderMine(res.bookings);
       if (state.rooms) { renderRooms(state.rooms); updatePick(); } else loadDay(state.date);
-    });
-  }
+    }
+  });
 
   $("#switchUser").addEventListener("click", function () {
-    LeeshAPI.who.clear();
     state.who = null;
     area.hidden = true;
-    whoForm.hidden = false;
-    whoForm.reset();
-    field(whoForm, "memberId").focus();
+    whoBox.hidden = false;
+    sign.signOut();
   });
 
   /* ---------- my bookings ---------- */
@@ -221,9 +198,8 @@
     renderRooms(state.rooms);
     updatePick();
     if (!state.who) {
-      msg($("#whoMsg"), room.name + " " + t + " 선택했어요. 로그인하면 바로 예약할 수 있어요.");
-      field(whoForm, "memberId").focus({ preventScroll: true });
-      whoForm.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      sign.note(room.name + " " + t + " 선택했어요. 로그인하면 바로 예약할 수 있어요.");
+      whoBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
     } else {
       $("#bookBtn").scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
@@ -311,6 +287,5 @@
   });
 
   loadDay(null);
-  var saved = LeeshAPI.who.get();
-  if (saved) { whoForm.hidden = true; signIn(saved, null); } // signed in on this device before
+  sign.start(); // signed in on this device before (saved key or Kakao session) → straight in
 })();

@@ -5,5 +5,7 @@ window.LEESH = {
   supabaseUrl: "https://lsdmokkecmymtxpmiwbm.supabase.co",
   supabaseKey: "sb_publishable_e65wHiIp1Psl4bNVaeU-cA_Df2VmJ-9",
   kakao: "https://pf.kakao.com/_xgNYbK",
-  phone: "010-4458-5448"
+  phone: "010-4458-5448",
+  // 카카오 연결 요청 때 학생이 고르는 담당 선생님 (구글시트 수강ID 관리 탭 기준)
+  teachers: ["원장님 (이송희)", "안유정", "양유경", "오은지", "이수빈", "이윤지", "이하섬", "최홍주"]
 };

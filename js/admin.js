@@ -115,7 +115,7 @@
       $("#app").hidden = false;
       $("#adminWho").hidden = false;
       $("#adminWho").textContent = session.email || "";
-      loadBase().then(function () { showTab("bookings"); });
+      loadBase().then(function () { showTab("bookings"); countLinks(); });
     });
   }
 
@@ -289,10 +289,89 @@
   /* ---------------- 수강 ID ---------------- */
 
   function loadMembers() {
-    api("members?select=id,name,phone,status,expires_on,memo&order=id").then(function (res) {
+    api("members?select=id,name,phone,status,expires_on,memo,must_change_pin,kakao_user&order=id").then(function (res) {
       if (!res.ok) { msg($("#memberMsg"), friendly(res, "불러오지 못했습니다."), "error"); return; }
       state.members = res.data;
       renderMembers();
+      loadLinks();
+    });
+  }
+
+  /* 카카오 연결 요청: a student signed in with Kakao and said who they are; pick the 수강 ID and approve. */
+  var WAITING = "status=eq." + encodeURIComponent("대기");
+  function badge(n) {
+    var b = $("#linkBadge");
+    b.hidden = !n;
+    b.textContent = n ? String(n) : "";
+  }
+  function countLinks() {
+    api("link_requests?select=id&" + WAITING).then(function (res) { if (res.ok) badge(res.data.length); });
+  }
+  function loadLinks() {
+    api("link_requests?select=*&" + WAITING + "&order=created_at").then(function (res) {
+      if (!res.ok) return;
+      badge(res.data.length);
+      renderLinks(res.data);
+    });
+  }
+  function renderLinks(list) {
+    var box = $("#kakaoBox"), ul = $("#kakaoList");
+    box.hidden = !list.length;
+    ul.textContent = "";
+    list.forEach(function (r) {
+      var li = el("li", "adm__card");
+      var top = el("div", "adm__cardtop");
+      top.appendChild(el("strong", null, r.name));
+      if (r.teacher) top.appendChild(el("span", null, r.teacher + " 선생님"));
+      if (r.kakao_name) top.appendChild(el("span", "sys-note", "카카오 이름: " + r.kakao_name));
+      top.appendChild(el("span", "sys-note", new Date(r.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })));
+      li.appendChild(top);
+      // same name first (and the teacher in the memo), then everyone still enrolled
+      var name = r.name.replace(/\s/g, ""), teacher = (r.teacher || "").replace(/\s*\(.*\)/, "");
+      var cands = state.members.filter(function (m) { return m.status !== "종료" && !m.kakao_user; }).map(function (m) {
+        var score = (m.name.replace(/\s/g, "") === name ? 2 : 0) + (teacher && (m.memo || "").indexOf(teacher) !== -1 ? 1 : 0);
+        return { m: m, score: score };
+      }).sort(function (a, b) { return b.score - a.score || (a.m.id < b.m.id ? -1 : 1); });
+      var row = el("div", "adm__cardrow");
+      var sel = el("select");
+      sel.setAttribute("aria-label", r.name + " 수강 ID 고르기");
+      var none = el("option", null, "수강 ID 고르기");
+      none.value = "";
+      sel.appendChild(none);
+      cands.forEach(function (c) {
+        var o = el("option", null, (c.score >= 2 ? "★ " : "") + c.m.name + " (" + c.m.id + ")" + (c.m.memo ? " · " + c.m.memo : ""));
+        o.value = c.m.id;
+        sel.appendChild(o);
+      });
+      var best = cands.filter(function (c) { return c.score === cands[0].score && c.score >= 2; });
+      if (best.length === 1) sel.value = best[0].m.id;
+      var ok = el("button", "sys-btn", "승인");
+      ok.type = "button";
+      var no = el("button", "sys-link", "거절");
+      no.type = "button";
+      var note = el("p", "sys-msg");
+      function decide(approve) {
+        if (approve && !sel.value) { msg(note, "수강 ID를 골라주세요.", "error"); return; }
+        ok.disabled = no.disabled = true;
+        token().then(function (t) {
+          return LeeshAPI.rpc("admin_kakao_decide", { p_request: r.id, p_member: approve ? sel.value : null, p_approve: approve }, t);
+        }).then(function (res) {
+          ok.disabled = no.disabled = false;
+          if (!res.ok) { msg(note, res.error, "error"); return; }
+          loadMembers();
+        });
+      }
+      ok.addEventListener("click", function () { decide(true); });
+      no.addEventListener("click", function () {
+        if (no.getAttribute("data-armed") !== "1") { no.setAttribute("data-armed", "1"); no.textContent = "한 번 더 누르면 거절"; return; }
+        decide(false);
+      });
+      row.appendChild(sel);
+      row.appendChild(ok);
+      row.appendChild(no);
+      li.appendChild(row);
+      li.appendChild(note);
+      ul.appendChild(li);
     });
   }
 
@@ -306,12 +385,12 @@
     var t = $("#memberTable");
     t.textContent = "";
     var head = el("tr");
-    ["수강 ID", "이름", "전화번호", "상태", "기한", "메모", ""].forEach(function (h) { head.appendChild(el("th", null, h)); });
+    ["수강 ID", "이름", "전화번호", "상태", "기한", "메모", "로그인", ""].forEach(function (h) { head.appendChild(el("th", null, h)); });
     t.appendChild(el("thead")).appendChild(head);
     var body = t.appendChild(el("tbody"));
     if (!rows.length) {
       var tr = el("tr"), td = el("td", "sys-empty", state.members.length ? "검색 결과가 없습니다." : "아직 발급한 수강 ID가 없습니다.");
-      td.colSpan = 7;
+      td.colSpan = 8;
       tr.appendChild(td);
       body.appendChild(tr);
     }
@@ -321,11 +400,21 @@
         var td = el("td", i === 3 ? "adm__status adm__status--" + m.status : null, v);
         tr.appendChild(td);
       });
+      tr.appendChild(el("td", m.kakao_user ? "adm__kakao" : "sys-note", m.kakao_user ? "카카오" : m.must_change_pin ? "임시 비번(0000)" : "수강 ID"));
       var td = el("td");
       var b = el("button", "sys-link", "수정");
       b.type = "button";
       b.addEventListener("click", function () { openMember(m); });
       td.appendChild(b);
+      if (m.kakao_user) {
+        var u = el("button", "sys-link", "카카오 해제");
+        u.type = "button";
+        u.addEventListener("click", function () {
+          if (u.getAttribute("data-armed") !== "1") { u.setAttribute("data-armed", "1"); u.textContent = "한 번 더 누르면 해제"; return; }
+          token().then(function (t) { return LeeshAPI.rpc("admin_kakao_unlink", { p_member: m.id }, t); }).then(loadMembers);
+        });
+        td.appendChild(u);
+      }
       tr.appendChild(td);
       body.appendChild(tr);
     });
@@ -333,10 +422,10 @@
 
   function nextMemberId() {
     var n = state.members.reduce(function (max, m) {
-      var hit = /^S(\d+)$/.exec(m.id);
+      var hit = /^E(\d+)$/.exec(m.id);
       return hit ? Math.max(max, Number(hit[1])) : max;
     }, 0);
-    return "S" + String(n + 1).padStart(3, "0");
+    return "E" + String(n + 1).padStart(3, "0");
   }
 
   function openMember(m) {
@@ -346,7 +435,7 @@
     msg($("#memberMsg"), "");
     f.dataset.editing = m ? "1" : "";
     $("#memberTitle").textContent = m ? m.name + " (" + m.id + ") 수정" : "새 수강 ID";
-    $("#pinLabel").textContent = m ? "새 비밀번호 4자리 (바꿀 때만)" : "비밀번호 4자리 (기본: 전화번호 뒤 4자리)";
+    $("#pinLabel").textContent = m ? "새 비밀번호 4자리 (바꿀 때만, 0000이면 학생이 다시 정해요)" : "비밀번호 4자리 (비우면 0000, 학생이 처음 로그인할 때 바꿔요)";
     field(f, "id").readOnly = !!m;
     field(f, "id").value = m ? m.id : nextMemberId();
     if (m) {
@@ -367,7 +456,7 @@
     e.preventDefault();
     var f = e.target;
     var pin = field(f, "pin").value.trim();
-    if (!pin && !f.dataset.editing) pin = field(f, "phone").value.replace(/\D/g, "").slice(-4);
+    if (!pin && !f.dataset.editing) pin = "0000"; // temporary: the student picks their own at first sign-in
     var args = {
       p_id: field(f, "id").value, p_name: field(f, "name").value, p_phone: field(f, "phone").value,
       p_status: field(f, "status").value, p_expires_on: field(f, "expires").value || null,

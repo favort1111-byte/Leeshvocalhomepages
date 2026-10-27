@@ -34,17 +34,7 @@
         <div id="board" aria-live="polite"></div>
         <p class="sys-legend" aria-hidden="true"><span class="is-free">빈 시간</span><span class="is-taken">예약됨</span><span class="is-past">지난 시간</span></p>
       </div>
-      <form id="whoForm" class="sys-section">
-        <h2 class="sys-h">로그인하고 예약하기</h2>
-        <div class="sys-row">
-          <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
-          <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label>
-        </div>
-        <label class="sys-keep"><input type="checkbox" name="keep" checked> 이 기기에서 로그인 유지</label>
-        <button class="sys-btn" type="submit">로그인</button>
-        <p class="sys-note">수강 ID는 학원에서 발급해드려요. 비밀번호를 잊었으면 학원에 문의해주세요.</p>
-        <p class="sys-msg" id="whoMsg" role="status"></p>
-      </form>
+      <div id="whoBox" class="sys-section" aria-live="polite"></div>
       <div id="bookArea" class="sys-section" hidden>
         <p><strong id="hello"></strong> <button class="sys-link" type="button" id="switchUser">로그아웃</button></p>
         <div class="sys-section">
@@ -68,6 +58,7 @@
 </main>
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/signin.js"></script>
 <script src="js/booking.js"></script>
 </body>
 </html>

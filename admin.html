@@ -34,7 +34,7 @@
   <div id="app" hidden>
     <nav class="adm__tabs" role="tablist">
       <button type="button" role="tab" data-tab="bookings" aria-selected="true">예약 현황</button>
-      <button type="button" role="tab" data-tab="members" aria-selected="false">수강 ID</button>
+      <button type="button" role="tab" data-tab="members" aria-selected="false">수강 ID <span class="adm__badge" id="linkBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="records" aria-selected="false">수업 기록</button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
@@ -73,6 +73,11 @@
 
     <!-- 수강 ID -->
     <section class="sys-card" data-panel="members" hidden>
+      <div class="adm__links-box" id="kakaoBox" hidden>
+        <h3 class="sys-h">카카오 연결 요청</h3>
+        <p class="sys-note">학생이 처음 카카오로 로그인하면 여기에 요청이 와요. 맞는 수강 ID를 골라 승인하면, 그 학생은 다음부터 카카오 버튼 한 번으로 들어와요.</p>
+        <ul class="adm__cards" id="kakaoList"></ul>
+      </div>
       <div class="adm__bar">
         <input type="search" id="memberSearch" placeholder="이름·ID·번호 검색" aria-label="검색">
         <select id="memberFilter" aria-label="상태">

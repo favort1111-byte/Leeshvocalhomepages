@@ -119,3 +119,21 @@
   .sys-board__tick.is-minor{visibility:hidden;}
   .sys-board__name{font-size:12px;}
 }
+
+/* ---------- student sign-in (js/signin.js) ---------- */
+.signin__kakao{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:420px;
+  min-height:52px;padding:0 20px;border:0;border-radius:12px;
+  background:#FEE500;color:rgba(0,0,0,.85);font:inherit;font-size:16px;font-weight:600;cursor:pointer;
+}
+.signin__kakao svg{width:22px;height:22px;}
+.signin__kakao:disabled{opacity:.6;cursor:default;}
+.signin__hint{margin:8px 0 18px;}
+.signin__alt{margin-top:6px;}
+.signin__alt summary{cursor:pointer;color:var(--sys-accent);font-size:14px;text-decoration:underline;padding:6px 0;}
+.signin__alt[open] summary{margin-bottom:12px;}
+.signin__title{margin:0 0 6px;font-size:18px;font-weight:600;}
+.signin__form{margin-top:12px;}
+.signin__row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:14px;}
+.signin__other{display:block;margin-top:14px;}
+.book__login .signin__kakao{max-width:none;}

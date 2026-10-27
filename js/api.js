@@ -35,17 +35,80 @@
       .finally(function () { if (timer) clearTimeout(timer); });
   }
 
-  /** Call a database function. Functions answer { ok, ... } themselves. */
+  /**
+   * Call a database function. Functions answer { ok, ... } themselves.
+   * token: the admin page passes its own; otherwise a student's Kakao session is used when there is one.
+   */
   function rpc(fn, args, token) {
     if (!enabled()) return Promise.resolve({ ok: false, error: "disabled" });
-    // Through the exported object so the preview's demo backend (js/demo.js) can stand in.
-    return window.LeeshAPI.request("/rest/v1/rpc/" + fn, {
-      method: "POST", headers: headers(token), body: JSON.stringify(args || {})
+    var auth = token !== undefined ? Promise.resolve(token) : kakao.token();
+    return auth.then(function (t) {
+      // Through the exported object so the preview's demo backend (js/demo.js) can stand in.
+      return window.LeeshAPI.request("/rest/v1/rpc/" + fn, {
+        method: "POST", headers: headers(t), body: JSON.stringify(args || {})
+      });
     }).then(function (res) {
-      if (res.ok && res.data && typeof res.data === "object") return res.data;
+      if (res.ok && res.data && (typeof res.data === "object" || typeof res.data === "boolean")) return res.data;
       return { ok: false, error: NETWORK_ERROR };
     });
   }
+
+  /*
+    카카오로 로그인 (students). Supabase Auth sends the visitor to Kakao and back to this page with
+    the session in the URL hash; it is kept in localStorage and refreshed before it runs out. Which
+    student the Kakao account is gets decided by the director (link_requests → admin_kakao_decide).
+  */
+  var KAKAO = "leesh_kakao", AFTER = "leesh_after_kakao", KAKAO_ERR = "leesh_kakao_error";
+  var kakao = {
+    available: function () { return enabled() && !!base; },
+    session: function () { try { return JSON.parse(localStorage.getItem(KAKAO) || "null"); } catch (e) { return null; } },
+    save: function (s) { try { if (s) localStorage.setItem(KAKAO, JSON.stringify(s)); else localStorage.removeItem(KAKAO); } catch (e) { /* private mode */ } },
+    start: function () {
+      try { sessionStorage.setItem(AFTER, location.hash); } catch (e) { /* ignore */ }
+      location.href = base + "/auth/v1/authorize?provider=kakao&redirect_to=" +
+        encodeURIComponent(location.origin + location.pathname + location.search);
+    },
+    /** A fresh access token for the Kakao session, or null when signed out. */
+    token: function () {
+      var s = kakao.session();
+      if (!s) return Promise.resolve(null);
+      if (s.expires - 60 > Date.now() / 1000) return Promise.resolve(s.access);
+      return window.LeeshAPI.request("/auth/v1/token?grant_type=refresh_token", {
+        method: "POST", headers: headers(), body: JSON.stringify({ refresh_token: s.refresh })
+      }).then(function (res) {
+        var d = res.data;
+        if (!res.ok || !d || !d.access_token) { if (res.status) kakao.save(null); return null; }
+        kakao.save({ access: d.access_token, refresh: d.refresh_token, expires: d.expires_at || Math.floor(Date.now() / 1000) + (d.expires_in || 3600) });
+        return d.access_token;
+      });
+    },
+    signOut: function () {
+      var s = kakao.session();
+      kakao.save(null);
+      if (s) window.LeeshAPI.request("/auth/v1/logout", { method: "POST", headers: headers(s.access) });
+    },
+    /** The error Kakao/Supabase sent back last time, once. */
+    lastError: function () {
+      var e = null;
+      try { e = sessionStorage.getItem(KAKAO_ERR); sessionStorage.removeItem(KAKAO_ERR); } catch (x) { /* ignore */ }
+      return e;
+    }
+  };
+  // Back from Kakao: take the session out of the address bar before anything else reads the hash.
+  (function () {
+    var h = location.hash;
+    if (!/(^#|&)(access_token|error_description)=/.test(h)) return;
+    var p = {};
+    h.slice(1).split("&").forEach(function (kv) { var i = kv.indexOf("="); if (i > 0) p[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); });
+    if (p.access_token) {
+      kakao.save({ access: p.access_token, refresh: p.refresh_token, expires: Number(p.expires_at) || Math.floor(Date.now() / 1000) + (Number(p.expires_in) || 3600) });
+    } else {
+      try { sessionStorage.setItem(KAKAO_ERR, p.error_description || "카카오 로그인을 마치지 못했어요."); } catch (e) { /* ignore */ }
+    }
+    var back = "";
+    try { back = sessionStorage.getItem(AFTER) || ""; sessionStorage.removeItem(AFTER); } catch (e) { /* ignore */ }
+    try { history.replaceState(null, "", location.pathname + location.search + back); } catch (e) { location.hash = back; }
+  })();
 
   /*
     The signed-in student, shared by 연습실 예약 and 내 폴더: { id, key }.
@@ -74,5 +137,5 @@
     }
   };
 
-  window.LeeshAPI = { enabled: enabled, rpc: rpc, request: request, headers: headers, who: who, NETWORK_ERROR: NETWORK_ERROR };
+  window.LeeshAPI = { enabled: enabled, rpc: rpc, request: request, headers: headers, who: who, kakao: kakao, NETWORK_ERROR: NETWORK_ERROR };
 })();

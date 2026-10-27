@@ -61,6 +61,21 @@ create table if not exists public.members (
 );
 -- 0000 is a temporary PIN: the student picks their own at first sign-in (member_change_pin).
 alter table public.members add column if not exists must_change_pin boolean not null default false;
+-- 카카오로 로그인: 원장님이 승인한 카카오 계정(Supabase Auth 사용자)과 수강 ID를 잇습니다.
+alter table public.members add column if not exists kakao_user uuid unique;
+
+-- 처음 카카오로 들어온 학생의 "저는 ○○○예요" 요청. 원장님이 관리자 화면에서 승인합니다.
+create table if not exists public.link_requests (
+  id          bigserial primary key,
+  user_id     uuid not null unique,  -- 카카오 계정 하나에 요청 하나
+  kakao_name  text,
+  name        text not null check (length(trim(name)) between 1 and 30),
+  teacher     text,
+  status      text not null default '대기' check (status in ('대기', '승인', '거절')),
+  member_id   text references public.members (id) on update cascade on delete set null,
+  created_at  timestamptz not null default now(),
+  decided_at  timestamptz
+);
 
 -- 같은 방·같은 시간, 같은 사람·같은 시간이 겹치는 예약은 데이터베이스가 거절합니다 (동시에 눌러도).
 -- member_id가 비어 있는 예약은 원장님이 막아 둔 시간(청소·레슨 등)입니다.
@@ -224,11 +239,18 @@ declare
   mid text := upper(trim(coalesce(p_id, '')));
   raw text := trim(coalesce(p_pin, ''));
   pin text := regexp_replace(raw, '\D', '', 'g');
-  via text := case when length(raw) >= 32 then 'token' else 'pin' end;
+  via text := case when length(raw) >= 32 then 'token'
+                   when raw = '' and auth.uid() is not null then 'kakao' else 'pin' end;
   m public.members;
   fails int;
 begin
-  if via = 'token' then
+  if via = 'kakao' then
+    -- signed in with Kakao: the approved link is the identity, p_id is ignored
+    select * into m from public.members where kakao_user = auth.uid();
+    if m.id is null then
+      return jsonb_build_object('ok', false, 'code', 'not_linked', 'error', '아직 학원 승인 전이에요. 승인되면 바로 쓸 수 있어요.');
+    end if;
+  elsif via = 'token' then
     select mb.* into m from private.member_tokens t join public.members mb on mb.id = t.member_id
      where t.hash = extensions.digest(raw, 'sha256') and t.member_id = mid and t.expires_at > now();
     if m.id is null then
@@ -258,7 +280,8 @@ begin
   if m.expires_on is not null and m.expires_on < private.now_kst()::date then
     return private.fail('사용 기한이 지난 ID입니다. 학원에 문의해주세요.');
   end if;
-  return jsonb_build_object('ok', true, 'id', m.id, 'name', m.name, 'via', via, 'mustChange', m.must_change_pin);
+  return jsonb_build_object('ok', true, 'id', m.id, 'name', m.name, 'via', via,
+                            'mustChange', via <> 'kakao' and m.must_change_pin);
 end $$;
 
 -- 예약 · 취소 · 내 폴더용: 임시 비밀번호(0000) 상태면 먼저 새 비밀번호를 정하게 합니다.
@@ -574,6 +597,47 @@ begin
   ));
 end $$;
 
+-- ---------------------------------------------------------------- 카카오 로그인
+
+-- 카카오로 로그인한 사람의 상태: 연결됨 / 요청 대기 / 거절 / 아직 요청 없음.
+create or replace function public.kakao_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  m public.members;
+  r public.link_requests;
+begin
+  if uid is null then return private.fail('카카오 로그인이 필요해요.'); end if;
+  select * into m from public.members where kakao_user = uid;
+  if m.id is not null then
+    return jsonb_build_object('ok', true, 'linked', true, 'name', m.name, 'active', m.status in ('재원', '외부'));
+  end if;
+  select * into r from public.link_requests where user_id = uid;
+  return jsonb_build_object('ok', true, 'linked', false, 'request',
+    case when r.id is null then null else jsonb_build_object('status', r.status, 'name', r.name, 'teacher', r.teacher) end);
+end $$;
+
+-- "저는 ○○○예요" 연결 요청 (다시 보내면 고쳐서 다시 대기).
+create or replace function public.kakao_link_request(p_name text, p_teacher text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  meta jsonb := coalesce(auth.jwt() -> 'user_metadata', '{}'::jsonb);
+  v_name text := trim(coalesce(p_name, ''));
+begin
+  if uid is null then return private.fail('카카오 로그인이 필요해요.'); end if;
+  if exists (select 1 from public.members where kakao_user = uid) then return private.fail('이미 연결된 계정이에요.'); end if;
+  if length(v_name) < 1 or length(v_name) > 30 then return private.fail('이름을 정확히 적어주세요.'); end if;
+  insert into public.link_requests (user_id, kakao_name, name, teacher)
+  values (uid, nullif(coalesce(meta ->> 'full_name', meta ->> 'name', meta ->> 'nickname', meta ->> 'preferred_username'), ''),
+          v_name, nullif(trim(coalesce(p_teacher, '')), ''))
+  on conflict (user_id) do update
+    set name = excluded.name, teacher = excluded.teacher, kakao_name = excluded.kakao_name,
+        status = '대기', member_id = null, created_at = now(), decided_at = null;
+  perform private.notify('🔗 카카오 연결 요청: ' || v_name || coalesce(' · ' || nullif(trim(coalesce(p_teacher, '')), '') || ' 선생님', ''));
+  return jsonb_build_object('ok', true);
+end $$;
+
 -- ---------------------------------------------------------------- 관리자용 함수
 
 -- 수강 ID 추가·수정. p_pin을 주면 비밀번호도 바꿉니다 (새 ID는 필수).
@@ -612,6 +676,40 @@ begin
   return jsonb_build_object('ok', true, 'id', mid, 'created', exists_ is null);
 end $$;
 
+-- 연결 요청 승인(수강 ID와 잇기) 또는 거절.
+create or replace function public.admin_kakao_decide(p_request bigint, p_member text, p_approve boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  r public.link_requests;
+  mid text := upper(trim(coalesce(p_member, '')));
+  owner text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있습니다.'); end if;
+  select * into r from public.link_requests where id = p_request;
+  if r.id is null then return private.fail('요청을 찾을 수 없어요.'); end if;
+  if not coalesce(p_approve, false) then
+    update public.link_requests set status = '거절', member_id = null, decided_at = now() where id = r.id;
+    return jsonb_build_object('ok', true, 'status', '거절');
+  end if;
+  if not exists (select 1 from public.members where id = mid) then return private.fail('수강 ID를 골라주세요.'); end if;
+  select id into owner from public.members where kakao_user = r.user_id and id <> mid;
+  if owner is not null then return private.fail('이 카카오 계정은 이미 ' || owner || '에 연결돼 있어요.'); end if;
+  update public.members set kakao_user = r.user_id where id = mid;
+  update public.link_requests set status = '승인', member_id = mid, decided_at = now() where id = r.id;
+  return jsonb_build_object('ok', true, 'status', '승인', 'member', mid);
+end $$;
+
+-- 카카오 연결 해제 (휴대폰·계정을 바꿨을 때 등).
+create or replace function public.admin_kakao_unlink(p_member text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있습니다.'); end if;
+  update public.link_requests set status = '거절', decided_at = now()
+   where user_id = (select kakao_user from public.members where id = upper(trim(coalesce(p_member, ''))));
+  update public.members set kakao_user = null where id = upper(trim(coalesce(p_member, '')));
+  return jsonb_build_object('ok', true);
+end $$;
+
 -- ---------------------------------------------------------------- 권한
 
 alter table public.settings enable row level security;
@@ -622,12 +720,13 @@ alter table public.consults enable row level security;
 alter table public.admins   enable row level security;
 alter table public.lesson_notes  enable row level security;
 alter table public.monthly_evals enable row level security;
+alter table public.link_requests enable row level security;
 
 -- 손님(anon)은 표를 직접 볼 수 없고, 관리자로 로그인한 사람만 모든 표를 다룹니다.
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals'] loop
+  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'link_requests'] loop
     execute format('drop policy if exists admin_all on public.%I', tbl);
     execute format('create policy admin_all on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', tbl);
   end loop;
@@ -637,11 +736,12 @@ create policy admin_read on public.members for select to authenticated using (pu
 drop policy if exists admin_read on public.admins;
 create policy admin_read on public.admins for select to authenticated using (public.is_admin());
 
-revoke all on public.settings, public.rooms, public.members, public.bookings, public.consults, public.admins,
+revoke all on public.settings, public.rooms, public.members, public.bookings, public.consults, public.admins, public.link_requests,
   public.lesson_notes, public.monthly_evals from anon;
 revoke all on public.members from authenticated;
 -- 비밀번호 해시는 관리자에게도 내보내지 않습니다. 수정은 admin_save_member로만.
-grant select (id, name, phone, status, expires_on, memo, must_change_pin, created_at) on public.members to authenticated;
+grant select (id, name, phone, status, expires_on, memo, must_change_pin, kakao_user, created_at) on public.members to authenticated;
+grant select, update, delete on public.link_requests to authenticated;
 grant delete on public.members to authenticated;
 drop policy if exists admin_delete on public.members;
 create policy admin_delete on public.members for delete to authenticated using (public.is_admin());
@@ -655,9 +755,13 @@ revoke execute on function public.rooms_day(text), public.member_login(text, tex
   public.member_logout(text, text), public.member_change_pin(text, text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text),
-  public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() from public;
+  public.admin_save_member(text, text, text, text, date, text, text), public.is_admin(),
+  public.kakao_status(), public.kakao_link_request(text, text),
+  public.admin_kakao_decide(bigint, text, boolean), public.admin_kakao_unlink(text) from public;
 grant execute on function public.rooms_day(text), public.member_login(text, text), public.member_notebook(text, text),
   public.member_logout(text, text), public.member_change_pin(text, text, text),
   public.booking_create(text, text, text, text, text, int), public.booking_cancel(text, text, bigint),
   public.consult_create(text, text, text, text, text, text, text) to anon, authenticated;
-grant execute on function public.admin_save_member(text, text, text, text, date, text, text), public.is_admin() to authenticated;
+grant execute on function public.admin_save_member(text, text, text, text, date, text, text), public.is_admin(),
+  public.kakao_status(), public.kakao_link_request(text, text),
+  public.admin_kakao_decide(bigint, text, boolean), public.admin_kakao_unlink(text) to authenticated;

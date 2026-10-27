@@ -73,15 +73,7 @@
     <div class="scene__photo"></div>
     <button class="scene__back" type="button" data-leave>← 바탕화면</button>
     <div class="book" id="myBook">
-      <form class="book__login sys" id="myLogin">
-        <h2 class="book__title">내 폴더</h2>
-        <p class="book__lede">수강생은 레슨 노트와 월말평가를 여기서 봐요.</p>
-        <label class="sys-field"><span>수강 ID</span><input name="memberId" autocomplete="username" autocapitalize="characters" spellcheck="false" required></label>
-        <label class="sys-field"><span>비밀번호 4자리</span><input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4}" maxlength="4" required></label>
-        <label class="sys-keep"><input type="checkbox" name="keep" checked> 이 기기에서 로그인 유지</label>
-        <button class="sys-btn sys-btn--block" type="submit">폴더 열기</button>
-        <p class="sys-msg" id="myLoginMsg" role="status"></p>
-      </form>
+      <div class="book__login sys" id="myLogin" aria-live="polite"></div>
       <div class="book__open" id="myOpen" hidden>
         <header class="book__head">
           <h2 class="book__title" id="myTitle"></h2>
@@ -102,6 +94,7 @@
 <script src="js/api.js"></script>
 <script src="js/consult.js"></script>
 <script src="js/scene.js"></script>
+<script src="js/signin.js"></script>
 <script src="js/mynotes.js"></script>
 </body>
 </html>
