@@ -701,18 +701,104 @@
     return evalDraft[key] || (evalDraft[key] = { name: name, files: [], score: null, member: "" });
   }
 
-  function rebuildDraft() {
-    evalDraft = {};
-    Array.prototype.forEach.call($("#evalFiles").files || [], function (f) {
-      var base = f.name.replace(/\.[^.]+$/, "");
-      var hit = /^(.*?)[\s_\-(]*(\d+)\)?$/.exec(base);
-      var name = (hit && hit[1].trim()) || base, page = hit && hit[2] ? Number(hit[2]) : 0;
-      draftFor(name).files.push({ page: page, file: f });
+  /* PDF 평가지: js/vendor/pdfjs turns each page into a picture here in the browser, so students
+     see the same pages as with photos. Which student a page belongs to: the file name if it is a
+     student's name, otherwise the "학생명 ○○○" written on the page (one PDF can hold many students). */
+  var pdfLib = null, pdfCache = new Map();
+  var PDFJS = "js/vendor/pdfjs/";
+  function loadPdfJs() {
+    if (pdfLib) return pdfLib;
+    pdfLib = new Promise(function (ok, fail) {
+      var sc = document.createElement("script");
+      sc.src = PDFJS + "pdf.min.js";
+      sc.onload = function () { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; ok(window.pdfjsLib); };
+      sc.onerror = function () { pdfLib = null; fail(new Error("pdf.js")); };
+      document.head.appendChild(sc);
     });
+    return pdfLib;
+  }
+  function isPdf(f) { return f.type === "application/pdf" || /\.pdf$/i.test(f.name); }
+  function nameOnPage(items) {
+    var words = items.map(function (it) { return String(it.str || "").trim(); }).filter(Boolean);
+    var i = words.indexOf("학생명");
+    if (i !== -1 && words[i + 1] && words[i + 1].length <= 20) return words[i + 1];
+    var m = /([가-힣A-Za-z]{2,10})\s*학생\s*평가표/.exec(words.join(" "));
+    return m ? m[1] : "";
+  }
+  function readPdf(f) {
+    if (!pdfCache.has(f)) {
+      pdfCache.set(f, loadPdfJs().then(function (lib) {
+        return f.arrayBuffer().then(function (buf) {
+          return lib.getDocument({ data: buf, cMapUrl: PDFJS + "cmaps/", cMapPacked: true }).promise;
+        });
+      }).then(function (doc) {
+        var jobs = [];
+        for (var n = 1; n <= doc.numPages; n++) {
+          jobs.push(doc.getPage(n).then(function (pg) {
+            return pg.getTextContent().then(function (tc) { return { page: pg, name: nameOnPage(tc.items) }; });
+          }));
+        }
+        return Promise.all(jobs);
+      }).catch(function () { return null; }));
+    }
+    return pdfCache.get(f);
+  }
+  function pagePicture(pg) {
+    var v1 = pg.getViewport({ scale: 1 }), scale = Math.min(3, 1400 / v1.width), v = pg.getViewport({ scale: scale });
+    var c = document.createElement("canvas");
+    c.width = Math.round(v.width);
+    c.height = Math.round(v.height);
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, c.width, c.height);
+    return pg.render({ canvasContext: ctx, viewport: v }).promise.then(function () {
+      return new Promise(function (done) {
+        c.toBlob(function (b) {
+          if (b && b.type === "image/webp") return done(b);
+          c.toBlob(done, "image/jpeg", 0.85);
+        }, "image/webp", 0.82);
+      });
+    });
+  }
+  function fileName(f) {
+    var base = f.name.replace(/\.[^.]+$/, "");
+    var hit = /^(.*?)[\s_\-(]*(\d+)\)?$/.exec(base);
+    return { name: (hit && hit[1].trim()) || base, page: hit && hit[2] ? Number(hit[2]) : 0 };
+  }
+
+  var draftRun = 0;
+  function rebuildDraft() {
+    var run = ++draftRun, files = Array.prototype.slice.call($("#evalFiles").files || []);
+    var pdfs = files.filter(isPdf);
+    if (pdfs.length) msg($("#evalMsg"), "PDF 읽는 중…");
+    return Promise.all(pdfs.map(readPdf)).then(function (read) {
+      if (run !== draftRun) return; // a newer pick or paste is already being read
+      evalDraft = {};
+      var bad = [];
+      files.filter(function (f) { return !isPdf(f); }).forEach(function (f) {
+        var fn = fileName(f);
+        draftFor(fn.name).files.push({ page: fn.page, make: function () { return shrink(f); } });
+      });
+      pdfs.forEach(function (f, k) {
+        var pages = read[k];
+        if (!pages) { bad.push(f.name); return; }
+        var fn = fileName(f), whole = matchMember(fn.name).pick || state.members.some(function (m) { return plain(m.name) === plain(fn.name); });
+        var cur = whole ? fn.name : "";
+        pages.forEach(function (p, i) {
+          if (!whole && p.name) cur = p.name;
+          draftFor(cur || fn.name).files.push({ page: (fn.page || 0) * 100 + i + 1, make: function () { return pagePicture(p.page); } });
+        });
+      });
+      if (pdfs.length) msg($("#evalMsg"), bad.length ? "읽지 못한 PDF: " + bad.join(", ") : "", bad.length ? "error" : "");
+      finishDraft();
+    });
+  }
+
+  function finishDraft() {
     parseScores($("#evalPaste").value).forEach(function (sc) { draftFor(sc.name).score = sc; });
     Object.keys(evalDraft).forEach(function (k) {
       var d = evalDraft[k];
-      d.files.sort(function (a, b) { return a.page - b.page || (a.file.name < b.file.name ? -1 : 1); });
+      d.files.sort(function (a, b) { return a.page - b.page; });
       var mm = matchMember(d.name, d.score && d.score.teacher);
       d.member = mm.pick;
       d.many = mm.many;
@@ -792,7 +878,7 @@
 
   function uploadOne(d, month, t) {
     var jobs = d.files.map(function (f, i) {
-      return shrink(f.file).then(function (blob) { return LeeshAPI.storage.upload(d.member + "/" + month + "/" + (i + 1) + ".webp", blob, t); });
+      return f.make().then(function (blob) { return LeeshAPI.storage.upload(d.member + "/" + month + "/" + (i + 1) + ".webp", blob, t); });
     });
     return Promise.all(jobs).then(function (oks) {
       if (oks.some(function (ok) { return !ok; })) return { ok: false, why: "사진 올리기 실패" };
@@ -804,8 +890,8 @@
     });
   }
 
-  $("#evalFiles").addEventListener("change", rebuildDraft);
-  $("#evalPaste").addEventListener("input", rebuildDraft);
+  $("#evalFiles").addEventListener("change", function () { rebuildDraft(); });
+  $("#evalPaste").addEventListener("input", function () { rebuildDraft(); });
   $("#evalMonth").addEventListener("change", function () { countDraft(); loadEvalList(); });
 
   $("#evalUpload").addEventListener("click", function () {

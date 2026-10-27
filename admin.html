@@ -140,10 +140,10 @@
 
         <div id="evalBox">
           <h3 class="sys-h">월말평가 올리기</h3>
-          <p class="sys-note">평가지 사진 이름을 <b>학생이름1.jpg, 학생이름2.jpg</b>처럼 두면 알아서 학생을 찾아요. 점수는 "통합 결과" 시트에서 표를 복사해 붙여넣으면 같이 들어가요.</p>
+          <p class="sys-note">평가지는 <b>PDF</b>나 <b>사진</b> 모두 돼요. 파일 이름을 <b>학생이름.pdf</b> 또는 <b>학생이름1.jpg, 학생이름2.jpg</b>처럼 두면 알아서 학생을 찾아요. 여러 학생이 든 PDF 하나도 괜찮아요 (쪽마다 적힌 "학생명"으로 나눠요). 점수는 "통합 결과" 시트에서 표를 복사해 붙여넣으면 같이 들어가요.</p>
           <div class="adm__drawer">
             <label class="sys-field"><span>평가 달</span><input id="evalMonth" type="month" required></label>
-            <label class="sys-field"><span>평가지 사진 (여러 장 한 번에)</span><input id="evalFiles" type="file" accept="image/*" multiple></label>
+            <label class="sys-field"><span>평가지 PDF · 사진 (여러 개 한 번에)</span><input id="evalFiles" type="file" accept="application/pdf,.pdf,image/*" multiple></label>
             <label class="sys-field"><span>점수표 붙여넣기 (선택)</span><textarea id="evalPaste" rows="4" placeholder="구글시트에서 순위 ~ 단계 칸을 드래그해서 복사 → 여기에 붙여넣기"></textarea></label>
             <div id="evalReview"></div>
             <button class="sys-btn" type="button" id="evalUpload" disabled>올리기</button>
