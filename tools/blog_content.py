@@ -334,7 +334,7 @@ def steps_section():
             + f'    <ul class="classes">{classes}</ul>\n'
             + f'    <p class="scrap__lede">{CLASSES_NOTE}</p>\n'
             + f'    <ol class="steps">{steps}</ol>\n'
-            + '    <p class="scrap__note">매 레슨이 끝나면 레슨일지를 써서 공유해요. 수강생은 홈 화면 <a href="index.html#notes">내 폴더 → 레슨 노트</a>에서 볼 수 있어요.</p>\n')
+            + '    <p class="scrap__note">매 레슨이 끝나면 레슨일지를 써서 공유해요. 월말평가 결과는 홈 화면 <a href="index.html#evals">내 폴더</a>에서 볼 수 있어요.</p>\n')
 
 
 def why_section():

@@ -487,6 +487,12 @@
 
   function recMember() { return $("#recMember").value; }
 
+  // 레슨 노트 switched off in js/config.js: the tab is just 월말평가 (the notes code and table stay)
+  if (cfg.lessonNotes === false) {
+    $("#noteForm").parentNode.hidden = true;
+    $('[data-tab="records"]').textContent = "월말평가";
+  }
+
   function loadRecords() {
     var sel = $("#recMember"), keep = sel.value;
     api("members?select=id,name,status&order=id").then(function (res) {
@@ -583,7 +589,8 @@
   /* ---------------- 카카오톡으로 보낼 주소 ---------------- */
 
   // Links straight into a screen (js/scene.js reads the #hash). Saved sign-ins open them without a login.
-  var LINKS = [["레슨 노트", "#notes"], ["월말평가", "#evals"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]];
+  var LINKS = [["레슨 노트", "#notes"], ["월말평가", "#evals"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
+    .filter(function (l) { return cfg.lessonNotes !== false || l[1] !== "#notes"; });
   function siteLink(to) { return new URL(to.charAt(0) === "#" ? "./" + to : to, location.href).href; }
   function openHref(to) { return to.charAt(0) === "#" ? "index.html" + to : to; }
 

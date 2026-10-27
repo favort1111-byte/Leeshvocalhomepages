@@ -11,6 +11,13 @@
   var open = scene.querySelector("#myOpen");
   var labels = document.querySelectorAll('[data-scene="scene-me"] .icon__label');
   var who = null;
+  // 레슨 노트 can be switched off in js/config.js; then the folder holds 월말평가 only
+  var NOTES = (window.LEESH || {}).lessonNotes !== false;
+  if (!NOTES) {
+    scene.querySelectorAll('[data-book-tab="notes"], [data-book-page="notes"]').forEach(function (n) { n.remove(); });
+    scene.querySelector('[data-book-page="evals"]').hidden = false;
+    scene.querySelector('[data-book-tab="evals"]').setAttribute("aria-selected", "true");
+  }
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -27,7 +34,7 @@
 
   var sign = LeeshSignIn.mount(box, {
     title: "내 폴더", titleClass: "book__title",
-    lede: "수강생은 레슨 노트와 월말평가를 여기서 봐요.", ledeClass: "book__lede",
+    lede: NOTES ? "수강생은 레슨 노트와 월말평가를 여기서 봐요." : "수강생은 월말평가를 여기서 봐요.", ledeClass: "book__lede",
     onSignedIn: function (res, w) { who = w; load(); }
   });
 
@@ -55,7 +62,7 @@
       }
       setLabel(res.name);
       scene.querySelector("#myTitle").textContent = res.name + "의 폴더";
-      renderNotes(res.notes);
+      if (NOTES) renderNotes(res.notes);
       renderEvals(res.evals);
       box.hidden = true;
       open.hidden = false;
@@ -131,7 +138,7 @@
   // Refresh each time the folder opens, so a note written a minute ago shows up.
   // A link like index.html#evals opens the folder on that tab (js/scene.js passes it on).
   scene.addEventListener("scene:open", function (e) {
-    if (e.detail && e.detail.tab) showTab(e.detail.tab);
+    if (e.detail && e.detail.tab) showTab(NOTES ? e.detail.tab : "evals");
     if (who) load();
   });
 
