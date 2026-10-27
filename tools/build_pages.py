@@ -329,14 +329,14 @@ collage = "\n".join([
 ])
 
 contact = (head("Contact | 이송희보컬레슨",
-                "이송희보컬레슨 상담 안내. 강남 선릉역 7번 출구 도보 2분, 카카오톡 24시간 문의.")
+                "이송희보컬레슨 상담 안내. 강남 선릉역 7번 출구 도보 2~3분, 카카오톡 24시간 문의.")
            + '<main class="stage contact">\n'
            + nav("contact", "dark") + "\n"
            + '  <div class="contact__text">\n'
            + "    <h1>let's connect</h1>\n"
            + "    <p>노래는 늘 깔끔하게 완성된 채로 오지 않아요. 오디션 전날 밤의 연습, 무심코 흥얼거린 가사, "
              "처음 잡아본 마이크에서 시작되죠. 지금 어디쯤인지부터 함께 확인해요. "
-             "선릉역 7번 출구 도보 2분 · 카카오톡 24시간 문의 · 010-4458-5448</p>\n"
+             "선릉역 7번 출구 도보 2~3분 · 카카오톡 24시간 문의 · 010-4458-5448</p>\n"
            + f'    <a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">contact</a>\n'
            + "  </div>\n"
            + '  <div class="collage" aria-hidden="true">\n' + collage + "\n  </div>\n"
