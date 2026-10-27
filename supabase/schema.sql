@@ -29,8 +29,8 @@ create table if not exists public.settings (
   unit_min          int not null default 60   check (unit_min in (30, 60)),
   max_minutes       int not null default 120  check (max_minutes > 0 and max_minutes % 60 = 0),
   daily_max_minutes int not null default 120  check (daily_max_minutes > 0),
-  max_days          int not null default 7    check (max_days between 0 and 60),
-  cancel_minutes    int not null default 60   check (cancel_minutes >= 0),
+  max_days          int not null default 0    check (max_days between 0 and 60),
+  cancel_minutes    int not null default 180  check (cancel_minutes >= 0),
   check (close_min > open_min)
 );
 insert into public.settings (id) values (1) on conflict do nothing;
@@ -376,6 +376,7 @@ begin
     'close', private.hhmm(s.close_min),
     'maxHours', s.max_minutes / 60,
     'dailyMaxHours', trim_scale(s.daily_max_minutes / 60.0),
+    'cancelBefore', case when s.cancel_minutes % 60 = 0 then (s.cancel_minutes / 60) || '시간' else s.cancel_minutes || '분' end,
     'rooms', coalesce((
       select jsonb_agg(jsonb_build_object(
         'name', r.name, 'type', r.kind,
@@ -454,7 +455,8 @@ begin
   if d is null then return private.fail('날짜 형식이 올바르지 않습니다.'); end if;
   if d < today then return private.fail('지난 날짜는 예약할 수 없습니다.'); end if;
   if d > today + s.max_days then
-    return private.fail('예약은 오늘부터 ' || s.max_days || '일 뒤까지만 가능합니다.');
+    return private.fail(case when s.max_days = 0 then '예약은 당일만 할 수 있어요. 매일 밤 12시에 그날 예약이 열려요.'
+                             else '예약은 오늘부터 ' || s.max_days || '일 뒤까지만 가능합니다.' end);
   end if;
 
   select * into room from public.rooms where name = p_room and active;
@@ -522,7 +524,7 @@ begin
    for update;
   if b.id is null then return private.fail('취소할 예약을 찾을 수 없습니다.'); end if;
   if (b.day - today) * 1440 + b.start_min - now_min < s.cancel_minutes then
-    return private.fail('시작 ' || s.cancel_minutes || '분 전이 지나 직접 취소할 수 없습니다. 학원에 연락해주세요.');
+    return private.fail('시작 ' || case when s.cancel_minutes % 60 = 0 then (s.cancel_minutes / 60) || '시간' else s.cancel_minutes || '분' end || ' 전이 지나 직접 취소할 수 없습니다. 학원에 연락해주세요.');
   end if;
   update public.bookings set status = '취소', cancelled_at = now(), memo = coalesce(memo || ' / ', '') || '본인 취소'
    where id = b.id;

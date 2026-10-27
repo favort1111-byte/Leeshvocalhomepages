@@ -113,13 +113,17 @@
       renderBoard(res);
       renderRooms(res);
       $("#rules").textContent = "한 번에 최대 " + res.maxHours + "시간 · 하루 최대 " + res.dailyMaxHours + "시간 · " +
-        res.unit + "분 단위";
+        res.unit + "분 단위" + (res.cancelBefore ? " · 직접 취소는 시작 " + res.cancelBefore + " 전까지" : "");
     });
   }
 
   function renderDays(days, current) {
     var wrap = $("#days");
     wrap.textContent = "";
+    if (days.length === 1) { // same-day only: nothing to pick, just say which day and when the next one opens
+      wrap.appendChild(el("p", "sys-note", "오늘 " + dayLabel(days[0]) + " · 예약은 당일만 돼요. 매일 밤 12시에 그날 예약이 열려요."));
+      return;
+    }
     days.forEach(function (d) {
       var b = el("button", "sys-chip", dayLabel(d));
       b.type = "button";

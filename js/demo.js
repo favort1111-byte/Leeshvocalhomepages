@@ -7,7 +7,7 @@
   cfg.supabaseKey = "demo";
   cfg.local = true;
   var KEY = "leesh_demo_db";
-  var VERSION = 6; // bump when the demo defaults change
+  var VERSION = 7; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -29,6 +29,7 @@
     var dt = new Date(d + "T00:00:00Z");
     return (dt.getUTCMonth() + 1) + "/" + dt.getUTCDate() + "(" + WD[dt.getUTCDay()] + ")";
   }
+  function before(m) { return m % 60 === 0 ? m / 60 + "시간" : m + "분"; }
   function fail(msg) { return { ok: false, error: msg }; }
 
   function seed() {
@@ -36,7 +37,7 @@
     var db = {
       version: VERSION,
       next: 100,
-      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 120, max_days: 7, cancel_minutes: 60 },
+      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 120, max_days: 0, cancel_minutes: 180 },
       rooms: [["B1", "연습실"], ["B2", "연습실"], ["B3", "연습실"], ["B4", "연습실"], ["B5", "연습실"], ["C hall", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
       members: [
@@ -54,8 +55,8 @@
       bookings: [
         { id: 1, room_id: 1, member_id: "S002", day: t, start_min: 1200, end_min: 1320, status: "확정", memo: null },
         { id: 2, room_id: 6, member_id: "G001", day: t, start_min: 1140, end_min: 1260, status: "확정", memo: null },
-        { id: 3, room_id: 3, member_id: null, day: addDays(t, 1), start_min: 600, end_min: 660, status: "확정", memo: "청소" },
-        { id: 4, room_id: 2, member_id: "S001", day: addDays(t, 1), start_min: 1080, end_min: 1200, status: "확정", memo: null }
+        { id: 3, room_id: 3, member_id: null, day: t, start_min: 600, end_min: 660, status: "확정", memo: "청소" },
+        { id: 4, room_id: 2, member_id: "S001", day: t, start_min: 1320, end_min: 1440, status: "확정", memo: null }
       ],
       lesson_notes: [
         { id: 11, member_id: "S001", lesson_date: addDays(t, -2), teacher: "이송희", did: "후렴 고음에서 턱에 힘 빼기.\n호흡을 먼저 채우고 소리를 얹는 연습.", practice: "립트릴 5분 → 후렴 두 줄만 천천히 3번", created_at: new Date().toISOString() },
@@ -138,7 +139,7 @@
       for (var i = 0; i <= s.max_days; i++) days.push(addDays(n.today, i));
       return {
         ok: true, date: d, now: ahead === 0 ? n.min : null, days: days, unit: s.unit_min, open: hhmm(s.open_min), close: hhmm(s.close_min),
-        maxHours: s.max_minutes / 60, dailyMaxHours: s.daily_max_minutes / 60,
+        maxHours: s.max_minutes / 60, dailyMaxHours: s.daily_max_minutes / 60, cancelBefore: before(s.cancel_minutes),
         rooms: db.rooms.filter(function (r) { return r.active; })
           .sort(function (x, y) { return x.sort - y.sort || x.id - y.id; })
           .map(function (r) {
@@ -175,7 +176,7 @@
       var s = db.settings, n = nowKst(), d = a.p_date, ahead = diffDays(n.today, d);
       if (isNaN(ahead)) return fail("날짜 형식이 올바르지 않습니다.");
       if (ahead < 0) return fail("지난 날짜는 예약할 수 없습니다.");
-      if (ahead > s.max_days) return fail("예약은 오늘부터 " + s.max_days + "일 뒤까지만 가능합니다.");
+      if (ahead > s.max_days) return fail(s.max_days === 0 ? "예약은 당일만 할 수 있어요. 매일 밤 12시에 그날 예약이 열려요." : "예약은 오늘부터 " + s.max_days + "일 뒤까지만 가능합니다.");
       var r = db.rooms.filter(function (x) { return x.name === a.p_room && x.active; })[0];
       if (!r) return fail("선택한 연습실을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.");
       var st = toMin(a.p_start), h = Number(a.p_hours);
@@ -209,7 +210,7 @@
       var b = live().filter(function (x) { return x.id === a.p_booking && x.member_id === who.id; })[0];
       if (!b) return fail("취소할 예약을 찾을 수 없습니다.");
       if (diffDays(n.today, b.day) * 1440 + b.start_min - n.min < s.cancel_minutes) {
-        return fail("시작 " + s.cancel_minutes + "분 전이 지나 직접 취소할 수 없습니다. 학원에 연락해주세요.");
+        return fail("시작 " + before(s.cancel_minutes) + " 전이 지나 직접 취소할 수 없습니다. 학원에 연락해주세요.");
       }
       b.status = "취소";
       b.memo = (b.memo ? b.memo + " / " : "") + "본인 취소";
