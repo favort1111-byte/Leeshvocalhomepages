@@ -730,3 +730,28 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .evalr__zoom{position:fixed;inset:0;z-index:100;overflow:auto;background:rgba(20,14,10,.92);padding:56px 8px 24px;-webkit-overflow-scrolling:touch;}
 .evalr__zoom img{display:block;width:100%;max-width:900px;height:auto;margin:0 auto;}
 .evalr__close{position:fixed;top:10px;right:10px;z-index:1;min-height:40px;padding:0 14px;border:0;border-radius:999px;background:#FBF3E4;color:#2B2522;font:inherit;font-size:14px;cursor:pointer;}
+
+/* ---------- audition.html: 오디션 소식 ---------- */
+.news__sec{margin:0 0 30px;}
+.news__sec h2{margin:0 0 6px;font-family:var(--f-serif);font-weight:500;font-size:22px;color:var(--brown);}
+.news__lede{margin:0 0 12px;color:var(--ink-body);font-size:14.5px;line-height:1.6;}
+.news__lede a{color:var(--brown);}
+.news__list{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:8px;}
+.news__card{display:grid;grid-template-columns:6.2em 1fr auto;align-items:center;gap:10px;min-height:48px;padding:10px 14px;
+  border:1px solid rgba(90,60,40,.16);border-radius:12px;background:rgba(255,255,255,.65);color:var(--ink);text-decoration:none;}
+.news__card:hover{background:#fff;}
+.news__card time{font-size:13px;color:#8A7564;font-variant-numeric:tabular-nums;}
+.news__what{font-size:15px;line-height:1.45;}
+.news__what b{font-weight:500;}
+.news__go{color:var(--brown);}
+.news__more summary{cursor:pointer;margin:4px 0 10px;color:var(--brown);font-size:14px;}
+.news__empty{color:#8A7564;}
+.news__foot{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 10px;}
+.news__foot .pill-btn{display:inline-flex;align-items:center;height:40px;padding:0 18px;border:1px solid var(--ink);border-radius:999px;color:var(--ink);text-decoration:none;font-size:14px;}
+@media (max-width:760px){
+  .nav a{width:calc(58 * var(--s));font-size:calc(11.5 * var(--s));}
+  .news__card{grid-template-columns:1fr auto;gap:2px 10px;}
+  .news__card time{grid-column:1;}
+  .news__what{grid-column:1;grid-row:2;}
+  .news__go{grid-row:1 / span 2;grid-column:2;}
+}

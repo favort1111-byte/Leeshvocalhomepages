@@ -17,7 +17,7 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
          'family=Gloock&family=Gowun+Batang&family=Jost:wght@400;500&family=Nanum+Pen+Script&'
          'family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">')
 
-PAGES = [("home", "index.html"), ("about", "about.html"), ("contact", "contact.html"),
+PAGES = [("home", "index.html"), ("about", "about.html"), ("audition", "audition.html"), ("contact", "contact.html"),
          ("consult", "consult.html"), ("booking", "booking.html")]
 
 def nav(current, theme):
@@ -140,7 +140,7 @@ ICON_LINKS = {
     "stage": ("about.html#teacher", False),
     "lesson": ("about.html#steps", False),
     "room": ("booking.html", False),
-    "audition": ("about.html#care", False),
+    "audition": ("audition.html", False),
     "voice": ("consult.html", False),
     "hobby": ("about.html#tips", False),
     "exam": ("consult.html", False),
@@ -530,6 +530,65 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + "  </div>\n"
               + "</main>\n" + foot("games"))
 
+# ---------- AUDITION NEWS (from the blog's RSS: tools/fetch_auditions.py → data/auditions.json) ----------
+BLOG_AUDITIONS = blog.BLOG.replace("blog.naver.com/o_oa8", "blog.naver.com/PostList.naver?blogId=o_oa8&categoryNo=14")
+AUD = json.load(open(os.path.join(REPO, "data", "auditions.json"), encoding="utf-8"))["items"]
+
+def esc(t):
+    return (t or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+def news_card(p):
+    d = p["date"].replace("-", ".")
+    co, title = p["company"], p["title"]
+    if co and co in title:  # "S2엔터테인먼트 합격": bold the name inside the title instead of saying it twice
+        label = esc(title).replace(esc(co), f"<b>{esc(co)}</b>", 1)
+    else:
+        label = (f"<b>{esc(co)}</b> " if co else "") + esc(title)
+    return (f'        <li><a class="news__card" href="{esc(p["link"])}" target="_blank" rel="noopener">'
+            f'<time datetime="{p["date"]}">{d}</time><span class="news__what">{label}</span>'
+            f'<span class="news__go" aria-hidden="true">↗</span></a></li>\n')
+
+def news_list(kind, first):
+    items = [p for p in AUD if p["kind"] == kind]
+    if not items:
+        return '      <p class="news__empty">아직 올라온 소식이 없어요.</p>\n'
+    out = '      <ul class="news__list">\n' + "".join(news_card(p) for p in items[:first]) + "      </ul>\n"
+    if len(items) > first:
+        out += ('      <details class="news__more"><summary>지난 소식 ' + str(len(items) - first) + '개 더 보기</summary>\n'
+                '      <ul class="news__list">\n' + "".join(news_card(p) for p in items[first:]) + "      </ul></details>\n")
+    return out
+
+AUDITION_BODY = (
+    '  <div class="booking__inner news">\n'
+    '    <h1 class="booking__title">audition news</h1>\n'
+    '    <p class="booking__note">학원 내방 오디션 일정, 기획사 오디션 정보, 합격 소식을 모았어요. 누르면 블로그 글에서 자세히 볼 수 있어요.</p>\n'
+    '    <section class="news__sec" aria-labelledby="news-visit">\n'
+    '      <h2 id="news-visit">학원 내방 오디션</h2>\n'
+    '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에 와서 직접 심사해요. 일정은 수업 때나 카카오톡으로도 안내해요.</p>\n'
+    + news_list("내방", 4) +
+    '    </section>\n'
+    '    <section class="news__sec" aria-labelledby="news-open">\n'
+    '      <h2 id="news-open">기획사 오디션 정보</h2>\n'
+    '      <p class="news__lede">기획사 공개·온라인 오디션 소식이에요. 마감이 지났을 수도 있으니 날짜와 글을 꼭 확인하세요.</p>\n'
+    + news_list("오디션", 8) +
+    '    </section>\n'
+    '    <section class="news__sec" aria-labelledby="news-pass">\n'
+    '      <h2 id="news-pass">합격 소식</h2>\n'
+    + news_list("합격", 6) +
+    '      <p class="news__lede"><a href="about.html#results">기획사·방송·입시 합격 실적 전체 보기 →</a></p>\n'
+    '    </section>\n'
+    '    <p class="news__foot">'
+    f'<a class="pill-btn" href="{BLOG_AUDITIONS}" target="_blank" rel="noopener">블로그 오디션 정보 전체 ↗</a> '
+    '<a class="pill-btn" href="consult.html">오디션 준비 상담하기</a></p>\n'
+    '  </div>\n')
+
+audition_page = (head("Audition | 이송희보컬레슨",
+                      "이송희보컬레슨 오디션 소식: 매월 학원 내방 오디션 일정, 기획사 공개·온라인 오디션 정보, 합격 소식.")
+                 + '<main class="stage booking">\n'
+                 + nav("audition", "dark") + "\n"
+                 + AUDITION_BODY
+                 + "</main>\n" + foot())
+
 # ---------- PRIVACY (paper theme, like booking) ----------
 privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송희보컬레슨 홈페이지 개인정보처리방침.")
                 + '<main class="stage booking">\n'
@@ -537,7 +596,7 @@ privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송
                 + '  <div class="booking__inner">\n' + privacy.body() + "  </div>\n"
                 + "</main>\n" + foot())
 
-out = {"privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"audition.html": audition_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
