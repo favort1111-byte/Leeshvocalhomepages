@@ -144,6 +144,24 @@ create table if not exists public.monthly_evals (
   unique (member_id, month)
 );
 
+-- 월말평가 리포트 (분기마다 3·6·9·12월). 원장님이 평가지 사진과 점수표를 올리면 학생은 "내 폴더"에서 봅니다.
+-- 사진은 Storage의 비공개 버킷 eval-reports/<수강 ID>/<YYYY-MM>/<쪽>.webp 에, 여기엔 점수와 쪽수만.
+create table if not exists public.eval_reports (
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  month      date not null check (extract(day from month) = 1),
+  pages      smallint not null default 0 check (pages between 0 and 6),
+  song       text,
+  teacher    text,
+  basic      numeric(3,1) check (basic between 0 and 10),      -- 기본기
+  technique  numeric(3,1) check (technique between 0 and 10),  -- 보컬 테크닉
+  acting     numeric(3,1) check (acting between 0 and 10),     -- 액팅
+  styling    numeric(3,1) check (styling between 0 and 10),    -- 스타일링
+  total      numeric(3,1) check (total between 0 and 40),
+  stage      text,                                             -- 단계 (기초 연습 ~ 연습생 계약 임박)
+  updated_at timestamptz not null default now(),
+  primary key (member_id, month)
+);
+
 -- 관리자 화면에 로그인할 수 있는 이메일 (Supabase Authentication에 만든 계정)
 create table if not exists public.admins (
   email text primary key check (email = lower(email))
@@ -589,6 +607,14 @@ begin
       from (select * from public.lesson_notes where member_id = who ->> 'id'
             order by lesson_date desc, id desc limit 30) n
     ), '[]'::jsonb),
+    'reports', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(r.month, 'YYYY-MM'), 'pages', r.pages, 'song', r.song, 'teacher', r.teacher,
+        'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
+        'total', r.total, 'stage', r.stage
+      ) order by r.month desc)
+      from (select * from public.eval_reports where member_id = who ->> 'id' order by month desc limit 12) r
+    ), '[]'::jsonb),
     'evals', coalesce((
       select jsonb_agg(jsonb_build_object(
         'month', to_char(e.month, 'YYYY-MM'), 'teacher', e.teacher,
@@ -775,6 +801,7 @@ alter table public.rooms    enable row level security;
 alter table public.members  enable row level security;
 alter table public.bookings enable row level security;
 alter table public.consults enable row level security;
+alter table public.eval_reports enable row level security;
 alter table public.admins   enable row level security;
 alter table public.lesson_notes  enable row level security;
 alter table public.monthly_evals enable row level security;
@@ -784,7 +811,7 @@ alter table public.link_requests enable row level security;
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'link_requests'] loop
+  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'eval_reports', 'link_requests'] loop
     execute format('drop policy if exists admin_all on public.%I', tbl);
     execute format('create policy admin_all on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', tbl);
   end loop;
@@ -795,7 +822,7 @@ drop policy if exists admin_read on public.admins;
 create policy admin_read on public.admins for select to authenticated using (public.is_admin());
 
 revoke all on public.settings, public.rooms, public.members, public.bookings, public.consults, public.admins, public.link_requests,
-  public.lesson_notes, public.monthly_evals from anon;
+  public.lesson_notes, public.monthly_evals, public.eval_reports from anon;
 revoke all on public.members from authenticated;
 -- 비밀번호 해시는 관리자에게도 내보내지 않습니다. 수정은 admin_save_member로만.
 grant select (id, name, phone, status, expires_on, memo, must_change_pin, kakao_user, created_at) on public.members to authenticated;
@@ -804,7 +831,7 @@ grant delete on public.members to authenticated;
 drop policy if exists admin_delete on public.members;
 create policy admin_delete on public.members for delete to authenticated using (public.is_admin());
 grant select, insert, update, delete on public.settings, public.rooms, public.bookings, public.consults,
-  public.lesson_notes, public.monthly_evals to authenticated;
+  public.lesson_notes, public.monthly_evals, public.eval_reports to authenticated;
 grant select on public.admins to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 
@@ -827,3 +854,16 @@ grant execute on function public.admin_save_member(text, text, text, text, date,
 -- 보관 기간 정리를 매일 19:00 UTC (= 한국 새벽 4시)에. 같은 이름이면 덮어씁니다.
 create extension if not exists pg_cron;
 select cron.schedule('leesh_cleanup', '0 19 * * *', 'select private.cleanup()');
+
+-- 월말평가 평가지 사진: 비공개 버킷. 원장님은 올리고 지우고, 학생은 카카오로 로그인했을 때 자기 폴더만 봅니다.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('eval-reports', 'eval-reports', false, 3145728, array['image/webp', 'image/jpeg', 'image/png'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists eval_reports_admin on storage.objects;
+create policy eval_reports_admin on storage.objects for all to authenticated
+  using (bucket_id = 'eval-reports' and public.is_admin())
+  with check (bucket_id = 'eval-reports' and public.is_admin());
+drop policy if exists eval_reports_own on storage.objects;
+create policy eval_reports_own on storage.objects for select to authenticated
+  using (bucket_id = 'eval-reports' and (storage.foldername(name))[1] =
+         (select m.id from public.members m where m.kakao_user = auth.uid() and m.status in ('재원', '외부')));

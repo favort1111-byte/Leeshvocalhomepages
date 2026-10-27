@@ -88,3 +88,8 @@ section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 .adm__badge[hidden]{display:none;}
 .adm__kakao{color:#8A6D00;font-weight:500;}
 .adm__card .sys-msg:empty{display:none;}
+
+/* 월말평가 올리기 */
+.adm__evaltable select{max-width:280px;}
+.adm__evaltable tr.is-miss td{background:#FDECEA;}
+#evalBox textarea{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;}

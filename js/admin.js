@@ -476,27 +476,27 @@
 
   /* ---------------- 수업 기록 (레슨 노트 + 월말평가) ---------------- */
 
-  var SCORE_NAMES = [["pitch", "음정"], ["rhythm", "박자"], ["breath", "호흡"], ["expression", "표현"], ["stage", "무대"]];
-
-  (function fillScoreSelects() {
-    document.querySelectorAll(".adm__scores select").forEach(function (sel) {
-      for (var v = 5; v >= 1; v--) { var o = el("option", null, v + "점"); o.value = v; sel.appendChild(o); }
-      sel.value = "3";
-    });
-  })();
-
   function recMember() { return $("#recMember").value; }
 
   // 레슨 노트 switched off in js/config.js: the tab is just 월말평가 (the notes code and table stay)
   if (cfg.lessonNotes === false) {
     $("#noteForm").parentNode.hidden = true;
+    $('[data-panel="records"] .adm__bar').hidden = true; // the student picker is for notes only
     $('[data-tab="records"]').textContent = "월말평가";
   }
 
   function loadRecords() {
     var sel = $("#recMember"), keep = sel.value;
-    api("members?select=id,name,status&order=id").then(function (res) {
+    api("members?select=id,name,status,memo&order=id").then(function (res) {
       if (!res.ok) return;
+      state.members = res.data; // 월말평가 올리기 matches names against these
+      if (!evalMonth()) { // 평가는 3·6·9·12월: the latest one so far
+        var t = todayKst(), y = Number(t.slice(0, 4)), q = Math.floor(Number(t.slice(5, 7)) / 3) * 3;
+        if (!q) { y--; q = 12; }
+        $("#evalMonth").value = y + "-" + String(q).padStart(2, "0");
+      }
+      loadEvalList();
+      if (Object.keys(evalDraft).length) rebuildDraft();
       sel.textContent = "";
       res.data.filter(function (m) { return m.status !== "종료"; }).forEach(function (m) {
         var o = el("option", null, m.name + " (" + m.id + ")");
@@ -507,16 +507,14 @@
       if (keep) sel.value = keep;
       var f = $("#noteForm");
       if (!field(f, "date").value) field(f, "date").value = todayKst();
-      if (!field($("#evalForm"), "month").value) field($("#evalForm"), "month").value = todayKst().slice(0, 7);
       loadMemberRecords();
     });
   }
 
   function loadMemberRecords() {
     var id = recMember();
-    var notes = $("#noteList"), evals = $("#evalList");
+    var notes = $("#noteList");
     notes.textContent = "";
-    evals.textContent = "";
     if (!id) { notes.appendChild(el("li", "sys-empty", "수강 ID를 먼저 발급해주세요.")); return; }
     var q = "member_id=eq." + encodeURIComponent(id);
     api("lesson_notes?" + q + "&order=lesson_date.desc,id.desc&limit=50").then(function (res) {
@@ -532,26 +530,6 @@
         li.appendChild(el("p", "adm__quote", n.did));
         if (n.practice) li.appendChild(el("p", null, "연습: " + n.practice));
         notes.appendChild(li);
-      });
-    });
-    api("monthly_evals?" + q + "&order=month.desc&limit=24").then(function (res) {
-      if (!res.ok) { evals.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
-      if (!res.data.length) evals.appendChild(el("li", "sys-empty", "아직 평가가 없어요."));
-      res.data.forEach(function (e) {
-        var li = el("li", "adm__card");
-        var top = el("div", "adm__cardtop");
-        top.appendChild(el("strong", null, e.month.slice(0, 7)));
-        if (e.teacher) top.appendChild(el("span", "sys-note", e.teacher));
-        var edit = el("button", "sys-link", "고치기");
-        edit.type = "button";
-        edit.addEventListener("click", function () { fillEval(e); });
-        top.appendChild(edit);
-        top.appendChild(deleteButton("monthly_evals", e.id, loadMemberRecords));
-        li.appendChild(top);
-        li.appendChild(el("p", "adm__dots", SCORE_NAMES.map(function (s) { return s[1] + " " + e[s[0]]; }).join(" · ")));
-        if (e.comment) li.appendChild(el("p", "adm__quote", e.comment));
-        if (e.goal) li.appendChild(el("p", null, "다음 달 목표: " + e.goal));
-        evals.appendChild(li);
       });
     });
   }
@@ -570,15 +548,7 @@
     return b;
   }
 
-  function fillEval(e) {
-    var f = $("#evalForm");
-    field(f, "month").value = e.month.slice(0, 7);
-    field(f, "teacher").value = e.teacher || "";
-    SCORE_NAMES.forEach(function (s) { field(f, s[0]).value = String(e[s[0]]); });
-    field(f, "comment").value = e.comment || "";
-    field(f, "goal").value = e.goal || "";
-    f.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }
+
 
   $("#recMember").addEventListener("change", function () {
     $("#noteShare").hidden = true;
@@ -667,21 +637,241 @@
     });
   });
 
-  $("#evalForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var f = e.target, body = {
-      member_id: recMember(), month: field(f, "month").value + "-01",
-      teacher: field(f, "teacher").value.trim() || null,
-      comment: field(f, "comment").value.trim() || null, goal: field(f, "goal").value.trim() || null
-    };
-    SCORE_NAMES.forEach(function (s) { body[s[0]] = Number(field(f, s[0]).value); });
-    api("monthly_evals?on_conflict=member_id,month", { method: "POST", upsert: true, body: body }).then(function (res) {
-      if (!res.ok) { msg($("#evalMsg"), friendly(res), "error"); return; }
-      msg($("#evalMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
-      showShare($("#evalShare"), "#evals", Number(body.month.slice(5, 7)) + "월 월말평가가 나왔어요.");
-      loadMemberRecords();
+  /* ---------------- 월말평가 올리기 ----------------
+     평가지 사진 (학생이름1.jpg, 학생이름2.jpg …) and/or the score table pasted from the
+     "통합 결과" sheet → one row per student in eval_reports, pages in Storage eval-reports/<id>/<YYYY-MM>/<n>.webp */
+
+  var EVAL_COLS = { name: ["학생명", "이름"], teacher: ["담당 트레이너", "담당", "선생님"], song: ["곡명", "곡"],
+    basic: ["기본기"], technique: ["보컬 테크닉", "테크닉"], acting: ["액팅"], styling: ["스타일링"], total: ["총점"], stage: ["단계"] };
+  var EVAL_ORDER = ["rank", "group", "name", "teacher", "song", "basic", "technique", "acting", "styling", "total", "stage"]; // the sheet's own order
+  var evalDraft = {}; // name → { name, files: [{page, file}], score: {...}, member }
+
+  function plain(t) { return String(t || "").replace(/\s+/g, ""); }
+  function evalMonth() { return $("#evalMonth").value; }
+
+  function parseScores(text) {
+    var rows = text.split(/\r?\n/).map(function (l) { return l.split("\t").map(function (c) { return c.trim(); }); })
+      .filter(function (r) { return r.some(Boolean); });
+    var map = null, out = [];
+    rows.forEach(function (r) {
+      var hi = r.indexOf("학생명");
+      if (hi !== -1 || r.indexOf("이름") !== -1) { // a header row: read the columns by their names
+        map = {};
+        Object.keys(EVAL_COLS).forEach(function (k) {
+          var i = -1;
+          EVAL_COLS[k].some(function (h) { i = r.indexOf(h); return i !== -1; });
+          if (i !== -1) map[k] = i;
+        });
+        return;
+      }
+      var m = map;
+      if (!m) { m = {}; EVAL_ORDER.forEach(function (k, i) { m[k] = i; }); if (!/^\d+$/.test(r[0])) EVAL_ORDER.slice(2).forEach(function (k, i) { m[k] = i; }); }
+      var name = r[m.name];
+      if (!name || name === "평균" || name === "합계") return;
+      var sc = { name: name, teacher: r[m.teacher] || null, song: r[m.song] || null, stage: r[m.stage] || null };
+      var okNum = true;
+      ["basic", "technique", "acting", "styling", "total"].forEach(function (k) {
+        var v = m[k] == null ? "" : String(r[m[k]] || "").replace(/[^0-9.]/g, "");
+        sc[k] = v === "" ? null : Number(v);
+        if (sc[k] != null && isNaN(sc[k])) okNum = false;
+      });
+      if (sc.total == null && sc.basic != null) sc.total = [sc.basic, sc.technique, sc.acting, sc.styling].reduce(function (a, b) { return a + (b || 0); }, 0);
+      if (okNum && sc.total != null) out.push(sc);
+    });
+    return out;
+  }
+
+  /** The members a name could be: same name, then the teacher in the memo, then still enrolled. */
+  function matchMember(name, teacher) {
+    var n = plain(name), t = plain(teacher);
+    var same = state.members.filter(function (m) { return plain(m.name) === n; });
+    if (same.length > 1 && t) {
+      var byT = same.filter(function (m) { return plain(m.memo).indexOf(t) !== -1; });
+      if (byT.length) same = byT;
+    }
+    if (same.length > 1) {
+      var live = same.filter(function (m) { return m.status !== "종료"; });
+      if (live.length) same = live;
+    }
+    return { pick: same.length === 1 ? same[0].id : "", many: same.length > 1 };
+  }
+
+  function draftFor(name) {
+    var key = plain(name);
+    return evalDraft[key] || (evalDraft[key] = { name: name, files: [], score: null, member: "" });
+  }
+
+  function rebuildDraft() {
+    evalDraft = {};
+    Array.prototype.forEach.call($("#evalFiles").files || [], function (f) {
+      var base = f.name.replace(/\.[^.]+$/, "");
+      var hit = /^(.*?)[\s_\-(]*(\d+)\)?$/.exec(base);
+      var name = (hit && hit[1].trim()) || base, page = hit && hit[2] ? Number(hit[2]) : 0;
+      draftFor(name).files.push({ page: page, file: f });
+    });
+    parseScores($("#evalPaste").value).forEach(function (sc) { draftFor(sc.name).score = sc; });
+    Object.keys(evalDraft).forEach(function (k) {
+      var d = evalDraft[k];
+      d.files.sort(function (a, b) { return a.page - b.page || (a.file.name < b.file.name ? -1 : 1); });
+      var mm = matchMember(d.name, d.score && d.score.teacher);
+      d.member = mm.pick;
+      d.many = mm.many;
+    });
+    renderDraft();
+  }
+
+  function renderDraft() {
+    var box = $("#evalReview"), keys = Object.keys(evalDraft).sort(function (a, b) { return evalDraft[a].name < evalDraft[b].name ? -1 : 1; });
+    box.textContent = "";
+    var btn = $("#evalUpload");
+    if (!keys.length) { btn.disabled = true; btn.textContent = "올리기"; return; }
+    var wrap = el("div", "adm__tablewrap"), t = el("table", "adm__table adm__evaltable");
+    var head = el("tr");
+    ["학생", "수강 ID", "평가지", "총점", ""].forEach(function (h) { head.appendChild(el("th", null, h)); });
+    t.appendChild(head);
+    var sorted = state.members.slice().sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : (a.id < b.id ? -1 : 1); });
+    keys.forEach(function (k) {
+      var d = evalDraft[k], tr = el("tr");
+      tr.appendChild(el("td", null, d.name));
+      var td = el("td"), sel = el("select");
+      sel.setAttribute("aria-label", d.name + " 수강 ID");
+      var none = el("option", null, d.many ? "같은 이름이 여러 명 · 골라주세요" : "못 찾음 · 골라주세요");
+      none.value = "";
+      sel.appendChild(none);
+      sorted.forEach(function (m) {
+        var o = el("option", null, m.name + " (" + m.id + ")" + (m.memo ? " · " + m.memo : "") + (m.status === "종료" ? " · 종료" : ""));
+        o.value = m.id;
+        sel.appendChild(o);
+      });
+      sel.value = d.member;
+      sel.addEventListener("change", function () { d.member = sel.value; tr.classList.toggle("is-miss", !sel.value); countDraft(); });
+      tr.classList.toggle("is-miss", !d.member);
+      td.appendChild(sel);
+      tr.appendChild(td);
+      tr.appendChild(el("td", null, d.files.length ? d.files.length + "장" : "–"));
+      tr.appendChild(el("td", null, d.score ? String(d.score.total) + (d.score.stage ? " · " + d.score.stage : "") : "–"));
+      var x = el("button", "sys-link", "빼기");
+      x.type = "button";
+      x.addEventListener("click", function () { delete evalDraft[k]; renderDraft(); });
+      var tx = el("td");
+      tx.appendChild(x);
+      tr.appendChild(tx);
+      t.appendChild(tr);
+    });
+    wrap.appendChild(t);
+    box.appendChild(wrap);
+    countDraft();
+  }
+
+  function countDraft() {
+    var keys = Object.keys(evalDraft), ready = keys.filter(function (k) { return evalDraft[k].member; }).length;
+    var btn = $("#evalUpload");
+    btn.disabled = !ready || !evalMonth();
+    btn.textContent = ready === keys.length ? ready + "명 올리기" : ready + "명 올리기 (" + (keys.length - ready) + "명은 수강 ID를 골라야 해요)";
+  }
+
+  /** Smaller pages for phones: at most 1400px wide, WebP (JPEG where the browser can't). */
+  function shrink(file) {
+    return new Promise(function (done) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var w = Math.min(1400, img.naturalWidth), h = Math.round(img.naturalHeight * w / img.naturalWidth);
+        var c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) {
+          if (b && b.type === "image/webp") return done(b);
+          c.toBlob(function (j) { done(j || file); }, "image/jpeg", 0.85);
+        }, "image/webp", 0.82);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); done(file); };
+      img.src = url;
+    });
+  }
+
+  function uploadOne(d, month, t) {
+    var jobs = d.files.map(function (f, i) {
+      return shrink(f.file).then(function (blob) { return LeeshAPI.storage.upload(d.member + "/" + month + "/" + (i + 1) + ".webp", blob, t); });
+    });
+    return Promise.all(jobs).then(function (oks) {
+      if (oks.some(function (ok) { return !ok; })) return { ok: false, why: "사진 올리기 실패" };
+      var body = { member_id: d.member, month: month + "-01", updated_at: new Date().toISOString() };
+      if (d.files.length) body.pages = d.files.length;
+      if (d.score) ["song", "teacher", "basic", "technique", "acting", "styling", "total", "stage"].forEach(function (k) { body[k] = d.score[k]; });
+      return api("eval_reports?on_conflict=member_id,month", { method: "POST", upsert: true, body: body })
+        .then(function (res) { return { ok: res.ok, why: res.ok ? "" : friendly(res, "저장 실패") }; });
+    });
+  }
+
+  $("#evalFiles").addEventListener("change", rebuildDraft);
+  $("#evalPaste").addEventListener("input", rebuildDraft);
+  $("#evalMonth").addEventListener("change", function () { countDraft(); loadEvalList(); });
+
+  $("#evalUpload").addEventListener("click", function () {
+    var month = evalMonth(), btn = this;
+    var list = Object.keys(evalDraft).map(function (k) { return evalDraft[k]; }).filter(function (d) { return d.member; });
+    if (!month || !list.length) return;
+    btn.disabled = true;
+    var done = 0, failed = [];
+    token().then(function (t) {
+      // a few at a time so a phone on slow wifi doesn't choke
+      var queue = list.slice();
+      function next() {
+        var d = queue.shift();
+        if (!d) return Promise.resolve();
+        return uploadOne(d, month, t).then(function (r) {
+          done++;
+          if (!r.ok) failed.push(d.name + " (" + r.why + ")");
+          msg($("#evalMsg"), "올리는 중… " + done + " / " + list.length);
+          return next();
+        });
+      }
+      return Promise.all([next(), next(), next()]);
+    }).then(function () {
+      if (failed.length) msg($("#evalMsg"), (list.length - failed.length) + "명 올렸어요. 다시 해볼 학생: " + failed.join(", "), "error");
+      else {
+        msg($("#evalMsg"), list.length + "명 올렸어요. 학생 폴더에 바로 보여요.", "ok");
+        showShare($("#evalShare"), "#evals", Number(month.slice(5, 7)) + "월 월말평가가 나왔어요.");
+        $("#evalFiles").value = "";
+        $("#evalPaste").value = "";
+        rebuildDraft();
+      }
+      loadEvalList();
     });
   });
+
+  function loadEvalList() {
+    var ul = $("#evalList"), month = evalMonth();
+    ul.textContent = "";
+    if (!month) return;
+    api("eval_reports?month=eq." + month + "-01&order=total.desc.nullslast").then(function (res) {
+      if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) { ul.appendChild(el("li", "sys-empty", "아직 이 달에 올린 평가가 없어요.")); return; }
+      var names = {};
+      state.members.forEach(function (m) { names[m.id] = m.name; });
+      res.data.forEach(function (r) {
+        var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, (names[r.member_id] || r.member_id) + " (" + r.member_id + ")"));
+        top.appendChild(el("span", null, r.total != null ? r.total + "점" + (r.stage ? " · " + r.stage : "") : "점수 없음"));
+        top.appendChild(el("span", "sys-note", "평가지 " + (r.pages || 0) + "장"));
+        var del = el("button", "sys-link adm__del", "삭제");
+        del.type = "button";
+        del.addEventListener("click", function () {
+          if (del.getAttribute("data-armed") !== "1") { del.setAttribute("data-armed", "1"); del.textContent = "한 번 더 누르면 삭제"; return; }
+          var paths = [];
+          for (var n = 1; n <= 6; n++) paths.push(r.member_id + "/" + month + "/" + n + ".webp");
+          token().then(function (t) { return LeeshAPI.storage.remove(paths, t); })
+            .then(function () { return api("eval_reports?member_id=eq." + encodeURIComponent(r.member_id) + "&month=eq." + month + "-01", { method: "DELETE" }); })
+            .then(loadEvalList);
+        });
+        top.appendChild(del);
+        li.appendChild(top);
+        if (r.song) li.appendChild(el("p", "sys-note", "♪ " + r.song));
+        ul.appendChild(li);
+      });
+    });
+  }
 
   /* ---------------- 상담 신청 ---------------- */
 

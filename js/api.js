@@ -137,5 +137,31 @@
     }
   };
 
-  window.LeeshAPI = { enabled: enabled, rpc: rpc, request: request, headers: headers, who: who, kakao: kakao, NETWORK_ERROR: NETWORK_ERROR };
+  /*
+    월말평가 평가지 사진 (Storage, private bucket "eval-reports"). The director uploads with the admin
+    token; a student sees their own pages with their Kakao token (storage policy eval_reports_own).
+  */
+  var BUCKET = "/storage/v1/object/eval-reports/";
+  var storage = {
+    upload: function (path, blob, token) {
+      var h = headers(token);
+      h["Content-Type"] = blob.type || "image/webp";
+      h["x-upsert"] = "true";
+      return fetch(base + BUCKET + path, { method: "POST", headers: h, body: blob })
+        .then(function (r) { return r.ok; }, function () { return false; });
+    },
+    /** An object URL for <img>, or null (no access, not there, offline). */
+    image: function (path, token) {
+      var h = headers(token);
+      delete h["Content-Type"];
+      return fetch(base + "/storage/v1/object/authenticated/eval-reports/" + path, { headers: h })
+        .then(function (r) { return r.ok ? r.blob().then(function (b) { return URL.createObjectURL(b); }) : null; }, function () { return null; });
+    },
+    remove: function (paths, token) {
+      return fetch(base + "/storage/v1/object/eval-reports", { method: "DELETE", headers: headers(token), body: JSON.stringify({ prefixes: paths }) })
+        .then(function (r) { return r.ok; }, function () { return false; });
+    }
+  };
+
+  window.LeeshAPI = { enabled: enabled, rpc: rpc, request: request, headers: headers, who: who, kakao: kakao, storage: storage, NETWORK_ERROR: NETWORK_ERROR };
 })();

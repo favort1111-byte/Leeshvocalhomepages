@@ -6,8 +6,9 @@
   var cfg = window.LEESH = window.LEESH || {};
   cfg.supabaseKey = "demo";
   cfg.local = true;
+  cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 8; // bump when the demo defaults change
+  var VERSION = 9; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -67,6 +68,12 @@
       monthly_evals: [
         { id: 21, member_id: "S001", month: t.slice(0, 7) + "-01", pitch: 4, rhythm: 3, breath: 4, expression: 4, stage: 3, comment: "고음에서 힘이 많이 빠졌어요! 박자만 조금 더 안정되면 좋겠어요.", goal: "메트로놈 켜고 연습하기", teacher: "이송희", created_at: new Date().toISOString() },
         { id: 22, member_id: "S001", month: addDays(t.slice(0, 7) + "-01", -1).slice(0, 7) + "-01", pitch: 3, rhythm: 3, breath: 3, expression: 3, stage: 2, comment: "첫 평가 수고했어요. 음정은 좋은 편이에요.", goal: "고음 호흡 연결", teacher: "이송희", created_at: new Date().toISOString() }
+      ],
+      // 월말평가 리포트 (분기): the pages are sample pictures made below, not real reports
+      eval_reports: [
+        { member_id: "S001", month: "2026-09-01", pages: 2, song: "태연(TAEYEON) - Rain", teacher: "이송희", basic: 7, technique: 7.5, acting: 6.5, styling: 7, total: 28, stage: "본사 오디션 도전", updated_at: new Date().toISOString() },
+        { member_id: "S001", month: "2026-06-01", pages: 2, song: "아이유 - 너의 의미", teacher: "이송희", basic: 6, technique: 6, acting: 5.5, styling: 6.5, total: 24, stage: "1차 합격 가능성", updated_at: new Date().toISOString() },
+        { member_id: "S002", month: "2026-09-01", pages: 0, song: "Ariana Grande - Honeymoon Avenue", teacher: "안유정", basic: 7.5, technique: 7, acting: 7, styling: 7.5, total: 29, stage: "본사 오디션 도전", updated_at: new Date().toISOString() }
       ],
       tokens: [], // "로그인 유지" keys: { key, member_id }
       consults: [
@@ -262,6 +269,12 @@
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
           .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice }; }),
+        reports: db.eval_reports.filter(function (r) { return r.member_id === who.id; })
+          .sort(function (x, y) { return x.month < y.month ? 1 : -1; })
+          .map(function (r) {
+            return { month: r.month.slice(0, 7), pages: r.pages, song: r.song, teacher: r.teacher, basic: r.basic, technique: r.technique,
+              acting: r.acting, styling: r.styling, total: r.total, stage: r.stage };
+          }),
         evals: db.monthly_evals.filter(function (e) { return e.member_id === who.id; })
           .sort(function (x, y) { return x.month < y.month ? 1 : -1; })
           .slice(0, 12)
@@ -506,7 +519,32 @@
     document.body.appendChild(bar);
   }
 
+  /* 평가지 사진: uploads stay in this tab only; seeded reports get a sample page */
+  var pictures = {};
+  function samplePage(path) {
+    var n = /\/(\d+)\.webp$/.exec(path), page = n ? n[1] : "1";
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="620" height="877" viewBox="0 0 620 877">' +
+      '<rect width="620" height="877" fill="#FFFDF8"/><rect x="30" y="30" width="560" height="817" fill="none" stroke="#C9B49A" stroke-width="2"/>' +
+      '<text x="310" y="120" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#6E3B28">MONTHLY EVALUATION</text>' +
+      '<text x="310" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#2B2522">월말평가 리포트 ' + page + '쪽</text>' +
+      '<text x="310" y="440" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#8A7564">체험용 예시 그림이에요</text>' +
+      '<text x="310" y="476" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#8A7564">실제로는 원장님이 올린 평가지가 보여요</text></svg>';
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+  function fakeStorage() {
+    var st = window.LeeshAPI && window.LeeshAPI.storage;
+    if (!st) return;
+    st.upload = function (path, blob) { pictures[path] = URL.createObjectURL(blob); return Promise.resolve(true); };
+    st.image = function (path) {
+      if (pictures[path]) return Promise.resolve(pictures[path]);
+      var p = path.split("/"), r = db.eval_reports.filter(function (x) { return x.member_id === p[0] && x.month.slice(0, 7) === p[1]; })[0];
+      return Promise.resolve(r && Number(p[2].replace(/\D/g, "")) <= r.pages ? samplePage(path) : null);
+    };
+    st.remove = function (paths) { paths.forEach(function (x) { delete pictures[x]; }); return Promise.resolve(true); };
+  }
+
   install(); // demo.js loads right after api.js, before the page scripts
+  fakeStorage();
   fakeKakao();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", banner); else banner();
 })();
