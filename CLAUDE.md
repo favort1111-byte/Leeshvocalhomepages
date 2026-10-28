@@ -43,15 +43,22 @@
   **자동 삭제는 켜지 않음** (원장님 결정, 2026-10-27). `private.cleanup`은 `schema.sql`에만 있고 예약 실행 줄은 주석. 지울 때는 원장님께 묻고 사람이 함.
 - 레슨 노트는 **숨김** (선생님 업무가 늘까 봐, 선생님들께 물어본 뒤 결정). 지우지 말 것 — `js/config.js`의 `lessonNotes: true`로 바꾸면 내 폴더·관리자 화면에 다시 나옴. 데이터베이스 표·함수는 그대로.
 
+## 블로그 → 홈페이지 이사 (2026-10-28, 원장님: "블로그 운영 안 할 수도 있어. 블로그 내용 모두 홈페이지로")
+- 블로그 글 **전부**를 홈페이지 안으로 옮김. 이제 홈페이지는 블로그에 기대지 않음 (블로그 링크·"블로그 전체 보기" 버튼 없앰, 네이버 블로그 링크도 뺌).
+  `tools/import_blog.py CACHE_DIR` → `data/blog/index.json`(목록) + `data/blog/posts/<글번호>.json`(본문 블록) + `data/blog/images.json`,
+  `node tools/blog_images.js CACHE_DIR` → `assets/blog-posts/<글번호>/<n>.webp` (800px WebP). 같은 그림이 4개 글 이상 = 배너라 뺌, 5개 글 이상 같은 문단 = 홍보 문구라 뺌, 매 글 끝 공통 문구(상담·카카오·유튜브 안내)·해시태그·수강료 문구도 뺌.
+  종류: visit(학원 내방 오디션) · audition(기획사 오디션) · results(합격자 현황, 회사·단계·이니셜 추출) · tips(원포인트 레슨, 유튜브) · curriculum · academy.
+- 페이지: `post.html?id=<글번호>` (js/post.js, 글 하나) · audition news `audition.html` · results `results.html` · **tips.html** (원포인트 레슨 영상 + "학원 이야기" 예전 소개 글). about의 원포인트 레슨 링크도 post.html로.
+  미리보기 아티팩트는 파일 수 제한 때문에 post.html이 글·사진을 GitHub(raw, 작업 브랜치)에서 읽음 (`tools/build_preview.py` BLOG_BASE).
+- 블로그의 기획사 오디션 공고 속 전화번호는 기획사가 공개한 연락처라 그대로 둠.
+
 ## 오디션 소식 메뉴 (2026-10-27 추가)
 - 메뉴 "audition" 안에 영어 소메뉴 2개 (원장님 2026-10-28): **audition news** `audition.html` (내방 오디션 + 기획사 오디션) · **results** `results.html` (합격자 현황). 첫 화면 오디션.jpg 아이콘은 audition.html로.
-- 원래 설명: `audition.html` 블로그 RSS의 **오디션 정보**(카테고리 14)·**합격자 현황**(24) 글을 모아 보여줌: 학원 내방 오디션 / 기획사 오디션 정보 / 합격 소식, 누르면 블로그 글로.
-- 업데이트: `python3 tools/fetch_auditions.py` → `data/auditions.json` (RSS는 최신 50개뿐이라 예전 글은 파일에 쌓아둠) → `python3 tools/build_pages.py`. 아직 자동 아님.
+- 목록 = 옮겨온 블로그 글 (위 참고) + 학원이 새로 올리는 소식.
 - **학원이 직접 올리는 소식 (2026-10-28, 원장님: "직접도, Claude에게 말해서도 둘 다"):** 표 `public.audition_news` (마이그레이션 `leesh_audition_news`, 누구나 읽기·원장님만 쓰기) + 공개 버킷 `audition-news`(포스터).
   원장님: 관리자 → **오디션 소식** 탭에서 쓰기·고치기·숨기기·삭제. 페이지는 `js/auditions.js`가 읽어서 각 칸 맨 위에 펼쳐지는 카드로 (마감 지나면 "지난 소식").
   **원장님이 Claude에게 말하면:** Management API SQL로 `insert into public.audition_news (kind, company, title, event_date, deadline, body, link) values (…)` — kind는 '내방' / '오디션' / '합격'. 넣은 뒤 select로 확인하고 알려주기.
-  **합격 소식은 학생 이름을 꼭 이니셜(김OO)로** — 원장님도 그렇게 올리기로 함. 포스터 사진을 채팅으로 받으면 `assets/news/`에 webp로 넣고 `image = 'assets/news/파일.webp'` (이건 main에 올려야 보임). 합격 소식은 학생 실명 대신 이니셜.
-- 2026-10 기준 블로그 오디션 글은 4월이 마지막이라 페이지가 옛 소식으로 보일 수 있음.
+  **합격 소식은 학생 이름을 꼭 이니셜(김OO)로** — 원장님도 그렇게 올리기로 함. 포스터 사진을 채팅으로 받으면 `assets/news/`에 webp로 넣고 `image = 'assets/news/파일.webp'` (이건 main에 올려야 보임).
 
 ## 다음에 이어서 할 일 (2026-10-28 기준)
 1. ~~정리 대기~~ 2026-10-28 확인: 시험 연결 2개 해제·시험 예약 2건 취소 끝 (원장님이 관리자 화면에서).
@@ -79,7 +86,7 @@
   배포 날이 가까워지면 앱·확장 설치부터 먼저 안내. (대안: 네임서버를 Cloudflare로 옮기고 API 토큰으로 관리 — 준비가 많아 보류)
 
 ## 보관 자료
-- **네이버 블로그(blog.naver.com/o_oa8)가 학원 정보의 원본**입니다 (원장님: "심혈을 기울여 만든 블로그, 웬만한 건 다 사용"). 정리본 `docs/blog.md`, 홈페이지 데이터 `tools/blog_content.py`, 사진 `assets/img/blog/`.
+- 네이버 블로그(blog.naver.com/o_oa8)는 예전 학원 정보의 원본이었고, 2026-10-28 글 전부를 홈페이지로 옮김 (위 "블로그 → 홈페이지 이사"). 앞으로 블로그는 안 쓸 수도 있음. 정리본 `docs/blog.md`, 홈페이지 데이터 `tools/blog_content.py`, 사진 `assets/img/blog/`.
   블로그 접속은 환경 허용 도메인 `*.naver.com`, `*.pstatic.net`이 필요해요 (원장님이 추가함). 블로그 글은 대부분 이미지 안내판이라 직접 읽어서 옮겨야 해요.
 - `docs/menu-ideas.md`: 메뉴 아이디어 원본 기록 (GPT 기본표·특색 5개·해외 조사 5개, Claude 아이디어). **메뉴 구성을 논의할 때 먼저 꺼내서 보여줍니다.**
 - 메뉴 아이디어 보드 아티팩트: https://claude.ai/artifact/XHhi3x4pqGu8mRmwUb2B3G (원본 `docs/menu-ideas.html`). 아이디어가 추가되면 md와 이 보드를 같이 고쳐서 다시 올립니다.

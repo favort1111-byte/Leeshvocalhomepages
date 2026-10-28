@@ -542,13 +542,17 @@ def esc(t):
 def post_label(p):
     """[WAKEONE 엔터테인먼트] WAKEONE AUDITION → <b>WAKEONE 엔터테인먼트</b> WAKEONE AUDITION; the academy's own tag goes."""
     t = EMOJI.sub("", p["title"]).strip()
-    if p["kind"] == "results":
+    if p["kind"] == "results" and p.get("stages"):
         names = " · ".join(f'{s["stage"]} {", ".join(s["names"])}'.strip() for s in p.get("stages", []))
         return f'<b>{esc(p.get("company") or t)}</b>' + (f' <span class="news__sub">{esc(names)}</span>' if names else "")
     m = re.match(r"\[([^\]]*)\]\s*(.*)", t)
     if m:
         head, rest = m.group(1).strip(), m.group(2).strip()
         if "보컬레슨" in head.replace(" ", ""):
+            # [이송희 보컬레슨 2월 기획사 내방오디션 일정] 타이탄콘텐츠 → 타이탄콘텐츠 · 2월 기획사 내방오디션
+            what = re.sub(r"^\d{4}\s*|이송희\s*보컬\s*레슨\s*|\s*일정$", "", head).strip()
+            if rest and what:
+                return f"<b>{esc(rest)}</b> {esc(what)}"
             return esc(rest or head)
         return f"<b>{esc(head)}</b> {esc(rest)}"
     return esc(t)

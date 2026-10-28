@@ -20,6 +20,8 @@ CATS = {"14": "audition", "24": "results", "30": "tips", "1": "curriculum",
 FOOTER = re.compile(r"이송희\s*보컬레슨\s*(학원\s*소개|커리큘럼\s*안내)|24시간\s*(레슨\s*)?(상담|문의)|레슨\s*문의|카카오톡\s*채널|"
                     r"전화\s*/?\s*문자\s*상담|유튜브\s*(채널|링크)|바로가기|무료\s*방문\s*상담|궁금하신\s*점\s*있으시면")
 FEES = re.compile(r"레슨비|수강료|수강비|교습비|가격|할인|\d+\s*만\s*원|\d[\d,]*\s*원\b")
+# pictures left out by hand: the 2024 online-lesson promo with discounts (수강료 관련은 넣지 않음)
+SKIP_PICS = {'1P_%28%EC%99%84%EB%A3%8C%29.jpg', '1P_(%EC%99%84%EB%A3%8C).jpg', '8P_(1)_%EC%9A%A9%EB%9F%89%EC%88%98%EC%A0%95.jpg'}
 NAME = re.compile(r"^[가-힣A-Za-z]{1,3}[○◯OoＯ0ㅇ]{1,3}$")
 
 
@@ -52,6 +54,14 @@ def short_title(t):
     t = clean(t).split(" | ")[0].split("| ")[0]
     t = re.split(r"\s*/(?=[^/\]]*,)", t)[0]           # "… AUDITION /웨이크원오디션,제베원/…" → keyword tail off
     t = re.sub(r"\s*\|.*$", "", t)
+    if t.count(",") >= 2:                               # "… 오디션,SM오디션, SM연습생, …" → keyword list off
+        t = re.split(r"\s*,", t, maxsplit=1)[0]
+    head, _, rest = t.partition("]")
+    if rest and rest.count("/") >= 2:                   # "…Hype Boys/남자아이돌 오디션/어도어 오디션/…"
+        t = head + "]" + rest.split("/")[0]
+    if t.count("(") > t.count(")"):                     # "SM 위클리 챌린지 (SM오디션" → no dangling bracket
+        t = t[:t.rindex("(")]
+    t = t.strip()
     return re.sub(r"\]\s*", "] ", t).strip()
 
 
@@ -181,7 +191,7 @@ def main():
         bs, n = [], 0
         for b in parsed[p["id"]]:
             if b["t"] == "img":
-                if os.path.basename(b["src"]) in banner:
+                if os.path.basename(b["src"]) in banner or os.path.basename(b["src"]) in SKIP_PICS:
                     continue
                 n += 1
                 local = f"assets/blog-posts/{p['id']}/{n}.webp"
