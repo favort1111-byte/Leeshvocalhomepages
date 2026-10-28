@@ -51,6 +51,7 @@
       <button type="button" role="tab" data-tab="visits" aria-selected="false">내방 신청 <span class="adm__badge" id="visitBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="notices" aria-selected="false">일정·공지</button>
       <button type="button" role="tab" data-tab="songrecs" aria-selected="false">노래 추천 <span class="adm__badge" id="recBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="teachers" aria-selected="false">선생님 <span class="adm__badge" id="teacherBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="journal" aria-selected="false">연습 일지 <span class="adm__badge" id="journalBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
@@ -142,13 +143,13 @@
       <div class="adm__cols">
         <div>
           <h3 class="sys-h">레슨 노트</h3>
+          <p class="sys-note">선생님들은 <b>선생님 화면</b>(teacher.html)에서 담당 학생 일지를 써요. 여기서는 원장님이 직접 쓰거나 모든 일지를 볼 수 있어요. 🔒 선생님 메모는 학생에게 안 보여요.</p>
           <form id="noteForm" class="adm__drawer">
             <div class="sys-row">
               <label class="sys-field"><span>수업 날짜</span><input name="date" type="date" required></label>
               <label class="sys-field"><span>선생님</span><input name="teacher" maxlength="20" placeholder="이송희"></label>
             </div>
-            <label class="sys-field"><span>오늘 한 것</span><textarea name="did" rows="3" required maxlength="800"></textarea></label>
-            <label class="sys-field"><span>다음 수업까지 연습할 것</span><textarea name="practice" rows="2" maxlength="400"></textarea></label>
+            <div id="noteFields"></div>
             <button class="sys-btn" type="submit">노트 저장</button>
             <p class="sys-msg" id="noteMsg" role="status"></p>
             <div class="adm__share" id="noteShare" hidden></div>
@@ -306,6 +307,20 @@
       <div id="jrBox"></div>
     </section>
 
+    <!-- 선생님 (teacher.html 로그인 승인) -->
+    <section class="sys-card" data-panel="teachers" hidden>
+      <p class="sys-note">선생님은 관리자가 아니라 <b>선생님 화면</b>만 써요: 카카오로 로그인 → 이름을 골라 연결 요청 → 여기서 승인하면 <b>담당 학생</b>(수강 ID 메모의 "담당 ○○○", 재원·휴원)만 보이고 레슨 일지를 써요. 선생님 화면 주소: <a id="teacherLink" href="teacher.html" target="_blank" rel="noopener">teacher.html</a> <button class="sys-link" type="button" id="teacherCopy">주소 복사</button></p>
+      <h3 class="sys-h">연결 요청</h3>
+      <p class="sys-msg" id="teacherMsg" role="status"></p>
+      <ul class="adm__cards" id="teacherReqList"></ul>
+      <h3 class="sys-h">선생님 목록</h3>
+      <ul class="adm__cards" id="teacherList"></ul>
+      <form id="teacherAdd" class="adm__drawer">
+        <label class="sys-field"><span>선생님 더하기 (수강 ID 메모의 "담당 ○○○"과 똑같이)</span><input name="name" maxlength="20" required placeholder="예) 김하나"></label>
+        <button class="sys-btn" type="submit">더하기</button>
+      </form>
+    </section>
+
     <!-- 제휴 업체 예약 신청 (학생 "내 폴더 → 제휴 업체") -->
     <section class="sys-card" data-panel="partners" hidden>
       <div class="adm__bar">
@@ -375,8 +390,8 @@
   </div>
 </main>
 
-<script src="js/config.js?v=f5423147"></script>
+<script src="js/config.js?v=27cb9d9b"></script>
 <script src="js/api.js?v=ae8e391c"></script>
-<script src="js/admin.js?v=2430d954"></script>
+<script src="js/admin.js?v=24587baf"></script>
 </body>
 </html>

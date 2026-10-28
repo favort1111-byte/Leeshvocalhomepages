@@ -483,6 +483,20 @@ apply_page = (head("Audition Apply | 이송희보컬레슨", "이송희보컬레
               + APPLY_APP
               + "</main>\n" + foot("signin", "apply"))
 
+# ---------- TEACHER: 선생님 화면 (js/teacher.js; 카카오 로그인 → 원장님 승인 → 담당 학생 레슨 일지) ----------
+TEACHER_APP = """  <div class="booking__inner">
+    <h1 class="booking__title">teacher</h1>
+    <p class="booking__note">선생님 전용 화면이에요. 담당 학생의 레슨 일지를 쓰면 학생 내 폴더에 바로 보여요.</p>
+    <section class="sys sys-card" id="teacherApp" aria-live="polite"></section>
+  </div>
+"""
+teacher_page = (head("선생님 | 이송희보컬레슨", "이송희보컬레슨 선생님 전용 화면.").replace(
+                    '<meta name="description"', '<meta name="robots" content="noindex">\n<meta name="description"', 1)
+                + '<main class="stage booking">\n'
+                + nav("teacher", "dark") + "\n"
+                + TEACHER_APP
+                + "</main>\n" + foot("teacher"))
+
 # ---------- GAMES: 보컬 오락실 (js/games.js) ----------
 GAME_LIST = [
     ("fly", "🎤", "목소리로 날아라", "높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.", "음정 조절"),
@@ -731,7 +745,7 @@ privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송
                 + '  <div class="booking__inner">\n' + privacy.body() + "  </div>\n"
                 + "</main>\n" + foot())
 
-out = {"apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')

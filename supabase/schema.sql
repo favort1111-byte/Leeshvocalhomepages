@@ -1839,3 +1839,292 @@ begin
     'id', new_id, 'room', room.name, 'date', d, 'start', private.hhmm(st), 'end', private.hhmm(en)));
 end $function$
 ;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_teachers (2026-10-28)
+-- 선생님 화면 · 레슨 일지 (2026-10-28, 원장님): 선생님은 관리자가 아니라 "선생님" 권한.
+-- 카카오로 로그인 → 이름을 골라 연결 요청 → 원장님이 관리자 → 선생님 탭에서 승인 → teacher.html에서
+-- 담당 학생(수강생 메모 "담당 ○○○", 재원·휴원)만 보고 레슨 일지를 씀. 학생은 내 폴더 → 레슨 노트에서 봄.
+-- 일지 칸은 선생님들이 쓰던 구글시트 그대로: 오늘 수업 · 준비곡·곡별 피드백 · 연습 포인트 · 오디션 일정 · 노래 추천
+-- + 선생님 메모(학생에게 안 보임).
+
+create table if not exists public.teachers (
+  id         bigint generated always as identity primary key,
+  name       text not null unique check (char_length(name) between 1 and 20),   -- 수강생 메모 "담당 ○○○"의 ○○○
+  kakao_user uuid unique,                                                         -- 승인된 카카오 계정
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+-- 처음 선생님 목록: 수강생 메모에 적힌 담당 선생님 전부
+insert into public.teachers (name)
+select distinct substring(memo from '담당\s*([^\s·,]+)') from public.members
+where substring(memo from '담당\s*([^\s·,]+)') is not null
+on conflict (name) do nothing;
+
+create table if not exists public.teacher_requests (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null unique,
+  kakao_name text,
+  name       text not null check (char_length(name) between 1 and 20),         -- 고른 선생님 이름
+  status     text not null default '대기' check (status in ('대기', '승인', '거절')),
+  teacher_id bigint references public.teachers (id) on delete set null,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz
+);
+
+-- 레슨 일지 칸 (예전 did · practice는 그대로 씀)
+alter table public.lesson_notes drop constraint if exists lesson_notes_did_check;
+alter table public.lesson_notes alter column did drop not null;
+alter table public.lesson_notes add column if not exists songs text check (char_length(songs) <= 2000);       -- 준비곡 · 곡별 피드백
+alter table public.lesson_notes add column if not exists audition text check (char_length(audition) <= 800);  -- 오디션 일정
+alter table public.lesson_notes add column if not exists recommend text check (char_length(recommend) <= 800);-- 노래 추천
+alter table public.lesson_notes add column if not exists memo text check (char_length(memo) <= 1000);         -- 선생님 메모 (학생에게 안 보임)
+alter table public.lesson_notes add column if not exists teacher_id bigint references public.teachers (id) on delete set null;
+alter table public.lesson_notes add column if not exists updated_at timestamptz not null default now();
+alter table public.lesson_notes drop constraint if exists lesson_notes_has_content;
+alter table public.lesson_notes add constraint lesson_notes_has_content check (
+  coalesce(nullif(trim(did), ''), nullif(trim(songs), ''), nullif(trim(practice), ''), nullif(trim(audition), ''),
+           nullif(trim(recommend), ''), nullif(trim(memo), '')) is not null);
+create index if not exists lesson_notes_member_idx on public.lesson_notes (member_id, lesson_date desc);
+
+alter table public.teachers enable row level security;
+alter table public.teacher_requests enable row level security;
+drop policy if exists admin_all on public.teachers;
+create policy admin_all on public.teachers for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists admin_all on public.teacher_requests;
+create policy admin_all on public.teacher_requests for all to authenticated using (public.is_admin()) with check (public.is_admin());
+revoke all on public.teachers, public.teacher_requests from anon;
+grant select, insert, update, delete on public.teachers to authenticated;
+grant select, update, delete on public.teacher_requests to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+-- 지금 로그인한 카카오 계정의 선생님 (없으면 null)
+create or replace function private.my_teacher() returns public.teachers
+language sql stable security definer set search_path = '' as $$
+  select t from public.teachers t where t.kakao_user = auth.uid() and t.active and auth.uid() is not null;
+$$;
+-- 이 선생님의 담당 학생인지 (재원·휴원)
+create or replace function private.teaches(t public.teachers, mid text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.members m where m.id = mid and m.status in ('재원', '휴원')
+                 and substring(m.memo from '담당\s*([^\s·,]+)') = t.name);
+$$;
+
+-- 선생님 화면 첫 화면: 연결됐으면 담당 학생, 아니면 요청 상태 + 고를 이름
+create or replace function public.teacher_me() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  r public.teacher_requests;
+begin
+  if auth.uid() is null then return private.fail('카카오 로그인이 필요해요.'); end if;
+  if t.id is null then
+    select * into r from public.teacher_requests where user_id = auth.uid();
+    return jsonb_build_object('ok', true, 'linked', false,
+      'request', case when r.id is null then null else jsonb_build_object('name', r.name, 'status', r.status) end,
+      'names', coalesce((select jsonb_agg(x.name order by x.name) from public.teachers x where x.active), '[]'::jsonb));
+  end if;
+  return jsonb_build_object('ok', true, 'linked', true, 'name', t.name,
+    'students', coalesce((
+      select jsonb_agg(jsonb_build_object('id', m.id, 'name', m.name, 'status', m.status,
+               'last', (select max(n.lesson_date) from public.lesson_notes n where n.member_id = m.id)) order by m.name)
+      from public.members m
+      where m.status in ('재원', '휴원') and substring(m.memo from '담당\s*([^\s·,]+)') = t.name
+    ), '[]'::jsonb));
+end $$;
+
+create or replace function public.teacher_request(p_name text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  meta jsonb := coalesce(auth.jwt() -> 'user_metadata', '{}'::jsonb);
+  v_name text := trim(coalesce(p_name, ''));
+begin
+  if uid is null then return private.fail('카카오 로그인이 필요해요.'); end if;
+  if (private.my_teacher()).id is not null then return private.fail('이미 연결된 계정이에요.'); end if;
+  if not exists (select 1 from public.teachers where name = v_name and active) then return private.fail('선생님 이름을 골라주세요.'); end if;
+  insert into public.teacher_requests (user_id, kakao_name, name)
+  values (uid, nullif(coalesce(meta ->> 'full_name', meta ->> 'name', meta ->> 'nickname', meta ->> 'preferred_username'), ''), v_name)
+  on conflict (user_id) do update set name = excluded.name, kakao_name = excluded.kakao_name,
+    status = '대기', teacher_id = null, created_at = now(), decided_at = null;
+  perform private.notify('👩‍🏫 선생님 연결 요청: ' || v_name);
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 학생 한 명: 레슨 일지 전부(메모 포함, 내가 쓴 것만 고치기) + 연습 일지 + 레퍼토리
+create or replace function public.teacher_student(p_member text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  m public.members;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생만 볼 수 있어요.'); end if;
+  select * into m from public.members where id = p_member;
+  return jsonb_build_object('ok', true, 'student', jsonb_build_object('id', m.id, 'name', m.name, 'status', m.status),
+    'notes', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'songs', n.songs,
+               'practice', n.practice, 'audition', n.audition, 'recommend', n.recommend, 'memo', n.memo,
+               'mine', n.teacher_id = t.id) order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = m.id order by lesson_date desc, id desc limit 60) n
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did) order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = m.id order by day desc, id desc limit 20) l
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('title', r.title, 'artist', r.artist, 'status', r.status, 'purpose', r.purpose) order by r.updated_at desc)
+      from public.repertoire r where r.member_id = m.id
+    ), '[]'::jsonb));
+end $$;
+
+-- 일지 쓰기 / 고치기 (p_note가 있으면 내가 쓴 일지 고치기)
+create or replace function public.teacher_note_save(p_member text, p_date date, p_note bigint default null,
+  p_did text default null, p_songs text default null, p_practice text default null, p_audition text default null,
+  p_recommend text default null, p_memo text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  v_id bigint;
+  f text[] := array[nullif(trim(coalesce(p_did, '')), ''), nullif(trim(coalesce(p_songs, '')), ''), nullif(trim(coalesce(p_practice, '')), ''),
+                    nullif(trim(coalesce(p_audition, '')), ''), nullif(trim(coalesce(p_recommend, '')), ''), nullif(trim(coalesce(p_memo, '')), '')];
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 쓸 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생만 쓸 수 있어요.'); end if;
+  if p_date is null or p_date > private.now_kst()::date + 1 or p_date < private.now_kst()::date - 366 then return private.fail('수업 날짜를 확인해주세요.'); end if;
+  if coalesce(f[1], f[2], f[3], f[4], f[5], f[6]) is null then return private.fail('한 칸 이상 적어주세요.'); end if;
+  if char_length(coalesce(f[1], '')) > 800 or char_length(coalesce(f[2], '')) > 2000 or char_length(coalesce(f[3], '')) > 400
+     or char_length(coalesce(f[4], '')) > 800 or char_length(coalesce(f[5], '')) > 800 or char_length(coalesce(f[6], '')) > 1000 then
+    return private.fail('글이 너무 길어요.');
+  end if;
+  if p_note is null then
+    insert into public.lesson_notes (member_id, lesson_date, teacher, teacher_id, did, songs, practice, audition, recommend, memo)
+    values (p_member, p_date, t.name, t.id, f[1], f[2], f[3], f[4], f[5], f[6]) returning id into v_id;
+  else
+    update public.lesson_notes set lesson_date = p_date, did = f[1], songs = f[2], practice = f[3], audition = f[4],
+      recommend = f[5], memo = f[6], updated_at = now()
+    where id = p_note and member_id = p_member and teacher_id = t.id returning id into v_id;
+    if v_id is null then return private.fail('내가 쓴 일지만 고칠 수 있어요.'); end if;
+  end if;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end $$;
+
+create or replace function public.teacher_note_delete(p_note bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 할 수 있어요.'); end if;
+  delete from public.lesson_notes where id = p_note and teacher_id = t.id;
+  if not found then return private.fail('내가 쓴 일지만 지울 수 있어요.'); end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 관리자: 선생님 연결 요청 승인 / 거절, 연결 끊기
+create or replace function public.admin_teacher_decide(p_request bigint, p_teacher bigint, p_approve boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  r public.teacher_requests;
+  owner text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있습니다.'); end if;
+  select * into r from public.teacher_requests where id = p_request;
+  if r.id is null then return private.fail('요청을 찾을 수 없어요.'); end if;
+  if not coalesce(p_approve, false) then
+    update public.teacher_requests set status = '거절', teacher_id = null, decided_at = now() where id = r.id;
+    return jsonb_build_object('ok', true, 'status', '거절');
+  end if;
+  if not exists (select 1 from public.teachers where id = p_teacher) then return private.fail('선생님을 골라주세요.'); end if;
+  select name into owner from public.teachers where kakao_user = r.user_id and id <> p_teacher;
+  if owner is not null then return private.fail('이 카카오 계정은 이미 ' || owner || ' 선생님에 연결돼 있어요.'); end if;
+  update public.teachers set kakao_user = r.user_id where id = p_teacher;
+  update public.teacher_requests set status = '승인', teacher_id = p_teacher, decided_at = now() where id = r.id;
+  return jsonb_build_object('ok', true, 'status', '승인');
+end $$;
+
+revoke all on function private.my_teacher(), private.teaches(public.teachers, text) from public, anon, authenticated;
+revoke execute on function public.teacher_me(), public.teacher_request(text), public.teacher_student(text),
+  public.teacher_note_save(text, date, bigint, text, text, text, text, text, text), public.teacher_note_delete(bigint),
+  public.admin_teacher_decide(bigint, bigint, boolean) from public, anon;
+grant execute on function public.teacher_me(), public.teacher_request(text), public.teacher_student(text),
+  public.teacher_note_save(text, date, bigint, text, text, text, text, text, text), public.teacher_note_delete(bigint),
+  public.admin_teacher_decide(bigint, bigint, boolean) to authenticated;
+
+-- 학생 내 폴더 → 레슨 노트: 새 칸 (메모 빼고)
+CREATE OR REPLACE FUNCTION public.member_notebook(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return private.with_token(who, jsonb_build_object(
+    'ok', true,
+    'id', mid,
+    'name', who ->> 'name',
+    'notes', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'practice', n.practice,
+        'songs', n.songs, 'audition', n.audition, 'recommend', n.recommend   -- 선생님 메모(memo)는 학생에게 안 보냄
+      ) order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = mid
+            order by lesson_date desc, id desc limit 30) n
+    ), '[]'::jsonb),
+    'reports', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(r.month, 'YYYY-MM'), 'pages', r.pages, 'song', r.song, 'teacher', r.teacher,
+        'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
+        'total', r.total, 'stage', r.stage
+      ) order by r.month desc)
+      from (select * from public.eval_reports where member_id = mid order by month desc limit 12) r
+    ), '[]'::jsonb),
+    -- 내 예약: 오늘부터의 예약 + 이번 달 연습실 이용
+    'bookings', coalesce((
+      select jsonb_agg(jsonb_build_object('room', rm.name, 'date', b.day,
+               'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min)) order by b.day, b.start_min)
+      from public.bookings b join public.rooms rm on rm.id = b.room_id
+      where b.member_id = mid and b.status = '확정' and b.day >= today
+    ), '[]'::jsonb),
+    'month', (select jsonb_build_object('count', count(*), 'minutes', coalesce(sum(b.end_min - b.start_min), 0))
+              from public.bookings b
+              where b.member_id = mid and b.status = '확정' and b.day >= date_trunc('month', today)::date and b.day <= today),
+    -- 공지 + 다가오는 학원 내방 오디션
+    'notices', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'title', n.title, 'body', n.body, 'start', n.start_date,
+               'end', n.end_date, 'pinned', n.pinned, 'at', n.created_at) order by n.pinned desc, coalesce(n.start_date, n.created_at::date) desc)
+      from (select * from public.notices where published and (end_date is null or end_date >= today)
+            order by pinned desc, created_at desc limit 20) n
+    ), '[]'::jsonb),
+    'visits', coalesce((
+      select jsonb_agg(jsonb_build_object('title', a.title, 'company', a.company, 'date', a.event_date, 'deadline', a.deadline)
+               order by a.event_date)
+      from (select * from public.audition_news where published and kind = '내방' and event_date >= today
+            order by event_date limit 6) a
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'title', r.title, 'artist', r.artist, 'purpose', r.purpose,
+               'status', r.status, 'memo', r.memo,
+               'minutes', (select coalesce(sum(l.minutes), 0) from public.practice_logs l where l.member_id = mid and l.song = r.title))
+               order by (r.status = '준비 중') desc, r.updated_at desc)
+      from public.repertoire r where r.member_id = mid
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did)
+               order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = mid order by day desc, id desc limit 60) l
+    ), '[]'::jsonb),
+    -- 노래 추천 (원장님이 올린 것) + 아직 답을 못 받은 내 신청
+    'recs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', s.id, 'date', s.made_on, 'summary', s.summary, 'songs', s.songs, 'note', s.note)
+               order by s.made_on desc, s.id desc)
+      from (select * from public.song_recs where member_id = mid and published order by made_on desc, id desc limit 5) s
+    ), '[]'::jsonb),
+    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo, 'files', q.files)
+                from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
+  ));
+end $function$
+;

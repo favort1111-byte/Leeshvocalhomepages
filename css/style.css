@@ -939,3 +939,20 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .apply__help{display:block;font-size:12.5px;line-height:1.5;color:#7A6656;}
 .apply__radios{display:flex;flex-wrap:wrap;gap:6px 16px;}
 .apply__music{padding:10px 12px;border:1px dashed rgba(110,59,40,.35);border-radius:8px;}
+/* 선생님 화면 (teacher.html, js/teacher.js) */
+.tch__head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.tch__head .sys-h{margin:0;}
+.tch__find{width:100%;margin:6px 0 10px;padding:10px 12px;border:1px solid rgba(62,42,30,.3);border-radius:8px;font:inherit;background:#FFFDF8;}
+.tch__list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
+.tch__student{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border:1px solid rgba(62,42,30,.25);border-radius:10px;background:#FFFDF8;font:inherit;text-align:left;cursor:pointer;}
+.tch__student:hover{border-color:var(--brown);}
+.tch__student b{font-weight:500;font-size:16px;}
+.tch__last{font-size:12.5px;color:#7A6656;}
+.tch__back{margin:4px 0;}
+.tch__name{margin:6px 0 10px;font-size:20px;font-weight:500;}
+.tch__form{background:#FFFDF8;border-radius:10px;padding:14px 16px;box-shadow:0 2px 6px rgba(60,40,20,.12);margin-bottom:16px;}
+.tch__memo span{color:#8A4B2E;}
+.tch__memo textarea{background:#FBF1E6;}
+.tch__memotext{background:#FBF1E6;padding:6px 8px;border-radius:6px;}
+.tch__tabs{margin:6px 0 10px;}
+.tch__page{display:grid;gap:10px;}

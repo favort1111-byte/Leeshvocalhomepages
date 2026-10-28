@@ -151,6 +151,7 @@
     if (name === "visits") loadVisits();
     if (name === "journal") loadJournal();
     if (name === "partners") loadPartners();
+    if (name === "teachers") loadTeachers();
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
   }
@@ -201,6 +202,7 @@
     countRecs();
     countPartners();
     countConsults();
+    countTeachers();
     countNew();
   }
   setInterval(countAll, 120000);
@@ -535,6 +537,20 @@
     $('[data-tab="records"]').textContent = "월말평가";
   }
 
+  // 레슨 일지 칸 (js/config.js lessonFields, 선생님 화면과 같은 칸)
+  var LFIELDS = cfg.lessonFields || [];
+  LFIELDS.forEach(function (fd) {
+    var l = el("label", "sys-field");
+    l.appendChild(el("span", null, fd[1] + (fd[0] === "memo" ? " 🔒 학생에게 안 보여요" : "")));
+    var t = el("textarea");
+    t.name = fd[0];
+    t.rows = fd[4];
+    t.maxLength = fd[3];
+    t.placeholder = fd[2];
+    l.appendChild(t);
+    $("#noteFields").appendChild(l);
+  });
+
   function loadRecords() {
     var sel = $("#recMember"), keep = sel.value;
     api("members?select=id,name,status,memo&order=id").then(function (res) {
@@ -577,8 +593,11 @@
         if (n.teacher) top.appendChild(el("span", "sys-note", n.teacher));
         top.appendChild(deleteButton("lesson_notes", n.id, loadMemberRecords));
         li.appendChild(top);
-        li.appendChild(el("p", "adm__quote", n.did));
-        if (n.practice) li.appendChild(el("p", null, "연습: " + n.practice));
+        LFIELDS.forEach(function (fd) {
+          if (!n[fd[0]]) return;
+          li.appendChild(el("p", "sys-note", fd[1] + (fd[0] === "memo" ? " 🔒" : "")));
+          li.appendChild(el("p", "adm__quote", n[fd[0]]));
+        });
         notes.appendChild(li);
       });
     });
@@ -672,17 +691,16 @@
   $("#noteForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var f = e.target;
-    api("lesson_notes", { method: "POST", body: {
-      member_id: recMember(), lesson_date: field(f, "date").value,
-      teacher: field(f, "teacher").value.trim() || null,
-      did: field(f, "did").value.trim(), practice: field(f, "practice").value.trim() || null
-    } }).then(function (res) {
+    var body = { member_id: recMember(), lesson_date: field(f, "date").value, teacher: field(f, "teacher").value.trim() || null };
+    var any = false;
+    LFIELDS.forEach(function (fd) { var v = field(f, fd[0]).value.trim(); body[fd[0]] = v || null; if (v) any = true; });
+    if (!any) { msg($("#noteMsg"), "한 칸 이상 적어주세요.", "error"); return; }
+    api("lesson_notes", { method: "POST", body: body }).then(function (res) {
       if (!res.ok) { msg($("#noteMsg"), friendly(res), "error"); return; }
       msg($("#noteMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
       var opt = $("#recMember").selectedOptions[0];
       showShare($("#noteShare"), "#notes", "오늘 레슨 노트가 올라왔어요.", opt ? opt.getAttribute("data-name") : "");
-      field(f, "did").value = "";
-      field(f, "practice").value = "";
+      LFIELDS.forEach(function (fd) { field(f, fd[0]).value = ""; });
       loadMemberRecords();
     });
   });
@@ -1573,6 +1591,91 @@
     if (n != null) { setBadge("#recBadge", n); return; }
     api("song_requests?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) { if (res.ok) setBadge("#recBadge", res.data.length); });
   }
+
+  /* ---------------- 선생님 (teachers · teacher_requests; teacher.html) ---------------- */
+
+  function loadTeachers() {
+    members().then(function (all) {
+      Promise.all([api("teachers?select=*&order=name"), api("teacher_requests?select=*&order=created_at.desc&limit=100")]).then(function (r) {
+        var ts = r[0].ok ? r[0].data : [], reqs = r[1].ok ? r[1].data : [];
+        var rl = $("#teacherReqList"), tl = $("#teacherList");
+        rl.textContent = "";
+        tl.textContent = "";
+        if (!r[0].ok) { tl.appendChild(el("li", "sys-msg sys-msg--error", friendly(r[0], "불러오지 못했습니다."))); return; }
+        var waiting = reqs.filter(function (q) { return q.status === "대기"; });
+        setBadge("#teacherBadge", waiting.length);
+        if (!waiting.length) rl.appendChild(el("li", "sys-empty", "새 연결 요청이 없어요."));
+        waiting.forEach(function (q) {
+          var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+          top.appendChild(el("strong", null, q.name + " 선생님"));
+          if (q.kakao_name) top.appendChild(el("span", "sys-note", "카카오 이름: " + q.kakao_name));
+          top.appendChild(el("span", "sys-note", stamp(q.created_at)));
+          li.appendChild(top);
+          var row = el("div", "adm__cardrow");
+          var sel = el("select");
+          sel.setAttribute("aria-label", "연결할 선생님");
+          ts.forEach(function (t) { var o = el("option", null, t.name + (t.kakao_user ? " (이미 연결됨)" : "")); o.value = t.id; if (t.name === q.name) o.selected = true; sel.appendChild(o); });
+          var ok = el("button", "sys-btn", "승인");
+          ok.type = "button";
+          var no = el("button", "sys-link adm__del", "거절");
+          no.type = "button";
+          function decide(yes) {
+            api("rpc/admin_teacher_decide", { method: "POST", body: { p_request: q.id, p_teacher: Number(sel.value), p_approve: yes } }).then(function (res) {
+              var d = res.data || {};
+              msg($("#teacherMsg"), res.ok && d.ok ? (yes ? "승인했어요. 이제 선생님 화면에 담당 학생이 보여요." : "거절했어요.") : d.error || friendly(res), res.ok && d.ok ? "ok" : "error");
+              loadTeachers();
+            });
+          }
+          ok.addEventListener("click", function () { decide(true); });
+          no.addEventListener("click", function () { decide(false); });
+          row.appendChild(sel);
+          row.appendChild(ok);
+          row.appendChild(no);
+          li.appendChild(row);
+          rl.appendChild(li);
+        });
+        ts.forEach(function (t) {
+          var mine = all.filter(function (m) { return (m.status === "재원" || m.status === "휴원") && teacherOf(m) === t.name; }).length;
+          var li = el("li", "adm__card" + (t.active ? "" : " is-hidden")), top = el("div", "adm__cardtop");
+          top.appendChild(el("strong", null, t.name));
+          top.appendChild(el("span", "adm__badge adm__badge--kind", t.kakao_user ? "카카오 연결됨" : "연결 전"));
+          top.appendChild(el("span", "sys-note", "담당 학생 " + mine + "명" + (t.active ? "" : " · 숨김")));
+          li.appendChild(top);
+          var row = el("div", "adm__cardrow");
+          if (t.kakao_user) {
+            var cut = el("button", "sys-link adm__del", "연결 끊기");
+            cut.type = "button";
+            cut.addEventListener("click", function () {
+              if (cut.getAttribute("data-armed") !== "1") { cut.setAttribute("data-armed", "1"); cut.textContent = "한 번 더 누르면 끊어요"; return; }
+              api("teachers?id=eq." + t.id, { method: "PATCH", body: { kakao_user: null } }).then(function (res) {
+                msg($("#teacherMsg"), res.ok ? t.name + " 선생님 연결을 끊었어요. 다시 쓰려면 연결 요청부터 해요." : friendly(res), res.ok ? "ok" : "error");
+                loadTeachers();
+              });
+            });
+            row.appendChild(cut);
+          }
+          var hide = el("button", "sys-link", t.active ? "숨기기 (그만둔 선생님)" : "다시 보이기");
+          hide.type = "button";
+          hide.addEventListener("click", function () { api("teachers?id=eq." + t.id, { method: "PATCH", body: { active: !t.active } }).then(loadTeachers); });
+          row.appendChild(hide);
+          li.appendChild(row);
+          tl.appendChild(li);
+        });
+      });
+    });
+  }
+  function countTeachers() {
+    api("teacher_requests?select=id&status=eq." + encodeURIComponent("대기")).then(function (res) { if (res.ok) setBadge("#teacherBadge", res.data.length); });
+  }
+  $("#teacherAdd").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, name = field(f, "name").value.trim();
+    api("teachers", { method: "POST", body: { name: name } }).then(function (res) {
+      msg($("#teacherMsg"), res.ok ? name + " 선생님을 더했어요." : friendly(res, "더하지 못했어요. 이미 있는 이름인지 확인해주세요."), res.ok ? "ok" : "error");
+      if (res.ok) { f.reset(); loadTeachers(); }
+    });
+  });
+  $("#teacherCopy").addEventListener("click", function () { copyText(new URL("teacher.html", location.href).href, $("#teacherCopy")); });
 
   /* ---------------- 제휴 업체 예약 신청 (partner_requests; 학생 내 폴더 → 제휴 업체) ---------------- */
 

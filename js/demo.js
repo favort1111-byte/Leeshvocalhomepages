@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 19; // bump when the demo defaults change
+  var VERSION = 20; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -37,7 +37,7 @@
     var t = nowKst().today;
     var db = {
       version: VERSION,
-      next: 400,
+      next: 600,
       settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 1440, max_days: 1, cancel_minutes: 60 },
       rooms: [["B1", "연습실"], ["B2", "연습실"], ["B3", "연습실"], ["B4", "연습실"], ["B5", "연습실"], ["C hall", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
@@ -45,7 +45,7 @@
         { id: "S001", name: "김시우", phone: "010-1234-5678", pin: "5678", status: "재원", expires_on: null, memo: "담당 원장님", must_change_pin: false, kakao_user: "kakao-sample" },
         { id: "S002", name: "이하늘", phone: "010-2222-9999", pin: "9999", status: "재원", expires_on: null, memo: "입시반 · 담당 안유정", must_change_pin: false, kakao_user: "kakao-hanul" },
         { id: "S003", name: "박새봄", phone: "010-5555-7777", pin: "7777", status: "휴원", expires_on: null, memo: "10월 복귀 예정", must_change_pin: false, kakao_user: null },
-        { id: "S004", name: "정다온", phone: null, pin: "0000", status: "재원", expires_on: null, memo: "담당 이수빈", must_change_pin: true, kakao_user: null },
+        { id: "S004", name: "정다온", phone: null, pin: "0000", status: "재원", expires_on: null, memo: "담당 안유정", must_change_pin: true, kakao_user: null },
         { id: "S005", name: "한지우", phone: null, pin: "0000", status: "재원", expires_on: null, memo: "담당 오은지", must_change_pin: true, kakao_user: null },
         { id: "G001", name: "외부 대관", phone: null, pin: "1234", status: "외부", expires_on: addDays(t, 14), memo: "댄스팀", must_change_pin: false, kakao_user: null }
       ],
@@ -60,10 +60,20 @@
         { id: 4, room_id: 2, member_id: "S001", day: t, start_min: 1320, end_min: 1440, status: "확정", memo: null }
       ],
       lesson_notes: [
-        { id: 11, member_id: "S001", lesson_date: addDays(t, -2), teacher: "이송희", did: "후렴 고음에서 턱에 힘 빼기.\n호흡을 먼저 채우고 소리를 얹는 연습.", practice: "립트릴 5분 → 후렴 두 줄만 천천히 3번", created_at: new Date().toISOString() },
-        { id: 12, member_id: "S001", lesson_date: addDays(t, -9), teacher: "이송희", did: "첫 소절 시작 음정 잡기. 반주 없이 첫 음 듣고 들어가기.", practice: "피아노로 첫 음 치고 따라 부르기 10번", created_at: new Date().toISOString() },
-        { id: 13, member_id: "S001", lesson_date: addDays(t, -16), teacher: "김하람", did: "노래 진단. 중음은 안정적, 고음에서 목이 조임.", practice: "하품하듯 입 벌리고 '아' 길게 5번", created_at: new Date().toISOString() },
-        { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "이송희", did: "입시곡 2절 감정선 정리", practice: "2절 녹음해서 들어보기", created_at: new Date().toISOString() }
+        { id: 11, member_id: "S001", lesson_date: addDays(t, -2), teacher: "원장님", teacher_id: 504, did: "후렴 고음에서 턱에 힘 빼기.\n호흡을 먼저 채우고 소리를 얹는 연습.",
+          songs: "밤편지 - 후렴 첫 음이 낮게 들어가요. 2절은 말하듯이 힘 빼고.", practice: "립트릴 5분 → 후렴 두 줄만 천천히 3번", audition: "다음 달 체험 엔터 내방 오디션 (보컬)",
+          recommend: "볼빨간사춘기 - 우주를 줄게 (밝은 곡 연습용)", memo: "고음 욕심이 많아 목이 쉽게 피곤해함 (체험 모드 예시)", created_at: new Date().toISOString() },
+        { id: 12, member_id: "S001", lesson_date: addDays(t, -9), teacher: "원장님", teacher_id: 504, did: "첫 소절 시작 음정 잡기. 반주 없이 첫 음 듣고 들어가기.", practice: "피아노로 첫 음 치고 따라 부르기 10번", created_at: new Date().toISOString() },
+        { id: 13, member_id: "S001", lesson_date: addDays(t, -16), teacher: "원장님", teacher_id: 504, did: "노래 진단. 중음은 안정적, 고음에서 목이 조임.", practice: "하품하듯 입 벌리고 '아' 길게 5번", created_at: new Date().toISOString() },
+        { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "안유정", teacher_id: 501, did: "입시곡 2절 감정선 정리", songs: "입시곡 - 2절 브릿지 호흡 위치 바꾸기", practice: "2절 녹음해서 들어보기",
+          audition: "12월 입시 실기", memo: "부모님이 진도 문의하심 (체험 모드 예시)", created_at: new Date().toISOString() }
+      ],
+      // 선생님 (teacher.html): 안유정 선생님이 체험용 카카오로 연결된 상태 + 기다리는 요청 하나
+      teachers: ["안유정", "양유경", "오은지", "원장님", "이수빈", "이윤지", "이하섬", "최홍주"].map(function (n, i) {
+        return { id: 501 + i, name: n, kakao_user: n === "안유정" ? "kakao-teacher" : null, active: true, created_at: new Date().toISOString() };
+      }),
+      teacher_requests: [
+        { id: 521, user_id: "kakao-wait-t", kakao_name: "은지쌤", name: "오은지", status: "대기", teacher_id: null, created_at: new Date(Date.now() - 1800000).toISOString(), decided_at: null }
       ],
       monthly_evals: [
         { id: 21, member_id: "S001", month: t.slice(0, 7) + "-01", pitch: 4, rhythm: 3, breath: 4, expression: 4, stage: 3, comment: "고음에서 힘이 많이 빠졌어요! 박자만 조금 더 안정되면 좋겠어요.", goal: "메트로놈 켜고 연습하기", teacher: "이송희", created_at: new Date().toISOString() },
@@ -334,7 +344,7 @@
         notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
-          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice }; }),
+          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice, songs: n.songs, audition: n.audition, recommend: n.recommend }; }),
         bookings: live().filter(function (b) { return b.member_id === who.id && b.day >= nowKst().today; })
           .sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); })
           .map(function (b) { return { room: room(b.room_id).name, date: b.day, start: hhmm(b.start_min), end: hhmm(b.end_min) }; }),
@@ -541,6 +551,82 @@
       save();
       return { ok: true };
     },
+    // 선생님 화면 (teacher.html)
+    teacher_me: function (a, uid) {
+      if (!uid) return fail("카카오 로그인이 필요해요.");
+      var t = myTeacher(uid);
+      if (!t) {
+        var r = db.teacher_requests.filter(function (x) { return x.user_id === uid; })[0];
+        return { ok: true, linked: false, request: r ? { name: r.name, status: r.status } : null,
+          names: db.teachers.filter(function (x) { return x.active; }).map(function (x) { return x.name; }).sort() };
+      }
+      return { ok: true, linked: true, name: t.name, students: db.members.filter(function (m) { return teaches(t, m.id); })
+        .map(function (m) {
+          var last = db.lesson_notes.filter(function (n) { return n.member_id === m.id; }).map(function (n) { return n.lesson_date; }).sort().pop() || null;
+          return { id: m.id, name: m.name, status: m.status, last: last };
+        }).sort(function (x, y) { return x.name < y.name ? -1 : 1; }) };
+    },
+    teacher_request: function (a, uid) {
+      if (!uid) return fail("카카오 로그인이 필요해요.");
+      if (!db.teachers.some(function (x) { return x.name === a.p_name && x.active; })) return fail("선생님 이름을 골라주세요.");
+      var r = db.teacher_requests.filter(function (x) { return x.user_id === uid; })[0];
+      if (!r) { r = { id: ++db.next, user_id: uid, kakao_name: "체험 카카오" }; db.teacher_requests.push(r); }
+      Object.assign(r, { name: a.p_name, status: "대기", teacher_id: null, created_at: new Date().toISOString(), decided_at: null });
+      save();
+      return { ok: true };
+    },
+    teacher_student: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
+      if (!teaches(t, a.p_member)) return fail("담당 학생만 볼 수 있어요.");
+      var m = db.members.filter(function (x) { return x.id === a.p_member; })[0];
+      return { ok: true, student: { id: m.id, name: m.name, status: m.status },
+        notes: db.lesson_notes.filter(function (n) { return n.member_id === m.id; })
+          .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
+          .map(function (n) { return { id: n.id, date: n.lesson_date, teacher: n.teacher, did: n.did, songs: n.songs, practice: n.practice,
+            audition: n.audition, recommend: n.recommend, memo: n.memo, mine: n.teacher_id === t.id }; }),
+        logs: db.practice_logs.filter(function (l) { return l.member_id === m.id; }).map(function (l) { return { day: l.day, minutes: l.minutes, song: l.song, did: l.did }; }),
+        repertoire: db.repertoire.filter(function (r) { return r.member_id === m.id; }).map(function (r) { return { title: r.title, artist: r.artist, status: r.status, purpose: r.purpose }; }) };
+    },
+    teacher_note_save: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("선생님으로 연결된 계정만 쓸 수 있어요.");
+      if (!teaches(t, a.p_member)) return fail("담당 학생만 쓸 수 있어요.");
+      var keys = ["did", "songs", "practice", "audition", "recommend", "memo"], v = {};
+      keys.forEach(function (k) { v[k] = String(a["p_" + k] || "").trim() || null; });
+      if (!keys.some(function (k) { return v[k]; })) return fail("한 칸 이상 적어주세요.");
+      var n;
+      if (a.p_note) {
+        n = db.lesson_notes.filter(function (x) { return x.id === a.p_note && x.teacher_id === t.id; })[0];
+        if (!n) return fail("내가 쓴 일지만 고칠 수 있어요.");
+      } else {
+        n = { id: ++db.next, member_id: a.p_member, teacher: t.name, teacher_id: t.id, created_at: new Date().toISOString() };
+        db.lesson_notes.push(n);
+      }
+      Object.assign(n, v, { lesson_date: a.p_date });
+      save();
+      return { ok: true, id: n.id };
+    },
+    teacher_note_delete: function (a, uid) {
+      var t = myTeacher(uid);
+      var n = t && db.lesson_notes.filter(function (x) { return x.id === a.p_note && x.teacher_id === t.id; })[0];
+      if (!n) return fail("내가 쓴 일지만 지울 수 있어요.");
+      db.lesson_notes = db.lesson_notes.filter(function (x) { return x !== n; });
+      save();
+      return { ok: true };
+    },
+    admin_teacher_decide: function (a) {
+      var r = db.teacher_requests.filter(function (x) { return x.id === a.p_request; })[0];
+      if (!r) return fail("요청을 찾을 수 없어요.");
+      if (!a.p_approve) { r.status = "거절"; save(); return { ok: true, status: "거절" }; }
+      var t = db.teachers.filter(function (x) { return x.id === a.p_teacher; })[0];
+      if (!t) return fail("선생님을 골라주세요.");
+      t.kakao_user = r.user_id;
+      r.status = "승인";
+      r.teacher_id = t.id;
+      save();
+      return { ok: true, status: "승인" };
+    },
     admin_instagram_status: function () {
       return { ok: true, connected: !!db.ig_connected, count: db.ig_posts.length, lastSync: new Date().toISOString(), error: null };
     },
@@ -553,6 +639,13 @@
     admin_instagram_sync: function () { return { ok: true, count: db.ig_posts.length }; },
     is_admin: function () { return true; }
   };
+
+  function myTeacher(uid) { return uid ? db.teachers.filter(function (x) { return x.kakao_user === uid && x.active; })[0] || null : null; }
+  function teaches(t, mid) {
+    var m = db.members.filter(function (x) { return x.id === mid; })[0];
+    var d = m && /담당\s*([^\s·,]+)/.exec(m.memo || "");
+    return !!(m && (m.status === "재원" || m.status === "휴원") && d && d[1] === t.name);
+  }
 
   /* ---------------- 카카오로 로그인 (pretend) ----------------
      No real Kakao here: the button makes up a new Kakao account for this browser and comes back
@@ -702,14 +795,14 @@
       ".demo-bar a,.demo-bar button{color:#F6EBDD;background:none;border:1px solid rgba(246,235,221,.5);border-radius:999px;" +
       "padding:5px 12px;font:inherit;text-decoration:none;cursor:pointer;white-space:nowrap;}" +
       ".demo-bar a:hover,.demo-bar button:hover{background:rgba(246,235,221,.12);}" +
-      ".demo-bar[data-min] span,.demo-bar[data-min] a,.demo-bar[data-min] .demo-reset,.demo-bar[data-min] .demo-student,.demo-bar[data-min] .demo-intro{display:none;}" +
+      ".demo-bar[data-min] span,.demo-bar[data-min] a,.demo-bar[data-min] .demo-reset,.demo-bar[data-min] .demo-student,.demo-bar[data-min] .demo-teacher,.demo-bar[data-min] .demo-intro{display:none;}" +
       "body{padding-bottom:84px;}" +
       "body:has(.scene:not([hidden])) .demo-bar{display:none;}";
     document.head.appendChild(css);
     var bar = document.createElement("div");
     bar.className = "demo-bar";
     bar.innerHTML = "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 카카오 버튼은 새 가짜 계정 (처음 연결 요청 체험) · 관리자는 아무 이메일</span>" +
-      "<button type=\"button\" class=\"demo-student\">학생(김시우)으로 보기</button><a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
+      "<button type=\"button\" class=\"demo-student\">학생(김시우)으로 보기</button><button type=\"button\" class=\"demo-teacher\">선생님(안유정)으로 보기</button><a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
       "<button type=\"button\" class=\"demo-min\" aria-label=\"안내 접기\">접기</button>";
     bar.querySelector(".demo-intro").addEventListener("click", function () {
       try { localStorage.removeItem("leesh_intro"); } catch (e) { /* ignore */ }
@@ -719,6 +812,10 @@
       window.LeeshAPI.kakao.save({ access: FAKE + "kakao-sample", refresh: "demo", expires: Math.floor(Date.now() / 1000) + 3650 * 86400 });
       // open 내 폴더 on the desktop (js/scene.js reads #me when the page loads)
       if (/\/(index\.html)?$/.test(location.pathname)) { location.hash = "me"; location.reload(); } else location.href = "index.html#me";
+    });
+    bar.querySelector(".demo-teacher").addEventListener("click", function () {
+      window.LeeshAPI.kakao.save({ access: FAKE + "kakao-teacher", refresh: "demo", expires: Math.floor(Date.now() / 1000) + 3650 * 86400 });
+      if (/teacher\.html$/.test(location.pathname)) location.reload(); else location.href = "teacher.html";
     });
     bar.querySelector(".demo-reset").addEventListener("click", function () {
       db = seed();
