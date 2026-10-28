@@ -50,6 +50,9 @@
   function showTab(name) {
     scene.querySelectorAll("[data-book-tab]").forEach(function (t) { t.setAttribute("aria-selected", t.getAttribute("data-book-tab") === name ? "true" : "false"); });
     scene.querySelectorAll("[data-book-page]").forEach(function (p) { p.hidden = p.getAttribute("data-book-page") !== name; });
+    // phones: the tab row scrolls sideways, so bring the chosen tab into view
+    var t = scene.querySelector('[data-book-tab="' + name + '"]'), row = t && t.parentNode;
+    if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = t.offsetLeft - row.offsetLeft - 12;
   }
 
   function load() {
