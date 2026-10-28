@@ -107,3 +107,8 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__fold{margin-top:18px;}
 .adm__fold > summary{cursor:pointer;}
 .adm__fold[open] > summary{margin-bottom:8px;}
+/* 내방 신청 카드: 신청서 순서대로 한 줄씩 */
+.adm__visit{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:6px 0 4px;font-size:14px;}
+.adm__visit dt{color:#7A6656;}
+.adm__visit dd{margin:0;white-space:pre-wrap;word-break:break-word;}
+.adm__visit .adm__player{display:block;margin-top:4px;max-width:100%;}

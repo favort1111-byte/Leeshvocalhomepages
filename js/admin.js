@@ -1305,14 +1305,27 @@
       box.appendChild(el("p", "sys-note", "신청 " + res.data.length + "명 · " + Object.keys(count).map(function (k) { return k + " " + count[k]; }).join(" · ")));
       var ul = el("ul", "adm__cards");
       res.data.forEach(function (a, i) {
+        // 원장님이 정한 순서 (2026-10-28): 이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야 · 특이사항 · 댄스음원 · 신청 시간
         var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
-        top.appendChild(el("strong", null, (i + 1) + ". " + a.name));
-        top.appendChild(el("span", "adm__badge adm__badge--kind", a.field || "-"));
-        top.appendChild(el("span", "sys-note", stamp(a.created_at) + (a.updated_at && a.updated_at.slice(0, 16) !== a.created_at.slice(0, 16) ? " (고침)" : "")));
+        top.appendChild(el("strong", null, (i + 1) + "번"));
         li.appendChild(top);
-        li.appendChild(el("p", null, [a.gender, a.birth, a.body_size && "키/몸무게 " + a.body_size].filter(Boolean).join(" · ")));
-        if (a.note) li.appendChild(el("p", "adm__quote", a.note));
+        var dl = el("dl", "adm__visit");
         var row = el("div", "adm__cardrow");
+        function line(label, value) {
+          dl.appendChild(el("dt", null, label));
+          var dd = el("dd", null, value == null || value === "" ? "-" : value);
+          dl.appendChild(dd);
+          return dd;
+        }
+        line("이름", a.name);
+        line("성별", a.gender);
+        line("출생년도/나이", a.birth);
+        line("키/몸무게", a.body_size);
+        line("지원분야", a.field);
+        line("특이사항", a.note);
+        var musicCell = line("댄스음원", a.music && a.music.path ? "" : /\[음원은 .*카톡으로 보냄\]/.test(a.note || "") ? "카톡으로 보냄" : "-");
+        line("신청 시간", stamp(a.created_at) + (a.updated_at && a.updated_at.slice(0, 16) !== a.created_at.slice(0, 16) ? " (고침 " + stamp(a.updated_at) + ")" : ""));
+        li.appendChild(dl);
         if (a.music && a.music.path) {
           var play = el("button", "sys-link", "▶ 댄스 음원 듣기 · 내려받기");
           play.type = "button";
@@ -1323,14 +1336,16 @@
               var au = el("audio", "adm__player");
               au.controls = true;
               au.src = u;
-              var dl = el("a", "sys-link", "내려받기");
-              dl.href = u;
-              dl.download = a.name + "-" + (a.music.name || "음원.mp3");
+              var down = el("a", "sys-link", "내려받기");
+              down.href = u;
+              down.download = a.name + "-" + (a.music.name || "음원.mp3");
               play.replaceWith(au);
-              row.insertBefore(dl, au.nextSibling);
+              musicCell.appendChild(document.createTextNode(" "));
+              musicCell.appendChild(down);
             });
           });
-          row.appendChild(play);
+          musicCell.textContent = (a.music.name || "음원 파일") + " ";
+          musicCell.appendChild(play);
         }
         var del = el("button", "sys-link adm__del", "신청 지우기");
         del.type = "button";
