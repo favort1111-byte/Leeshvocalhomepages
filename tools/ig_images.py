@@ -2,7 +2,9 @@
 
 Instagram's own picture links stop working after a while, so the pictures of every post the
 database has (public.ig_posts, filled by private.ig_sync) are saved here as 800px WebP.
-Pictures already copied are skipped. Run by .github/workflows/instagram-pictures.yml.
+Pictures already copied are skipped. Each picture also gets a fingerprint (difference hash) in
+data/ig_hashes.json: the academy often posts the same poster several times, and post.html shows it once.
+Run by .github/workflows/instagram-pictures.yml.
     python3 tools/ig_images.py
 """
 import io, json, os, re, sys, urllib.request
@@ -40,4 +42,28 @@ for p in posts:
         except Exception as e:  # an expired link: the next run after a fresh sync gets it
             failed += 1
             print("skip", p["id"], n, type(e).__name__, file=sys.stderr)
-print(f"copied {made}, could not {failed}, posts {len(posts)}")
+
+
+def dhash(path, size=16):
+    """256-bit difference hash: the same poster saved twice differs by ~0 bits, two different posters by 80+."""
+    im = Image.open(path).convert("L").resize((size + 1, size), Image.LANCZOS)
+    px = list(im.getdata())
+    bits = 0
+    for y in range(size):
+        for x in range(size):
+            bits = (bits << 1) | (px[y * (size + 1) + x] > px[y * (size + 1) + x + 1])
+    return format(bits, "064x")
+
+
+HASHES = os.path.join(REPO, "data", "ig_hashes.json")
+hashes = json.load(open(HASHES)) if os.path.exists(HASHES) else {}
+root = os.path.join(REPO, "assets", "ig")
+for post in sorted(os.listdir(root)) if os.path.isdir(root) else []:
+    for f in sorted(os.listdir(os.path.join(root, post))):
+        key = post + "/" + f.split(".")[0]
+        if key not in hashes:
+            hashes[key] = dhash(os.path.join(root, post, f))
+os.makedirs(os.path.dirname(HASHES), exist_ok=True)
+with open(HASHES, "w") as f:
+    json.dump(dict(sorted(hashes.items())), f, separators=(",", ":"))
+print(f"copied {made}, could not {failed}, posts {len(posts)}, fingerprints {len(hashes)}")

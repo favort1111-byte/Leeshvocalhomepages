@@ -147,19 +147,31 @@
 
   /* An Instagram post in the same shape as a blog post: first line = title, the rest = text, every picture.
      Pictures come from assets/ig/<id>/<n>.webp once copied (Instagram's own links run out after a while). */
-  // group: the posts with the same text (a month's 내방 오디션 posters), newest first; their pictures all go in
-  function fromInstagram(p, group) {
+  // The academy posts the same poster several times (3 in a row for the grid) and makes promo reels with the
+  // same text: tools/ig_images.py fingerprints every copied picture, and a poster shows only once.
+  function bitsApart(a, b) {
+    var n = 0;
+    for (var i = 0; i < a.length; i++) for (var x = parseInt(a[i], 16) ^ parseInt(b[i], 16); x; x >>= 1) n += x & 1;
+    return n;
+  }
+  // group: the posts with the same text (a month's 내방 오디션 posters), newest first; fp: the fingerprints
+  function fromInstagram(p, group, fp) {
     // body/title are cleaned by the database (private.ig_clean: no promo block, hashtags or divider lines)
     var lines = String(p.body != null ? p.body : p.caption || "").split("\n").map(function (x) { return x.replace(/#\S+/g, "").trim(); });
     var first = p.title || lines.filter(Boolean)[0] || "학원 소식";
     var at = lines.indexOf(first);
     var title = first.replace(/^(?:[\u2190-\u2bff\u2600-\u27bf\ufe0f\u200d\u20e3]|[\ud83c-\udbff][\udc00-\udfff]|\s)+|(?:[\u2190-\u2bff\u2600-\u27bf\ufe0f\u200d\u20e3]|[\ud83c-\udbff][\udc00-\udfff]|\s)+$/g, "") || first;
     var rest = at === -1 ? lines : lines.slice(at + 1);
-    var blocks = [], seen = {};
-    (group && group.length ? group : [p]).forEach(function (g) {
+    var blocks = [], seen = {}, shown = [];
+    var list = group && group.length ? group : [p];
+    // posters first: when the group has photo posts, the reels' cover frames stay out
+    if (list.some(function (g) { return g.media_type && g.media_type !== "VIDEO"; })) list = list.filter(function (g) { return g.media_type !== "VIDEO"; });
+    list.forEach(function (g) {
       (g.images || []).forEach(function (u, i) {
-        if (!u || seen[u]) return;
+        var h = (fp || {})[g.id + "/" + (i + 1)];
+        if (!u || seen[u] || (h && shown.some(function (s) { return bitsApart(s, h) <= 12; }))) return;
         seen[u] = 1;
+        if (h) shown.push(h);
         blocks.push({ t: "img", src: "assets/ig/" + g.id + "/" + (i + 1) + ".webp", alt: u });
       });
     });
@@ -173,8 +185,10 @@
     LeeshAPI.request("/rest/v1/ig_posts?select=*&id=eq." + encodeURIComponent(ig), { headers: LeeshAPI.headers() }).then(function (res) {
       var p = res.ok && res.data && res.data[0];
       if (p && p.title) {
-        return LeeshAPI.request("/rest/v1/ig_posts?select=id,images&order=posted_at.desc&limit=40&title=eq." + encodeURIComponent(p.title), { headers: LeeshAPI.headers() })
-          .then(function (g) { render(fromInstagram(p, g.ok ? g.data : null)); });
+        return Promise.all([
+          LeeshAPI.request("/rest/v1/ig_posts?select=id,images,media_type&order=posted_at.desc&limit=40&title=eq." + encodeURIComponent(p.title), { headers: LeeshAPI.headers() }),
+          fetch(BASE + "data/ig_hashes.json").then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })
+        ]).then(function (r) { render(fromInstagram(p, r[0].ok ? r[0].data : null, r[1])); });
       }
       if (p) return render(fromInstagram(p));
       box.textContent = "";

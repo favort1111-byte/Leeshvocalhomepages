@@ -64,7 +64,7 @@
   `private.ig_sync(pages)`가 http 확장으로 graph.instagram.com에서 글을 받아 `public.ig_posts`(누구나 읽기, hidden 제외)에 넣고, 20일마다 토큰 갱신. 칸은 글 내용으로 추측 (`private.ig_guess`: 합격+축하 → 합격, 내방 → 내방, 합격 → 합격, 오디션 → 오디션, 나머지 → **학원 소식**). 해시태그 규칙 없음, 빠지는 글 없음. 관리자에서 칸 옮기기(kind_fixed)·숨기기.
   페이지: `js/auditions.js`가 각 칸 맨 위에 6개 + 더 보기, `post.html?ig=<id>`가 글 하나. 사진은 `tools/ig_images.py`(GitHub Action `instagram-pictures.yml`)가 `assets/ig/<id>/<n>.webp`로 복사, 복사 전엔 인스타 링크로 보임.
   2026-10-28 연결 완료 (최근 300개, 2026-05~). 캡션마다 학원 홍보 문구·해시태그가 같이 붙어서 `private.ig_clean`으로 빼고 `title`·`body`를 따로 저장. 홍보 영상처럼 내용이 홍보 문구뿐인 글은 처음부터 숨김.
-  **같은 제목 글은 한 묶음**(한 달 내방 오디션 포스터 여러 장 → 카드 하나, post.html에서 사진 전부).
+  **같은 제목 글은 한 묶음**(한 달 내방 오디션 포스터 여러 장 → 카드 하나). 학원이 같은 포스터를 3장씩 올리고 홍보 릴스도 같은 글이라, post.html은 **사진 지문**(`data/ig_hashes.json`, 256비트 dHash, 같은 포스터 차이 0 / 다른 포스터 80+, 12 이하면 같은 것)으로 한 번만 + 사진 글이 있으면 영상 표지는 뺌.
   **자동 실행 켬 (원장님 허락 2026-10-28):** pg_cron `leesh_instagram` 2시간마다 `private.ig_sync(1)` + GitHub Action 3시간마다 사진 복사. 둘 다 가져오기·복사만, 지우지 않음.
   Action이 main에 커밋하므로 main에 올릴 때는 **`git fetch origin main && git merge origin/main` 먼저** (작업 브랜치도).
 - **학원이 직접 올리는 소식 (2026-10-28, 원장님: "직접도, Claude에게 말해서도 둘 다"):** 표 `public.audition_news` (마이그레이션 `leesh_audition_news`, 누구나 읽기·원장님만 쓰기) + 공개 버킷 `audition-news`(포스터).
