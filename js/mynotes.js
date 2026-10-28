@@ -28,7 +28,9 @@
     var dt = new Date(d + "T00:00:00Z");
     return (dt.getUTCMonth() + 1) + "월 " + dt.getUTCDate() + "일 (" + WD[dt.getUTCDay()] + ")";
   }
-  function setLabel(text) { labels.forEach(function (l) { l.textContent = text; }); }
+  // the folder icon shows the student's name once signed in; null puts back "my folder (내 폴더)"
+  var plain = Array.prototype.map.call(labels, function (l) { return l.innerHTML; });
+  function setLabel(text) { labels.forEach(function (l, i) { if (text == null) l.innerHTML = plain[i]; else l.textContent = text; }); }
 
   var sign = LeeshSignIn.mount(box, {
     title: "내 폴더", titleClass: "book__title",
@@ -40,7 +42,7 @@
     who = null;
     box.hidden = false;
     open.hidden = true;
-    setLabel("내 폴더");
+    setLabel(null);
     if (note) sign.note(note);
   }
 

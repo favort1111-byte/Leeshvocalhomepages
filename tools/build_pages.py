@@ -130,22 +130,22 @@ CLIP = ('<svg class="clip" viewBox="0 0 26 60" aria-hidden="true">'
         '<path d="M9 44V12a6 6 0 0 1 12 0v36a9 9 0 0 1-18 0V16" fill="none" stroke="#9FA1A3" stroke-width="2.4" stroke-linecap="round"/>'
         '</svg>')
 
-def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", scene=None):
-    target = ""
+def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", scene=None, ko=None):
+    target = f' title="{ko}"' if ko else ""  # English names on the desktop, Korean on hover (원장님 2026-10-28)
     if scene == "me":  # the student folder opens in place (js/scene.js); the #anchor keeps it reachable without JS
-        href, target = "#scene-me", ' data-scene="scene-me" aria-haspopup="dialog"'
+        href, target = "#scene-me", target + ' data-scene="scene-me" aria-haspopup="dialog"'
     elif scene:
         href, external = ICON_LINKS[scene]
     if external:
-        target = ' target="_blank" rel="noopener"'
+        target += ' target="_blank" rel="noopener"'
     return (f'    <a class="icon" href="{href}"{target} style="left:calc({left} * var(--s));top:calc({top} * var(--s));width:calc({w} * var(--s))">\n'
             f'      <span class="{img_class}" style="height:calc({h} * var(--s))">{inner}</span>\n'
             f'      <span class="icon__label">{label}</span>\n'
             f'    </a>')
 
-def thumb(left, top, w, h, i, label, href="about.html", scene=None):
+def thumb(left, top, w, h, i, label, href="about.html", scene=None, ko=None):
     inner = f'<img src="{img(i)}" alt="" loading="lazy">'
-    return icon(left, top, w, h, label, href, inner, scene=scene)
+    return icon(left, top, w, h, label, href, inner, scene=scene, ko=ko)
 
 YT = "https://www.youtube.com/@vocallesson1533"
 MAP = "https://map.naver.com/p/search/%EC%9D%B4%EC%86%A1%ED%9D%AC%EB%B3%B4%EC%BB%AC%EB%A0%88%EC%8A%A8"
@@ -195,21 +195,21 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
-    icon(74, 110, 50, 50, "유튜브", YT, globe_svg(), scene="youtube"),
-    icon(392, 150, 44, 44, "인스타 (오디션)", blog.INSTA_AUDITION, insta_svg(), external=True),
-    icon(404, 246, 44, 44, "인스타 (취미)", blog.INSTA_HOBBY, insta_svg(), external=True),
-    thumb(228.5, 136, 37, 37, 1, "무대.jpg", scene="stage"),
-    thumb(285.5, 216, 37, 37, 2, "레슨.jpg", scene="lesson"),
-    thumb(169, 263.5, 37, 38, 3, "연습실.jpg", scene="room"),
-    thumb(90, 296, 49, 68, 4, "오디션.jpg", scene="audition"),
-    thumb(319, 324, 37, 37, 5, "합격.jpg", scene="results"),
-    thumb(464, 349.5, 83.5, 46.5, 7, "보컬.jpg", scene="voice"),
-    icon(504.5, 152.5, 48, 48, "오시는길", MAP, FINDER, scene="map"),
-    thumb(563, 256.5, 61.5, 47.5, 6, "취미반.jpg", scene="hobby"),
-    thumb(637.5, 119.5, 73.5, 43, 9, "입시.jpg", scene="exam"),
-    thumb(699, 150, 43.5, 49, 8, "데뷔.jpg", scene="debut"),
-    icon(674.5, 339.5, 58, 48.5, "내 폴더", "booking.html", FOLDER, scene="me"),
-    icon(590, 352, 44, 44, "게임.exe", "games.html", GAME_ICON),
+    icon(74, 110, 50, 50, "YouTube", YT, globe_svg(), scene="youtube", ko="유튜브"),
+    icon(392, 150, 44, 44, "Instagram (audition)", blog.INSTA_AUDITION, insta_svg(), external=True, ko="인스타그램 오디션반"),
+    icon(404, 246, 44, 44, "Instagram (hobby)", blog.INSTA_HOBBY, insta_svg(), external=True, ko="인스타그램 취미반"),
+    thumb(228.5, 136, 37, 37, 1, "stage.jpg", scene="stage", ko="무대 · 원장님 소개"),
+    thumb(285.5, 216, 37, 37, 2, "lesson.jpg", scene="lesson", ko="레슨 과정"),
+    thumb(169, 263.5, 37, 38, 3, "practice room.jpg", scene="room", ko="연습실 예약"),
+    thumb(90, 296, 49, 68, 4, "audition.jpg", scene="audition", ko="오디션 소식"),
+    thumb(319, 324, 37, 37, 5, "results.jpg", scene="results", ko="합격 실적"),
+    thumb(464, 349.5, 83.5, 46.5, 7, "vocal.jpg", scene="voice", ko="보컬 상담"),
+    icon(504.5, 152.5, 48, 48, "map<small>오시는 길</small>", MAP, FINDER, scene="map", ko="오시는 길 (네이버 지도)"),
+    thumb(563, 256.5, 61.5, 47.5, 6, "hobby.jpg", scene="hobby", ko="취미반"),
+    thumb(637.5, 119.5, 73.5, 43, 9, "exam.jpg", scene="exam", ko="입시 상담"),
+    thumb(699, 150, 43.5, 49, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
+    icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 월말평가"),
+    icon(590, 352, 44, 44, "games.exe", "games.html", GAME_ICON, ko="미니게임"),
 ])
 
 # Each icon gets --i, which staggers its pop-in after the intro and its float on the desktop.
@@ -432,11 +432,11 @@ BOOKING_APP = f"""  <div class="booking__inner">
 
 # ---------- CONSULT (reference 800x450) ----------
 consult_icons = "\n".join([
-    icon(97, 110, 48, 48, "유튜브", YT, globe_svg(), scene="youtube"),
-    thumb(70, 248, 37, 37, 1, "무대.jpg", scene="stage"),
-    thumb(128, 320, 37, 38, 2, "레슨.jpg", scene="lesson"),
-    thumb(709, 205, 43, 50, 8, "데뷔.jpg", scene="debut"),
-    icon(641, 338, 58, 48, "내 폴더", "booking.html", FOLDER, scene="me"),
+    icon(97, 110, 48, 48, "YouTube", YT, globe_svg(), scene="youtube", ko="유튜브"),
+    thumb(70, 248, 37, 37, 1, "stage.jpg", scene="stage", ko="무대 · 원장님 소개"),
+    thumb(128, 320, 37, 38, 2, "lesson.jpg", scene="lesson", ko="레슨 과정"),
+    thumb(709, 205, 43, 50, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
+    icon(641, 338, 58, 48, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 월말평가"),
 ])
 
 consult = (head("Consult | 이송희보컬레슨",

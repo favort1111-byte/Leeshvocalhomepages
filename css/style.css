@@ -810,3 +810,6 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .tip__noimg{display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--brown);}
 .tip__title{padding:10px 12px 4px;font-size:14.5px;line-height:1.45;}
 .tip time{padding:0 12px 10px;margin-top:auto;font-size:12px;color:#8A7564;}
+/* English icon names; the two everyone must find keep a small Korean line */
+.icon__label{text-align:center;}
+.icon__label small{display:block;font-size:.82em;line-height:1.15;opacity:.9;}
