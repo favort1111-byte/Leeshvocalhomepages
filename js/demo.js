@@ -182,7 +182,7 @@
           .map(function (r) {
             var free = [];
             for (var g = s.open_min; g + s.unit_min <= s.close_min; g += s.unit_min) {
-              if (ahead === 0 && g < Math.floor(n.min / s.unit_min) * s.unit_min) continue;
+              if (ahead === 0 && g <= n.min) continue; // started already
               var taken = live().some(function (b) { return b.room_id === r.id && b.day === d && b.start_min < g + s.unit_min && g < b.end_min; });
               if (!taken) free.push(hhmm(g));
             }
@@ -222,7 +222,7 @@
       if (h * 60 > s.max_minutes) return fail("한 번에 최대 " + s.max_minutes / 60 + "시간까지 예약할 수 있습니다.");
       var en = st + h * 60;
       if (st < s.open_min || en > s.close_min) return fail("운영 시간(" + hhmm(s.open_min) + "~" + hhmm(s.close_min) + ") 안에서만 예약할 수 있습니다.");
-      if (ahead === 0 && st < Math.floor(n.min / s.unit_min) * s.unit_min) return fail("이미 지난 시간입니다.");
+      if (ahead === 0 && st <= n.min) return fail("이미 시작한 시간이에요. 다음 시간부터 예약할 수 있어요.");
       var sameDay = live().filter(function (b) { return b.day === d; });
       var used = sameDay.filter(function (b) { return b.member_id === who.id; })
         .reduce(function (t, b) { return t + b.end_min - b.start_min; }, 0);

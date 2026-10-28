@@ -117,6 +117,27 @@
     });
   }
 
+  // Keep the board current while the page stays open: an hour that has started can't be booked any
+  // more, and at midnight the new day opens. The student's pick and hours stay if still free.
+  function refresh() {
+    if (!state.rooms || document.hidden) return;
+    LeeshAPI.rpc("rooms_day", { p_date: state.date }).then(function (res) {
+      if (!res.ok || res.days[0] !== state.rooms.days[0]) { loadDay(null); return; }
+      state.rooms = res;
+      if (state.pick) {
+        var room = res.rooms.filter(function (r) { return r.name === state.pick.room; })[0];
+        if (room && room.free.indexOf(state.pick.start) !== -1) state.pick.free = room.free; else state.pick = null;
+      }
+      var hours = $("#hours").value;
+      renderBoard(res);
+      renderRooms(res);
+      updatePick();
+      if ($("#hours").querySelector('option[value="' + hours + '"]')) $("#hours").value = hours;
+    });
+  }
+  setInterval(refresh, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
+
   function renderDays(days, current) {
     var wrap = $("#days");
     wrap.textContent = "";
@@ -143,7 +164,7 @@
     if (!res.rooms.length) { board.appendChild(el("p", "sys-note", "예약할 수 있는 연습실이 없습니다.")); return; }
     var open = toMin(res.open), close = toMin(res.close), unit = res.unit;
     var cols = (close - open) / unit;
-    var nowCut = res.now == null ? -1 : Math.floor(res.now / unit) * unit;
+    var now = res.now == null ? -1 : res.now; // an hour that has started is gone (18:05 → from 19:00)
     var grid = el("div", "sys-board__grid");
     grid.style.gridTemplateColumns = "var(--board-name) repeat(" + cols + ", minmax(0, 1fr))";
 
@@ -175,7 +196,7 @@
           cell.addEventListener("click", pickFromBoard.bind(null, room, hhmm(t)));
           grid.appendChild(cell);
         } else {
-          var past = t < nowCut;
+          var past = t <= now;
           var span = el("span", "sys-board__cell " + (past ? "is-past" : "is-taken"));
           span.title = label + (past ? " 지난 시간" : " 예약됨");
           grid.appendChild(span);

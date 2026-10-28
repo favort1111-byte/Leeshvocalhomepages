@@ -488,7 +488,7 @@ begin
         'free', coalesce((
           select jsonb_agg(private.hhmm(g) order by g)
           from generate_series(s.open_min, s.close_min - s.unit_min, s.unit_min) g
-          where (d > today or g >= (now_min / s.unit_min) * s.unit_min)
+          where (d > today or g > now_min)   -- 이미 시작한 시간은 안 됨 (18:05면 19:00부터, 원장님 2026-10-28)
             and not exists (
               select 1 from public.bookings b
               where b.room_id = r.id and b.day = d and b.status = '확정'
@@ -581,8 +581,8 @@ begin
   if st < s.open_min or en > s.close_min then
     return private.fail('운영 시간(' || private.hhmm(s.open_min) || '~' || private.hhmm(s.close_min) || ') 안에서만 예약할 수 있습니다.');
   end if;
-  if d = today and st < (now_min / s.unit_min) * s.unit_min then
-    return private.fail('이미 지난 시간입니다.');
+  if d = today and st <= now_min then
+    return private.fail('이미 시작한 시간이에요. 다음 시간부터 예약할 수 있어요.');
   end if;
 
   -- 같은 사람의 동시 요청을 한 줄로 세워 하루 최대 시간 검사가 새지 않게 합니다.
