@@ -408,8 +408,7 @@ def rooms_section():
 
 def tips_section():
     tips = "".join(f'<li><a href="post.html?id={n}">{t}</a></li>' for t, n in TIPS)  # moved from the blog
-    links = [("유튜브 · 보컬 레슨", YT), ("유튜브 · 오디션 채널", YT_AUDITION), ("인스타그램 · 오디션반", INSTA_AUDITION),
-             ("인스타그램 · 취미반", INSTA_HOBBY)]
+    links = [("유튜브 · 보컬 레슨", YT), ("유튜브 · 오디션 채널", YT_AUDITION), ("인스타그램", INSTA_AUDITION)]
     chips = "".join(f'<li><a href="{u}" target="_blank" rel="noopener">{t} ↗</a></li>' for t, u in links)
     return (_head("one-point lesson", "원포인트 레슨", "tips")
             + f'    <ul class="tips">{tips}</ul>\n'
@@ -431,7 +430,7 @@ def about_sections():
 def find_us_section():
     steps = "".join(f"<li>{s}</li>" for s in DIRECTIONS["steps"])
     links = [("카카오톡 채널 (24시간 상담)", "https://pf.kakao.com/_xgNYbK"), ("유튜브", YT), ("유튜브 · 오디션 채널", YT_AUDITION),
-             ("인스타그램 · 오디션반", INSTA_AUDITION), ("인스타그램 · 취미반", INSTA_HOBBY)]
+             ("인스타그램", INSTA_AUDITION)]
     chips = "".join(f'<li><a href="{u}" target="_blank" rel="noopener">{t} ↗</a></li>' for t, u in links)
     return ('<section class="scrap scrap--paper" aria-label="오시는 길">\n'
             '  <div class="scrap__block">\n'

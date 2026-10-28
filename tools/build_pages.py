@@ -196,8 +196,8 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
     icon(74, 110, 50, 50, "YouTube", YT, globe_svg(), scene="youtube", ko="유튜브"),
-    icon(392, 150, 44, 44, "Instagram (audition)", blog.INSTA_AUDITION, insta_svg(), external=True, ko="인스타그램 오디션반"),
-    icon(404, 246, 44, 44, "Instagram (hobby)", blog.INSTA_HOBBY, insta_svg(), external=True, ko="인스타그램 취미반"),
+    icon(398, 196, 44, 44, "Instagram", blog.INSTA_AUDITION, insta_svg(), external=True, ko="인스타그램"),
+    # 취미반 인스타그램은 지금 운영을 안 해서 뺌 (원장님 2026-10-28, 필요하면 blog.INSTA_HOBBY로 다시)
     thumb(228.5, 136, 37, 37, 1, "stage.jpg", scene="stage", ko="무대 · 원장님 소개"),
     thumb(285.5, 216, 37, 37, 2, "lesson.jpg", scene="lesson", ko="레슨 과정"),
     thumb(169, 263.5, 37, 38, 3, "practice room.jpg", scene="room", ko="연습실 예약"),
