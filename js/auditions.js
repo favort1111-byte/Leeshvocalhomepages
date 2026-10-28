@@ -73,8 +73,11 @@
   /* 인스타그램에서 가져온 글 (ig_posts): each section's own kind, newest first, as post links like the blog posts.
      Once there are any, the embedded Instagram box steps aside and 학원 소식 shows. */
   var IG_SHOW = 6;
+  // emoji off the ends, so the titles look like the old blog posts below them
+  var EMOJI = /^(?:[\u2190-\u2bff\u2600-\u27bf\ufe0f\u200d\u20e3]|[\ud83c-\udbff][\udc00-\udfff]|\s)+|(?:[\u2190-\u2bff\u2600-\u27bf\ufe0f\u200d\u20e3]|[\ud83c-\udbff][\udc00-\udfff]|\s)+$/g;
   function igTitle(c) {
-    var line = String(c || "").split("\n").map(function (x) { return x.replace(/#\S+/g, "").trim(); }).filter(Boolean)[0] || "인스타그램 소식";
+    var line = String(c || "").split("\n").map(function (x) { return x.replace(/#\S+/g, "").trim(); }).filter(Boolean)[0] || "학원 소식";
+    line = line.replace(EMOJI, "") || line;
     return line.length > 70 ? line.slice(0, 70) + "…" : line;
   }
   function igCard(p) {
@@ -85,8 +88,7 @@
     t.setAttribute("datetime", day);
     a.appendChild(t);
     var what = el("span", "news__what");
-    what.appendChild(el("span", "news__src", "Instagram"));
-    what.appendChild(document.createTextNode(" " + (p.title || igTitle(p.caption))));
+    what.textContent = igTitle(p.title || p.caption);
     a.appendChild(what);
     var go = el("span", "news__go", "→");
     go.setAttribute("aria-hidden", "true");

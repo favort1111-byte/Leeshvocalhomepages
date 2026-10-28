@@ -151,8 +151,9 @@
   function fromInstagram(p, group) {
     // body/title are cleaned by the database (private.ig_clean: no promo block, hashtags or divider lines)
     var lines = String(p.body != null ? p.body : p.caption || "").split("\n").map(function (x) { return x.replace(/#\S+/g, "").trim(); });
-    var title = p.title || lines.filter(Boolean)[0] || "인스타그램 소식";
-    var at = lines.indexOf(title);
+    var first = p.title || lines.filter(Boolean)[0] || "학원 소식";
+    var at = lines.indexOf(first);
+    var title = first.replace(/^(?:[\u2190-\u2bff\u2600-\u27bf\ufe0f\u200d\u20e3]|[\ud83c-\udbff][\udc00-\udfff]|\s)+|(?:[\u2190-\u2bff\u2600-\u27bf\ufe0f\u200d\u20e3]|[\ud83c-\udbff][\udc00-\udfff]|\s)+$/g, "") || first;
     var rest = at === -1 ? lines : lines.slice(at + 1);
     var blocks = [], seen = {};
     (group && group.length ? group : [p]).forEach(function (g) {

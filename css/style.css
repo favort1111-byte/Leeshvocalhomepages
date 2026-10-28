@@ -743,7 +743,6 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .news__card time{font-size:13px;color:#8A7564;font-variant-numeric:tabular-nums;}
 .news__what{font-size:15px;line-height:1.45;}
 .news__what b{font-weight:500;}
-.news__src{display:inline-block;padding:1px 7px;border-radius:999px;background:linear-gradient(45deg,#F58529,#DD2A7B,#8134AF);color:#fff;font-size:11px;line-height:1.5;vertical-align:1px;}
 .news__go{color:var(--brown);}
 .news__more summary{cursor:pointer;margin:4px 0 10px;color:var(--brown);font-size:14px;}
 .news__empty{color:#8A7564;}
