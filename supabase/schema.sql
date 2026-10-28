@@ -1536,3 +1536,102 @@ create policy visit_music_own_add on storage.objects for insert to authenticated
 drop policy if exists visit_music_own_remove on storage.objects;
 create policy visit_music_own_remove on storage.objects for delete to authenticated
   using (bucket_id = 'visit-music' and (storage.foldername(name))[1] = private.song_owner());
+
+-- 인스타 내방 일정 글 → 신청서 (2026-10-28, 원장님: "인스타에 블리츠웨이 오디션 내용이 있는데?"):
+-- "✅ 10월 30일 (금) 18시 30분 블리츠웨이뮤직" 같은 줄을 읽어 아직 안 지난 오디션을 audition_news(source 'ig')로 만들고,
+-- 그러면 apply.html 신청서가 저절로 열림. 월말평가 줄은 뺌. 원장님이 관리자에서 고친 내용(포스터·안내)은 그대로 둠.
+alter table public.audition_news add column if not exists source text check (source in ('ig'));
+create unique index if not exists audition_news_ig_once on public.audition_news (company, event_date) where source = 'ig';
+
+create or replace function private.ig_visits() returns int
+language plpgsql security definer set search_path = '' as $$
+declare
+  p record;
+  l text;
+  m text[];
+  y int;
+  d date;
+  who text;
+  n int := 0;
+  today date := private.now_kst()::date;
+begin
+  for p in select posted_at, body from public.ig_posts
+           where kind = '내방' and not hidden and posted_at > now() - interval '75 days' loop
+    for l in select regexp_split_to_table(coalesce(p.body, ''), '\n') loop
+      m := regexp_match(l, '(\d{1,2})월\s*(\d{1,2})일\s*(?:\([월화수목금토일]\))?\s*(\d{1,2})시\s*(?:(\d{1,2})분)?\s*(.+)$');
+      continue when m is null or m[5] ~ '월말\s*평가';
+      y := extract(year from p.posted_at at time zone 'Asia/Seoul')::int;
+      -- a December post can list January dates
+      if m[1]::int < extract(month from p.posted_at at time zone 'Asia/Seoul')::int - 6 then y := y + 1; end if;
+      begin d := make_date(y, m[1]::int, m[2]::int); exception when others then continue; end;
+      continue when d < today;
+      who := btrim(regexp_replace(m[5], '\s*내방\s*오디션\s*$', ''));
+      continue when who = '';
+      insert into public.audition_news (kind, company, title, event_date, body, published, source)
+      values ('내방', left(who, 40), '내방오디션', d,
+        '일시 : ' || m[1] || '월 ' || m[2] || '일 ' || coalesce(substring(l from '\([월화수목금토일]\)') || ' ', '')
+          || m[3] || '시' || coalesce(' ' || m[4] || '분', '') || E'\n장소 : 이송희보컬레슨 (학원 내방 오디션)'
+          || E'\n지원자격·지원분야는 인스타그램 포스터를 확인해주세요.',
+        true, 'ig')
+      on conflict (company, event_date) where source = 'ig' do nothing;
+      if found then n := n + 1; end if;
+    end loop;
+  end loop;
+  return n;
+end $$;
+revoke all on function private.ig_visits() from public, anon, authenticated;
+
+-- 가져올 때마다 같이: ig_sync가 끝에서 ig_visits를 부름 (예약 실행은 그대로 private.ig_sync(1))
+create or replace function private.ig_sync(pages int default 1) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  ig private.instagram;
+  url text;
+  r extensions.http_response;
+  j jsonb;
+  m jsonb;
+  b text;
+  n int := 0;
+  p int := 0;
+begin
+  select * into ig from private.instagram where id = 1;
+  if coalesce(ig.token, '') = '' then return jsonb_build_object('ok', false, 'error', '인스타그램이 아직 연결되지 않았어요.'); end if;
+  perform extensions.http_set_curlopt('CURLOPT_TIMEOUT', '25');
+  if coalesce(ig.refreshed_at, ig.token_set_at) < now() - interval '20 days' then
+    r := extensions.http_get('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=' || ig.token);
+    if r.status = 200 and (r.content::jsonb ->> 'access_token') is not null then
+      update private.instagram set token = r.content::jsonb ->> 'access_token', refreshed_at = now() where id = 1;
+      ig.token := r.content::jsonb ->> 'access_token';
+    end if;
+  end if;
+  url := 'https://graph.instagram.com/v23.0/me/media?limit=50&fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,'
+      || 'children%7Bmedia_type,media_url,thumbnail_url%7D&access_token=' || ig.token;
+  loop
+    r := extensions.http_get(url);
+    if r.status <> 200 then
+      update private.instagram set last_error = left(coalesce(r.content, 'HTTP ' || r.status), 300) where id = 1;
+      return jsonb_build_object('ok', false, 'error', '인스타그램에서 글을 받지 못했어요.', 'status', r.status);
+    end if;
+    j := r.content::jsonb;
+    for m in select * from jsonb_array_elements(coalesce(j -> 'data', '[]'::jsonb)) loop
+      b := private.ig_clean(m ->> 'caption');
+      insert into public.ig_posts (id, posted_at, caption, permalink, media_type, images, kind, title, body, hidden, synced_at)
+      values (m ->> 'id', (m ->> 'timestamp')::timestamptz, m ->> 'caption', m ->> 'permalink', m ->> 'media_type',
+        coalesce((select jsonb_agg(coalesce(case when c ->> 'media_type' = 'VIDEO' then c ->> 'thumbnail_url' end, c ->> 'media_url'))
+                  from jsonb_array_elements(m -> 'children' -> 'data') c),
+                 jsonb_build_array(coalesce(case when m ->> 'media_type' = 'VIDEO' then m ->> 'thumbnail_url' end, m ->> 'media_url'))),
+        private.ig_guess(m ->> 'caption'), private.ig_title(b), b, b = '', now())
+      on conflict (id) do update set caption = excluded.caption, permalink = excluded.permalink, media_type = excluded.media_type,
+        images = excluded.images, title = excluded.title, body = excluded.body, synced_at = now(),
+        kind = case when public.ig_posts.kind_fixed then public.ig_posts.kind else excluded.kind end;
+      n := n + 1;
+    end loop;
+    p := p + 1;
+    exit when p >= pages or (j -> 'paging' ->> 'next') is null;
+    url := j -> 'paging' ->> 'next';
+  end loop;
+  update private.instagram set last_sync = now(), last_error = null where id = 1;
+  -- 내방 일정 글의 "✅ 10월 30일 (금) 18시 30분 블리츠웨이뮤직" 줄 → 신청서 (private.ig_visits)
+  return jsonb_build_object('ok', true, 'count', n, 'visits', private.ig_visits());
+end $$;
+revoke all on function private.ig_sync(int) from public, anon, authenticated;
