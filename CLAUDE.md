@@ -59,6 +59,7 @@
 ## 오디션 소식 메뉴 (2026-10-27 추가)
 - 메뉴 "audition" 안에 영어 소메뉴 2개 (원장님 2026-10-28): **audition news** `audition.html` (내방 오디션 + 기획사 오디션) · **results** `results.html` (합격자 현황). 첫 화면 오디션.jpg 아이콘은 audition.html로.
 - 목록 = 옮겨온 블로그 글 (위 참고) + 학원이 새로 올리는 소식.
+- **내방 오디션 신청 (2026-10-28):** 학원 구글 폼(`js/config.js` `visitForm`)으로 연결. 버튼 3곳: audition news "학원 내방 오디션" 칸 위 · 내방 오디션 글(post.html, kind visit) 아래 · 내 폴더 일정·공지 맨 위 + 다가오는 내방 일정마다. 폼이 바뀌면 config.js 한 줄만 고치기.
 - **인스타그램 → 오디션 소식 (2026-10-28):** 요즘 소식은 오디션반 인스타(프로페셔널 계정, 교육)에 먼저 올라감. 원장님은 블로그 글처럼 한 편씩 보이길 원함 (embed iframe은 연결 전까지만 보임).
   Meta 앱 "LeeshVocal Homepage" (원장님 페이스북 계정, Instagram 테스터로 leeshvocal_auditionn 연결). 토큰은 원장님이 **관리자 → 오디션 소식 → 인스타그램 연결**에 붙여넣기 (채팅 금지) → `admin_instagram_connect` → `private.instagram`(비공개)에 저장 + 최근 300개 가져옴.
   `private.ig_sync(pages)`가 http 확장으로 graph.instagram.com에서 글을 받아 `public.ig_posts`(누구나 읽기, hidden 제외)에 넣고, 20일마다 토큰 갱신. 칸은 글 내용으로 추측 (`private.ig_guess`: 합격+축하 → 합격, 내방 → 내방, 합격 → 합격, 오디션 → 오디션, 나머지 → **학원 소식**). 해시태그 규칙 없음, 빠지는 글 없음. 관리자에서 칸 옮기기(kind_fixed)·숨기기.

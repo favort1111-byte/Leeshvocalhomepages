@@ -289,6 +289,15 @@
     var later = plans.length - thisMonth;
     sum.appendChild(el("p", null, Number(month.slice(5)) + "월 일정 " + (thisMonth ? thisMonth + "개" : "없음") + (later ? " · 다음 달부터 " + later + "개" : "")));
     box.appendChild(sum);
+    // 학원 내방 오디션 신청 (구글 폼)
+    var form = (window.LEESH || {}).visitForm;
+    if (form) {
+      var apply = el("a", "sys-btn fold__go fold__apply", "내방 오디션 신청하기 ↗");
+      apply.href = form;
+      apply.target = "_blank";
+      apply.rel = "noopener";
+      sum.appendChild(apply);
+    }
     // new schedules go up on the audition account's Instagram first (audition.html shows it)
     var insta = el("a", "rec__more", "새 소식은 인스타그램에 먼저 올라와요 · 최신 소식 보기 →");
     insta.href = "audition.html#news-insta";
@@ -309,6 +318,15 @@
           var a = el("a", "fold__planlink", p.title + " →");
           a.href = p.href;
           row.appendChild(a);
+          if (form && p.kind === "내방 오디션") {
+            var line = el("p", "fold__planapply");
+            var ap = el("a", "sys-link", "이 오디션 신청하기 ↗");
+            ap.href = form;
+            ap.target = "_blank";
+            ap.rel = "noopener";
+            line.appendChild(ap);
+            row.appendChild(line);
+          }
         }
         v.appendChild(row);
       });

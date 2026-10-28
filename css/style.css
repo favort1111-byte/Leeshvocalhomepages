@@ -747,6 +747,10 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .news__card time{font-size:13px;color:#8A7564;font-variant-numeric:tabular-nums;}
 .news__what{font-size:15px;line-height:1.45;}
 .news__what b{font-weight:500;}
+.news__apply{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:4px 0 12px;}
+.news__applybtn{display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:999px;background:var(--brown);border:1px solid var(--brown);color:#FBF3E4 !important;text-decoration:none;font-size:15px;font-weight:500;}
+.news__applybtn:hover{background:#5A2F20;}
+.news__applynote{font-size:13px;color:#7A6656;}
 .news__go{color:var(--brown);}
 .news__more summary{cursor:pointer;margin:4px 0 10px;color:var(--brown);font-size:14px;}
 .news__empty{color:#8A7564;}
@@ -884,6 +888,9 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .songrec__btns{align-items:center;flex-wrap:wrap;margin-top:2px;}
 .songrec__recbtn.is-on{background:#B3261E;border-color:#B3261E;}
 .songrec__pick{cursor:pointer;}
+.fold__apply{display:flex;width:fit-content;margin:10px 0 8px;text-decoration:none;}
+.fold__sum .rec__more{display:block;}
+.fold__planapply{margin:6px 0 0 !important;}
 .fold__wait{margin:4px 0 6px;padding:8px 12px;border-radius:8px;background:#F6EBDD;color:#5A4636;font-size:14px;line-height:1.5;}
 
 /* audition news: the audition account's Instagram (its own embed page, newest posts) */

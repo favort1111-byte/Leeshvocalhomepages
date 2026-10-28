@@ -6,6 +6,7 @@
   // the home icon stops wiggling once the news page has been opened (js/newsbadge.js)
   try { localStorage.setItem("leesh_news_seen", String(Date.now())); } catch (e) { /* private mode */ }
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
+  var FORM = (window.LEESH || {}).visitForm;
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -68,6 +69,20 @@
     box.appendChild(body);
     li.appendChild(box);
     return li;
+  }
+
+  // 학원 내방 오디션 신청 (구글 폼): a button under the section's lede
+  var visitSec = document.querySelector('[data-news="내방"]');
+  if (FORM && visitSec) {
+    var apply = el("p", "news__apply");
+    var go = el("a", "pill-btn news__applybtn", "내방 오디션 신청하기 ↗");
+    go.href = FORM;
+    go.target = "_blank";
+    go.rel = "noopener";
+    apply.appendChild(go);
+    apply.appendChild(el("span", "news__applynote", "학원생만 신청할 수 있어요. 일정은 아래 글에서 확인하세요."));
+    var lede = visitSec.querySelector(".news__lede");
+    visitSec.insertBefore(apply, lede ? lede.nextSibling : visitSec.firstChild);
   }
 
   /* 인스타그램에서 가져온 글 (ig_posts): each section's own kind, newest first, as post links like the blog posts.
