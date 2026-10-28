@@ -394,7 +394,7 @@ def results_section():
             + f'    <ul class="agencies">{cards(SHOWS)}</ul>\n'
             + '    <h3 class="scrap__sub">입시</h3>\n'
             + f'    <article class="card card--paper"><div class="card__cols">{schools}</div></article>\n'
-            + f'    <p class="scrap__note">합격한 학생 이름은 싣지 않았어요. 합격 소식은 <a href="{BLOG_RESULTS}" target="_blank" rel="noopener">블로그</a>에 계속 올라와요.</p>\n')
+            + '    <p class="scrap__note">합격한 학생 이름은 싣지 않았어요. 그동안의 합격 소식은 <a href="results.html">results</a>에서 볼 수 있어요.</p>\n')
 
 
 def rooms_section():
@@ -407,13 +407,13 @@ def rooms_section():
 
 
 def tips_section():
-    tips = "".join(f'<li><a href="{BLOG}/{n}" target="_blank" rel="noopener">{t}</a></li>' for t, n in TIPS)
+    tips = "".join(f'<li><a href="post.html?id={n}">{t}</a></li>' for t, n in TIPS)  # moved from the blog
     links = [("유튜브 · 보컬 레슨", YT), ("유튜브 · 오디션 채널", YT_AUDITION), ("인스타그램 · 오디션반", INSTA_AUDITION),
-             ("인스타그램 · 취미반", INSTA_HOBBY), ("네이버 블로그", BLOG)]
+             ("인스타그램 · 취미반", INSTA_HOBBY)]
     chips = "".join(f'<li><a href="{u}" target="_blank" rel="noopener">{t} ↗</a></li>' for t, u in links)
     return (_head("one-point lesson", "원포인트 레슨", "tips")
             + f'    <ul class="tips">{tips}</ul>\n'
-            + f'    <p class="scrap__note"><a href="{BLOG_TIPS}" target="_blank" rel="noopener">원포인트 레슨 글 전체 보기 ↗</a></p>\n'
+            + '    <p class="scrap__note"><a href="tips.html">원포인트 레슨 영상 전체 보기 →</a></p>\n'
             + f'    <ul class="channels">{chips}</ul>\n')
 
 
@@ -431,7 +431,7 @@ def about_sections():
 def find_us_section():
     steps = "".join(f"<li>{s}</li>" for s in DIRECTIONS["steps"])
     links = [("카카오톡 채널 (24시간 상담)", "https://pf.kakao.com/_xgNYbK"), ("유튜브", YT), ("유튜브 · 오디션 채널", YT_AUDITION),
-             ("인스타그램 · 오디션반", INSTA_AUDITION), ("인스타그램 · 취미반", INSTA_HOBBY), ("네이버 블로그", BLOG)]
+             ("인스타그램 · 오디션반", INSTA_AUDITION), ("인스타그램 · 취미반", INSTA_HOBBY)]
     chips = "".join(f'<li><a href="{u}" target="_blank" rel="noopener">{t} ↗</a></li>' for t, u in links)
     return ('<section class="scrap scrap--paper" aria-label="오시는 길">\n'
             '  <div class="scrap__block">\n'

@@ -5,8 +5,9 @@ Used for private previews before launch; the real pages are never touched."""
 import os, shutil, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGES = ["index.html", "about.html", "contact.html", "consult.html", "booking.html", "games.html", "audition.html", "results.html", "privacy.html", "admin.html"]
+PAGES = ["index.html", "about.html", "contact.html", "consult.html", "booking.html", "games.html", "audition.html", "results.html", "tips.html", "post.html", "privacy.html", "admin.html"]
 API = '<script src="js/api.js"></script>\n'
+BLOG_BASE = "https://raw.githubusercontent.com/favort1111-byte/Leeshvocalhomepages/claude/dazzling-bardeen-mw08yt/"
 
 out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
@@ -14,9 +15,11 @@ for page in PAGES:
     html = open(os.path.join(REPO, page)).read()
     assert API in html, page
     html = html.replace(API, API + '<script src="js/demo.js"></script>\n')
+    if page == "post.html":  # 800 moved blog posts + pictures don't fit in the preview: read them from GitHub
+        html = html.replace('<script src="js/post.js">', '<script>window.LEESH.blogBase = "' + BLOG_BASE + '";</script>\n<script src="js/post.js">')
     if page == "index.html":  # names the preview in the artifact gallery
         html = html.replace("<title>이송희보컬레슨 | 강남 선릉역 1:1 보컬학원</title>", "<title>이송희보컬레슨 작업 현황</title>")
     open(os.path.join(out, page), "w").write(html)
-for folder in ["css", "js", os.path.join("assets", "img")]:
+for folder in ["css", "js", os.path.join("assets", "img")]:  # (assets/blog-posts and data/blog stay on GitHub)
     shutil.copytree(os.path.join(REPO, folder), os.path.join(out, folder), dirs_exist_ok=True)
 print("preview written to", out)

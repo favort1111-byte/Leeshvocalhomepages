@@ -530,26 +530,36 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + "  </div>\n"
               + "</main>\n" + foot("games"))
 
-# ---------- AUDITION NEWS (from the blog's RSS: tools/fetch_auditions.py → data/auditions.json) ----------
-BLOG_AUDITIONS = blog.BLOG.replace("blog.naver.com/o_oa8", "blog.naver.com/PostList.naver?blogId=o_oa8&categoryNo=14")
-AUD = json.load(open(os.path.join(REPO, "data", "auditions.json"), encoding="utf-8"))["items"]
+# ---------- AUDITION NEWS · RESULTS · TIPS: the old blog's posts, moved into the site ----------
+# tools/import_blog.py → data/blog/index.json (lists) + data/blog/posts/<id>.json (post.html shows one).
+POSTS = json.load(open(os.path.join(REPO, "data", "blog", "index.json"), encoding="utf-8"))
+STATIC_KIND = {"내방": "visit", "오디션": "audition", "합격": "results"}
+EMOJI = re.compile("[\u2600-\u27bf\U0001F000-\U0001FAFF\ufe0f\u200d]")
 
 def esc(t):
     return (t or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
+def post_label(p):
+    """[WAKEONE 엔터테인먼트] WAKEONE AUDITION → <b>WAKEONE 엔터테인먼트</b> WAKEONE AUDITION; the academy's own tag goes."""
+    t = EMOJI.sub("", p["title"]).strip()
+    if p["kind"] == "results":
+        names = " · ".join(f'{s["stage"]} {", ".join(s["names"])}'.strip() for s in p.get("stages", []))
+        return f'<b>{esc(p.get("company") or t)}</b>' + (f' <span class="news__sub">{esc(names)}</span>' if names else "")
+    m = re.match(r"\[([^\]]*)\]\s*(.*)", t)
+    if m:
+        head, rest = m.group(1).strip(), m.group(2).strip()
+        if "보컬레슨" in head.replace(" ", ""):
+            return esc(rest or head)
+        return f"<b>{esc(head)}</b> {esc(rest)}"
+    return esc(t)
+
 def news_card(p):
-    d = p["date"].replace("-", ".")
-    co, title = p["company"], p["title"]
-    if co and co in title:  # "S2엔터테인먼트 합격": bold the name inside the title instead of saying it twice
-        label = esc(title).replace(esc(co), f"<b>{esc(co)}</b>", 1)
-    else:
-        label = (f"<b>{esc(co)}</b> " if co else "") + esc(title)
-    return (f'        <li><a class="news__card" href="{esc(p["link"])}" target="_blank" rel="noopener">'
-            f'<time datetime="{p["date"]}">{d}</time><span class="news__what">{label}</span>'
-            f'<span class="news__go" aria-hidden="true">↗</span></a></li>\n')
+    return (f'        <li><a class="news__card" href="post.html?id={p["id"]}">'
+            f'<time datetime="{p["date"]}">{p["date"].replace("-", ".")}</time><span class="news__what">{post_label(p)}</span>'
+            f'<span class="news__go" aria-hidden="true">→</span></a></li>\n')
 
 def news_list(kind, first):
-    items = [p for p in AUD if p["kind"] == kind]
+    items = [p for p in POSTS if p["kind"] == STATIC_KIND[kind]]
     if not items:
         return '      <p class="news__empty">아직 올라온 소식이 없어요.</p>\n'
     out = '      <ul class="news__list">\n' + "".join(news_card(p) for p in items[:first]) + "      </ul>\n"
@@ -569,17 +579,17 @@ def subnav(current):
 
 def news_foot():
     return ('    <p class="news__foot">'
-            f'<a class="pill-btn" href="{BLOG_AUDITIONS}" target="_blank" rel="noopener">블로그 오디션 정보 전체 ↗</a> '
+            f'<a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">카카오톡으로 문의 ↗</a> '
             '<a class="pill-btn" href="consult.html">오디션 준비 상담하기</a></p>\n')
 
 NEWS_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">audition news</h1>\n'
-    '    <p class="booking__note">학원 내방 오디션 일정과 기획사 오디션 소식을 모았어요. 누르면 자세히 볼 수 있어요.</p>\n'
+    '    <p class="booking__note">학원 내방 오디션 일정과 기획사 오디션 소식을 모았어요. 누르면 자세히 볼 수 있어요. (2020년부터 지금까지)</p>\n'
     '    <section class="news__sec" data-news="내방" aria-labelledby="news-visit">\n'
     '      <h2 id="news-visit">학원 내방 오디션</h2>\n'
     '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에 와서 직접 심사해요. 일정은 수업 때나 카카오톡으로도 안내해요.</p>\n'
-    + news_list("내방", 4) +
+    + news_list("내방", 6) +
     '    </section>\n'
     '    <section class="news__sec" data-news="오디션" aria-labelledby="news-open">\n'
     '      <h2 id="news-open">기획사 오디션 정보</h2>\n'
@@ -595,12 +605,10 @@ RESULTS_BODY = (
     '    <p class="booking__note">우리 학원 학생들의 기획사·오디션 합격 소식이에요. 학생 이름은 이니셜로 적어요.</p>\n'
     '    <section class="news__sec" data-news="합격" aria-labelledby="news-pass">\n'
     '      <h2 id="news-pass">합격자 현황</h2>\n'
-    + news_list("합격", 10) +
+    + news_list("합격", 20) +
     '      <p class="news__lede"><a href="about.html#results">기획사·방송·입시 합격 실적 전체 보기 →</a></p>\n'
     '    </section>\n'
-    '    <p class="news__foot">'
-    f'<a class="pill-btn" href="{blog.BLOG_RESULTS}" target="_blank" rel="noopener">블로그 합격자 현황 전체 ↗</a> '
-    '<a class="pill-btn" href="consult.html">오디션 준비 상담하기</a></p>\n'
+    + news_foot() +
     '  </div>\n')
 
 def audition_like(title, desc, sub, body):
@@ -609,6 +617,36 @@ def audition_like(title, desc, sub, body):
             + nav("audition", "dark") + "\n"
             + subnav(sub) + body
             + "</main>\n" + foot("auditions"))
+
+TIP_POSTS = [p for p in POSTS if p["kind"] == "tips"]
+ACADEMY_POSTS = [p for p in POSTS if p["kind"] in ("academy", "curriculum")]
+
+def tip_card(p):
+    thumb = (f'<img src="https://i.ytimg.com/vi/{p["yt"]}/mqdefault.jpg" alt="" loading="lazy">' if p.get("yt")
+             else '<span class="tip__noimg" aria-hidden="true">♪</span>')
+    return (f'      <li><a class="tip" href="post.html?id={p["id"]}">{thumb}'
+            f'<span class="tip__title">{post_label(p)}</span><time datetime="{p["date"]}">{p["date"].replace("-", ".")}</time></a></li>\n')
+
+TIPS_BODY = (
+    '  <div class="booking__inner news">\n'
+    '    <h1 class="booking__title">one-point lesson</h1>\n'
+    f'    <p class="booking__note">원장님이 알려주는 노래 꿀팁 영상 {len(TIP_POSTS)}개. 누르면 영상과 설명을 볼 수 있어요.</p>\n'
+    '    <ul class="tips-grid">\n' + "".join(tip_card(p) for p in TIP_POSTS) + '    </ul>\n'
+    '    <section class="news__sec" id="academy" aria-labelledby="news-academy">\n'
+    '      <h2 id="news-academy">학원 이야기</h2>\n'
+    '      <p class="news__lede">학원 소개, 커리큘럼, 시설 안내 등 예전에 올렸던 글이에요. 지금 내용은 <a href="about.html">about</a>에서 확인하세요.</p>\n'
+    '      <ul class="news__list">\n' + "".join(news_card(p) for p in ACADEMY_POSTS) + '      </ul>\n'
+    '    </section>\n'
+    + news_foot() +
+    '  </div>\n')
+
+tips_page = (head("One-point lesson | 이송희보컬레슨", "이송희보컬레슨 원포인트 레슨: 고음, 호흡, 오디션 준비 등 노래 꿀팁 영상 모음.")
+             + '<main class="stage booking">\n' + nav("about", "dark") + "\n" + TIPS_BODY + "</main>\n" + foot())
+
+post_page = (head("이송희보컬레슨", "이송희보컬레슨 소식")
+             + '<main class="stage booking">\n' + nav("", "dark") + "\n"
+             + '  <div class="booking__inner news">\n    <article class="post" id="post" aria-live="polite"><p class="news__empty">불러오는 중…</p></article>\n  </div>\n'
+             + "</main>\n" + foot("post"))
 
 audition_page = audition_like("Audition | 이송희보컬레슨",
                               "이송희보컬레슨 오디션 소식: 매월 학원 내방 오디션 일정, 기획사 공개·온라인 오디션 정보.", "news", NEWS_BODY)
@@ -622,7 +660,7 @@ privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송
                 + '  <div class="booking__inner">\n' + privacy.body() + "  </div>\n"
                 + "</main>\n" + foot())
 
-out = {"audition.html": audition_page, "results.html": results_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
