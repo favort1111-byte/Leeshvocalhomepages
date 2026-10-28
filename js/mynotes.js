@@ -289,6 +289,10 @@
     var later = plans.length - thisMonth;
     sum.appendChild(el("p", null, Number(month.slice(5)) + "월 일정 " + (thisMonth ? thisMonth + "개" : "없음") + (later ? " · 다음 달부터 " + later + "개" : "")));
     box.appendChild(sum);
+    // new schedules go up on the audition account's Instagram first (audition.html shows it)
+    var insta = el("a", "rec__more", "새 소식은 인스타그램에 먼저 올라와요 · 최신 소식 보기 →");
+    insta.href = "audition.html#news-insta";
+    sum.appendChild(insta);
 
     if (plans.length) {
       var v = el("section", "fold__visits");

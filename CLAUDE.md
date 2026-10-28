@@ -59,6 +59,8 @@
 ## 오디션 소식 메뉴 (2026-10-27 추가)
 - 메뉴 "audition" 안에 영어 소메뉴 2개 (원장님 2026-10-28): **audition news** `audition.html` (내방 오디션 + 기획사 오디션) · **results** `results.html` (합격자 현황). 첫 화면 오디션.jpg 아이콘은 audition.html로.
 - 목록 = 옮겨온 블로그 글 (위 참고) + 학원이 새로 올리는 소식.
+- **인스타그램 최신 소식 (2026-10-28):** 요즘 소식은 오디션반 인스타에 먼저 올라감 → audition.html 맨 위에 그 계정의 embed 화면(`<계정>/embed/` iframe)을 그대로 보여줌 + "인스타그램에서 전체 보기" 버튼. 내 폴더 일정·공지에도 링크.
+  원장님이 해시태그로 자동 분류(1안)는 실수 걱정으로 안 하기로 함. embed가 안 나오면 다음 방법: Instagram 프로페셔널 계정 + Meta 연결로 API 피드. 개인정보처리방침 5번에 Meta 쿠키 문장 넣음.
 - **학원이 직접 올리는 소식 (2026-10-28, 원장님: "직접도, Claude에게 말해서도 둘 다"):** 표 `public.audition_news` (마이그레이션 `leesh_audition_news`, 누구나 읽기·원장님만 쓰기) + 공개 버킷 `audition-news`(포스터).
   원장님: 관리자 → **오디션 소식** 탭에서 쓰기·고치기·숨기기·삭제. 페이지는 `js/auditions.js`가 읽어서 각 칸 맨 위에 펼쳐지는 카드로 (마감 지나면 "지난 소식").
   **원장님이 Claude에게 말하면:** Management API SQL로 `insert into public.audition_news (kind, company, title, event_date, deadline, body, link) values (…)` — kind는 '내방' / '오디션' / '합격'. 넣은 뒤 select로 확인하고 알려주기.

@@ -624,6 +624,13 @@ NEWS_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">audition news</h1>\n'
     '    <p class="booking__note">학원 내방 오디션 일정과 기획사 오디션 소식을 모았어요. 누르면 자세히 볼 수 있어요. (2020년부터 지금까지)</p>\n'
+    # 최신 소식은 인스타그램에 먼저 올라와요: 오디션반 계정의 최근 글을 그대로 보여줌 (원장님 2026-10-28)
+    '    <section class="news__sec news__insta" aria-labelledby="news-insta">\n'
+    '      <h2 id="news-insta">인스타그램 최신 소식</h2>\n'
+    '      <p class="news__lede">내방 오디션·월말평가 일정 같은 새 소식은 인스타그램에 제일 먼저 올라와요.</p>\n'
+    f'      <iframe class="news__instaframe" src="{blog.INSTA_AUDITION}embed/" title="이송희보컬레슨 오디션반 인스타그램 최근 글" loading="lazy"></iframe>\n'
+    f'      <p class="news__foot"><a class="pill-btn" href="{blog.INSTA_AUDITION}" target="_blank" rel="noopener">인스타그램에서 전체 보기 ↗</a></p>\n'
+    '    </section>\n'
     '    <section class="news__sec" data-news="내방" aria-labelledby="news-visit">\n'
     '      <h2 id="news-visit">학원 내방 오디션</h2>\n'
     '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에 와서 직접 심사해요. 일정은 수업 때나 카카오톡으로도 안내해요.</p>\n'
