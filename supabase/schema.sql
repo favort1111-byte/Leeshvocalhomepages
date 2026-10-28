@@ -179,6 +179,43 @@ create table if not exists public.audition_news (
   updated_at timestamptz not null default now()
 );
 
+-- 학원 공지 (휴원일, 행사, 월말평가 날 …): 원장님이 관리자 화면에서 쓰고, 학생은 "내 폴더 → 공지"에서 봅니다.
+create table if not exists public.notices (
+  id         bigint generated always as identity primary key,
+  title      text not null check (char_length(title) between 1 and 80),
+  body       text check (char_length(body) <= 3000),
+  start_date date,                                  -- 행사·휴원 날짜 (없으면 그냥 알림)
+  end_date   date,                                  -- 이 날이 지나면 안 보임
+  pinned     boolean not null default false,
+  published  boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 학생이 직접 쓰는 것 (선생님 일 없음): 내 레퍼토리(준비하는 곡) · 연습 일지(날마다 연습 기록)
+create table if not exists public.repertoire (
+  id         bigint generated always as identity primary key,
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  title      text not null check (char_length(title) between 1 and 80),
+  artist     text check (char_length(artist) <= 60),
+  purpose    text check (purpose in ('오디션', '입시', '연습', '공연')),
+  status     text not null default '준비 중' check (status in ('준비 중', '완성', '쉬는 중')),
+  memo       text check (char_length(memo) <= 300),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.practice_logs (
+  id         bigint generated always as identity primary key,
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  day        date not null,
+  minutes    int check (minutes between 0 and 1440),
+  song       text check (char_length(song) <= 80),
+  did        text check (char_length(did) <= 1000),
+  created_at timestamptz not null default now()
+);
+create index if not exists practice_logs_member_idx on public.practice_logs (member_id, day desc);
+create index if not exists repertoire_member_idx on public.repertoire (member_id);
+
 -- 관리자 화면에 로그인할 수 있는 이메일 (Supabase Authentication에 만든 계정)
 create table if not exists public.admins (
   email text primary key check (email = lower(email))
@@ -611,17 +648,20 @@ create or replace function public.member_notebook(p_id text, p_pin text) returns
 language plpgsql security definer set search_path = '' as $$
 declare
   who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
 begin
   if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
   return private.with_token(who, jsonb_build_object(
     'ok', true,
-    'id', who ->> 'id',
+    'id', mid,
     'name', who ->> 'name',
     'notes', coalesce((
       select jsonb_agg(jsonb_build_object(
         'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'practice', n.practice
       ) order by n.lesson_date desc, n.id desc)
-      from (select * from public.lesson_notes where member_id = who ->> 'id'
+      from (select * from public.lesson_notes where member_id = mid
             order by lesson_date desc, id desc limit 30) n
     ), '[]'::jsonb),
     'reports', coalesce((
@@ -630,19 +670,122 @@ begin
         'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
         'total', r.total, 'stage', r.stage
       ) order by r.month desc)
-      from (select * from public.eval_reports where member_id = who ->> 'id' order by month desc limit 12) r
+      from (select * from public.eval_reports where member_id = mid order by month desc limit 12) r
     ), '[]'::jsonb),
-    'evals', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'month', to_char(e.month, 'YYYY-MM'), 'teacher', e.teacher,
-        'scores', jsonb_build_object('pitch', e.pitch, 'rhythm', e.rhythm, 'breath', e.breath,
-                                     'expression', e.expression, 'stage', e.stage),
-        'comment', e.comment, 'goal', e.goal
-      ) order by e.month desc)
-      from (select * from public.monthly_evals where member_id = who ->> 'id'
-            order by month desc limit 12) e
+    -- 내 예약: 오늘부터의 예약 + 이번 달 연습실 이용
+    'bookings', coalesce((
+      select jsonb_agg(jsonb_build_object('room', rm.name, 'date', b.day,
+               'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min)) order by b.day, b.start_min)
+      from public.bookings b join public.rooms rm on rm.id = b.room_id
+      where b.member_id = mid and b.status = '확정' and b.day >= today
+    ), '[]'::jsonb),
+    'month', (select jsonb_build_object('count', count(*), 'minutes', coalesce(sum(b.end_min - b.start_min), 0))
+              from public.bookings b
+              where b.member_id = mid and b.status = '확정' and b.day >= date_trunc('month', today)::date and b.day <= today),
+    -- 공지 + 다가오는 학원 내방 오디션
+    'notices', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'title', n.title, 'body', n.body, 'start', n.start_date,
+               'end', n.end_date, 'pinned', n.pinned, 'at', n.created_at) order by n.pinned desc, coalesce(n.start_date, n.created_at::date) desc)
+      from (select * from public.notices where published and (end_date is null or end_date >= today)
+            order by pinned desc, created_at desc limit 20) n
+    ), '[]'::jsonb),
+    'visits', coalesce((
+      select jsonb_agg(jsonb_build_object('title', a.title, 'company', a.company, 'date', a.event_date, 'deadline', a.deadline)
+               order by a.event_date)
+      from (select * from public.audition_news where published and kind = '내방' and event_date >= today
+            order by event_date limit 6) a
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'title', r.title, 'artist', r.artist, 'purpose', r.purpose,
+               'status', r.status, 'memo', r.memo,
+               'minutes', (select coalesce(sum(l.minutes), 0) from public.practice_logs l where l.member_id = mid and l.song = r.title))
+               order by (r.status = '준비 중') desc, r.updated_at desc)
+      from public.repertoire r where r.member_id = mid
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did)
+               order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = mid order by day desc, id desc limit 60) l
     ), '[]'::jsonb)
   ));
+end $$;
+
+-- 내 레퍼토리: 학생이 곡을 더하고 고치고 지웁니다 (한 사람 50곡까지).
+create or replace function public.member_repertoire_save(p_id text, p_pin text, p_song bigint, p_title text,
+  p_artist text default null, p_purpose text default null, p_status text default '준비 중', p_memo text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  v_title text := trim(coalesce(p_title, ''));
+  new_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if v_title = '' or char_length(v_title) > 80 then return private.fail('곡 제목을 적어주세요.'); end if;
+  if p_purpose is not null and p_purpose not in ('오디션', '입시', '연습', '공연') then return private.fail('용도를 골라주세요.'); end if;
+  if coalesce(p_status, '준비 중') not in ('준비 중', '완성', '쉬는 중') then return private.fail('상태를 골라주세요.'); end if;
+  if p_song is null then
+    if (select count(*) from public.repertoire where member_id = mid) >= 50 then return private.fail('곡은 50개까지 넣을 수 있어요.'); end if;
+    insert into public.repertoire (member_id, title, artist, purpose, status, memo)
+    values (mid, v_title, nullif(trim(coalesce(p_artist, '')), ''), p_purpose, coalesce(p_status, '준비 중'), nullif(trim(coalesce(p_memo, '')), ''))
+    returning id into new_id;
+  else
+    update public.repertoire set title = v_title, artist = nullif(trim(coalesce(p_artist, '')), ''), purpose = p_purpose,
+      status = coalesce(p_status, '준비 중'), memo = nullif(trim(coalesce(p_memo, '')), ''), updated_at = now()
+    where id = p_song and member_id = mid returning id into new_id;
+    if new_id is null then return private.fail('곡을 찾을 수 없어요.'); end if;
+  end if;
+  return jsonb_build_object('ok', true, 'id', new_id);
+end $$;
+
+create or replace function public.member_repertoire_delete(p_id text, p_pin text, p_song bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  delete from public.repertoire where id = p_song and member_id = who ->> 'id';
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 연습 일지: 오늘부터 60일 전까지의 날짜로 씁니다.
+create or replace function public.member_log_save(p_id text, p_pin text, p_log bigint, p_day text,
+  p_minutes int default null, p_song text default null, p_did text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+  d date;
+  new_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  begin d := p_day::date; exception when others then return private.fail('날짜를 골라주세요.'); end;
+  if d is null or d > today or d < today - 60 then return private.fail('오늘부터 60일 전까지의 날짜로 써주세요.'); end if;
+  if p_minutes is not null and (p_minutes < 0 or p_minutes > 1440) then return private.fail('연습 시간을 다시 확인해주세요.'); end if;
+  if trim(coalesce(p_did, '')) = '' and p_minutes is null then return private.fail('연습한 내용이나 시간을 적어주세요.'); end if;
+  if p_log is null then
+    if (select count(*) from public.practice_logs where member_id = mid and day = d) >= 10 then return private.fail('하루에 10개까지 쓸 수 있어요.'); end if;
+    insert into public.practice_logs (member_id, day, minutes, song, did)
+    values (mid, d, p_minutes, nullif(trim(coalesce(p_song, '')), ''), nullif(trim(coalesce(p_did, '')), ''))
+    returning id into new_id;
+  else
+    update public.practice_logs set day = d, minutes = p_minutes, song = nullif(trim(coalesce(p_song, '')), ''),
+      did = nullif(trim(coalesce(p_did, '')), '')
+    where id = p_log and member_id = mid returning id into new_id;
+    if new_id is null then return private.fail('일지를 찾을 수 없어요.'); end if;
+  end if;
+  return jsonb_build_object('ok', true, 'id', new_id);
+end $$;
+
+create or replace function public.member_log_delete(p_id text, p_pin text, p_log bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  delete from public.practice_logs where id = p_log and member_id = who ->> 'id';
+  return jsonb_build_object('ok', true);
 end $$;
 
 -- ---------------------------------------------------------------- 카카오 로그인
@@ -820,6 +963,9 @@ alter table public.bookings enable row level security;
 alter table public.consults enable row level security;
 alter table public.eval_reports enable row level security;
 alter table public.audition_news enable row level security;
+alter table public.notices enable row level security;
+alter table public.repertoire enable row level security;
+alter table public.practice_logs enable row level security;
 alter table public.admins   enable row level security;
 alter table public.lesson_notes  enable row level security;
 alter table public.monthly_evals enable row level security;
@@ -829,7 +975,7 @@ alter table public.link_requests enable row level security;
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'eval_reports', 'audition_news', 'link_requests'] loop
+  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'eval_reports', 'audition_news', 'notices', 'repertoire', 'practice_logs', 'link_requests'] loop
     execute format('drop policy if exists admin_all on public.%I', tbl);
     execute format('create policy admin_all on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', tbl);
   end loop;
@@ -840,7 +986,7 @@ drop policy if exists admin_read on public.admins;
 create policy admin_read on public.admins for select to authenticated using (public.is_admin());
 
 revoke all on public.settings, public.rooms, public.members, public.bookings, public.consults, public.admins, public.link_requests,
-  public.lesson_notes, public.monthly_evals, public.eval_reports from anon;
+  public.lesson_notes, public.monthly_evals, public.eval_reports, public.notices, public.repertoire, public.practice_logs from anon;
 revoke all on public.members from authenticated;
 -- 비밀번호 해시는 관리자에게도 내보내지 않습니다. 수정은 admin_save_member로만.
 grant select (id, name, phone, status, expires_on, memo, must_change_pin, kakao_user, created_at) on public.members to authenticated;
@@ -849,7 +995,8 @@ grant delete on public.members to authenticated;
 drop policy if exists admin_delete on public.members;
 create policy admin_delete on public.members for delete to authenticated using (public.is_admin());
 grant select, insert, update, delete on public.settings, public.rooms, public.bookings, public.consults,
-  public.lesson_notes, public.monthly_evals, public.eval_reports, public.audition_news to authenticated;
+  public.lesson_notes, public.monthly_evals, public.eval_reports, public.audition_news,
+  public.notices, public.repertoire, public.practice_logs to authenticated;
 -- 오디션 소식은 공개: 누구나 올라간(published) 글만 읽기
 grant select on public.audition_news to anon;
 drop policy if exists public_read on public.audition_news;
@@ -898,3 +1045,11 @@ drop policy if exists audition_news_admin on storage.objects;
 create policy audition_news_admin on storage.objects for all to authenticated
   using (bucket_id = 'audition-news' and public.is_admin())
   with check (bucket_id = 'audition-news' and public.is_admin());
+
+-- 내 폴더: 학생이 직접 쓰는 레퍼토리·연습 일지 함수
+revoke execute on function public.member_repertoire_save(text, text, bigint, text, text, text, text, text),
+  public.member_repertoire_delete(text, text, bigint), public.member_log_save(text, text, bigint, text, int, text, text),
+  public.member_log_delete(text, text, bigint) from public;
+grant execute on function public.member_repertoire_save(text, text, bigint, text, text, text, text, text),
+  public.member_repertoire_delete(text, text, bigint), public.member_log_save(text, text, bigint, text, int, text, text),
+  public.member_log_delete(text, text, bigint) to anon, authenticated;

@@ -37,6 +37,7 @@
       <button type="button" role="tab" data-tab="members" aria-selected="false">수강 ID <span class="adm__badge" id="linkBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="records" aria-selected="false">수업 기록</button>
       <button type="button" role="tab" data-tab="news" aria-selected="false">오디션 소식</button>
+      <button type="button" role="tab" data-tab="notices" aria-selected="false">공지</button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
       <button type="button" class="sys-link adm__logout" id="logout">로그아웃</button>
@@ -190,6 +191,29 @@
       </form>
       <h3 class="sys-h">올린 소식</h3>
       <ul class="adm__cards" id="newsList"></ul>
+    </section>
+
+    <!-- 공지 (학생 "내 폴더 → 공지") -->
+    <section class="sys-card" data-panel="notices" hidden>
+      <h3 class="sys-h" id="noticeHead">새 공지 쓰기</h3>
+      <p class="sys-note">수강생만 봐요 (내 폴더 → 공지). 휴원일, 월말평가 날, 행사처럼 학생이 알아야 할 것을 적어주세요. 끝나는 날이 지나면 저절로 안 보여요.</p>
+      <form id="noticeForm" class="adm__drawer">
+        <label class="sys-field"><span>제목</span><input name="title" maxlength="80" required placeholder="예) 12월 월말평가 안내"></label>
+        <div class="sys-row">
+          <label class="sys-field"><span>날짜 (선택)</span><input name="start_date" type="date"></label>
+          <label class="sys-field"><span>끝나는 날 (선택, 지나면 안 보임)</span><input name="end_date" type="date"></label>
+        </div>
+        <label class="sys-field"><span>내용 (선택)</span><textarea name="body" rows="5" maxlength="3000"></textarea></label>
+        <label class="sys-keep"><input type="checkbox" name="pinned"> 중요 (맨 위에 펼쳐서 보여주기)</label>
+        <div class="sys-row">
+          <button class="sys-btn" type="submit" id="noticeSave">올리기</button>
+          <button class="sys-link" type="button" id="noticeCancel" hidden>고치기 그만두기</button>
+        </div>
+        <p class="sys-msg" id="noticeMsg" role="status"></p>
+        <div class="adm__share" id="noticeShare" hidden></div>
+      </form>
+      <h3 class="sys-h">올린 공지</h3>
+      <ul class="adm__cards" id="noticeList"></ul>
     </section>
 
     <!-- 상담 신청 -->

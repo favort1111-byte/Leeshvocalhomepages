@@ -184,10 +184,17 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
         <div class="book__tabs" role="tablist">
           <button type="button" role="tab" aria-selected="true" data-book-tab="notes">레슨 노트</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
-          <a class="book__tablink" href="booking.html">연습실 예약 →</a>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="bookings">내 예약</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="notices">공지</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="songs">레퍼토리</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="logs">연습 일지</button>
         </div>
         <div class="book__page" data-book-page="notes" id="myNotes"></div>
         <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
+        <div class="book__page" data-book-page="bookings" id="myBookings" hidden></div>
+        <div class="book__page" data-book-page="notices" id="myNotices" hidden></div>
+        <div class="book__page" data-book-page="songs" id="mySongs" hidden></div>
+        <div class="book__page" data-book-page="logs" id="myLogs" hidden></div>
       </div>
     </div>
   </section>
@@ -644,7 +651,12 @@ def audition_like(title, desc, sub, body):
             + subnav(sub) + body
             + "</main>\n" + foot("auditions"))
 
-TIP_POSTS = [p for p in POSTS if p["kind"] == "tips"]
+_seen_yt = set()
+TIP_POSTS = []
+for _p in POSTS:  # the same video was often posted again: keep the newest post of each
+    if _p["kind"] == "tips" and not (_p.get("yt") and _p["yt"] in _seen_yt):
+        _seen_yt.add(_p.get("yt"))
+        TIP_POSTS.append(_p)
 ACADEMY_POSTS = [p for p in POSTS if p["kind"] in ("academy", "curriculum")]
 
 def tip_card(p):

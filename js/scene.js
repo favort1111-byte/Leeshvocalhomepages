@@ -60,7 +60,8 @@
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") leave(); });
 
   // Deep links. Runs after every page script has hooked up its scene:open listener.
-  var LINKS = { me: ["scene-me"], notes: ["scene-me", "notes"], evals: ["scene-me", "evals"] };
+  var LINKS = { me: ["scene-me"], notes: ["scene-me", "notes"], evals: ["scene-me", "evals"], bookings: ["scene-me", "bookings"],
+    notices: ["scene-me", "notices"], songs: ["scene-me", "songs"], logs: ["scene-me", "logs"] };
   function openFromLink() {
     var h = decodeURIComponent(location.hash.replace(/^#/, ""));
     if (!h) return;

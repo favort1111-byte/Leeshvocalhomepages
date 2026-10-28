@@ -15,8 +15,8 @@ for page in PAGES:
     html = open(os.path.join(REPO, page)).read()
     assert API in html, page
     html = html.replace(API, API + '<script src="js/demo.js"></script>\n')
-    if page == "post.html":  # 800 moved blog posts + pictures don't fit in the preview: read them from GitHub
-        html = html.replace('<script src="js/post.js">', '<script>window.LEESH.blogBase = "' + BLOG_BASE + '";</script>\n<script src="js/post.js">')
+    # 800 moved blog posts + pictures don't fit in the preview: post.html and 내 폴더 read them from GitHub
+    html = html.replace('<script src="js/config.js"></script>\n', '<script src="js/config.js"></script>\n<script>window.LEESH.blogBase = "' + BLOG_BASE + '";</script>\n')
     if page == "index.html":  # names the preview in the artifact gallery
         html = html.replace("<title>이송희보컬레슨 | 강남 선릉역 1:1 보컬학원</title>", "<title>이송희보컬레슨 작업 현황</title>")
     open(os.path.join(out, page), "w").write(html)

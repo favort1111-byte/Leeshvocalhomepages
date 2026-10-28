@@ -146,6 +146,7 @@
     if (name === "members") loadMembers();
     if (name === "consults") loadConsults();
     if (name === "news") loadNews();
+    if (name === "notices") loadNotices();
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
   }
@@ -560,7 +561,7 @@
   /* ---------------- 카카오톡으로 보낼 주소 ---------------- */
 
   // Links straight into a screen (js/scene.js reads the #hash). Saved sign-ins open them without a login.
-  var LINKS = [["레슨 노트", "#notes"], ["월말평가", "#evals"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
+  var LINKS = [["레슨 노트", "#notes"], ["월말평가", "#evals"], ["공지", "#notices"], ["연습 일지", "#logs"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
     .filter(function (l) { return cfg.lessonNotes !== false || l[1] !== "#notes"; });
   function siteLink(to) { return new URL(to.charAt(0) === "#" ? "./" + to : to, location.href).href; }
   function openHref(to) { return to.charAt(0) === "#" ? "index.html" + to : to; }
@@ -596,10 +597,9 @@
   LINKS.forEach(function (l) { $("#linkList").appendChild(linkRow(l[0], l[1])); });
 
   /** After saving a note or evaluation: a ready-to-send 카카오톡 message for that student. */
-  function showShare(box, to, line) {
-    var opt = $("#recMember").selectedOptions[0];
-    var name = opt ? opt.getAttribute("data-name") : "";
-    var text = "[이송희보컬레슨] " + name + "님, " + line + "\n👉 " + siteLink(to);
+  /** A ready-to-paste KakaoTalk line; name only when it goes to one student (레슨 노트). */
+  function showShare(box, to, line, name) {
+    var text = "[이송희보컬레슨] " + (name ? name + "님, " : "") + line + "\n👉 " + siteLink(to);
     box.textContent = "";
     box.appendChild(el("p", null, "학생에게 카톡으로 알려주세요."));
     var ta = el("textarea");
@@ -631,7 +631,8 @@
     } }).then(function (res) {
       if (!res.ok) { msg($("#noteMsg"), friendly(res), "error"); return; }
       msg($("#noteMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
-      showShare($("#noteShare"), "#notes", "오늘 레슨 노트가 올라왔어요.");
+      var opt = $("#recMember").selectedOptions[0];
+      showShare($("#noteShare"), "#notes", "오늘 레슨 노트가 올라왔어요.", opt ? opt.getAttribute("data-name") : "");
       field(f, "did").value = "";
       field(f, "practice").value = "";
       loadMemberRecords();
@@ -1047,6 +1048,74 @@
         row.appendChild(ed);
         row.appendChild(hide);
         row.appendChild(deleteButton("audition_news", p.id, loadNews));
+        li.appendChild(row);
+        ul.appendChild(li);
+      });
+    });
+  }
+
+  /* ---------------- 공지 (학생 "내 폴더 → 공지"; js/mynotes.js) ---------------- */
+
+  var noticeEdit = null;
+  function noticeForm(p) {
+    var f = $("#noticeForm");
+    noticeEdit = p || null;
+    f.reset();
+    if (p) {
+      ["title", "start_date", "end_date", "body"].forEach(function (k) { field(f, k).value = p[k] || ""; });
+      field(f, "pinned").checked = !!p.pinned;
+      f.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+    $("#noticeHead").textContent = p ? "공지 고치기" : "새 공지 쓰기";
+    $("#noticeSave").textContent = p ? "고친 내용 저장" : "올리기";
+    $("#noticeCancel").hidden = !p;
+  }
+  $("#noticeCancel").addEventListener("click", function () { noticeForm(null); msg($("#noticeMsg"), ""); });
+  $("#noticeForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, body = { updated_at: new Date().toISOString(), pinned: field(f, "pinned").checked };
+    ["title", "start_date", "end_date", "body"].forEach(function (k) { body[k] = field(f, k).value.trim() || null; });
+    if (!body.title) { msg($("#noticeMsg"), "제목을 써주세요.", "error"); return; }
+    if (!noticeEdit) body.published = true;
+    (noticeEdit ? api("notices?id=eq." + noticeEdit.id, { method: "PATCH", body: body }) : api("notices", { method: "POST", body: body }))
+      .then(function (res) {
+        if (!res.ok) { msg($("#noticeMsg"), friendly(res), "error"); return; }
+        var wasNew = !noticeEdit;
+        msg($("#noticeMsg"), wasNew ? "올렸어요. 학생 내 폴더 → 공지에 바로 보여요." : "고쳤어요.", "ok");
+        noticeForm(null); // (reset first: the share box sits inside the form)
+        if (wasNew) showShare($("#noticeShare"), "#notices", "새 공지가 올라왔어요: " + body.title);
+        loadNotices();
+      });
+  });
+  function loadNotices() {
+    var ul = $("#noticeList");
+    ul.textContent = "";
+    api("notices?select=*&order=created_at.desc&limit=200").then(function (res) {
+      if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) { ul.appendChild(el("li", "sys-empty", "아직 올린 공지가 없어요.")); return; }
+      var today = todayKst();
+      res.data.forEach(function (p) {
+        var over = p.end_date && p.end_date < today;
+        var li = el("li", "adm__card" + (p.published && !over ? "" : " is-hidden")), top = el("div", "adm__cardtop");
+        if (p.pinned) top.appendChild(el("span", "adm__badge adm__badge--kind", "중요"));
+        top.appendChild(el("strong", null, p.title));
+        if (p.start_date) top.appendChild(el("span", "sys-note", p.start_date + (p.end_date ? " ~ " + p.end_date : "")));
+        if (!p.published) top.appendChild(el("span", "sys-note", "숨김"));
+        else if (over) top.appendChild(el("span", "sys-note", "기간 끝남"));
+        li.appendChild(top);
+        if (p.body) li.appendChild(el("p", "adm__quote", p.body.length > 120 ? p.body.slice(0, 120) + "…" : p.body));
+        var row = el("div", "adm__cardrow");
+        var ed = el("button", "sys-link", "고치기");
+        ed.type = "button";
+        ed.addEventListener("click", function () { noticeForm(p); });
+        var hide = el("button", "sys-link", p.published ? "숨기기" : "다시 보이기");
+        hide.type = "button";
+        hide.addEventListener("click", function () {
+          api("notices?id=eq." + p.id, { method: "PATCH", body: { published: !p.published, updated_at: new Date().toISOString() } }).then(loadNotices);
+        });
+        row.appendChild(ed);
+        row.appendChild(hide);
+        row.appendChild(deleteButton("notices", p.id, loadNotices));
         li.appendChild(row);
         ul.appendChild(li);
       });

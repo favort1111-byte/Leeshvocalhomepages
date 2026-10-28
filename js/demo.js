@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 10; // bump when the demo defaults change
+  var VERSION = 11; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -83,6 +83,19 @@
         { id: 42, kind: "합격", company: "체험 엔터테인먼트", title: "1차 합격 (김OO)", event_date: addDays(t, -3), deadline: null,
           body: "축하해요! 체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date(Date.now() - 3 * 86400000).toISOString(), updated_at: new Date().toISOString() }
+      ],
+      // 내 폴더: 공지 (원장님), 레퍼토리 · 연습 일지 (학생이 직접)
+      notices: [
+        { id: 51, title: "12월 월말평가 안내", body: "12월 셋째 주에 월말평가가 있어요. 곡은 담당 선생님과 정해주세요.\n체험 모드 예시 공지예요.", start_date: addDays(t, 40), end_date: addDays(t, 45), pinned: true, published: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 52, title: "연습실 청소 시간", body: "매주 월요일 오전 10~11시는 연습실 청소 시간이에요.", start_date: null, end_date: null, pinned: false, published: true, created_at: new Date(Date.now() - 86400000 * 5).toISOString(), updated_at: new Date().toISOString() }
+      ],
+      repertoire: [
+        { id: 61, member_id: "S001", title: "Rain", artist: "태연", purpose: "오디션", status: "준비 중", memo: "2절 후렴 고음", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 62, member_id: "S001", title: "너의 의미", artist: "아이유", purpose: "연습", status: "완성", memo: null, created_at: new Date().toISOString(), updated_at: new Date(Date.now() - 86400000 * 30).toISOString() }
+      ],
+      practice_logs: [
+        { id: 71, member_id: "S001", day: addDays(t, -1), minutes: 60, song: "Rain", did: "후렴 고음 10번, 립트릴 5분. 호흡이 모자랐음", created_at: new Date().toISOString() },
+        { id: 72, member_id: "S001", day: addDays(t, -3), minutes: 40, song: "Rain", did: "1절 감정선 녹음해서 들어봄", created_at: new Date().toISOString() }
       ],
       tokens: [], // "로그인 유지" keys: { key, member_id }
       consults: [
@@ -278,6 +291,24 @@
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
           .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice }; }),
+        bookings: live().filter(function (b) { return b.member_id === who.id && b.day >= nowKst().today; })
+          .sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); })
+          .map(function (b) { return { room: room(b.room_id).name, date: b.day, start: hhmm(b.start_min), end: hhmm(b.end_min) }; }),
+        month: (function () {
+          var n = nowKst(), mine = live().filter(function (b) { return b.member_id === who.id && b.day.slice(0, 7) === n.today.slice(0, 7) && b.day <= n.today; });
+          return { count: mine.length, minutes: mine.reduce(function (s, b) { return s + b.end_min - b.start_min; }, 0) };
+        })(),
+        notices: db.notices.filter(function (x) { return x.published && (!x.end_date || x.end_date >= nowKst().today); })
+          .sort(function (x, y) { return (y.pinned - x.pinned) || (x.created_at < y.created_at ? 1 : -1); })
+          .map(function (x) { return { id: x.id, title: x.title, body: x.body, start: x.start_date, end: x.end_date, pinned: x.pinned, at: x.created_at }; }),
+        visits: db.audition_news.filter(function (a) { return a.published && a.kind === "내방" && a.event_date && a.event_date >= nowKst().today; })
+          .map(function (a) { return { title: a.title, company: a.company, date: a.event_date, deadline: a.deadline }; }),
+        repertoire: db.repertoire.filter(function (r) { return r.member_id === who.id; }).map(function (r) {
+          return Object.assign({}, r, { minutes: db.practice_logs.filter(function (l) { return l.member_id === who.id && l.song === r.title; })
+            .reduce(function (s, l) { return s + (l.minutes || 0); }, 0) });
+        }),
+        logs: db.practice_logs.filter(function (l) { return l.member_id === who.id; })
+          .sort(function (x, y) { return x.day === y.day ? y.id - x.id : (x.day < y.day ? 1 : -1); }),
         reports: db.eval_reports.filter(function (r) { return r.member_id === who.id; })
           .sort(function (x, y) { return x.month < y.month ? 1 : -1; })
           .map(function (r) {
@@ -355,6 +386,43 @@
         m.kakao_user = null;
         save();
       }
+      return { ok: true };
+    },
+    member_repertoire_save: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var title = String(a.p_title || "").trim();
+      if (!title) return fail("곡 제목을 적어주세요.");
+      var row = a.p_song ? db.repertoire.filter(function (r) { return r.id === a.p_song && r.member_id === who.id; })[0] : null;
+      if (a.p_song && !row) return fail("곡을 찾을 수 없어요.");
+      if (!row) { row = { id: ++db.next, member_id: who.id, created_at: new Date().toISOString() }; db.repertoire.push(row); }
+      Object.assign(row, { title: title, artist: a.p_artist || null, purpose: a.p_purpose || null, status: a.p_status || "준비 중", memo: a.p_memo || null, updated_at: new Date().toISOString() });
+      save();
+      return { ok: true, id: row.id };
+    },
+    member_repertoire_delete: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      db.repertoire = db.repertoire.filter(function (r) { return !(r.id === a.p_song && r.member_id === who.id); });
+      save();
+      return { ok: true };
+    },
+    member_log_save: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var n = nowKst(), ago = diffDays(a.p_day, n.today);
+      if (isNaN(ago) || ago < 0 || ago > 60) return fail("오늘부터 60일 전까지의 날짜로 써주세요.");
+      if (!a.p_did && a.p_minutes == null) return fail("연습한 내용이나 시간을 적어주세요.");
+      var row = { id: ++db.next, member_id: who.id, day: a.p_day, minutes: a.p_minutes, song: a.p_song || null, did: a.p_did || null, created_at: new Date().toISOString() };
+      db.practice_logs.push(row);
+      save();
+      return { ok: true, id: row.id };
+    },
+    member_log_delete: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      db.practice_logs = db.practice_logs.filter(function (l) { return !(l.id === a.p_log && l.member_id === who.id); });
+      save();
       return { ok: true };
     },
     is_admin: function () { return true; }
@@ -459,7 +527,7 @@
       if (p.table === "rooms" && db.rooms.some(function (r) { return r.name === body.name; })) {
         return { status: 409, data: { message: "duplicate key" } };
       }
-      var row = Object.assign({ id: ++db.next }, p.table === "audition_news" ? { created_at: new Date().toISOString(), published: true } : {}, body);
+      var row = Object.assign({ id: ++db.next }, p.table === "audition_news" || p.table === "notices" ? { created_at: new Date().toISOString(), published: true } : {}, body);
       rows.push(row);
       save();
       return { status: 201, data: [row] };
