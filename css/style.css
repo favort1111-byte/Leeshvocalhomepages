@@ -559,6 +559,10 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .card__chips{list-style:none;padding:0 !important;margin:0;display:flex;flex-wrap:wrap;gap:6px;}
 .card__chips li{margin:0;padding:3px 11px;border:1px solid rgba(110,59,40,.35);border-radius:999px;font-size:14px;}
 .card__chips--light li{border-color:rgba(246,235,221,.5);}
+/* 합격 소식 posted in the admin page (js/passboard.js) */
+.card__chips--light li.pass-new{border-color:#E6CF9E;color:#F6E2B5;}
+.agency li.pass-new{color:var(--brown);font-weight:500;}
+.agency.pass-new h4::after{content:"NEW";margin-left:6px;padding:1px 6px;border-radius:999px;background:var(--brown);color:#FBF3E4;font-size:10px;vertical-align:2px;}
 .card__more{margin-top:16px;font-size:14px;}
 .card__more summary{cursor:pointer;color:var(--brown);font-weight:500;}
 .card__history{list-style:none;padding:0 !important;margin:10px 0 0 !important;columns:2 320px;column-gap:28px;}

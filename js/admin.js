@@ -974,7 +974,9 @@
     f.reset();
     if (p) {
       f.querySelector('[name=kind][value="' + p.kind + '"]').checked = true;
-      ["company", "title", "event_date", "deadline", "body", "link"].forEach(function (k) { field(f, k).value = p[k] || ""; });
+      ["company", "title", "event_date", "deadline", "body", "link", "initials"].forEach(function (k) { field(f, k).value = p[k] || ""; });
+      if (p.pass_type) field(f, "pass_type").value = p.pass_type;
+      if (p.pass_stage) field(f, "pass_stage").value = p.pass_stage;
     }
     $("#newsHead").textContent = p ? "소식 고치기" : "새 소식 올리기";
     $("#newsSave").textContent = p ? "고친 내용 저장" : "올리기";
@@ -987,7 +989,11 @@
   }
   function newsLabel() {
     var k = $("#newsForm").querySelector("[name=kind]:checked").value;
-    $("#newsDateLabel").textContent = k === "합격" ? "발표 날짜 (선택)" : "오디션 날짜 (선택)";
+    $("#newsDateLabel").textContent = k === "합격" ? "발표 날짜 (선택, 비우면 오늘)" : "오디션 날짜 (선택)";
+    // 합격: 종류·단계·이니셜 → about 합격 실적판 (js/passboard.js); the title can be left for the form to make
+    $("#passFields").hidden = k !== "합격";
+    $("#newsCompanyLabel").textContent = k === "합격" ? "회사 · 방송 · 학교 이름" : "회사 이름 (선택)";
+    $("#newsTitleLabel").textContent = k === "합격" ? "제목 (비우면 \"1차 합격 (김OO)\"처럼 저절로)" : "제목";
   }
   document.querySelectorAll("#newsForm [name=kind]").forEach(function (r) { r.addEventListener("change", newsLabel); });
   $("#newsCancel").addEventListener("click", function () { newsForm(null); msg($("#newsMsg"), ""); });
@@ -997,6 +1003,16 @@
     var f = e.target, btn = $("#newsSave");
     var body = { kind: f.querySelector("[name=kind]:checked").value, updated_at: new Date().toISOString() };
     ["company", "title", "event_date", "deadline", "body", "link"].forEach(function (k) { body[k] = field(f, k).value.trim() || null; });
+    var pass = body.kind === "합격";
+    body.pass_type = pass ? field(f, "pass_type").value : null;
+    body.pass_stage = pass ? field(f, "pass_stage").value : null;
+    body.initials = pass ? field(f, "initials").value.trim() || null : null;
+    if (pass) {
+      if (!body.company) { msg($("#newsMsg"), "회사 · 방송 · 학교 이름을 써주세요. 합격 실적판에 들어가요.", "error"); return; }
+      if (body.initials && /^[가-힣]{2,4}$/.test(body.initials)) { msg($("#newsMsg"), "학생 이름은 이니셜로 써주세요 (예: 김OO).", "error"); return; }
+      if (!body.title) body.title = body.pass_stage + (body.initials ? " (" + body.initials + ")" : "");
+      if (!body.event_date) body.event_date = todayKst();
+    }
     if (!body.title) { msg($("#newsMsg"), "제목을 써주세요.", "error"); return; }
     if (!newsEdit) body.published = true;
     if (body.link && !/^https?:\/\//.test(body.link)) { msg($("#newsMsg"), "링크는 https:// 로 시작해야 해요.", "error"); return; }

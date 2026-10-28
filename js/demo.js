@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 14; // bump when the demo defaults change
+  var VERSION = 15; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -81,9 +81,18 @@
           body: "준비곡 2곡 (1절 + 후렴)\n자기소개 30초\n복장: 몸 라인이 보이는 편한 옷\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 42, kind: "합격", company: "체험 엔터테인먼트", title: "1차 합격 (김OO)", event_date: addDays(t, -3), deadline: null,
+          pass_type: "기획사", pass_stage: "1차 합격", initials: "김OO",
           body: "축하해요! 체험 모드 예시 글이에요.", link: null, image: null, published: true,
-          created_at: new Date(Date.now() - 3 * 86400000).toISOString(), updated_at: new Date().toISOString() }
+          created_at: new Date(Date.now() - 3 * 86400000).toISOString(), updated_at: new Date().toISOString() },
+        { id: 43, kind: "합격", company: "SM 엔터테인먼트", title: "2차 합격 (이OO)", event_date: addDays(t, -10), deadline: null,
+          pass_type: "기획사", pass_stage: "2차 합격", initials: "이OO", body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          created_at: new Date(Date.now() - 10 * 86400000).toISOString(), updated_at: new Date().toISOString() },
+        { id: 44, kind: "합격", company: "서울예술대학교", title: "수시 합격 (박OO)", event_date: addDays(t, -20), deadline: null,
+          pass_type: "입시", pass_stage: "합격", initials: "박OO", body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          created_at: new Date(Date.now() - 20 * 86400000).toISOString(), updated_at: new Date().toISOString() }
       ],
+      // more 합격 소식 for the about board: one for a company already on it, one 입시
+      // (added below with the same shape as the admin page writes)
       // 내 폴더: 공지 (원장님), 레퍼토리 · 연습 일지 (학생이 직접)
       notices: [
         { id: 51, title: "12월 월말평가 안내", body: "12월 셋째 주에 월말평가가 있어요. 곡은 담당 선생님과 정해주세요.\n체험 모드 예시 공지예요.", start_date: addDays(t, 40), end_date: addDays(t, 45), pinned: true, published: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },

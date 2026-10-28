@@ -196,7 +196,7 @@
       </div>
 
       <h3 class="sys-h" id="newsHead">새 소식 올리기</h3>
-      <p class="sys-note">올리면 홈페이지 "오디션 소식"에 바로 보여요. 합격 소식에는 학생 실명 대신 이니셜(예: 김OO)로 써주세요.</p>
+      <p class="sys-note">올리면 홈페이지 "오디션 소식"에 바로 보여요. 합격 소식에는 학생 실명 대신 이니셜(예: 김OO)로 써주세요. 합격 소식은 about의 <b>합격 실적판</b>(연도별 기획사, 기획사 카드, 숫자)에도 저절로 더해져요.</p>
       <form id="newsForm" class="adm__drawer">
         <fieldset class="sys-radios">
           <legend>구분</legend>
@@ -204,9 +204,14 @@
           <label><input type="radio" name="kind" value="오디션"> 기획사 오디션</label>
           <label><input type="radio" name="kind" value="합격"> 합격 소식</label>
         </fieldset>
+        <div class="sys-row" id="passFields" hidden>
+          <label class="sys-field"><span>종류</span><select name="pass_type"><option>기획사</option><option>방송</option><option>입시</option></select></label>
+          <label class="sys-field"><span>단계</span><select name="pass_stage"><option>1차 합격</option><option>2차 합격</option><option>3차 합격</option><option>최종 합격</option><option>연습생 계약</option><option>데뷔</option><option>합격</option></select></label>
+          <label class="sys-field"><span>학생 이니셜</span><input name="initials" maxlength="20" placeholder="예) 김OO"></label>
+        </div>
         <div class="sys-row">
-          <label class="sys-field"><span>회사 이름 (선택)</span><input name="company" maxlength="40" placeholder="예) KOZ 엔터테인먼트"></label>
-          <label class="sys-field"><span>제목</span><input name="title" maxlength="80" required placeholder="예) 11월 내방 오디션"></label>
+          <label class="sys-field"><span id="newsCompanyLabel">회사 이름 (선택)</span><input name="company" maxlength="40" placeholder="예) KOZ 엔터테인먼트"></label>
+          <label class="sys-field"><span id="newsTitleLabel">제목</span><input name="title" maxlength="80" placeholder="예) 11월 내방 오디션"></label>
         </div>
         <div class="sys-row">
           <label class="sys-field"><span id="newsDateLabel">오디션 날짜 (선택)</span><input name="event_date" type="date"></label>
@@ -332,6 +337,6 @@
 
 <script src="js/config.js?v=595c4648"></script>
 <script src="js/api.js?v=d9a47c3b"></script>
-<script src="js/admin.js?v=8a2e6444"></script>
+<script src="js/admin.js?v=50edd026"></script>
 </body>
 </html>

@@ -320,7 +320,7 @@ about = (head("About | 이송희보컬레슨",
          + '<main class="stage about">\n'
          + nav("about", "cardboard") + "\n"
          +   '  <h1 class="about__title">our vocal<br>classes</h1>\n'
-         + about_groups + "\n</main>\n" + blog.about_sections() + foot())
+         + about_groups + "\n</main>\n" + blog.about_sections() + foot("passboard"))
 
 # ---------- CONTACT (reference 800x612) ----------
 def cph(left, top, w, h, i, kind, rot, z):

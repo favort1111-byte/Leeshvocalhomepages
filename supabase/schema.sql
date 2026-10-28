@@ -1373,3 +1373,10 @@ revoke all on function private.ig_title(text) from public, anon, authenticated;
 -- 원장님 허락 (2026-10-28 "응 2개다 켜줘"): 2시간마다 인스타 새 글 가져오기. 가져오기만 하고 지우지 않음.
 create extension if not exists pg_cron;
 select cron.schedule('leesh_instagram', '7 */2 * * *', 'select private.ig_sync(1)');
+-- 합격 소식 → about 합격 실적판 (2026-10-28): 합격 소식에 종류·단계·이니셜을 같이 적으면 실적판(연도별 칩, 기획사 카드, 숫자)이 저절로 늘어남.
+alter table public.audition_news add column if not exists pass_type text check (pass_type in ('기획사', '방송', '입시'));
+alter table public.audition_news add column if not exists pass_stage text check (char_length(pass_stage) <= 30);
+alter table public.audition_news add column if not exists initials text check (char_length(initials) <= 20);
+-- 학생 실명은 받지 않음: 한글 2~4자 그대로(예: 김민지)는 막고 김OO처럼만
+alter table public.audition_news drop constraint if exists audition_news_initials_not_name;
+alter table public.audition_news add constraint audition_news_initials_not_name check (initials is null or initials !~ '^[가-힣]{2,4}$');

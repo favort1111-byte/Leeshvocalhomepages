@@ -380,20 +380,23 @@ def results_section():
     recent = "".join(f"<li>{r}</li>" for r in RECENT_2025)
     total = len(AGENCIES) + len(SHOWS)
     return (_head("results", "합격 소식", "results")
-            + f'    <ul class="debuts">{debuts}</ul>\n'
+            # ids/data-*: js/passboard.js adds the 합격 소식 posted in the admin page (audition_news) to this board
+            + f'    <ul class="debuts" id="passDebuts">{debuts}</ul>\n'
             + '    <ul class="stats">'
-            + f'<li><b>{total}곳+</b><span>합격 기획사 · 방송</span></li>'
+            + f'<li><b data-pass-total="{total}">{total}곳+</b><span>합격 기획사 · 방송</span></li>'
             + '<li><b>3주</b><span>최단 기간 대형 기획사 합격</span></li>'
             + '<li><b>9만+</b><span>유튜브 구독자</span></li></ul>\n'
+            + '    <div id="passYears"><div class="pass-year" data-year="2025">\n'
             + '    <h3 class="scrap__sub">2025 합격 소식</h3>\n'
             + f'    <ul class="card__chips card__chips--light">{recent}</ul>\n'
+            + '    </div></div>\n'
             + '    <h3 class="scrap__sub">기획사 오디션</h3>\n'
-            + f'    <ul class="agencies">{cards(first)}</ul>\n'
-            + f'    <details class="more"><summary>기획사 {len(rest)}곳 더 보기</summary><ul class="agencies">{cards(rest)}</ul></details>\n'
+            + f'    <ul class="agencies" id="passAgencies">{cards(first)}</ul>\n'
+            + f'    <details class="more"><summary>기획사 {len(rest)}곳 더 보기</summary><ul class="agencies" id="passAgenciesMore">{cards(rest)}</ul></details>\n'
             + '    <h3 class="scrap__sub">방송 · 프로그램</h3>\n'
-            + f'    <ul class="agencies">{cards(SHOWS)}</ul>\n'
+            + f'    <ul class="agencies" id="passShows">{cards(SHOWS)}</ul>\n'
             + '    <h3 class="scrap__sub">입시</h3>\n'
-            + f'    <article class="card card--paper"><div class="card__cols">{schools}</div></article>\n'
+            + f'    <article class="card card--paper" id="passSchools"><div class="card__cols">{schools}</div></article>\n'
             + '    <p class="scrap__note">합격한 학생 이름은 싣지 않았어요. 그동안의 합격 소식은 <a href="results.html">results</a>에서 볼 수 있어요.</p>\n')
 
 
