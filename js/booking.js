@@ -112,7 +112,8 @@
       renderDays(res.days, res.date);
       renderBoard(res);
       renderRooms(res);
-      $("#rules").textContent = "한 번에 최대 " + res.maxHours + "시간 · 하루 최대 " + res.dailyMaxHours + "시간 · " +
+      // 하루 합계 제한이 24시간이면 (원장님 2026-10-28: 한 번에 2시간, 횟수 제한 없음) "더 예약할 수 있어요"로
+      $("#rules").textContent = "한 번에 최대 " + res.maxHours + "시간" + (Number(res.dailyMaxHours) >= 24 ? " · 끝나고 또 예약할 수 있어요" : " · 하루 최대 " + res.dailyMaxHours + "시간") + " · " +
         res.unit + "분 단위" + (res.cancelBefore ? " · 직접 취소는 시작 " + res.cancelBefore + " 전까지" : "");
     });
   }
@@ -145,8 +146,9 @@
       wrap.appendChild(el("p", "sys-note", "오늘 " + dayLabel(days[0]) + " · 예약은 당일만 돼요. 매일 밤 12시에 그날 예약이 열려요."));
       return;
     }
-    days.forEach(function (d) {
-      var b = el("button", "sys-chip", dayLabel(d));
+    if (days.length === 2) wrap.appendChild(el("p", "sys-note", "오늘과 내일까지 예약할 수 있어요. 매일 밤 12시에 다음 날 예약이 열려요."));
+    days.forEach(function (d, i) {
+      var b = el("button", "sys-chip", (days.length === 2 ? (i ? "내일 " : "오늘 ") : "") + dayLabel(d));
       b.type = "button";
       b.setAttribute("aria-pressed", d === current ? "true" : "false");
       b.addEventListener("click", function () { loadDay(d); });

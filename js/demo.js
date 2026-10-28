@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 18; // bump when the demo defaults change
+  var VERSION = 19; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -38,7 +38,7 @@
     var db = {
       version: VERSION,
       next: 400,
-      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 120, max_days: 0, cancel_minutes: 60 },
+      settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 1440, max_days: 1, cancel_minutes: 60 },
       rooms: [["B1", "연습실"], ["B2", "연습실"], ["B3", "연습실"], ["B4", "연습실"], ["B5", "연습실"], ["C hall", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
       members: [
@@ -249,7 +249,7 @@
       var s = db.settings, n = nowKst(), d = a.p_date, ahead = diffDays(n.today, d);
       if (isNaN(ahead)) return fail("날짜 형식이 올바르지 않습니다.");
       if (ahead < 0) return fail("지난 날짜는 예약할 수 없습니다.");
-      if (ahead > s.max_days) return fail(s.max_days === 0 ? "예약은 당일만 할 수 있어요. 매일 밤 12시에 그날 예약이 열려요." : "예약은 오늘부터 " + s.max_days + "일 뒤까지만 가능합니다.");
+      if (ahead > s.max_days) return fail(s.max_days === 0 ? "예약은 당일만 할 수 있어요. 매일 밤 12시에 그날 예약이 열려요." : s.max_days === 1 ? "예약은 오늘과 내일만 할 수 있어요. 매일 밤 12시에 다음 날 예약이 열려요." : "예약은 오늘부터 " + s.max_days + "일 뒤까지만 가능합니다.");
       var r = db.rooms.filter(function (x) { return x.name === a.p_room && x.active; })[0];
       if (!r) return fail("선택한 연습실을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.");
       var st = toMin(a.p_start), h = Number(a.p_hours);

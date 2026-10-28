@@ -1750,3 +1750,92 @@ revoke execute on function public.member_partners(text, text), public.member_par
   public.member_partner_cancel(text, text, bigint) from public;
 grant execute on function public.member_partners(text, text), public.member_partner_request(text, text, bigint, text, text),
   public.member_partner_cancel(text, text, bigint) to anon, authenticated;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_two_day_booking (2026-10-28)
+-- 연습실 예약 조건 (원장님 2026-10-28): 오늘·내일 예약 (10/28이면 28일 00:00 ~ 29일 23:00 시작까지),
+-- 한 번에 최대 2시간, 횟수 제한 없이 더 예약 가능 (하루 합계 제한 없앰 = 24시간).
+update public.settings set max_days = 1, daily_max_minutes = 1440, max_minutes = 120 where id = 1;
+CREATE OR REPLACE FUNCTION public.booking_create(p_id text, p_pin text, p_room text, p_date text, p_start text, p_hours integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  s public.settings;
+  t timestamp := private.now_kst();
+  today date := t::date;
+  now_min int := extract(hour from t)::int * 60 + extract(minute from t)::int;
+  d date;
+  room public.rooms;
+  st int := private.to_min(p_start);
+  en int;
+  used int;
+  new_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into s from public.settings where id = 1;
+
+  begin
+    d := p_date::date;
+  exception when others then
+    return private.fail('날짜 형식이 올바르지 않습니다.');
+  end;
+  if d is null then return private.fail('날짜 형식이 올바르지 않습니다.'); end if;
+  if d < today then return private.fail('지난 날짜는 예약할 수 없습니다.'); end if;
+  if d > today + s.max_days then
+    return private.fail(case when s.max_days = 0 then '예약은 당일만 할 수 있어요. 매일 밤 12시에 그날 예약이 열려요.'
+                             when s.max_days = 1 then '예약은 오늘과 내일만 할 수 있어요. 매일 밤 12시에 다음 날 예약이 열려요.'
+                             else '예약은 오늘부터 ' || s.max_days || '일 뒤까지만 가능합니다.' end);
+  end if;
+
+  select * into room from public.rooms where name = p_room and active;
+  if room.id is null then
+    return private.fail('선택한 연습실을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.');
+  end if;
+
+  if st is null then return private.fail('시작 시간이 올바르지 않습니다.'); end if;
+  if p_hours is null or p_hours < 1 then return private.fail('이용 시간을 선택해주세요.'); end if;
+  if p_hours * 60 > s.max_minutes then
+    return private.fail('한 번에 최대 ' || s.max_minutes / 60 || '시간까지 예약할 수 있습니다.');
+  end if;
+  en := st + p_hours * 60;
+  if (st - s.open_min) % s.unit_min <> 0 then
+    return private.fail('예약은 ' || s.unit_min || '분 단위로만 가능합니다.');
+  end if;
+  if st < s.open_min or en > s.close_min then
+    return private.fail('운영 시간(' || private.hhmm(s.open_min) || '~' || private.hhmm(s.close_min) || ') 안에서만 예약할 수 있습니다.');
+  end if;
+  if d = today and st <= now_min then
+    return private.fail('이미 시작한 시간이에요. 다음 시간부터 예약할 수 있어요.');
+  end if;
+
+  -- 같은 사람의 동시 요청을 한 줄로 세워 하루 최대 시간 검사가 새지 않게 합니다.
+  perform pg_advisory_xact_lock(hashtext('member:' || mid));
+  select coalesce(sum(end_min - start_min), 0) into used
+    from public.bookings where member_id = mid and day = d and status = '확정';
+  if used + (en - st) > s.daily_max_minutes then
+    return private.fail('하루 최대 ' || trim_scale(s.daily_max_minutes / 60.0) || '시간까지 예약할 수 있습니다. (이날 이미 '
+      || trim_scale(used / 60.0) || '시간 예약)');
+  end if;
+
+  begin
+    insert into public.bookings (room_id, member_id, day, start_min, end_min)
+    values (room.id, mid, d, st, en) returning id into new_id;
+  exception when exclusion_violation then
+    if sqlerrm like '%bookings_no_member_overlap%' then
+      return private.fail('같은 시간에 이미 다른 연습실을 예약하셨습니다.');
+    end if;
+    return private.fail('방금 다른 예약이 들어왔습니다. 다른 시간을 골라주세요.');
+  end;
+
+  perform private.notify('🎤 연습실 예약' || chr(10) || (who ->> 'name') || ' (' || mid || ') · ' || room.name
+    || chr(10) || private.day_label(d) || ' ' || private.hhmm(st) || '~' || private.hhmm(en));
+
+  return jsonb_build_object('ok', true, 'booking', jsonb_build_object(
+    'id', new_id, 'room', room.name, 'date', d, 'start', private.hhmm(st), 'end', private.hhmm(en)));
+end $function$
+;
