@@ -587,6 +587,13 @@
   function select(rows, params) {
     Object.keys(params).forEach(function (k) {
       var v = params[k];
+      // gt./gte. (dates as ISO text) and is.false: the admin page's "new since" badges
+      if (/^gte?\./.test(v)) {
+        var eq = v.charAt(2) === "e", d = v.slice(eq ? 4 : 3);
+        rows = rows.filter(function (r) { return r[k] != null && (eq ? String(r[k]) >= d : String(r[k]) > d); });
+        return;
+      }
+      if (v.indexOf("is.") === 0) { var want = v.slice(3); rows = rows.filter(function (r) { return String(!!r[k]) === want; }); return; }
       if (v.indexOf("eq.") !== 0) return;
       v = v.slice(3);
       rows = rows.filter(function (r) { return String(r[k]) === v; });

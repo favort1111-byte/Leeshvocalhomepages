@@ -115,7 +115,7 @@
       $("#app").hidden = false;
       $("#adminWho").hidden = false;
       $("#adminWho").textContent = session.email || "";
-      loadBase().then(function () { showTab("bookings"); countLinks(); countRecs(); countVisits(); countPartners(); });
+      loadBase().then(function () { showTab("bookings"); countAll(); });
     });
   }
 
@@ -155,8 +155,56 @@
     if (name === "settings") renderSettings();
   }
   document.querySelectorAll("[data-tab]").forEach(function (b) {
-    b.addEventListener("click", function () { showTab(b.getAttribute("data-tab")); });
+    b.addEventListener("click", function () { var t = b.getAttribute("data-tab"); showTab(t); markSeen(t); });
   });
+
+  /* 새 소식 표시: 메뉴를 누르지 않아도 새로 들어온 게 있으면 메뉴에 빨간 숫자.
+     - 처리할 일 (처리하면 사라짐): 수강 ID 연결 요청 · 상담 신청 접수 · 노래 추천 접수 · 제휴 신청 접수
+     - 새로 들어온 것 (그 메뉴를 누르면 사라짐, 이 컴퓨터 기준): 연습실 예약 · 내방 신청 · 연습 일지 · 인스타그램 새 글
+     2분마다, 그리고 이 창으로 돌아올 때 다시 셉니다. 브라우저 탭 제목에도 합계가 보여요. */
+  var SEEN_KEY = "leesh-admin-seen";
+  var NEW_SINCE = {
+    bookings: ["#bookBadge", "bookings?select=id&created_at=gt."],
+    visits: ["#visitBadge", "visit_applications?select=id&created_at=gt."],
+    journal: ["#journalBadge", "practice_logs?select=id&created_at=gt."],
+    news: ["#newsBadge", "ig_posts?select=id&hidden=is.false&posted_at=gt."]
+  };
+  function seenAll() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || "{}") || {}; } catch (e) { return {}; } }
+  function seenAt(tab) { return seenAll()[tab] || new Date(Date.now() - 3 * 86400000).toISOString(); }  // first time: the last 3 days
+  function markSeen(tab) {
+    if (!NEW_SINCE[tab]) return;
+    var s = seenAll();
+    s[tab] = new Date().toISOString();
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify(s)); } catch (e) { /* private window: counts from 3 days back */ }
+    setBadge(NEW_SINCE[tab][0], 0);
+  }
+  function setBadge(sel, n) {
+    var b = $(sel);
+    if (!b) return;
+    b.textContent = n ? String(n) : "";
+    b.hidden = !n;
+    var total = 0;
+    document.querySelectorAll(".adm__tabs .adm__badge").forEach(function (x) { total += x.hidden ? 0 : Number(x.textContent) || 0; });
+    document.title = (total ? "(" + total + ") " : "") + document.title.replace(/^\(\d+\) /, "");
+  }
+  function countNew() {
+    Object.keys(NEW_SINCE).forEach(function (tab) {
+      api(NEW_SINCE[tab][1] + encodeURIComponent(seenAt(tab)) + "&limit=99").then(function (res) { if (res.ok) setBadge(NEW_SINCE[tab][0], res.data.length); });
+    });
+  }
+  function countConsults() {
+    api("consults?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) { if (res.ok) setBadge("#consultBadge", res.data.length); });
+  }
+  function countAll() {
+    if ($("#app").hidden) return;
+    countLinks();
+    countRecs();
+    countPartners();
+    countConsults();
+    countNew();
+  }
+  setInterval(countAll, 120000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) countAll(); });
 
   function loadBase() {
     return Promise.all([api("settings?id=eq.1"), api("rooms?order=sort,id")]).then(function (r) {
@@ -305,11 +353,7 @@
 
   /* 카카오 연결 요청: a student signed in with Kakao and said who they are; pick the 수강 ID and approve. */
   var WAITING = "status=eq." + encodeURIComponent("대기");
-  function badge(n) {
-    var b = $("#linkBadge");
-    b.hidden = !n;
-    b.textContent = n ? String(n) : "";
-  }
+  function badge(n) { setBadge("#linkBadge", n); }
   function countLinks() {
     api("link_requests?select=id&" + WAITING).then(function (res) { if (res.ok) badge(res.data.length); });
   }
@@ -1315,14 +1359,6 @@
     });
     copyText(lines.join("\n"), $("#visitCopy"));
   });
-  function countVisits() {
-    // applications in the last 3 days, for the tab badge
-    var since = new Date(Date.now() - 3 * 86400000).toISOString();
-    api("visit_applications?select=id&created_at=gte." + since).then(function (res) {
-      var b = $("#visitBadge");
-      if (res.ok) { b.textContent = res.data.length; b.hidden = !res.data.length; }
-    });
-  }
 
   /* ---------------- 노래 추천 (학생 "내 폴더 → 노래 추천"; js/mynotes.js) ---------------- */
 
@@ -1519,11 +1555,8 @@
   }
 
   function countRecs(n) {
-    var b = $("#recBadge");
-    if (n != null) { b.textContent = n; b.hidden = !n; return; }
-    api("song_requests?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) {
-      if (res.ok) { b.textContent = res.data.length; b.hidden = !res.data.length; }
-    });
+    if (n != null) { setBadge("#recBadge", n); return; }
+    api("song_requests?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) { if (res.ok) setBadge("#recBadge", res.data.length); });
   }
 
   /* ---------------- 제휴 업체 예약 신청 (partner_requests; 학생 내 폴더 → 제휴 업체) ---------------- */
@@ -1628,8 +1661,7 @@
   });
   function countPartners() {
     api("partner_requests?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) {
-      var b = $("#partnerBadge");
-      if (res.ok) { b.textContent = res.data.length; b.hidden = !res.data.length; }
+      if (res.ok) setBadge("#partnerBadge", res.data.length);
     });
   }
 
@@ -1765,6 +1797,7 @@
     save.addEventListener("click", function () {
       api("consults?id=eq." + c.id, { method: "PATCH", body: { status: sel.value, memo: memo.value.trim() || null } }).then(function (res) {
         msg(note, res.ok ? "저장했습니다." : friendly(res), res.ok ? "ok" : "error");
+        if (res.ok) countConsults();
       });
     });
     row.appendChild(sel);
