@@ -60,6 +60,11 @@
   **원장님이 Claude에게 말하면:** Management API SQL로 `insert into public.audition_news (kind, company, title, event_date, deadline, body, link) values (…)` — kind는 '내방' / '오디션' / '합격'. 넣은 뒤 select로 확인하고 알려주기.
   **합격 소식은 학생 이름을 꼭 이니셜(김OO)로** — 원장님도 그렇게 올리기로 함. 포스터 사진을 채팅으로 받으면 `assets/news/`에 webp로 넣고 `image = 'assets/news/파일.webp'` (이건 main에 올려야 보임).
 
+## 첫 화면 (2026-10-28)
+- 아이콘 이름은 **영어** (YouTube, stage.jpg, audition.jpg …), 마우스를 올리면 한글 뜻(title). **map (오시는 길)**, **my folder (내 폴더)**만 한글을 작게 같이 씀.
+- 인스타그램 아이콘 2개 (오디션반·취미반). 아이콘을 아무 데로나 돌아다니게 하는 건 원장님과 얘기해서 안 함 (누르기 어렵고 정신없음).
+- 새 오디션 소식(14일 안, 안 본 것)이 있으면 audition.jpg에 빨간 N + 흔들림 (`js/newsbadge.js`, audition.html을 열면 꺼짐).
+
 ## 다음에 이어서 할 일 (2026-10-28 기준)
 1. ~~정리 대기~~ 2026-10-28 확인: 시험 연결 2개 해제·시험 예약 2건 취소 끝 (원장님이 관리자 화면에서).
 2. **배포 준비:** 원장님 컴퓨터(윈도우/맥?)에 Claude 데스크톱 앱 + Claude in Chrome 설치 안내 → 오픈 날 정하기 → 카페24 연결.
