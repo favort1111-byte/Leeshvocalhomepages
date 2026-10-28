@@ -1,5 +1,6 @@
-// 오디션 소식 (audition.html): posts the director writes in the admin page (or asks Claude to add) come
-// from the audition_news table and go on top of each section; the blog posts built into the page stay below.
+// 오디션 소식 (audition.html, results.html): posts the director writes in the admin page (or asks Claude to add)
+// come from the audition_news table, the academy Instagram's posts from ig_posts; both go on top of each
+// section, and the blog posts built into the page stay below.
 (function () {
   if (!window.LeeshAPI || !LeeshAPI.enabled()) return;
   // the home icon stops wiggling once the news page has been opened (js/newsbadge.js)
@@ -68,6 +69,58 @@
     li.appendChild(box);
     return li;
   }
+
+  /* 인스타그램에서 가져온 글 (ig_posts): each section's own kind, newest first, as post links like the blog posts.
+     Once there are any, the embedded Instagram box steps aside and 학원 소식 shows. */
+  var IG_SHOW = 6;
+  function igTitle(c) {
+    var line = String(c || "").split("\n").map(function (x) { return x.replace(/#\S+/g, "").trim(); }).filter(Boolean)[0] || "인스타그램 소식";
+    return line.length > 70 ? line.slice(0, 70) + "…" : line;
+  }
+  function igCard(p) {
+    var li = el("li"), a = el("a", "news__card");
+    a.href = "post.html?ig=" + encodeURIComponent(p.id);
+    var day = new Date(new Date(p.posted_at).getTime() + 9 * 3600000).toISOString().slice(0, 10);
+    var t = el("time", null, day.replace(/-/g, "."));
+    t.setAttribute("datetime", day);
+    a.appendChild(t);
+    var what = el("span", "news__what");
+    what.appendChild(el("span", "news__src", "Instagram"));
+    what.appendChild(document.createTextNode(" " + igTitle(p.caption)));
+    a.appendChild(what);
+    var go = el("span", "news__go", "→");
+    go.setAttribute("aria-hidden", "true");
+    a.appendChild(go);
+    li.appendChild(a);
+    return li;
+  }
+  LeeshAPI.request("/rest/v1/ig_posts?select=id,posted_at,caption,kind&order=posted_at.desc&limit=300", {
+    headers: LeeshAPI.headers()
+  }).then(function (res) {
+    if (!res.ok || !Array.isArray(res.data) || !res.data.length) return;
+    var box = document.querySelector(".news__insta");
+    if (box) box.hidden = true;
+    document.querySelectorAll("[data-news]").forEach(function (sec) {
+      var kind = sec.getAttribute("data-news");
+      var mine = res.data.filter(function (p) { return p.kind === kind; });
+      if (!mine.length) return;
+      sec.hidden = false;
+      var empty = sec.querySelector(".news__empty");
+      if (empty) empty.hidden = true;
+      var ul = el("ul", "news__list news__list--ig");
+      mine.slice(0, IG_SHOW).forEach(function (p) { ul.appendChild(igCard(p)); });
+      var first = sec.querySelector(".news__list, .news__more, .news__empty");
+      sec.insertBefore(ul, first);
+      if (mine.length > IG_SHOW) {
+        var more = el("details", "news__more");
+        more.appendChild(el("summary", null, "인스타그램 소식 " + (mine.length - IG_SHOW) + "개 더 보기"));
+        var rest = el("ul", "news__list");
+        mine.slice(IG_SHOW).forEach(function (p) { rest.appendChild(igCard(p)); });
+        more.appendChild(rest);
+        sec.insertBefore(more, ul.nextSibling);
+      }
+    });
+  });
 
   LeeshAPI.request("/rest/v1/audition_news?select=*&published=eq.true&order=event_date.desc.nullslast,created_at.desc", {
     headers: LeeshAPI.headers()

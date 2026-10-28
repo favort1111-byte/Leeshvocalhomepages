@@ -633,6 +633,12 @@ NEWS_BODY = (
     '      <p class="news__lede">기획사 공개·온라인 오디션 소식이에요. 마감이 지났을 수도 있으니 날짜와 글을 꼭 확인하세요.</p>\n'
     + news_list("오디션", 8) +
     '    </section>\n'
+    # 인스타그램에서 가져온 글 중 오디션·합격이 아닌 것 (js/auditions.js가 채우고 보여줌)
+    '    <section class="news__sec" data-news="소식" aria-labelledby="news-school-h" id="news-school" hidden>\n'
+    '      <h2 id="news-school-h">학원 소식</h2>\n'
+    '      <p class="news__lede">월말평가·세미나·연습실 안내 같은 학원 소식이에요.</p>\n'
+    '      <p class="news__empty">아직 올라온 소식이 없어요.</p>\n'
+    '    </section>\n'
     + news_foot() +
     '  </div>\n')
 

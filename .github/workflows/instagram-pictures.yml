@@ -1,0 +1,29 @@
+# Copies the academy Instagram's pictures into assets/ig/ (tools/ig_images.py), because Instagram's own
+# picture links stop working after a while. For now it runs only when started by hand (Actions → Run workflow);
+# a schedule is added once the director says the automatic runs are fine.
+name: Instagram pictures
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: instagram-pictures
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow==10.4.0
+      - run: python tools/ig_images.py
+      - name: Commit new pictures
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/ig
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "Copy new Instagram pictures"
+          git push

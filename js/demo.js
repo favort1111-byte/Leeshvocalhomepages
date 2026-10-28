@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 13; // bump when the demo defaults change
+  var VERSION = 14; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -111,6 +111,19 @@
       ],
       song_requests: [
         { id: 85, member_id: "S002", likes: "Ariana Grande, 태연", goal: "입시", memo: "고음이 많은 곡도 도전해보고 싶어요. (체험 모드 예시)", status: "접수", created_at: new Date(Date.now() - 7200000).toISOString() }
+      ],
+      // 인스타그램에서 가져온 글 (made up): the admin page's 인스타그램 연결 starts as connected
+      ig_connected: true,
+      ig_posts: [
+        { id: "demo_ig1", posted_at: new Date(Date.now() - 86400000).toISOString(), media_type: "IMAGE", kind: "내방", kind_fixed: false, hidden: false,
+          caption: "[이송희보컬레슨 내방오디션 일정] 체험 엔터테인먼트\n" + addDays(t, 9) + " 18시 30분\n\n모집대상: 2007년생 이후 출생자\n보컬: 무반주 1분 이내 / 댄스: 음원 준비 1분 이내\n\n체험 모드 예시 글이에요.\n#내방오디션 #이송희보컬레슨",
+          permalink: "https://www.instagram.com/leeshvocal_auditionn/", images: ["assets/img/blog/audition-board.webp"] },
+        { id: "demo_ig2", posted_at: new Date(Date.now() - 2 * 86400000).toISOString(), media_type: "IMAGE", kind: "소식", kind_fixed: false, hidden: false,
+          caption: "11월 다이어트 단톡방 운영 방식 변경 안내\n주 1회 인증 + 식단 피드백으로 바뀌어요.\n\n체험 모드 예시 글이에요.",
+          permalink: "https://www.instagram.com/leeshvocal_auditionn/", images: ["assets/img/blog/seminar.webp"] },
+        { id: "demo_ig3", posted_at: new Date(Date.now() - 5 * 86400000).toISOString(), media_type: "IMAGE", kind: "합격", kind_fixed: false, hidden: false,
+          caption: "체험 엔터테인먼트 1차 합격을 축하합니다! 김OO\n\n체험 모드 예시 글이에요.",
+          permalink: "https://www.instagram.com/leeshvocal_auditionn/", images: [] }
       ],
       tokens: [], // "로그인 유지" keys: { key, member_id }
       consults: [
@@ -447,6 +460,16 @@
       save();
       return { ok: true, id: row.id };
     },
+    admin_instagram_status: function () {
+      return { ok: true, connected: !!db.ig_connected, count: db.ig_posts.length, lastSync: new Date().toISOString(), error: null };
+    },
+    admin_instagram_connect: function (a) {
+      if (String(a.p_token || "").trim().length < 40) return fail("토큰을 다시 복사해서 붙여넣어 주세요.");
+      db.ig_connected = true;
+      save();
+      return { ok: true, count: db.ig_posts.length };
+    },
+    admin_instagram_sync: function () { return { ok: true, count: db.ig_posts.length }; },
     is_admin: function () { return true; }
   };
 

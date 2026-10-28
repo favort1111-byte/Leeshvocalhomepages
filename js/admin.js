@@ -145,7 +145,7 @@
     if (name === "bookings") loadDay(state.day || todayKst());
     if (name === "members") loadMembers();
     if (name === "consults") loadConsults();
-    if (name === "news") loadNews();
+    if (name === "news") { loadNews(); loadIg(); }
     if (name === "notices") loadNotices();
     if (name === "songrecs") loadRecs();
     if (name === "journal") loadJournal();
@@ -1055,6 +1055,87 @@
       });
     });
   }
+
+  /* ---------------- 인스타그램 → 오디션 소식 (ig_posts) ---------------- */
+
+  var IG_KIND = { "내방": "학원 내방 오디션", "오디션": "기획사 오디션", "합격": "합격 소식", "소식": "학원 소식" };
+  function igRpc(fn, args) { return token().then(function (t) { return LeeshAPI.rpc(fn, args || {}, t); }); }
+  function igTitle(c) {
+    var line = String(c || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean)[0] || "(글 없음)";
+    return line.length > 60 ? line.slice(0, 60) + "…" : line;
+  }
+  function loadIg() {
+    igRpc("admin_instagram_status").then(function (st) {
+      if (!st.ok) { $("#igStatus").textContent = st.error || "상태를 불러오지 못했어요."; return; }
+      $("#igForm").hidden = st.connected;
+      $("#igReconnect").hidden = !st.connected;
+      $("#igSync").hidden = !st.connected;
+      $("#igStatus").textContent = st.connected
+        ? "연결됨 · 가져온 글 " + st.count + "개" + (st.lastSync ? " · 마지막으로 가져온 때 " + stamp(st.lastSync) : "") + (st.error ? " · 최근 오류가 있었어요 (토큰을 다시 넣어보세요)" : "")
+        : "아직 연결 안 됨. 아래에 토큰을 붙여넣으면 오디션반 인스타 글이 오디션 소식에 들어가요.";
+    });
+    var ul = $("#igList");
+    ul.textContent = "";
+    api("ig_posts?select=id,posted_at,caption,kind,hidden,permalink&order=posted_at.desc&limit=80").then(function (res) {
+      if (!res.ok) return;
+      if (!res.data.length) { ul.appendChild(el("li", "sys-empty", "아직 가져온 글이 없어요.")); return; }
+      res.data.forEach(function (p) {
+        var li = el("li", "adm__card" + (p.hidden ? " is-hidden" : "")), top = el("div", "adm__cardtop");
+        top.appendChild(el("span", "sys-note", stamp(p.posted_at)));
+        top.appendChild(el("strong", null, igTitle(p.caption)));
+        li.appendChild(top);
+        var row = el("div", "adm__cardrow");
+        var sel = el("select");
+        sel.setAttribute("aria-label", "칸");
+        Object.keys(IG_KIND).forEach(function (k) { var o = el("option", null, IG_KIND[k]); o.value = k; sel.appendChild(o); });
+        sel.value = p.kind;
+        sel.addEventListener("change", function () {
+          api("ig_posts?id=eq." + p.id, { method: "PATCH", body: { kind: sel.value, kind_fixed: true } }).then(function (r) {
+            msg($("#igMsg"), r.ok ? "칸을 옮겼어요." : friendly(r), r.ok ? "ok" : "error");
+          });
+        });
+        row.appendChild(sel);
+        var hide = el("button", "sys-link", p.hidden ? "다시 보이기" : "숨기기");
+        hide.type = "button";
+        hide.addEventListener("click", function () {
+          api("ig_posts?id=eq." + p.id, { method: "PATCH", body: { hidden: !p.hidden } }).then(loadIg);
+        });
+        row.appendChild(hide);
+        if (p.permalink) {
+          var a = el("a", "sys-link", "인스타에서 보기 ↗");
+          a.href = p.permalink;
+          a.target = "_blank";
+          a.rel = "noopener";
+          row.appendChild(a);
+        }
+        li.appendChild(row);
+        ul.appendChild(li);
+      });
+    });
+  }
+  $("#igForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, btn = $("#igConnect");
+    btn.disabled = true;
+    msg($("#igMsg"), "연결하고 최근 글을 가져오는 중이에요. 1분쯤 걸릴 수 있어요…");
+    igRpc("admin_instagram_connect", { p_token: field(f, "token").value }).then(function (r) {
+      btn.disabled = false;
+      if (!r.ok) { msg($("#igMsg"), r.error === LeeshAPI.NETWORK_ERROR ? r.error : (r.error || "연결하지 못했어요.") + " 토큰을 다시 만들어 붙여넣어 주세요.", "error"); loadIg(); return; }
+      f.reset();
+      msg($("#igMsg"), "연결했어요. 인스타 글 " + r.count + "개를 가져왔어요. 오디션 소식에 바로 보여요.", "ok");
+      loadIg();
+    });
+  });
+  $("#igSync").addEventListener("click", function () {
+    var b = $("#igSync");
+    b.disabled = true;
+    igRpc("admin_instagram_sync").then(function (r) {
+      b.disabled = false;
+      msg($("#igMsg"), r.ok ? "새로 가져왔어요 (최근 " + r.count + "개 확인)." : (r.error || "가져오지 못했어요."), r.ok ? "ok" : "error");
+      loadIg();
+    });
+  });
+  $("#igReconnect").addEventListener("click", function () { $("#igForm").hidden = false; field($("#igForm"), "token").focus(); });
 
   /* ---------------- 공지 (학생 "내 폴더 → 공지"; js/mynotes.js) ---------------- */
 

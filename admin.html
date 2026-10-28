@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Jost:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=07641685">
-<link rel="stylesheet" href="css/admin.css?v=b571ed70">
+<link rel="stylesheet" href="css/admin.css?v=2c3609c6">
 </head>
 <body class="sys adm">
 
@@ -174,6 +174,27 @@
 
     <!-- 오디션 소식 (audition.html) -->
     <section class="sys-card" data-panel="news" hidden>
+      <!-- 인스타그램 → 오디션 소식 (supabase/schema.sql ig_posts) -->
+      <div class="adm__ig">
+        <h3 class="sys-h">인스타그램 연결</h3>
+        <p class="sys-note" id="igStatus">확인 중…</p>
+        <form id="igForm" class="adm__drawer">
+          <label class="sys-field"><span>토큰 붙여넣기 (Meta 앱 → 2. 액세스 토큰 생성 → "토큰 생성" → 복사)</span><input name="token" type="password" autocomplete="off" spellcheck="false" required></label>
+          <p class="sys-note">토큰은 비밀번호 같은 거라 채팅이나 카톡에 올리지 말고 여기에만 붙여넣어 주세요. 저장하면 다시 보여주지 않아요.</p>
+          <button class="sys-btn" type="submit" id="igConnect">연결하고 글 가져오기</button>
+        </form>
+        <div class="sys-row">
+          <button class="sys-link" type="button" id="igSync">지금 새 글 가져오기</button>
+          <button class="sys-link" type="button" id="igReconnect" hidden>토큰 다시 넣기</button>
+        </div>
+        <p class="sys-msg" id="igMsg" role="status"></p>
+        <details class="adm__igposts">
+          <summary>가져온 인스타 글 (칸 옮기기 · 숨기기)</summary>
+          <p class="sys-note">글 내용으로 칸을 저절로 골라요. 틀린 칸은 여기서 바꾸면 다음부터 그대로 둬요. 숨긴 글은 홈페이지에 안 보여요.</p>
+          <ul class="adm__cards" id="igList"></ul>
+        </details>
+      </div>
+
       <h3 class="sys-h" id="newsHead">새 소식 올리기</h3>
       <p class="sys-note">올리면 홈페이지 "오디션 소식"에 바로 보여요. 합격 소식에는 학생 실명 대신 이니셜(예: 김OO)로 써주세요.</p>
       <form id="newsForm" class="adm__drawer">
@@ -311,6 +332,6 @@
 
 <script src="js/config.js?v=595c4648"></script>
 <script src="js/api.js?v=d9a47c3b"></script>
-<script src="js/admin.js?v=be6993ea"></script>
+<script src="js/admin.js?v=8a2e6444"></script>
 </body>
 </html>

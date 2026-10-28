@@ -1,13 +1,17 @@
 // post.html?id=<글 번호>: one post moved over from the old Naver blog (tools/import_blog.py → data/blog/posts/<id>.json).
+// post.html?ig=<인스타 글 번호>: one post of the academy Instagram (ig_posts in Supabase, pictures copied to assets/ig/).
 (function () {
   var box = document.getElementById("post");
   if (!box) return;
   var id = (/[?&]id=(\d+)/.exec(location.search) || [])[1];
+  var ig = (/[?&]ig=(\w+)/.exec(location.search) || [])[1];
   var KIND = {
     visit: ["학원 내방 오디션", "audition.html", "audition"], audition: ["기획사 오디션 정보", "audition.html", "audition"],
     results: ["합격자 현황", "results.html", "audition"], tips: ["원포인트 레슨", "tips.html", "about"],
-    curriculum: ["커리큘럼", "tips.html#academy", "about"], academy: ["학원 이야기", "tips.html#academy", "about"]
+    curriculum: ["커리큘럼", "tips.html#academy", "about"], academy: ["학원 이야기", "tips.html#academy", "about"],
+    school: ["학원 소식", "audition.html#news-school", "audition"]
   };
+  var IG_KIND = { "내방": "visit", "오디션": "audition", "합격": "results", "소식": "school" };
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
   // the private preview can't hold 800 posts, so it reads them from the published copy (tools/build_preview.py)
   var BASE = (window.LEESH || {}).blogBase || "";
@@ -112,9 +116,10 @@
         img.src = BASE + b.src;
         img.alt = p.title + " 사진";
         img.loading = "lazy";
-        img.onerror = function () { fig.remove(); };
+        // an Instagram picture not copied yet: use Instagram's own link (b.alt) while it still works
+        img.onerror = function () { if (b.alt && img.src !== b.alt) img.src = b.alt; else fig.remove(); };
         fig.appendChild(img);
-        fig.addEventListener("click", function () { zoom(BASE + b.src, img.alt); });
+        fig.addEventListener("click", function () { zoom(img.src, img.alt); });
         body.appendChild(fig);
       } else if (b.t === "yt") body.appendChild(youtube(b.id));
       else if (b.t === "link") {
@@ -140,6 +145,28 @@
     box.appendChild(foot);
   }
 
+  /* An Instagram post in the same shape as a blog post: first line = title, the rest = text, every picture.
+     Pictures come from assets/ig/<id>/<n>.webp once copied (Instagram's own links run out after a while). */
+  function fromInstagram(p) {
+    var lines = String(p.caption || "").split("\n");
+    var title = (lines.map(function (x) { return x.replace(/#\S+/g, "").trim(); }).filter(Boolean)[0]) || "인스타그램 소식";
+    var at = lines.findIndex(function (x) { return x.replace(/#\S+/g, "").trim(); });
+    var rest = lines.slice(at + 1).filter(function (x) { return !/^\s*(#\S+\s*)+$/.test(x); }).map(function (x) { return x.trim(); });
+    var blocks = (p.images || []).map(function (u, i) { return { t: "img", src: "assets/ig/" + p.id + "/" + (i + 1) + ".webp", alt: u }; });
+    blocks.push({ t: "p", lines: rest });
+    if (p.permalink) blocks.push({ t: "link", url: p.permalink, title: "인스타그램에서 보기" });
+    var day = new Date(new Date(p.posted_at).getTime() + 9 * 3600000).toISOString().slice(0, 10);
+    return { kind: IG_KIND[p.kind] || "school", title: title, date: day, blocks: blocks };
+  }
+
+  if (ig) {
+    LeeshAPI.request("/rest/v1/ig_posts?select=*&id=eq." + encodeURIComponent(ig), { headers: LeeshAPI.headers() }).then(function (res) {
+      if (res.ok && res.data && res.data[0]) return render(fromInstagram(res.data[0]));
+      box.textContent = "";
+      box.appendChild(el("p", "news__empty", "글을 찾을 수 없어요."));
+    });
+    return;
+  }
   if (!id) { box.appendChild(el("p", "news__empty", "글을 찾을 수 없어요.")); return; }
   fetch(BASE + "data/blog/posts/" + id + ".json").then(function (r) { if (!r.ok) throw r; return r.json(); })
     .then(render, function () {

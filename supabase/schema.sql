@@ -1127,3 +1127,135 @@ grant execute on function public.member_repertoire_save(text, text, bigint, text
 -- 노래 추천받기 신청
 revoke execute on function public.member_song_request(text, text, text, text, text) from public;
 grant execute on function public.member_song_request(text, text, text, text, text) to anon, authenticated;
+
+-- ---------------------------------------------------------------- 인스타그램 → 홈페이지 (2026-10-28)
+-- 오디션반 인스타의 글을 가져와 오디션 소식에 블로그 글처럼 보여줍니다 (원장님: 해시태그 없이, 빠지는 글 없이).
+-- 연결 열쇠(토큰)는 원장님이 관리자 화면에 붙여넣고, 비공개 표에만 둡니다. 사진은 GitHub Action이 assets/ig/로 복사.
+create extension if not exists http with schema extensions;
+
+create table if not exists private.instagram (
+  id           int primary key default 1 check (id = 1),
+  token        text,
+  token_set_at timestamptz,
+  refreshed_at timestamptz,
+  last_sync    timestamptz,
+  last_error   text
+);
+insert into private.instagram (id) values (1) on conflict do nothing;
+
+create table if not exists public.ig_posts (
+  id         text primary key,                        -- 인스타 글 번호
+  posted_at  timestamptz not null,
+  caption    text,
+  permalink  text,
+  media_type text,
+  images     jsonb not null default '[]'::jsonb,      -- 인스타 사진 주소 (시간이 지나면 끊김 → assets/ig/<id>/<n>.webp 로 복사)
+  kind       text not null default '소식' check (kind in ('내방', '오디션', '합격', '소식')),
+  kind_fixed boolean not null default false,          -- 원장님이 칸을 옮긴 글은 다시 추측하지 않음
+  hidden     boolean not null default false,
+  synced_at  timestamptz not null default now()
+);
+create index if not exists ig_posts_posted_idx on public.ig_posts (posted_at desc);
+
+-- 글 내용으로 칸 고르기: 합격 축하 → 합격, 내방 → 학원 내방 오디션, 오디션 → 기획사 오디션, 나머지 → 학원 소식
+create or replace function private.ig_guess(c text) returns text
+language sql immutable set search_path = '' as $$
+  select case
+    when c ~ '합격' and c ~ '축하' then '합격'
+    when c ~ '내방' then '내방'
+    when c ~ '합격' then '합격'
+    when c ~* '오디션|audition|캐스팅' then '오디션'
+    else '소식' end;
+$$;
+
+-- 인스타에서 최근 글 가져오기 (pages × 50개). 열쇠는 20일마다 새로 받아서 60일 기한이 끊기지 않게.
+create or replace function private.ig_sync(pages int default 1) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  ig private.instagram;
+  url text;
+  r extensions.http_response;
+  j jsonb;
+  m jsonb;
+  n int := 0;
+  p int := 0;
+begin
+  select * into ig from private.instagram where id = 1;
+  if coalesce(ig.token, '') = '' then return jsonb_build_object('ok', false, 'error', '인스타그램이 아직 연결되지 않았어요.'); end if;
+  perform extensions.http_set_curlopt('CURLOPT_TIMEOUT', '25');
+  if coalesce(ig.refreshed_at, ig.token_set_at) < now() - interval '20 days' then
+    r := extensions.http_get('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=' || ig.token);
+    if r.status = 200 and (r.content::jsonb ->> 'access_token') is not null then
+      update private.instagram set token = r.content::jsonb ->> 'access_token', refreshed_at = now() where id = 1;
+      ig.token := r.content::jsonb ->> 'access_token';
+    end if;
+  end if;
+  url := 'https://graph.instagram.com/v23.0/me/media?limit=50&fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,'
+      || 'children%7Bmedia_type,media_url,thumbnail_url%7D&access_token=' || ig.token;
+  loop
+    r := extensions.http_get(url);
+    if r.status <> 200 then
+      update private.instagram set last_error = left(coalesce(r.content, 'HTTP ' || r.status), 300) where id = 1;
+      return jsonb_build_object('ok', false, 'error', '인스타그램에서 글을 받지 못했어요.', 'status', r.status);
+    end if;
+    j := r.content::jsonb;
+    for m in select * from jsonb_array_elements(coalesce(j -> 'data', '[]'::jsonb)) loop
+      insert into public.ig_posts (id, posted_at, caption, permalink, media_type, images, kind, synced_at)
+      values (m ->> 'id', (m ->> 'timestamp')::timestamptz, m ->> 'caption', m ->> 'permalink', m ->> 'media_type',
+        coalesce((select jsonb_agg(coalesce(case when c ->> 'media_type' = 'VIDEO' then c ->> 'thumbnail_url' end, c ->> 'media_url'))
+                  from jsonb_array_elements(m -> 'children' -> 'data') c),
+                 jsonb_build_array(coalesce(case when m ->> 'media_type' = 'VIDEO' then m ->> 'thumbnail_url' end, m ->> 'media_url'))),
+        private.ig_guess(coalesce(m ->> 'caption', '')), now())
+      on conflict (id) do update set caption = excluded.caption, permalink = excluded.permalink, media_type = excluded.media_type,
+        images = excluded.images, synced_at = now(),
+        kind = case when public.ig_posts.kind_fixed then public.ig_posts.kind else excluded.kind end;
+      n := n + 1;
+    end loop;
+    p := p + 1;
+    exit when p >= pages or (j -> 'paging' ->> 'next') is null;
+    url := j -> 'paging' ->> 'next';
+  end loop;
+  update private.instagram set last_sync = now(), last_error = null where id = 1;
+  return jsonb_build_object('ok', true, 'count', n);
+end $$;
+
+-- 관리자 화면: 열쇠 넣기(+ 처음엔 최근 300개 가져오기), 지금 가져오기, 상태 보기. 열쇠 자체는 다시 보여주지 않음.
+create or replace function public.admin_instagram_connect(p_token text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if length(trim(coalesce(p_token, ''))) < 40 then return private.fail('토큰을 다시 복사해서 붙여넣어 주세요.'); end if;
+  update private.instagram set token = trim(p_token), token_set_at = now(), refreshed_at = now(), last_error = null where id = 1;
+  return private.ig_sync(6);
+end $$;
+create or replace function public.admin_instagram_sync() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  return private.ig_sync(1);
+end $$;
+create or replace function public.admin_instagram_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare ig private.instagram;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  select * into ig from private.instagram where id = 1;
+  return jsonb_build_object('ok', true, 'connected', coalesce(ig.token, '') <> '', 'since', ig.token_set_at,
+    'lastSync', ig.last_sync, 'error', ig.last_error, 'count', (select count(*) from public.ig_posts));
+end $$;
+
+alter table public.ig_posts enable row level security;
+drop policy if exists admin_all on public.ig_posts;
+create policy admin_all on public.ig_posts for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists public_read on public.ig_posts;
+create policy public_read on public.ig_posts for select to anon, authenticated using (not hidden);
+grant select on public.ig_posts to anon;
+grant select, update, delete on public.ig_posts to authenticated;
+revoke all on private.instagram from public, anon, authenticated;
+revoke all on function private.ig_sync(int), private.ig_guess(text) from public, anon, authenticated;
+revoke execute on function public.admin_instagram_connect(text), public.admin_instagram_sync(), public.admin_instagram_status() from public, anon;
+grant execute on function public.admin_instagram_connect(text), public.admin_instagram_sync(), public.admin_instagram_status() to authenticated;
+
+-- 자동으로 가져오기 (원장님 허락 뒤 따로 실행):
+--   create extension if not exists pg_cron;
+--   select cron.schedule('leesh_instagram', '7 */2 * * *', 'select private.ig_sync(1)');
