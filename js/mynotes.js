@@ -1,5 +1,5 @@
 // "내 폴더" on the desktop: a signed-in student (js/signin.js — 카카오, the same sign-in
-// as 연습실 예약) sees 내 예약 · 일정·공지 · 월말평가 · 노래 추천 · 영상 추천 · 레퍼토리 · 연습 일지. Once signed in, the folder on
+// as 연습실 예약) sees 내 예약 · 일정·공지 · 월말평가 · 노래 추천 · 영상 추천 · 레퍼토리 · 연습 일지 · 제휴 업체. Once signed in, the folder on
 // the desktop carries the student's name, and the sign-in stays on this device so a link from
 // 카카오톡 (index.html#notes) opens straight in.
 (function () {
@@ -35,7 +35,7 @@
 
   var sign = LeeshSignIn.mount(box, {
     title: "내 폴더", titleClass: "book__title",
-    lede: "수강생은 내 예약, 학원 일정, 월말평가, 노래·영상 추천, 레퍼토리, 연습 일지를 여기서 봐요.", ledeClass: "book__lede",
+    lede: "수강생은 내 예약, 학원 일정, 월말평가, 노래·영상 추천, 레퍼토리, 연습 일지, 제휴 업체 신청을 여기서 해요.", ledeClass: "book__lede",
     onSignedIn: function (res, w) { who = w; load(); }
   });
 
@@ -73,6 +73,7 @@
       renderLogs(res.logs || [], res.repertoire || []);
       box.hidden = true;
       open.hidden = false;
+      return LeeshAPI.rpc("member_partners", { p_id: who.id, p_pin: who.key }).then(function (p) { if (p.ok) renderPartners(p); });
     });
   }
 
@@ -331,6 +332,96 @@
       plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
     }
     if (!plans.length && !plain.length) box.appendChild(el("p", "book__empty", "새 일정이나 공지가 없어요."));
+  }
+
+  /* 제휴 업체: 학생이 업체와 원하는 날짜·시간을 적어 신청 → 관리자 화면 "제휴 신청"에 보이고, 학원이 업체에 전화로
+     예약한 뒤 결과(날짜·시간·안내)를 적으면 여기에 보여요. 아직 접수 상태면 학생이 취소할 수 있어요. */
+  var PSTATE = { "접수": "예약 준비 중", "예약 완료": "예약 완료", "취소": "취소" };
+  function renderPartners(res) {
+    var box = scene.querySelector("#myPartners");
+    box.textContent = "";
+    var list = res.partners || [], mine = res.requests || [];
+    var sum = el("div", "fold__sum");
+    sum.appendChild(el("p", null, "실제 엔터 관계자가 추천한 제휴 업체예요."));
+    sum.appendChild(el("p", "sys-note", "신청하면 학원이 업체에 직접 예약해드리고, 예약이 되면 여기에 날짜·시간이 올라와요."));
+    box.appendChild(sum);
+
+    if (mine.length) {
+      box.appendChild(el("h3", "rec__title", "내 신청"));
+      mine.forEach(function (r) {
+        var c = el("article", "fold__card partner__req");
+        var top = el("p", "fold__main");
+        top.appendChild(el("span", "fold__tag partner__state partner__state--" + (r.status === "예약 완료" ? "ok" : r.status === "취소" ? "off" : "wait"), PSTATE[r.status] || r.status));
+        top.appendChild(el("b", null, " " + r.partner));
+        c.appendChild(top);
+        c.appendChild(el("p", "fold__date", dayLabel(r.at.slice(0, 10)) + " 신청 · 원하는 때: " + (r.wish || "-")));
+        if (r.memo) c.appendChild(el("p", "fold__body", r.memo));
+        if (r.reply) c.appendChild(el("p", "evalr__say partner__reply", r.reply));
+        if (r.status === "접수") {
+          var row = el("p", "fold__actions"), cancel = el("button", "sys-link", "신청 취소"), note = el("p", "sys-msg");
+          cancel.type = "button";
+          cancel.addEventListener("click", function () {
+            if (cancel.getAttribute("data-armed") !== "1") { cancel.setAttribute("data-armed", "1"); cancel.textContent = "한 번 더 누르면 취소해요"; return; }
+            cancel.disabled = true;
+            call("member_partner_cancel", { p_req: r.id }, note).then(function (ok) { if (ok) showTab("partners"); else cancel.disabled = false; });
+          });
+          row.appendChild(cancel);
+          c.appendChild(row);
+          c.appendChild(note);
+        }
+        box.appendChild(c);
+      });
+    }
+
+    var ask = el("section", "fold__ask");
+    ask.appendChild(el("h3", "rec__title", "예약 신청하기"));
+    if (!list.length) { ask.appendChild(el("p", "book__empty", "지금 신청할 수 있는 제휴 업체가 없어요.")); box.appendChild(ask); return; }
+    var f = el("form", "fold__form sys");
+    var pick = el("fieldset", "apply__set");
+    pick.appendChild(el("legend", null, "업체"));
+    var chips = el("div", "sys-radios apply__radios");
+    var info = el("p", "sys-note partner__info");
+    list.forEach(function (p) {
+      var l = el("label"), r = el("input");
+      r.type = "radio";
+      r.name = "partner";
+      r.value = p.id;
+      r.addEventListener("change", function () { info.textContent = p.info || ""; info.hidden = !p.info; });
+      l.appendChild(r);
+      l.appendChild(document.createTextNode(" " + p.category + (p.name ? " · " + p.name : "")));
+      chips.appendChild(l);
+    });
+    info.hidden = true;
+    pick.appendChild(chips);
+    pick.appendChild(info);
+    f.appendChild(pick);
+    var wish = el("input"); wish.name = "wish"; wish.maxLength = 200; wish.required = true; wish.placeholder = "예) 11월 3일 (월) 오후 2시 이후 / 평일 저녁 아무 때나";
+    f.appendChild(field2("원하는 날짜·시간", wish));
+    var memo = el("textarea"); memo.name = "memo"; memo.rows = 2; memo.maxLength = 500; memo.placeholder = "예) 오디션 프로필 촬영용 메이크업이에요 / 처음 가봐요";
+    f.appendChild(field2("받고 싶은 것·요청 사항 (선택)", memo));
+    var agree = el("label", "sys-keep"), ag = el("input");
+    ag.type = "checkbox";
+    agree.appendChild(ag);
+    agree.appendChild(document.createTextNode(" 예약을 위해 학원이 업체에 내 이름과 원하는 날짜·시간을 알려주는 데 동의해요."));
+    f.appendChild(agree);
+    var btn = el("button", "sys-btn", "신청하기");
+    btn.type = "submit";
+    f.appendChild(btn);
+    var note = el("p", "sys-msg");
+    f.appendChild(note);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var r = f.querySelector("[name=partner]:checked");
+      function bad(t) { note.textContent = t; note.className = "sys-msg sys-msg--error"; }
+      if (!r) return bad("업체를 골라주세요.");
+      if (!wish.value.trim()) return bad("원하는 날짜·시간을 적어주세요.");
+      if (!ag.checked) return bad("업체에 이름과 날짜·시간을 알려주는 데 동의해야 예약할 수 있어요.");
+      btn.disabled = true;
+      call("member_partner_request", { p_partner: Number(r.value), p_wish: wish.value, p_memo: memo.value || null }, note)
+        .then(function (ok) { btn.disabled = false; if (ok) showTab("partners"); });
+    });
+    ask.appendChild(f);
+    box.appendChild(ask);
   }
 
   /* 노래 추천: 원장님이 올린 목소리 분석 + 추천곡 (카카오톡으로 보낸 노래 영상을 분석). 학생은 여기서 신청해요. */

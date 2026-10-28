@@ -104,3 +104,6 @@ section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 .adm__song{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0;}
 .adm__player{height:34px;max-width:100%;}
 video.adm__player{height:auto;max-height:240px;}
+.adm__fold{margin-top:18px;}
+.adm__fold > summary{cursor:pointer;}
+.adm__fold[open] > summary{margin-bottom:8px;}

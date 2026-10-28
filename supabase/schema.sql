@@ -1635,3 +1635,118 @@ begin
   return jsonb_build_object('ok', true, 'count', n, 'visits', private.ig_visits());
 end $$;
 revoke all on function private.ig_sync(int) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_partner_requests (2026-10-28)
+-- 제휴 업체 예약 신청 (2026-10-28, 원장님): 예전엔 학생 → 선생님 → 관리자 → 업체 전화. 이제 학생이 내 폴더에서
+-- 신청하면 관리자 화면 "제휴 신청" 탭에 바로 보이고, 관리자가 업체에 전화로 예약한 뒤 결과(날짜·시간·안내)를 적으면
+-- 학생 내 폴더에 보임. 업체 목록(종류 · 이름 · 안내)은 관리자가 고침. 학생에게만 보이고 공개 페이지에는 안 나옴.
+create table if not exists public.partners (
+  id         bigint generated always as identity primary key,
+  category   text not null check (char_length(category) between 1 and 30),   -- 헤어 메이크업, 피부과 …
+  name       text check (char_length(name) <= 60),                          -- 업체 이름 (비워두면 종류만 보임)
+  info       text check (char_length(info) <= 500),                         -- 학생에게 보이는 안내 (위치·혜택·준비물 등)
+  sort       int not null default 0,
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+insert into public.partners (category, sort)
+select c, o::int * 10
+from unnest(array['헤어 메이크업', '붙임머리', '스타일링 컨설팅', '경락', '헬스장', '피부과', '성형외과', '치과', '촬영 스튜디오', '심리상담센터'])
+     with ordinality as t(c, o)
+where not exists (select 1 from public.partners);
+
+create table if not exists public.partner_requests (
+  id         bigint generated always as identity primary key,
+  partner_id bigint references public.partners (id) on delete set null,
+  partner    text not null check (char_length(partner) <= 100),             -- 신청할 때의 업체 (목록이 바뀌어도 남게)
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  wish       text check (char_length(wish) <= 200),                         -- 원하는 날짜·시간
+  memo       text check (char_length(memo) <= 500),                         -- 받고 싶은 것·요청 사항
+  status     text not null default '접수' check (status in ('접수', '예약 완료', '취소')),
+  reply      text check (char_length(reply) <= 500),                        -- 관리자가 학생에게: 예약 날짜·시간·안내
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists partner_requests_member_idx on public.partner_requests (member_id, created_at desc);
+
+alter table public.partners enable row level security;
+alter table public.partner_requests enable row level security;
+drop policy if exists admin_all on public.partners;
+create policy admin_all on public.partners for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists admin_all on public.partner_requests;
+create policy admin_all on public.partner_requests for all to authenticated using (public.is_admin()) with check (public.is_admin());
+revoke all on public.partners, public.partner_requests from anon;
+grant select, insert, update, delete on public.partners to authenticated;
+grant select, update, delete on public.partner_requests to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+-- 학생: 제휴 업체 목록 + 내 신청 (최근 10개)
+create or replace function public.member_partners(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return jsonb_build_object('ok', true,
+    'partners', coalesce((
+      select jsonb_agg(jsonb_build_object('id', p.id, 'category', p.category, 'name', p.name, 'info', p.info) order by p.sort, p.id)
+      from public.partners p where p.active
+    ), '[]'::jsonb),
+    'requests', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'partner', r.partner, 'wish', r.wish, 'memo', r.memo,
+               'status', r.status, 'reply', r.reply, 'at', r.created_at) order by r.created_at desc)
+      from (select * from public.partner_requests where member_id = mid order by created_at desc limit 10) r
+    ), '[]'::jsonb));
+end $$;
+
+-- 학생: 신청 (열린 신청은 3개까지, 한 달에 10번까지)
+create or replace function public.member_partner_request(p_id text, p_pin text, p_partner bigint,
+  p_wish text default null, p_memo text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  p public.partners;
+  v_wish text := nullif(trim(coalesce(p_wish, '')), '');
+  v_memo text := nullif(trim(coalesce(p_memo, '')), '');
+  label text;
+  new_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into p from public.partners where id = p_partner and active;
+  if p.id is null then return private.fail('업체를 골라주세요.'); end if;
+  if v_wish is null then return private.fail('원하는 날짜·시간을 적어주세요.'); end if;
+  if char_length(v_wish) > 200 or char_length(coalesce(v_memo, '')) > 500 then return private.fail('글이 너무 길어요.'); end if;
+  if (select count(*) from public.partner_requests where member_id = mid and status = '접수') >= 3 then
+    return private.fail('아직 처리 중인 신청이 3개 있어요. 예약이 끝나면 다시 신청해주세요.');
+  end if;
+  if (select count(*) from public.partner_requests where member_id = mid and created_at > now() - interval '30 days') >= 10 then
+    return private.fail('한 달에 10번까지 신청할 수 있어요.');
+  end if;
+  label := p.category || coalesce(' · ' || p.name, '');
+  insert into public.partner_requests (partner_id, partner, member_id, wish, memo)
+  values (p.id, left(label, 100), mid, v_wish, v_memo) returning id into new_id;
+  perform private.notify('💄 제휴 업체 신청: ' || (who ->> 'name') || ' · ' || label || chr(10) || v_wish);
+  return jsonb_build_object('ok', true, 'id', new_id);
+end $$;
+
+-- 학생: 아직 예약 전(접수)인 신청 취소
+create or replace function public.member_partner_cancel(p_id text, p_pin text, p_req bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  update public.partner_requests set status = '취소', updated_at = now()
+  where id = p_req and member_id = who ->> 'id' and status = '접수';
+  if not found then return private.fail('이미 예약된 신청은 학원에 연락해서 취소해주세요.'); end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke execute on function public.member_partners(text, text), public.member_partner_request(text, text, bigint, text, text),
+  public.member_partner_cancel(text, text, bigint) from public;
+grant execute on function public.member_partners(text, text), public.member_partner_request(text, text, bigint, text, text),
+  public.member_partner_cancel(text, text, bigint) to anon, authenticated;

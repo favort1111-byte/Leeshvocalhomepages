@@ -851,6 +851,12 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .fold__meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px !important;}
 .fold__tag{padding:1px 9px;border-radius:999px;border:1px solid rgba(110,59,40,.35);font-size:12.5px;color:var(--brown);}
 .fold__tag.is-done{background:#2E6B45;border-color:#2E6B45;color:#fff;}
+/* 제휴 업체 신청 (내 폴더) */
+.partner__state--ok{background:#2E6B45;border-color:#2E6B45;color:#fff;}
+.partner__state--wait{background:#F6E7C8;}
+.partner__state--off{opacity:.6;}
+.partner__reply{margin-top:8px !important;padding:8px 10px;border-left:3px solid #2E6B45;background:#F1F6F0;white-space:pre-wrap;font-size:14px;color:#2F3B2F;}
+.partner__info{margin-top:6px;white-space:pre-wrap;}
 .fold__body{margin-top:6px !important;white-space:pre-wrap;color:#4A3B30;font-size:14.5px;}
 .fold__actions{display:flex;gap:14px;margin-top:8px;}
 .fold__go{align-self:flex-start;}

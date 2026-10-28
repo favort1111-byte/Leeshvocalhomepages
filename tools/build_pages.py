@@ -163,7 +163,7 @@ ICON_LINKS = {
 
 
 # The folder on the desktop is the student's own folder (js/mynotes.js): 내 예약 · 일정·공지 · 월말평가 · 노래 추천 ·
-# 영상 추천 · 레퍼토리 · 연습 일지 (레슨 노트 is hidden by js/config.js lessonNotes).
+# 영상 추천 · 레퍼토리 · 연습 일지 · 제휴 업체 (레슨 노트 is hidden by js/config.js lessonNotes).
 MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" aria-label="내 폴더" hidden>
     <div class="scene__photo"></div>
     <button class="scene__back" type="button" data-leave>← 바탕화면</button>
@@ -183,6 +183,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
           <button type="button" role="tab" aria-selected="false" data-book-tab="videos">영상 추천</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="songs">레퍼토리</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="logs">연습 일지</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="partners">제휴 업체</button>
         </div>
         <div class="book__page" data-book-page="notes" id="myNotes"></div>
         <div class="book__page" data-book-page="bookings" id="myBookings" hidden></div>
@@ -192,6 +193,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
         <div class="book__page" data-book-page="videos" id="myVideos" hidden></div>
         <div class="book__page" data-book-page="songs" id="mySongs" hidden></div>
         <div class="book__page" data-book-page="logs" id="myLogs" hidden></div>
+        <div class="book__page" data-book-page="partners" id="myPartners" hidden></div>
       </div>
     </div>
   </section>

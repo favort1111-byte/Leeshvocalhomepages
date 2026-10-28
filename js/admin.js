@@ -115,7 +115,7 @@
       $("#app").hidden = false;
       $("#adminWho").hidden = false;
       $("#adminWho").textContent = session.email || "";
-      loadBase().then(function () { showTab("bookings"); countLinks(); countRecs(); countVisits(); });
+      loadBase().then(function () { showTab("bookings"); countLinks(); countRecs(); countVisits(); countPartners(); });
     });
   }
 
@@ -150,6 +150,7 @@
     if (name === "songrecs") loadRecs();
     if (name === "visits") loadVisits();
     if (name === "journal") loadJournal();
+    if (name === "partners") loadPartners();
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
   }
@@ -564,7 +565,7 @@
   /* ---------------- 카카오톡으로 보낼 주소 ---------------- */
 
   // Links straight into a screen (js/scene.js reads the #hash). Saved sign-ins open them without a login.
-  var LINKS = [["레슨 노트", "#notes"], ["내 예약", "#bookings"], ["일정·공지", "#notices"], ["월말평가", "#evals"], ["노래 추천", "#recs"], ["영상 추천", "#videos"], ["연습 일지", "#logs"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
+  var LINKS = [["레슨 노트", "#notes"], ["내 예약", "#bookings"], ["일정·공지", "#notices"], ["월말평가", "#evals"], ["노래 추천", "#recs"], ["영상 추천", "#videos"], ["연습 일지", "#logs"], ["제휴 업체", "#partners"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
     .filter(function (l) { return cfg.lessonNotes !== false || l[1] !== "#notes"; });
   function siteLink(to) { return new URL(to.charAt(0) === "#" ? "./" + to : to, location.href).href; }
   function openHref(to) { return to.charAt(0) === "#" ? "index.html" + to : to; }
@@ -1521,6 +1522,113 @@
     var b = $("#recBadge");
     if (n != null) { b.textContent = n; b.hidden = !n; return; }
     api("song_requests?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) {
+      if (res.ok) { b.textContent = res.data.length; b.hidden = !res.data.length; }
+    });
+  }
+
+  /* ---------------- 제휴 업체 예약 신청 (partner_requests; 학생 내 폴더 → 제휴 업체) ---------------- */
+
+  var PARTNER_STATES = ["접수", "예약 완료", "취소"];
+  function loadPartners() {
+    members().then(function () {
+      var st = $("#partnerFilter").value, ul = $("#partnerReqList");
+      ul.textContent = "";
+      api("partner_requests?select=*&order=created_at.desc&limit=300" + (st ? "&status=eq." + encodeURIComponent(st) : "")).then(function (res) {
+        if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+        if (!res.data.length) ul.appendChild(el("li", "sys-empty", st === "접수" ? "새 신청이 없어요." : "해당하는 신청이 없어요."));
+        res.data.forEach(function (r) { ul.appendChild(partnerCard(r)); });
+      });
+      countPartners();
+      loadPartnerList();
+    });
+  }
+  function partnerCard(r) {
+    var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+    var m = state.members.filter(function (x) { return x.id === r.member_id; })[0];
+    top.appendChild(el("strong", null, memberName(r.member_id) + (m && teacherOf(m) ? " · 담당 " + teacherOf(m) : "")));
+    top.appendChild(el("span", "adm__badge adm__badge--kind", r.partner));
+    top.appendChild(el("span", "sys-note", stamp(r.created_at)));
+    li.appendChild(top);
+    li.appendChild(el("p", null, "원하는 때: " + (r.wish || "-")));
+    if (r.memo) li.appendChild(el("p", "adm__quote", r.memo));
+    var row = el("div", "adm__cardrow");
+    var sel = el("select");
+    sel.setAttribute("aria-label", "상태");
+    PARTNER_STATES.forEach(function (s) { var o = el("option", null, s); if (s === r.status) o.selected = true; sel.appendChild(o); });
+    var reply = el("textarea");
+    reply.rows = 2;
+    reply.maxLength = 500;
+    reply.placeholder = "학생에게 보낼 말 (예: 11월 3일 (월) 오후 2시 예약됐어요. 학원 이름 말하고 들어가면 돼요.)";
+    reply.value = r.reply || "";
+    reply.setAttribute("aria-label", "학생에게 보낼 말");
+    var save = el("button", "sys-btn", "저장");
+    save.type = "button";
+    var note = el("span", "sys-msg");
+    save.addEventListener("click", function () {
+      api("partner_requests?id=eq." + r.id, { method: "PATCH", body: { status: sel.value, reply: reply.value.trim() || null, updated_at: new Date().toISOString() } }).then(function (res) {
+        msg(note, res.ok ? "저장했어요. 학생 내 폴더에 보여요." : friendly(res), res.ok ? "ok" : "error");
+        if (res.ok) countPartners();
+      });
+    });
+    row.appendChild(sel);
+    row.appendChild(save);
+    row.appendChild(deleteButton("partner_requests", r.id, loadPartners));
+    li.appendChild(reply);
+    li.appendChild(row);
+    li.appendChild(note);
+    return li;
+  }
+  function loadPartnerList() {
+    var ul = $("#partnerList");
+    ul.textContent = "";
+    api("partners?select=*&order=sort,id").then(function (res) {
+      if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      res.data.forEach(function (p) {
+        var li = el("li", "adm__card" + (p.active ? "" : " is-hidden"));
+        var f = el("form", "sys");
+        var row = el("div", "sys-row");
+        var cat = el("input"); cat.maxLength = 30; cat.required = true; cat.value = p.category; cat.setAttribute("aria-label", "종류");
+        var nm = el("input"); nm.maxLength = 60; nm.value = p.name || ""; nm.placeholder = "업체 이름"; nm.setAttribute("aria-label", "업체 이름");
+        row.appendChild(cat);
+        row.appendChild(nm);
+        f.appendChild(row);
+        var info = el("textarea"); info.rows = 2; info.maxLength = 500; info.value = p.info || ""; info.placeholder = "학생에게 보이는 안내 (위치·혜택·준비물 등)"; info.setAttribute("aria-label", "안내");
+        f.appendChild(info);
+        var bar = el("div", "adm__cardrow");
+        var save = el("button", "sys-btn", "저장");
+        save.type = "submit";
+        var hide = el("button", "sys-link", p.active ? "숨기기" : "다시 보이기");
+        hide.type = "button";
+        var note = el("span", "sys-msg");
+        f.addEventListener("submit", function (e) {
+          e.preventDefault();
+          api("partners?id=eq." + p.id, { method: "PATCH", body: { category: cat.value.trim(), name: nm.value.trim() || null, info: info.value.trim() || null } }).then(function (res) {
+            msg(note, res.ok ? "저장했어요." : friendly(res), res.ok ? "ok" : "error");
+          });
+        });
+        hide.addEventListener("click", function () { api("partners?id=eq." + p.id, { method: "PATCH", body: { active: !p.active } }).then(loadPartnerList); });
+        bar.appendChild(save);
+        bar.appendChild(hide);
+        bar.appendChild(note);
+        f.appendChild(bar);
+        li.appendChild(f);
+        ul.appendChild(li);
+      });
+    });
+  }
+  $("#partnerFilter").addEventListener("change", loadPartners);
+  $("#partnerAdd").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    api("partners", { method: "POST", body: { category: field(f, "category").value.trim(), name: field(f, "name").value.trim() || null,
+      info: field(f, "info").value.trim() || null, sort: 1000 } }).then(function (res) {
+      msg($("#partnerMsg"), res.ok ? "업체를 더했어요." : friendly(res), res.ok ? "ok" : "error");
+      if (res.ok) { f.reset(); loadPartnerList(); }
+    });
+  });
+  function countPartners() {
+    api("partner_requests?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) {
+      var b = $("#partnerBadge");
       if (res.ok) { b.textContent = res.data.length; b.hidden = !res.data.length; }
     });
   }

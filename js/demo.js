@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 17; // bump when the demo defaults change
+  var VERSION = 18; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -37,7 +37,7 @@
     var t = nowKst().today;
     var db = {
       version: VERSION,
-      next: 100,
+      next: 400,
       settings: { id: 1, open_min: 0, close_min: 1440, unit_min: 60, max_minutes: 120, daily_max_minutes: 120, max_days: 0, cancel_minutes: 60 },
       rooms: [["B1", "연습실"], ["B2", "연습실"], ["B3", "연습실"], ["B4", "연습실"], ["B5", "연습실"], ["C hall", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
@@ -127,6 +127,13 @@
         { id: 91, news_id: 41, audition: "체험 엔터테인먼트 다음 달 학원 내방 오디션", member_id: "S002", name: "이하늘", gender: "여", birth: "09년/18살",
           body_size: "163/47", field: "보컬", music: null, note: "학교가 늦게 끝나서 뒷순서로 부탁드려요 (체험 모드 예시)",
           created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: new Date(Date.now() - 3600000).toISOString() }
+      ],
+      // 제휴 업체 (종류만, 업체 이름은 원장님이 관리자에서 적음) + 예시 신청 하나
+      partners: ["헤어 메이크업", "붙임머리", "스타일링 컨설팅", "경락", "헬스장", "피부과", "성형외과", "치과", "촬영 스튜디오", "심리상담센터"]
+        .map(function (c, i) { return { id: 301 + i, category: c, name: null, info: c === "촬영 스튜디오" ? "프로필 사진 촬영 · 학원생 할인 (체험 모드 예시)" : null, sort: i * 10, active: true }; }),
+      partner_requests: [
+        { id: 351, partner_id: 301, partner: "헤어 메이크업", member_id: "S002", wish: "다음 주 토요일 오전", memo: "오디션 프로필 촬영용이에요 (체험 모드 예시)", status: "접수", reply: null,
+          created_at: new Date(Date.now() - 5400000).toISOString(), updated_at: new Date(Date.now() - 5400000).toISOString() }
       ],
       // 인스타그램에서 가져온 글 (made up): the admin page's 인스타그램 연결 starts as connected
       ig_connected: true,
@@ -500,6 +507,39 @@
         body_size: a.p_size, field: a.p_field, music: a.p_music || row.music || null, note: a.p_note, updated_at: new Date().toISOString() });
       save();
       return { ok: true, id: row.id };
+    },
+    member_partners: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      return { ok: true,
+        partners: db.partners.filter(function (p) { return p.active; }).sort(function (x, y) { return x.sort - y.sort || x.id - y.id; })
+          .map(function (p) { return { id: p.id, category: p.category, name: p.name, info: p.info }; }),
+        requests: db.partner_requests.filter(function (r) { return r.member_id === who.id; }).sort(function (x, y) { return x.created_at < y.created_at ? 1 : -1; }).slice(0, 10)
+          .map(function (r) { return { id: r.id, partner: r.partner, wish: r.wish, memo: r.memo, status: r.status, reply: r.reply, at: r.created_at }; }) };
+    },
+    member_partner_request: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var p = db.partners.filter(function (x) { return x.id === a.p_partner && x.active; })[0];
+      if (!p) return fail("업체를 골라주세요.");
+      if (!String(a.p_wish || "").trim()) return fail("원하는 날짜·시간을 적어주세요.");
+      if (db.partner_requests.filter(function (r) { return r.member_id === who.id && r.status === "접수"; }).length >= 3) {
+        return fail("아직 처리 중인 신청이 3개 있어요. 예약이 끝나면 다시 신청해주세요.");
+      }
+      var now = new Date().toISOString();
+      db.partner_requests.push({ id: ++db.next, partner_id: p.id, partner: p.category + (p.name ? " · " + p.name : ""), member_id: who.id,
+        wish: a.p_wish.trim(), memo: a.p_memo || null, status: "접수", reply: null, created_at: now, updated_at: now });
+      save();
+      return { ok: true };
+    },
+    member_partner_cancel: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var r = db.partner_requests.filter(function (x) { return x.id === a.p_req && x.member_id === who.id && x.status === "접수"; })[0];
+      if (!r) return fail("이미 예약된 신청은 학원에 연락해서 취소해주세요.");
+      r.status = "취소";
+      save();
+      return { ok: true };
     },
     admin_instagram_status: function () {
       return { ok: true, connected: !!db.ig_connected, count: db.ig_posts.length, lastSync: new Date().toISOString(), error: null };

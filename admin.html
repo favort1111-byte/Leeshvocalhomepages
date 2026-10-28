@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Jost:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=07641685">
-<link rel="stylesheet" href="css/admin.css?v=726b540e">
+<link rel="stylesheet" href="css/admin.css?v=351b3282">
 </head>
 <body class="sys adm">
 
@@ -52,6 +52,7 @@
       <button type="button" role="tab" data-tab="notices" aria-selected="false">일정·공지</button>
       <button type="button" role="tab" data-tab="songrecs" aria-selected="false">노래 추천 <span class="adm__badge" id="recBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="journal" aria-selected="false">연습 일지</button>
+      <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
       <button type="button" class="sys-link adm__logout" id="logout">로그아웃</button>
@@ -305,6 +306,32 @@
       <div id="jrBox"></div>
     </section>
 
+    <!-- 제휴 업체 예약 신청 (학생 "내 폴더 → 제휴 업체") -->
+    <section class="sys-card" data-panel="partners" hidden>
+      <div class="adm__bar">
+        <select id="partnerFilter" aria-label="상태">
+          <option value="접수" selected>접수 (예약 전)</option><option value="예약 완료">예약 완료</option><option value="취소">취소</option><option value="">전체</option>
+        </select>
+      </div>
+      <p class="sys-note">학생이 내 폴더 → 제휴 업체에서 낸 신청이에요. 업체에 전화로 예약한 뒤 <b>예약 완료</b>로 바꾸고 "학생에게 보낼 말"에 날짜·시간·준비물을 적어 저장하면 학생 내 폴더에 그대로 보여요.</p>
+      <p class="sys-msg" id="partnerMsg" role="status"></p>
+      <ul class="adm__cards" id="partnerReqList"></ul>
+
+      <details class="adm__fold">
+      <summary class="sys-h">제휴 업체 목록 고치기 (이름·안내 적기)</summary>
+      <p class="sys-note">학생 신청 화면에 보이는 업체예요. 업체 이름과 안내(위치·혜택·준비물 등)를 적으면 학생이 고를 때 보여요. 숨기면 학생 화면에서 빠져요 (예전 신청은 그대로).</p>
+      <ul class="adm__cards" id="partnerList"></ul>
+      <form id="partnerAdd" class="adm__drawer">
+        <div class="sys-row">
+          <label class="sys-field"><span>종류</span><input name="category" maxlength="30" required placeholder="예) 피부과"></label>
+          <label class="sys-field"><span>업체 이름 (선택)</span><input name="name" maxlength="60" placeholder="예) ○○피부과 선릉점"></label>
+        </div>
+        <label class="sys-field"><span>학생에게 보이는 안내 (선택)</span><textarea name="info" rows="2" maxlength="500" placeholder="예) 선릉역 3번 출구 · 학원생 할인 · 첫 방문은 상담만"></textarea></label>
+        <button class="sys-btn" type="submit">업체 더하기</button>
+      </form>
+      </details>
+    </section>
+
     <!-- 상담 신청 -->
     <section class="sys-card" data-panel="consults" hidden>
       <div class="adm__bar">
@@ -350,6 +377,6 @@
 
 <script src="js/config.js?v=f5423147"></script>
 <script src="js/api.js?v=ae8e391c"></script>
-<script src="js/admin.js?v=3dbd933e"></script>
+<script src="js/admin.js?v=d5c84fc5"></script>
 </body>
 </html>
