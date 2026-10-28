@@ -2,7 +2,7 @@
 consult and admin work on fake data in the browser with no database.
     python3 tools/build_preview.py OUT_DIR
 Used for private previews before launch; the real pages are never touched."""
-import os, shutil, sys
+import os, re, shutil, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGES = ["index.html", "about.html", "contact.html", "consult.html", "booking.html", "games.html", "audition.html", "results.html", "tips.html", "post.html", "privacy.html", "admin.html"]
@@ -13,6 +13,7 @@ out = sys.argv[1]
 os.makedirs(out, exist_ok=True)
 for page in PAGES:
     html = open(os.path.join(REPO, page)).read()
+    html = re.sub(r'((?:href|src)="(?:css|js)/[^"?]+)\?v=[0-9a-f]+"', r'\1"', html)  # the preview copy is always fresh
     assert API in html, page
     html = html.replace(API, API + '<script src="js/demo.js"></script>\n')
     # 800 moved blog posts + pictures don't fit in the preview: post.html and 내 폴더 read them from GitHub

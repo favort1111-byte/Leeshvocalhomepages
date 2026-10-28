@@ -704,9 +704,26 @@ privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송
                 + "</main>\n" + foot())
 
 out = {"audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+# css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
+# (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
+ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')
+def stamp(html):
+    import hashlib
+    def ver(m):
+        f = os.path.join(REPO, m.group(2))
+        if not os.path.exists(f):
+            return m.group(0)
+        return m.group(1) + "?v=" + hashlib.sha1(open(f, "rb").read()).hexdigest()[:8] + '"'
+    return ASSET.sub(ver, html)
+
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
-        f.write(html)
+        f.write(stamp(html))
+# admin.html is written by hand: only its links get the stamp
+admin = os.path.join(REPO, "admin.html")
+admin_html = open(admin).read()  # read first: opening for "w" empties the file
+with open(admin, "w") as f:
+    f.write(stamp(admin_html))
 missing = sorted(set(range(20)) - set(IMG))
 print("wrote", ", ".join(out), "| missing images:", missing or "none")

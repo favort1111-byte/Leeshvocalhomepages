@@ -89,6 +89,7 @@
 ## 배포·병합
 - **순서: 만들기가 먼저, 배포는 나중.** 지금은 운영 전입니다. 필요한 메뉴를 다 짠 뒤에 Supabase 연결 → 테스트 → 배포 순서로 갑니다.
 - main 병합은 원장님이 말할 때만 합니다.
+- 페이지의 css/js 주소에는 `?v=<내용 해시>`가 붙음 (`tools/build_pages.py` stamp, admin.html 포함). 그래서 css/js를 고치면 **꼭 build_pages.py를 다시 돌려서** 같이 올리기 (안 그러면 브라우저가 옛 css를 써서 화면이 깨짐, 2026-10-28 집 그림이 화면 가득 나왔던 일).
 - **시험용 주소 (2단계 테스트, 2026-10-27):** GitHub Pages가 main을 `https://favort1111-byte.github.io/Leeshvocalhomepages/`에 보여줌 (저장소 공개, 학생들은 모름).
   원장님 허락으로 2026-10-27 main에 처음 병합. 진짜 카카오 로그인은 여기서 시험. Supabase **Redirect URLs**에 `https://favort1111-byte.github.io/Leeshvocalhomepages/**` 필요 (원장님이 대시보드에서 추가, 내 토큰은 403).
 - 수강료 내용은 넣지 않습니다.
