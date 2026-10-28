@@ -86,7 +86,7 @@
     a.appendChild(t);
     var what = el("span", "news__what");
     what.appendChild(el("span", "news__src", "Instagram"));
-    what.appendChild(document.createTextNode(" " + igTitle(p.caption)));
+    what.appendChild(document.createTextNode(" " + (p.title || igTitle(p.caption))));
     a.appendChild(what);
     var go = el("span", "news__go", "→");
     go.setAttribute("aria-hidden", "true");
@@ -94,7 +94,7 @@
     li.appendChild(a);
     return li;
   }
-  LeeshAPI.request("/rest/v1/ig_posts?select=id,posted_at,caption,kind&order=posted_at.desc&limit=300", {
+  LeeshAPI.request("/rest/v1/ig_posts?select=id,posted_at,caption,title,kind&order=posted_at.desc&limit=500", {
     headers: LeeshAPI.headers()
   }).then(function (res) {
     if (!res.ok || !Array.isArray(res.data) || !res.data.length) return;
@@ -102,7 +102,14 @@
     if (box) box.hidden = true;
     document.querySelectorAll("[data-news]").forEach(function (sec) {
       var kind = sec.getAttribute("data-news");
-      var mine = res.data.filter(function (p) { return p.kind === kind; });
+      // one card per title: a month's 내방 오디션 posters all carry the same text (post.html shows them together)
+      var seen = {};
+      var mine = res.data.filter(function (p) {
+        var key = p.title || igTitle(p.caption);
+        if (p.kind !== kind || seen[key]) return false;
+        seen[key] = 1;
+        return true;
+      });
       if (!mine.length) return;
       sec.hidden = false;
       var empty = sec.querySelector(".news__empty");

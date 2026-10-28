@@ -1,8 +1,9 @@
 # Copies the academy Instagram's pictures into assets/ig/ (tools/ig_images.py), because Instagram's own
-# picture links stop working after a while. For now it runs only when started by hand (Actions → Run workflow);
-# a schedule is added once the director says the automatic runs are fine.
+# picture links stop working after a while. Every 3 hours (원장님 허락, 2026-10-28), or by hand (Actions → Run workflow).
 name: Instagram pictures
 on:
+  schedule:
+    - cron: "37 */3 * * *"
   workflow_dispatch:
 permissions:
   contents: write

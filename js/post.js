@@ -147,21 +147,35 @@
 
   /* An Instagram post in the same shape as a blog post: first line = title, the rest = text, every picture.
      Pictures come from assets/ig/<id>/<n>.webp once copied (Instagram's own links run out after a while). */
-  function fromInstagram(p) {
-    var lines = String(p.caption || "").split("\n");
-    var title = (lines.map(function (x) { return x.replace(/#\S+/g, "").trim(); }).filter(Boolean)[0]) || "인스타그램 소식";
-    var at = lines.findIndex(function (x) { return x.replace(/#\S+/g, "").trim(); });
-    var rest = lines.slice(at + 1).filter(function (x) { return !/^\s*(#\S+\s*)+$/.test(x); }).map(function (x) { return x.trim(); });
-    var blocks = (p.images || []).map(function (u, i) { return { t: "img", src: "assets/ig/" + p.id + "/" + (i + 1) + ".webp", alt: u }; });
+  // group: the posts with the same text (a month's 내방 오디션 posters), newest first; their pictures all go in
+  function fromInstagram(p, group) {
+    // body/title are cleaned by the database (private.ig_clean: no promo block, hashtags or divider lines)
+    var lines = String(p.body != null ? p.body : p.caption || "").split("\n").map(function (x) { return x.replace(/#\S+/g, "").trim(); });
+    var title = p.title || lines.filter(Boolean)[0] || "인스타그램 소식";
+    var at = lines.indexOf(title);
+    var rest = at === -1 ? lines : lines.slice(at + 1);
+    var blocks = [], seen = {};
+    (group && group.length ? group : [p]).forEach(function (g) {
+      (g.images || []).forEach(function (u, i) {
+        if (!u || seen[u]) return;
+        seen[u] = 1;
+        blocks.push({ t: "img", src: "assets/ig/" + g.id + "/" + (i + 1) + ".webp", alt: u });
+      });
+    });
     blocks.push({ t: "p", lines: rest });
-    if (p.permalink) blocks.push({ t: "link", url: p.permalink, title: "인스타그램에서 보기" });
+    if (p.permalink) blocks.push({ t: "link", url: p.permalink, title: p.media_type === "VIDEO" ? "▶ 인스타그램에서 영상 보기" : "인스타그램에서 보기" });
     var day = new Date(new Date(p.posted_at).getTime() + 9 * 3600000).toISOString().slice(0, 10);
     return { kind: IG_KIND[p.kind] || "school", title: title, date: day, blocks: blocks };
   }
 
   if (ig) {
     LeeshAPI.request("/rest/v1/ig_posts?select=*&id=eq." + encodeURIComponent(ig), { headers: LeeshAPI.headers() }).then(function (res) {
-      if (res.ok && res.data && res.data[0]) return render(fromInstagram(res.data[0]));
+      var p = res.ok && res.data && res.data[0];
+      if (p && p.title) {
+        return LeeshAPI.request("/rest/v1/ig_posts?select=id,images&order=posted_at.desc&limit=40&title=eq." + encodeURIComponent(p.title), { headers: LeeshAPI.headers() })
+          .then(function (g) { render(fromInstagram(p, g.ok ? g.data : null)); });
+      }
+      if (p) return render(fromInstagram(p));
       box.textContent = "";
       box.appendChild(el("p", "news__empty", "글을 찾을 수 없어요."));
     });

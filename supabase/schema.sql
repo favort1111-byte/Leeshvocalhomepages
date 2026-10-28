@@ -1256,6 +1256,120 @@ revoke all on function private.ig_sync(int), private.ig_guess(text) from public,
 revoke execute on function public.admin_instagram_connect(text), public.admin_instagram_sync(), public.admin_instagram_status() from public, anon;
 grant execute on function public.admin_instagram_connect(text), public.admin_instagram_sync(), public.admin_instagram_status() to authenticated;
 
--- 자동으로 가져오기 (원장님 허락 뒤 따로 실행):
---   create extension if not exists pg_cron;
---   select cron.schedule('leesh_instagram', '7 */2 * * *', 'select private.ig_sync(1)');
+-- 인스타 글 정리 (2026-10-28): 모든 글에 붙는 학원 홍보 문구·해시태그·구분선을 빼고 진짜 내용으로 칸을 고르고 제목을 뽑음.
+-- 내용이 홍보 문구뿐인 글(홍보 영상)은 처음부터 숨김 (관리자 화면에서 다시 보이기 가능).
+alter table public.ig_posts add column if not exists title text;
+alter table public.ig_posts add column if not exists body text;
+
+create or replace function private.ig_clean(c text) returns text
+language sql immutable set search_path = '' as $$
+  select btrim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
+    coalesce(c, ''),
+    '📍📍대형 기획사 보컬 트레이너 원장.*?\(24시간 상담\)❤️', '', 'g'),        -- the academy's standard promo block
+    '✔️.{0,2}?오디션은 많이 보는 것보다.*?문의주세요!.{0,2}?:\)', '', 'g'),               -- (sometimes on its own)
+    '#[^\s#]+', '', 'g'),                                                    -- hashtags
+    '(^|\n)[\s⠀_─･｡ﾟ☆:*.☽-]*(?=\n|$)', '\1', 'g'),                          -- separator / blank lines
+    '\n{2,}', E'\n\n', 'g'), E' \n\t⠀');
+$$;
+
+create or replace function private.ig_title(body text) returns text
+language sql immutable set search_path = '' as $$
+  select left(coalesce((
+    select btrim(l, E' \t⠀') from regexp_split_to_table(coalesce(body, ''), '\n') with ordinality t(l, i)
+    where btrim(l, E' \t⠀') <> '' and btrim(l, E' \t⠀') !~ '^\[?\s*\d{4}\s*이송희\s*보컬\s*레슨\s*\]?$'
+    order by i limit 1), ''), 80);
+$$;
+
+-- 칸 고르기 (정리한 내용으로): 합격 소식 → 합격, 내방 오디션 → 내방, 기획사 오디션 공고 → 오디션, 나머지 → 학원 소식
+create or replace function private.ig_guess(c text) returns text
+language sql immutable set search_path = '' as $$
+  select case
+    when b ~ '(합격자|합격을 축하|축하합니다|최종\s*합격|\d차\s*합격|합격했|합격하였)' and b !~ '합격\s*곡' then '합격'
+    when b ~ '내방\s*오디션' then '내방'
+    when b ~ '오디션' and b ~ '(모집\s*(대상|분야)|지원\s*(방법|자격|분야)|접수\s*(기간|방법)|오디션\s*(공고|일정))'
+         and b !~ '(특강|클래스|챌린지|다이어트)' then '오디션'
+    else '소식' end
+  from (select private.ig_clean(c) b) x;
+$$;
+
+create or replace function private.ig_sync(pages int default 1) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  ig private.instagram;
+  url text;
+  r extensions.http_response;
+  j jsonb;
+  m jsonb;
+  b text;
+  n int := 0;
+  p int := 0;
+begin
+  select * into ig from private.instagram where id = 1;
+  if coalesce(ig.token, '') = '' then return jsonb_build_object('ok', false, 'error', '인스타그램이 아직 연결되지 않았어요.'); end if;
+  perform extensions.http_set_curlopt('CURLOPT_TIMEOUT', '25');
+  if coalesce(ig.refreshed_at, ig.token_set_at) < now() - interval '20 days' then
+    r := extensions.http_get('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=' || ig.token);
+    if r.status = 200 and (r.content::jsonb ->> 'access_token') is not null then
+      update private.instagram set token = r.content::jsonb ->> 'access_token', refreshed_at = now() where id = 1;
+      ig.token := r.content::jsonb ->> 'access_token';
+    end if;
+  end if;
+  url := 'https://graph.instagram.com/v23.0/me/media?limit=50&fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,'
+      || 'children%7Bmedia_type,media_url,thumbnail_url%7D&access_token=' || ig.token;
+  loop
+    r := extensions.http_get(url);
+    if r.status <> 200 then
+      update private.instagram set last_error = left(coalesce(r.content, 'HTTP ' || r.status), 300) where id = 1;
+      return jsonb_build_object('ok', false, 'error', '인스타그램에서 글을 받지 못했어요.', 'status', r.status);
+    end if;
+    j := r.content::jsonb;
+    for m in select * from jsonb_array_elements(coalesce(j -> 'data', '[]'::jsonb)) loop
+      b := private.ig_clean(m ->> 'caption');
+      insert into public.ig_posts (id, posted_at, caption, permalink, media_type, images, kind, title, body, hidden, synced_at)
+      values (m ->> 'id', (m ->> 'timestamp')::timestamptz, m ->> 'caption', m ->> 'permalink', m ->> 'media_type',
+        coalesce((select jsonb_agg(coalesce(case when c ->> 'media_type' = 'VIDEO' then c ->> 'thumbnail_url' end, c ->> 'media_url'))
+                  from jsonb_array_elements(m -> 'children' -> 'data') c),
+                 jsonb_build_array(coalesce(case when m ->> 'media_type' = 'VIDEO' then m ->> 'thumbnail_url' end, m ->> 'media_url'))),
+        private.ig_guess(m ->> 'caption'), private.ig_title(b), b, b = '', now())
+      on conflict (id) do update set caption = excluded.caption, permalink = excluded.permalink, media_type = excluded.media_type,
+        images = excluded.images, title = excluded.title, body = excluded.body, synced_at = now(),
+        kind = case when public.ig_posts.kind_fixed then public.ig_posts.kind else excluded.kind end;
+      n := n + 1;
+    end loop;
+    p := p + 1;
+    exit when p >= pages or (j -> 'paging' ->> 'next') is null;
+    url := j -> 'paging' ->> 'next';
+  end loop;
+  update private.instagram set last_sync = now(), last_error = null where id = 1;
+  return jsonb_build_object('ok', true, 'count', n);
+end $$;
+revoke all on function private.ig_clean(text), private.ig_title(text), private.ig_guess(text), private.ig_sync(int) from public, anon, authenticated;
+
+-- 칸 고르기 다듬기: 합격은 글 첫머리(3줄)로만, 기획사 오디션은 공고 문구로, 특강·단과반·챌린지는 학원 소식으로.
+create or replace function private.ig_guess(c text) returns text
+language sql immutable set search_path = '' as $$
+  select case
+    when h ~ '(합격자|합격을 축하|축하합니다|데뷔를 축하|컴백을 축하|합격했|최종\s*합격생을 배출)' and h !~ '(Q&A|특강)' then '합격'
+    when b ~ '내방\s*오디션' then '내방'
+    when b ~* '(오디션 개최|audition|공개 오디션을 진행|지원\s*자격|접수\s*기간|모집\s*대상)' and b !~ '(특강|단과반|클래스|챌린지|다이어트|OPEN)' then '오디션'
+    else '소식' end
+  from (select b, array_to_string((regexp_split_to_array(b, '\n+'))[1:3], ' ') h
+        from (select private.ig_clean(c) b) x) y;
+$$;
+revoke all on function private.ig_guess(text) from public, anon, authenticated;
+
+-- 제목: 인사말("안녕하세요…")이나 아주 짧은 줄("혹시…")은 건너뛰고 그다음 줄로
+create or replace function private.ig_title(body text) returns text
+language sql immutable set search_path = '' as $$
+  select left(coalesce((
+    select btrim(l, E' \t⠀') from regexp_split_to_table(coalesce(body, ''), '\n') with ordinality t(l, i)
+    where char_length(btrim(l, E' \t⠀')) > 4
+      and btrim(l, E' \t⠀') !~ '^\[?\s*\d{4}\s*이송희\s*보컬\s*레슨\s*\]?$'
+      and btrim(l, E' \t⠀') !~ '^안녕하세요'
+    order by i limit 1), btrim(split_part(coalesce(body, ''), E'\n', 1))), 80);
+$$;
+revoke all on function private.ig_title(text) from public, anon, authenticated;
+
+-- 원장님 허락 (2026-10-28 "응 2개다 켜줘"): 2시간마다 인스타 새 글 가져오기. 가져오기만 하고 지우지 않음.
+create extension if not exists pg_cron;
+select cron.schedule('leesh_instagram', '7 */2 * * *', 'select private.ig_sync(1)');
