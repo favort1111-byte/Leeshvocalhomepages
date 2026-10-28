@@ -29,6 +29,17 @@
     <label class="sys-field"><span>비밀번호</span><input name="password" type="password" autocomplete="current-password" required></label>
     <button class="sys-btn sys-btn--block" type="submit">로그인</button>
     <p class="sys-msg" id="loginMsg" role="status"></p>
+    <button class="sys-link" type="button" id="forgot">처음이거나 비밀번호를 모르겠어요</button>
+  </form>
+
+  <!-- 초대 메일 · 비밀번호 메일의 링크를 누르고 오면 -->
+  <form id="pwForm" class="sys-card adm__login" hidden>
+    <h2 class="sys-h">새 비밀번호 정하기</h2>
+    <p class="sys-note">앞으로 관리자 화면에 들어올 때 쓸 비밀번호예요. 8자 이상으로 정해주세요.</p>
+    <label class="sys-field"><span>새 비밀번호</span><input name="p1" type="password" autocomplete="new-password" minlength="8" required></label>
+    <label class="sys-field"><span>한 번 더</span><input name="p2" type="password" autocomplete="new-password" minlength="8" required></label>
+    <button class="sys-btn sys-btn--block" type="submit">비밀번호 정하고 들어가기</button>
+    <p class="sys-msg" id="pwMsg" role="status"></p>
   </form>
 
   <div id="app" hidden>

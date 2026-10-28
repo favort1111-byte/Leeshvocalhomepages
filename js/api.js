@@ -100,6 +100,8 @@
     if (!/(^#|&)(access_token|error_description)=/.test(h)) return;
     var p = {};
     h.slice(1).split("&").forEach(function (kv) { var i = kv.indexOf("="); if (i > 0) p[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); });
+    // an admin's 초대 / 비밀번호 메일 link (type=invite|recovery): js/admin.js takes it, not Kakao
+    if (/^(invite|recovery|magiclink|signup)$/.test(p.type || "")) return;
     if (p.access_token) {
       kakao.save({ access: p.access_token, refresh: p.refresh_token, expires: Number(p.expires_at) || Math.floor(Date.now() / 1000) + (Number(p.expires_in) || 3600) });
     } else {

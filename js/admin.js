@@ -1496,9 +1496,63 @@
     });
   });
 
+  /* ---------------- 비밀번호 정하기 (초대 메일 · 비밀번호를 모를 때) ---------------- */
+
+  // "처음이거나 비밀번호를 모르겠어요": Supabase mails a link that comes back to this page.
+  $("#forgot").addEventListener("click", function () {
+    var email = field($("#loginForm"), "email").value.trim(), b = $("#forgot");
+    if (!email) { msg($("#loginMsg"), "위 칸에 이메일을 먼저 적고 눌러주세요.", "error"); field($("#loginForm"), "email").focus(); return; }
+    b.disabled = true;
+    var back = location.origin + location.pathname;
+    LeeshAPI.request("/auth/v1/recover?redirect_to=" + encodeURIComponent(back), {
+      method: "POST", headers: LeeshAPI.headers(), body: JSON.stringify({ email: email })
+    }).then(function (res) {
+      b.disabled = false;
+      if (res.status === 429) { msg($("#loginMsg"), "메일을 너무 자주 보냈어요. 1시간쯤 뒤에 다시 눌러주세요.", "error"); return; }
+      if (!res.ok) { msg($("#loginMsg"), "메일을 보내지 못했어요. 잠시 뒤 다시 해주세요.", "error"); return; }
+      // the same answer whether or not the address is an account
+      msg($("#loginMsg"), "관리자 이메일이면 메일을 보냈어요. 메일의 링크를 누르면 여기서 새 비밀번호를 정해요.", "ok");
+    });
+  });
+
+  // Back from the email link: #access_token=…&type=invite|recovery (js/api.js leaves it for this page)
+  var mailLink = (function () {
+    var h = location.hash, p = {};
+    if (!/(^#|&)access_token=/.test(h)) return null;
+    h.slice(1).split("&").forEach(function (kv) { var i = kv.indexOf("="); if (i > 0) p[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); });
+    if (!/^(invite|recovery|magiclink|signup)$/.test(p.type || "")) return null;
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ }
+    return { access: p.access_token, refresh: p.refresh_token, expires: Number(p.expires_at) || Math.floor(Date.now() / 1000) + (Number(p.expires_in) || 3600) };
+  })();
+  $("#pwForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, p1 = field(f, "p1").value, btn = f.querySelector("button");
+    if (p1 !== field(f, "p2").value) { msg($("#pwMsg"), "두 칸의 비밀번호가 달라요.", "error"); return; }
+    btn.disabled = true;
+    LeeshAPI.request("/auth/v1/user", { method: "PUT", headers: LeeshAPI.headers(mailLink.access), body: JSON.stringify({ password: p1 }) })
+      .then(function (res) {
+        btn.disabled = false;
+        if (!res.ok) {
+          var m = res.data && (res.data.msg || res.data.message || "") || "";
+          msg($("#pwMsg"), /different from the old/.test(m) ? "예전과 다른 비밀번호로 정해주세요."
+            : /weak|characters/i.test(m) ? "더 길거나 어려운 비밀번호로 정해주세요."
+            : res.status === 401 || res.status === 403 ? "링크가 만료됐어요. 로그인 화면에서 '처음이거나 비밀번호를 모르겠어요'를 다시 눌러주세요." : "저장하지 못했어요. 다시 해주세요.", "error");
+          return;
+        }
+        saveSession({ access: mailLink.access, refresh: mailLink.refresh, expires: mailLink.expires, email: res.data && res.data.email });
+        f.reset();
+        f.hidden = true;
+        enter();
+      });
+  });
+
   /* ---------------- start ---------------- */
 
   if (!LeeshAPI.enabled()) { $("#adminOff").hidden = false; return; }
+  if (mailLink) { saveSession(null); $("#pwForm").hidden = false; return; }
   session = loadSession();
   if (session) enter(); else $("#loginForm").hidden = false;
+  // an email link that had run out comes back as #error=…; js/api.js keeps the message
+  var linkErr = LeeshAPI.kakao.lastError();
+  if (linkErr && !session) msg($("#loginMsg"), "메일 링크가 만료됐거나 이미 썼어요. 아래 '처음이거나 비밀번호를 모르겠어요'를 다시 눌러주세요.", "error");
 })();
