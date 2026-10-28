@@ -325,8 +325,10 @@ end $$;
 
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = '' as $$
+  -- 이메일·비밀번호로 로그인한 관리자 계정만 (카카오로 만든 계정은 이메일이 같아도 관리자가 아님)
   select exists (select 1 from public.admins a
-                 where a.email = lower(coalesce(auth.jwt() ->> 'email', '')));
+                 where a.email = lower(coalesce(auth.jwt() ->> 'email', '')))
+     and coalesce(auth.jwt() -> 'app_metadata' ->> 'provider', '') = 'email';
 $$;
 
 /*
