@@ -774,3 +774,10 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
   .news__card--own summary .news__what{grid-column:1;grid-row:2;}
   .news__card--own summary .news__badge{grid-row:1 / span 2;grid-column:2;}
 }
+/* Audition sub-menu: audition news · results */
+.subnav{position:relative;z-index:2;display:flex;justify-content:center;gap:8px;padding:0 20px;margin:0 0 calc(26 * var(--s));}
+.subnav a{display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:999px;border:1px solid rgba(43,37,34,.35);
+  color:var(--ink);font-family:var(--f-serif);font-size:15px;text-decoration:none;background:rgba(255,255,255,.4);}
+.subnav a:hover{background:rgba(255,255,255,.8);}
+.subnav a[aria-current="page"]{background:var(--brown);border-color:var(--brown);color:#FBF3E4;}
+@media (max-width:760px){ .subnav{padding-top:14px;margin-bottom:0;} }

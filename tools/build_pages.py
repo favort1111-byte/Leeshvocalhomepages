@@ -558,10 +558,24 @@ def news_list(kind, first):
                 '      <ul class="news__list">\n' + "".join(news_card(p) for p in items[first:]) + "      </ul></details>\n")
     return out
 
-AUDITION_BODY = (
+# Audition has two sub-pages (원장님 2026-10-28): audition news (오디션 소식) and results (합격자 현황).
+CUR = ' aria-current="page"'
+
+def subnav(current):
+    links = [("news", "audition.html", "audition news"), ("results", "results.html", "results")]
+    return ('  <nav class="subnav" aria-label="오디션 메뉴">\n'
+            + "".join(f'    <a href="{h}"{CUR if k == current else ""}>{t}</a>\n' for k, h, t in links)
+            + "  </nav>\n")
+
+def news_foot():
+    return ('    <p class="news__foot">'
+            f'<a class="pill-btn" href="{BLOG_AUDITIONS}" target="_blank" rel="noopener">블로그 오디션 정보 전체 ↗</a> '
+            '<a class="pill-btn" href="consult.html">오디션 준비 상담하기</a></p>\n')
+
+NEWS_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">audition news</h1>\n'
-    '    <p class="booking__note">학원 내방 오디션 일정, 기획사 오디션 정보, 합격 소식을 모았어요. 누르면 블로그 글에서 자세히 볼 수 있어요.</p>\n'
+    '    <p class="booking__note">학원 내방 오디션 일정과 기획사 오디션 소식을 모았어요. 누르면 자세히 볼 수 있어요.</p>\n'
     '    <section class="news__sec" data-news="내방" aria-labelledby="news-visit">\n'
     '      <h2 id="news-visit">학원 내방 오디션</h2>\n'
     '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에 와서 직접 심사해요. 일정은 수업 때나 카카오톡으로도 안내해요.</p>\n'
@@ -572,22 +586,34 @@ AUDITION_BODY = (
     '      <p class="news__lede">기획사 공개·온라인 오디션 소식이에요. 마감이 지났을 수도 있으니 날짜와 글을 꼭 확인하세요.</p>\n'
     + news_list("오디션", 8) +
     '    </section>\n'
+    + news_foot() +
+    '  </div>\n')
+
+RESULTS_BODY = (
+    '  <div class="booking__inner news">\n'
+    '    <h1 class="booking__title">results</h1>\n'
+    '    <p class="booking__note">우리 학원 학생들의 기획사·오디션 합격 소식이에요. 학생 이름은 이니셜로 적어요.</p>\n'
     '    <section class="news__sec" data-news="합격" aria-labelledby="news-pass">\n'
-    '      <h2 id="news-pass">합격 소식</h2>\n'
-    + news_list("합격", 6) +
+    '      <h2 id="news-pass">합격자 현황</h2>\n'
+    + news_list("합격", 10) +
     '      <p class="news__lede"><a href="about.html#results">기획사·방송·입시 합격 실적 전체 보기 →</a></p>\n'
     '    </section>\n'
     '    <p class="news__foot">'
-    f'<a class="pill-btn" href="{BLOG_AUDITIONS}" target="_blank" rel="noopener">블로그 오디션 정보 전체 ↗</a> '
+    f'<a class="pill-btn" href="{blog.BLOG_RESULTS}" target="_blank" rel="noopener">블로그 합격자 현황 전체 ↗</a> '
     '<a class="pill-btn" href="consult.html">오디션 준비 상담하기</a></p>\n'
     '  </div>\n')
 
-audition_page = (head("Audition | 이송희보컬레슨",
-                      "이송희보컬레슨 오디션 소식: 매월 학원 내방 오디션 일정, 기획사 공개·온라인 오디션 정보, 합격 소식.")
-                 + '<main class="stage booking">\n'
-                 + nav("audition", "dark") + "\n"
-                 + AUDITION_BODY
-                 + "</main>\n" + foot("auditions"))
+def audition_like(title, desc, sub, body):
+    return (head(title, desc)
+            + '<main class="stage booking">\n'
+            + nav("audition", "dark") + "\n"
+            + subnav(sub) + body
+            + "</main>\n" + foot("auditions"))
+
+audition_page = audition_like("Audition | 이송희보컬레슨",
+                              "이송희보컬레슨 오디션 소식: 매월 학원 내방 오디션 일정, 기획사 공개·온라인 오디션 정보.", "news", NEWS_BODY)
+results_page = audition_like("Results | 이송희보컬레슨",
+                             "이송희보컬레슨 합격자 현황: 기획사·오디션 합격 소식.", "results", RESULTS_BODY)
 
 # ---------- PRIVACY (paper theme, like booking) ----------
 privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송희보컬레슨 홈페이지 개인정보처리방침.")
@@ -596,7 +622,7 @@ privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송
                 + '  <div class="booking__inner">\n' + privacy.body() + "  </div>\n"
                 + "</main>\n" + foot())
 
-out = {"audition.html": audition_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"audition.html": audition_page, "results.html": results_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
