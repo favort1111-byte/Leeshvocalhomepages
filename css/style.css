@@ -755,3 +755,22 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
   .news__what{grid-column:1;grid-row:2;}
   .news__go{grid-row:1 / span 2;grid-column:2;}
 }
+/* 오디션 소식: the academy's own posts (js/auditions.js) open in place */
+.news__card--own{display:block;padding:0;}
+.news__card--own summary{display:grid;grid-template-columns:7.4em 1fr auto;align-items:center;gap:10px;min-height:48px;padding:10px 14px;cursor:pointer;list-style:none;}
+.news__card--own summary::-webkit-details-marker{display:none;}
+.news__list--own .news__card{border-color:rgba(110,59,40,.35);background:#FFFDF8;}
+.news__badge{padding:2px 9px;border-radius:999px;background:var(--brown);color:#FBF3E4;font-size:12px;white-space:nowrap;}
+.news__badge.is-empty{background:none;color:var(--brown);font-size:16px;}
+.news__card--own[open] .news__badge.is-empty{transform:rotate(45deg);}
+.news__body{padding:0 14px 14px;font-size:14.5px;line-height:1.65;color:var(--ink-body);}
+.news__meta{margin:0 0 6px;font-weight:500;color:var(--brown);}
+.news__text{margin:0 0 10px;white-space:pre-wrap;}
+.news__poster{display:block;width:100%;max-width:420px;height:auto;margin:6px 0 10px;border-radius:8px;}
+.news__link{color:var(--brown);}
+@media (max-width:760px){
+  .news__card--own summary{grid-template-columns:1fr auto;gap:2px 10px;}
+  .news__card--own summary time{grid-column:1;}
+  .news__card--own summary .news__what{grid-column:1;grid-row:2;}
+  .news__card--own summary .news__badge{grid-row:1 / span 2;grid-column:2;}
+}

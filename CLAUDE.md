@@ -46,6 +46,10 @@
 ## 오디션 소식 메뉴 (2026-10-27 추가)
 - `audition.html` (메뉴 "audition", 첫 화면 오디션.jpg 아이콘도 여기로). 블로그 RSS의 **오디션 정보**(카테고리 14)·**합격자 현황**(24) 글을 모아 보여줌: 학원 내방 오디션 / 기획사 오디션 정보 / 합격 소식, 누르면 블로그 글로.
 - 업데이트: `python3 tools/fetch_auditions.py` → `data/auditions.json` (RSS는 최신 50개뿐이라 예전 글은 파일에 쌓아둠) → `python3 tools/build_pages.py`. 아직 자동 아님.
+- **학원이 직접 올리는 소식 (2026-10-28, 원장님: "직접도, Claude에게 말해서도 둘 다"):** 표 `public.audition_news` (마이그레이션 `leesh_audition_news`, 누구나 읽기·원장님만 쓰기) + 공개 버킷 `audition-news`(포스터).
+  원장님: 관리자 → **오디션 소식** 탭에서 쓰기·고치기·숨기기·삭제. 페이지는 `js/auditions.js`가 읽어서 각 칸 맨 위에 펼쳐지는 카드로 (마감 지나면 "지난 소식").
+  **원장님이 Claude에게 말하면:** Management API SQL로 `insert into public.audition_news (kind, company, title, event_date, deadline, body, link) values (…)` — kind는 '내방' / '오디션' / '합격'. 넣은 뒤 select로 확인하고 알려주기.
+  포스터 사진을 채팅으로 받으면 `assets/news/`에 webp로 넣고 `image = 'assets/news/파일.webp'` (이건 main에 올려야 보임). 합격 소식은 학생 실명 대신 이니셜.
 - 2026-10 기준 블로그 오디션 글은 4월이 마지막이라 페이지가 옛 소식으로 보일 수 있음.
 
 ## 다음에 이어서 할 일 (2026-10-28 기준)

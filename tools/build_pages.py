@@ -562,17 +562,17 @@ AUDITION_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">audition news</h1>\n'
     '    <p class="booking__note">학원 내방 오디션 일정, 기획사 오디션 정보, 합격 소식을 모았어요. 누르면 블로그 글에서 자세히 볼 수 있어요.</p>\n'
-    '    <section class="news__sec" aria-labelledby="news-visit">\n'
+    '    <section class="news__sec" data-news="내방" aria-labelledby="news-visit">\n'
     '      <h2 id="news-visit">학원 내방 오디션</h2>\n'
     '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에 와서 직접 심사해요. 일정은 수업 때나 카카오톡으로도 안내해요.</p>\n'
     + news_list("내방", 4) +
     '    </section>\n'
-    '    <section class="news__sec" aria-labelledby="news-open">\n'
+    '    <section class="news__sec" data-news="오디션" aria-labelledby="news-open">\n'
     '      <h2 id="news-open">기획사 오디션 정보</h2>\n'
     '      <p class="news__lede">기획사 공개·온라인 오디션 소식이에요. 마감이 지났을 수도 있으니 날짜와 글을 꼭 확인하세요.</p>\n'
     + news_list("오디션", 8) +
     '    </section>\n'
-    '    <section class="news__sec" aria-labelledby="news-pass">\n'
+    '    <section class="news__sec" data-news="합격" aria-labelledby="news-pass">\n'
     '      <h2 id="news-pass">합격 소식</h2>\n'
     + news_list("합격", 6) +
     '      <p class="news__lede"><a href="about.html#results">기획사·방송·입시 합격 실적 전체 보기 →</a></p>\n'
@@ -587,7 +587,7 @@ audition_page = (head("Audition | 이송희보컬레슨",
                  + '<main class="stage booking">\n'
                  + nav("audition", "dark") + "\n"
                  + AUDITION_BODY
-                 + "</main>\n" + foot())
+                 + "</main>\n" + foot("auditions"))
 
 # ---------- PRIVACY (paper theme, like booking) ----------
 privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송희보컬레슨 홈페이지 개인정보처리방침.")

@@ -145,6 +145,7 @@
     if (name === "bookings") loadDay(state.day || todayKst());
     if (name === "members") loadMembers();
     if (name === "consults") loadConsults();
+    if (name === "news") loadNews();
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
   }
@@ -954,6 +955,99 @@
         top.appendChild(del);
         li.appendChild(top);
         if (r.song) li.appendChild(el("p", "sys-note", "♪ " + r.song));
+        ul.appendChild(li);
+      });
+    });
+  }
+
+  /* ---------------- 오디션 소식 (audition.html; js/auditions.js shows them) ---------------- */
+
+  var NEWS_KIND = { "내방": "학원 내방 오디션", "오디션": "기획사 오디션", "합격": "합격 소식" };
+  var newsEdit = null; // the row being edited
+
+  function newsForm(p) {
+    var f = $("#newsForm");
+    newsEdit = p || null;
+    f.reset();
+    if (p) {
+      f.querySelector('[name=kind][value="' + p.kind + '"]').checked = true;
+      ["company", "title", "event_date", "deadline", "body", "link"].forEach(function (k) { field(f, k).value = p[k] || ""; });
+    }
+    $("#newsHead").textContent = p ? "소식 고치기" : "새 소식 올리기";
+    $("#newsSave").textContent = p ? "고친 내용 저장" : "올리기";
+    $("#newsCancel").hidden = !p;
+    var now = $("#newsPosterNow");
+    now.hidden = !(p && p.image);
+    now.textContent = p && p.image ? "지금 포스터가 있어요. 새 사진을 고르면 바뀌어요." : "";
+    newsLabel();
+    if (p) f.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  function newsLabel() {
+    var k = $("#newsForm").querySelector("[name=kind]:checked").value;
+    $("#newsDateLabel").textContent = k === "합격" ? "발표 날짜 (선택)" : "오디션 날짜 (선택)";
+  }
+  document.querySelectorAll("#newsForm [name=kind]").forEach(function (r) { r.addEventListener("change", newsLabel); });
+  $("#newsCancel").addEventListener("click", function () { newsForm(null); msg($("#newsMsg"), ""); });
+
+  $("#newsForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, btn = $("#newsSave");
+    var body = { kind: f.querySelector("[name=kind]:checked").value, updated_at: new Date().toISOString() };
+    ["company", "title", "event_date", "deadline", "body", "link"].forEach(function (k) { body[k] = field(f, k).value.trim() || null; });
+    if (!body.title) { msg($("#newsMsg"), "제목을 써주세요.", "error"); return; }
+    if (!newsEdit) body.published = true;
+    if (body.link && !/^https?:\/\//.test(body.link)) { msg($("#newsMsg"), "링크는 https:// 로 시작해야 해요.", "error"); return; }
+    btn.disabled = true;
+    msg($("#newsMsg"), "올리는 중…");
+    var file = field(f, "poster").files[0];
+    var poster = file ? token().then(function (t) {
+      var path = todayKst().slice(0, 7) + "/" + Date.now().toString(36) + ".webp";
+      return shrink(file).then(function (blob) { return LeeshAPI.storage.uploadNews(path, blob, t); })
+        .then(function (ok) { if (!ok) throw new Error("poster"); body.image = path; });
+    }) : Promise.resolve();
+    poster.then(function () {
+      return newsEdit
+        ? api("audition_news?id=eq." + newsEdit.id, { method: "PATCH", body: body })
+        : api("audition_news", { method: "POST", body: body });
+    }).then(function (res) {
+      btn.disabled = false;
+      if (!res.ok) { msg($("#newsMsg"), friendly(res), "error"); return; }
+      msg($("#newsMsg"), newsEdit ? "고쳤어요. 홈페이지에 바로 보여요." : "올렸어요. 홈페이지 오디션 소식에 바로 보여요.", "ok");
+      newsForm(null);
+      loadNews();
+    }, function () {
+      btn.disabled = false;
+      msg($("#newsMsg"), "포스터 사진을 올리지 못했어요. 다시 해보거나 사진 없이 올려주세요.", "error");
+    });
+  });
+
+  function loadNews() {
+    var ul = $("#newsList");
+    ul.textContent = "";
+    api("audition_news?select=*&order=created_at.desc&limit=200").then(function (res) {
+      if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) { ul.appendChild(el("li", "sys-empty", "아직 올린 소식이 없어요. 블로그에서 가져온 소식만 보이고 있어요.")); return; }
+      res.data.forEach(function (p) {
+        var li = el("li", "adm__card" + (p.published ? "" : " is-hidden")), top = el("div", "adm__cardtop");
+        top.appendChild(el("span", "adm__badge adm__badge--kind", NEWS_KIND[p.kind]));
+        top.appendChild(el("strong", null, (p.company ? p.company + " · " : "") + p.title));
+        if (p.event_date) top.appendChild(el("span", "sys-note", p.event_date));
+        if (!p.published) top.appendChild(el("span", "sys-note", "숨김"));
+        li.appendChild(top);
+        if (p.body) li.appendChild(el("p", "adm__quote", p.body.length > 120 ? p.body.slice(0, 120) + "…" : p.body));
+        var row = el("div", "adm__cardrow");
+        var ed = el("button", "sys-link", "고치기");
+        ed.type = "button";
+        ed.addEventListener("click", function () { newsForm(p); });
+        var hide = el("button", "sys-link", p.published ? "숨기기" : "다시 보이기");
+        hide.type = "button";
+        hide.addEventListener("click", function () {
+          api("audition_news?id=eq." + p.id, { method: "PATCH", body: { published: !p.published, updated_at: new Date().toISOString() } }).then(loadNews);
+        });
+        row.appendChild(ed);
+        row.appendChild(hide);
+        row.appendChild(deleteButton("audition_news", p.id, loadNews));
+        li.appendChild(row);
         ul.appendChild(li);
       });
     });

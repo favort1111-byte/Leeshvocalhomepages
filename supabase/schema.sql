@@ -162,6 +162,23 @@ create table if not exists public.eval_reports (
   primary key (member_id, month)
 );
 
+-- 오디션 소식 (audition.html). 원장님이 관리자 화면에서 쓰거나, Claude에게 말해서 넣습니다. 누구나 읽을 수 있어요.
+-- 합격 소식에는 학생 실명 대신 이니셜·학년 등으로 (개인정보).
+create table if not exists public.audition_news (
+  id         bigint generated always as identity primary key,
+  kind       text not null check (kind in ('내방', '오디션', '합격')),
+  company    text check (char_length(company) <= 40),
+  title      text not null check (char_length(title) between 1 and 80),
+  event_date date,                                  -- 오디션 날 (합격 소식은 발표 날)
+  deadline   date,                                  -- 접수 마감 (지나면 "지난 소식")
+  body       text check (char_length(body) <= 3000),
+  link       text check (link ~ '^https?://'),
+  image      text,                                  -- 포스터: Storage audition-news/<경로> 또는 assets/… 주소
+  published  boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- 관리자 화면에 로그인할 수 있는 이메일 (Supabase Authentication에 만든 계정)
 create table if not exists public.admins (
   email text primary key check (email = lower(email))
@@ -802,6 +819,7 @@ alter table public.members  enable row level security;
 alter table public.bookings enable row level security;
 alter table public.consults enable row level security;
 alter table public.eval_reports enable row level security;
+alter table public.audition_news enable row level security;
 alter table public.admins   enable row level security;
 alter table public.lesson_notes  enable row level security;
 alter table public.monthly_evals enable row level security;
@@ -811,7 +829,7 @@ alter table public.link_requests enable row level security;
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'eval_reports', 'link_requests'] loop
+  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'eval_reports', 'audition_news', 'link_requests'] loop
     execute format('drop policy if exists admin_all on public.%I', tbl);
     execute format('create policy admin_all on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', tbl);
   end loop;
@@ -831,7 +849,11 @@ grant delete on public.members to authenticated;
 drop policy if exists admin_delete on public.members;
 create policy admin_delete on public.members for delete to authenticated using (public.is_admin());
 grant select, insert, update, delete on public.settings, public.rooms, public.bookings, public.consults,
-  public.lesson_notes, public.monthly_evals, public.eval_reports to authenticated;
+  public.lesson_notes, public.monthly_evals, public.eval_reports, public.audition_news to authenticated;
+-- 오디션 소식은 공개: 누구나 올라간(published) 글만 읽기
+grant select on public.audition_news to anon;
+drop policy if exists public_read on public.audition_news;
+create policy public_read on public.audition_news for select to anon, authenticated using (published);
 grant select on public.admins to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 
@@ -867,3 +889,12 @@ drop policy if exists eval_reports_own on storage.objects;
 create policy eval_reports_own on storage.objects for select to authenticated
   using (bucket_id = 'eval-reports' and (storage.foldername(name))[1] =
          (select m.id from public.members m where m.kakao_user = auth.uid() and m.status in ('재원', '외부')));
+
+-- 오디션 소식 포스터: 공개 버킷 (누구나 보기), 올리고 지우기는 원장님만.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('audition-news', 'audition-news', true, 3145728, array['image/webp', 'image/jpeg', 'image/png'])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+drop policy if exists audition_news_admin on storage.objects;
+create policy audition_news_admin on storage.objects for all to authenticated
+  using (bucket_id = 'audition-news' and public.is_admin())
+  with check (bucket_id = 'audition-news' and public.is_admin());

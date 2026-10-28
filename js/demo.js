@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 9; // bump when the demo defaults change
+  var VERSION = 10; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -74,6 +74,15 @@
         { member_id: "S001", month: "2026-09-01", pages: 2, song: "태연(TAEYEON) - Rain", teacher: "이송희", basic: 7, technique: 7.5, acting: 6.5, styling: 7, total: 28, stage: "본사 오디션 도전", updated_at: new Date().toISOString() },
         { member_id: "S001", month: "2026-06-01", pages: 2, song: "아이유 - 너의 의미", teacher: "이송희", basic: 6, technique: 6, acting: 5.5, styling: 6.5, total: 24, stage: "1차 합격 가능성", updated_at: new Date().toISOString() },
         { member_id: "S002", month: "2026-09-01", pages: 0, song: "Ariana Grande - Honeymoon Avenue", teacher: "안유정", basic: 7.5, technique: 7, acting: 7, styling: 7.5, total: 29, stage: "본사 오디션 도전", updated_at: new Date().toISOString() }
+      ],
+      // 오디션 소식 (audition.html): sample posts, as if written in the admin page
+      audition_news: [
+        { id: 41, kind: "내방", company: "체험 엔터테인먼트", title: "다음 달 학원 내방 오디션", event_date: addDays(t, 18), deadline: addDays(t, 12),
+          body: "준비곡 2곡 (1절 + 후렴)\n자기소개 30초\n복장: 몸 라인이 보이는 편한 옷\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 42, kind: "합격", company: "체험 엔터테인먼트", title: "1차 합격 (김OO)", event_date: addDays(t, -3), deadline: null,
+          body: "축하해요! 체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          created_at: new Date(Date.now() - 3 * 86400000).toISOString(), updated_at: new Date().toISOString() }
       ],
       tokens: [], // "로그인 유지" keys: { key, member_id }
       consults: [
@@ -450,7 +459,7 @@
       if (p.table === "rooms" && db.rooms.some(function (r) { return r.name === body.name; })) {
         return { status: 409, data: { message: "duplicate key" } };
       }
-      var row = Object.assign({ id: ++db.next }, body);
+      var row = Object.assign({ id: ++db.next }, p.table === "audition_news" ? { created_at: new Date().toISOString(), published: true } : {}, body);
       rows.push(row);
       save();
       return { status: 201, data: [row] };
@@ -540,6 +549,9 @@
       var p = path.split("/"), r = db.eval_reports.filter(function (x) { return x.member_id === p[0] && x.month.slice(0, 7) === p[1]; })[0];
       return Promise.resolve(r && Number(p[2].replace(/\D/g, "")) <= r.pages ? samplePage(path) : null);
     };
+    st.uploadNews = function (path, blob) { pictures["news/" + path] = URL.createObjectURL(blob); return Promise.resolve(true); };
+    var realUrl = st.newsUrl;
+    st.newsUrl = function (path) { return pictures["news/" + path] || realUrl(path); };
     st.remove = function (paths) { paths.forEach(function (x) { delete pictures[x]; }); return Promise.resolve(true); };
   }
 

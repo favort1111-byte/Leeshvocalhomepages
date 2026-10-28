@@ -93,3 +93,7 @@ section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 .adm__evaltable select{max-width:280px;}
 .adm__evaltable tr.is-miss td{background:#FDECEA;}
 #evalBox textarea{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;}
+
+/* 오디션 소식 */
+.adm__badge--kind{background:#6E3B28;}
+.adm__card.is-hidden{opacity:.6;}
