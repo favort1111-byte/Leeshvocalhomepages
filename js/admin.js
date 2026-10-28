@@ -1352,10 +1352,10 @@
   $("#visitPick").addEventListener("change", loadVisitList);
   $("#visitCopy").addEventListener("click", function () {
     if (!visitRows.length) { msg($("#visitMsg"), "복사할 신청이 없어요.", "error"); return; }
-    var lines = [["순번", "이름", "성별", "출생년도/나이", "키/몸무게", "지원분야", "댄스음원", "특이사항", "신청 시각"].join("\t")];
+    var lines = [["순번", "이름", "성별", "출생년도/나이", "키/몸무게", "지원분야", "특이사항", "댄스음원", "신청 시각"].join("\t")];
     visitRows.forEach(function (a, i) {
-      lines.push([i + 1, a.name, a.gender || "", a.birth || "", a.body_size || "", a.field || "", a.music ? "있음" : "",
-        String(a.note || "").replace(/\s+/g, " "), stamp(a.created_at)].join("\t"));
+      lines.push([i + 1, a.name, a.gender || "", a.birth || "", a.body_size || "", a.field || "",
+        String(a.note || "").replace(/\s+/g, " "), a.music ? "있음" : "", stamp(a.created_at)].join("\t"));
     });
     copyText(lines.join("\n"), $("#visitCopy"));
   });

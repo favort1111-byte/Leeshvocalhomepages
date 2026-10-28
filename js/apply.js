@@ -1,5 +1,5 @@
 // apply.html: 학원 내방 오디션 신청서 — the same questions as the academy's Google Form (이름, 성별, 출생년도/나이,
-// 키/몸무게, 지원분야 택 1, 댄스 음원, 특이사항). 학원생만: sign in with Kakao (js/signin.js) first. Each 내방 오디션
+// 키/몸무게, 지원분야 택 1, 특이사항, 댄스 음원). 학원생만: sign in with Kakao (js/signin.js) first. Each 내방 오디션
 // the director posts in the admin page (audition_news kind 내방) takes applications until its 마감 (or the day itself);
 // sending again changes the application. apply.html?news=<id> opens that audition.
 (function () {
@@ -129,6 +129,10 @@
     fs.appendChild(radios("field", FIELDS, mine && mine.field));
     f.appendChild(fs);
 
+    // 특이사항 before 댄스음원 (원장님 2026-10-28: 이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야 · 특이사항 · 댄스음원)
+    var note = el("textarea"); note.name = "note"; note.rows = 3; note.maxLength = 1000; note.value = mine && mine.note || "";
+    f.appendChild(field("특이사항", note, "순서 조정이 필요한 경우 작성해주세요! ex) 학교가 늦게 끝나서 뒷순서로 배정 부탁드립니다(7시 이후) · 지방에 살아서 7시에는 학원에서 나가야 해서 앞순서로 배정 부탁드립니다."));
+
     // 댄스음원 (always shown, like the Google Form): required for 댄스 (MP3); a big file goes to 실장님 on KakaoTalk
     var dance = el("fieldset", "apply__set apply__music");
     dance.appendChild(el("legend", null, "댄스음원"));
@@ -145,9 +149,6 @@
     byKakao.appendChild(document.createTextNode(" 음원은 실장님께 카톡으로 보낼게요"));
     dance.appendChild(byKakao);
     f.appendChild(dance);
-
-    var note = el("textarea"); note.name = "note"; note.rows = 3; note.maxLength = 1000; note.value = mine && mine.note || "";
-    f.appendChild(field("특이사항", note, "순서 조정이 필요한 경우 작성해주세요! ex) 학교가 늦게 끝나서 뒷순서로 배정 부탁드립니다(7시 이후) · 지방에 살아서 7시에는 학원에서 나가야 해서 앞순서로 배정 부탁드립니다."));
 
     var btn = el("button", "sys-btn sys-btn--block", mine ? "고친 내용 보내기" : "제출");
     btn.type = "submit";
