@@ -170,7 +170,8 @@ ICON_LINKS = {
 }
 
 
-# The folder on the desktop is the student's own folder: 수강 ID login, then 레슨 노트 / 월말평가 (js/mynotes.js).
+# The folder on the desktop is the student's own folder (js/mynotes.js): 내 예약 · 일정·공지 · 월말평가 · 노래 추천 ·
+# 영상 추천 · 레퍼토리 · 연습 일지 (레슨 노트 is hidden by js/config.js lessonNotes).
 MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" aria-label="내 폴더" hidden>
     <div class="scene__photo"></div>
     <button class="scene__back" type="button" data-leave>← 바탕화면</button>
@@ -183,16 +184,20 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
         </header>
         <div class="book__tabs" role="tablist">
           <button type="button" role="tab" aria-selected="true" data-book-tab="notes">레슨 노트</button>
-          <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="bookings">내 예약</button>
-          <button type="button" role="tab" aria-selected="false" data-book-tab="notices">공지</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="notices">일정·공지</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="recs">노래 추천</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="videos">영상 추천</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="songs">레퍼토리</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="logs">연습 일지</button>
         </div>
         <div class="book__page" data-book-page="notes" id="myNotes"></div>
-        <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
         <div class="book__page" data-book-page="bookings" id="myBookings" hidden></div>
         <div class="book__page" data-book-page="notices" id="myNotices" hidden></div>
+        <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
+        <div class="book__page" data-book-page="recs" id="myRecs" hidden></div>
+        <div class="book__page" data-book-page="videos" id="myVideos" hidden></div>
         <div class="book__page" data-book-page="songs" id="mySongs" hidden></div>
         <div class="book__page" data-book-page="logs" id="myLogs" hidden></div>
       </div>
@@ -215,7 +220,7 @@ home_icons = "\n".join([
     thumb(563, 256.5, 61.5, 47.5, 6, "hobby.jpg", scene="hobby", ko="취미반"),
     thumb(637.5, 119.5, 73.5, 43, 9, "exam.jpg", scene="exam", ko="입시 상담"),
     thumb(699, 150, 43.5, 49, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
-    icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 월말평가"),
+    icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가·노래 추천"),
     icon(590, 352, 44, 44, "games.exe", "games.html", GAME_ICON, ko="미니게임"),
 ])
 
@@ -443,7 +448,7 @@ consult_icons = "\n".join([
     thumb(70, 248, 37, 37, 1, "stage.jpg", scene="stage", ko="무대 · 원장님 소개"),
     thumb(128, 320, 37, 38, 2, "lesson.jpg", scene="lesson", ko="레슨 과정"),
     thumb(709, 205, 43, 50, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
-    icon(641, 338, 58, 48, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 월말평가"),
+    icon(641, 338, 58, 48, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가·노래 추천"),
 ])
 
 consult = (head("Consult | 이송희보컬레슨",

@@ -216,6 +216,31 @@ create table if not exists public.practice_logs (
 create index if not exists practice_logs_member_idx on public.practice_logs (member_id, day desc);
 create index if not exists repertoire_member_idx on public.repertoire (member_id);
 
+-- 나를 위한 노래 추천: 학생이 부른 영상(카카오톡으로 받음)을 분석해서 원장님이 올리고, 학생은 "내 폴더 → 노래 추천"에서 봅니다.
+-- 관리자 화면에서 분석 시트를 붙여넣거나, Claude에게 말해서 넣습니다. 녹음 파일은 홈페이지에 두지 않아요.
+create table if not exists public.song_recs (
+  id         bigint generated always as identity primary key,
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  made_on    date not null default ((now() at time zone 'Asia/Seoul')::date),
+  summary    jsonb not null default '[]'::jsonb,   -- [["낸 음역", "라(A3) ~ 높은 도(C5)"], ["음색", "…"], …]
+  songs      jsonb not null default '[]'::jsonb,   -- [{"tag": "팝", "title": "…", "artist": "…", "why": "…", "melon": "…", "spotify": "…", "key": "…"}]
+  note       text check (char_length(note) <= 1000),  -- 선생님 한마디
+  published  boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists song_recs_member_idx on public.song_recs (member_id, made_on desc);
+-- 학생의 "추천받기" 신청: 좋아하는 가수·곡과 목표. 열린 신청은 한 사람에 하나.
+create table if not exists public.song_requests (
+  id         bigint generated always as identity primary key,
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  likes      text check (char_length(likes) <= 300),
+  goal       text check (goal in ('오디션', '입시', '취미', '공연')),
+  memo       text check (char_length(memo) <= 500),
+  status     text not null default '접수' check (status in ('접수', '완료')),
+  created_at timestamptz not null default now()
+);
+
 -- 관리자 화면에 로그인할 수 있는 이메일 (Supabase Authentication에 만든 계정)
 create table if not exists public.admins (
   email text primary key check (email = lower(email))
@@ -706,7 +731,15 @@ begin
       select jsonb_agg(jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did)
                order by l.day desc, l.id desc)
       from (select * from public.practice_logs where member_id = mid order by day desc, id desc limit 60) l
-    ), '[]'::jsonb)
+    ), '[]'::jsonb),
+    -- 노래 추천 (원장님이 올린 것) + 아직 답을 못 받은 내 신청
+    'recs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', s.id, 'date', s.made_on, 'summary', s.summary, 'songs', s.songs, 'note', s.note)
+               order by s.made_on desc, s.id desc)
+      from (select * from public.song_recs where member_id = mid and published order by made_on desc, id desc limit 5) s
+    ), '[]'::jsonb),
+    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo)
+                from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
   ));
 end $$;
 
@@ -786,6 +819,34 @@ begin
   if not (who ->> 'ok')::boolean then return who; end if;
   delete from public.practice_logs where id = p_log and member_id = who ->> 'id';
   return jsonb_build_object('ok', true);
+end $$;
+
+-- 노래 추천받기 신청: 열린 신청이 있으면 그걸 고쳐요 (한 달에 5번까지).
+create or replace function public.member_song_request(p_id text, p_pin text, p_likes text default null,
+  p_goal text default null, p_memo text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  open_id bigint;
+  v_likes text := nullif(trim(coalesce(p_likes, '')), '');
+  v_memo text := nullif(trim(coalesce(p_memo, '')), '');
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if p_goal is not null and p_goal not in ('오디션', '입시', '취미', '공연') then return private.fail('목표를 골라주세요.'); end if;
+  if char_length(coalesce(v_likes, '')) > 300 or char_length(coalesce(v_memo, '')) > 500 then return private.fail('글이 너무 길어요.'); end if;
+  select id into open_id from public.song_requests where member_id = mid and status = '접수' order by id desc limit 1;
+  if open_id is null then
+    if (select count(*) from public.song_requests where member_id = mid and created_at > now() - interval '30 days') >= 5 then
+      return private.fail('한 달에 5번까지 신청할 수 있어요.');
+    end if;
+    insert into public.song_requests (member_id, likes, goal, memo) values (mid, v_likes, p_goal, v_memo) returning id into open_id;
+    perform private.notify('🎵 노래 추천 신청: ' || (who ->> 'name') || ' (' || mid || ')');
+  else
+    update public.song_requests set likes = v_likes, goal = p_goal, memo = v_memo where id = open_id;
+  end if;
+  return jsonb_build_object('ok', true, 'id', open_id);
 end $$;
 
 -- ---------------------------------------------------------------- 카카오 로그인
@@ -966,6 +1027,8 @@ alter table public.audition_news enable row level security;
 alter table public.notices enable row level security;
 alter table public.repertoire enable row level security;
 alter table public.practice_logs enable row level security;
+alter table public.song_recs enable row level security;
+alter table public.song_requests enable row level security;
 alter table public.admins   enable row level security;
 alter table public.lesson_notes  enable row level security;
 alter table public.monthly_evals enable row level security;
@@ -975,7 +1038,7 @@ alter table public.link_requests enable row level security;
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'eval_reports', 'audition_news', 'notices', 'repertoire', 'practice_logs', 'link_requests'] loop
+  foreach tbl in array array['settings', 'rooms', 'bookings', 'consults', 'lesson_notes', 'monthly_evals', 'eval_reports', 'audition_news', 'notices', 'repertoire', 'practice_logs', 'song_recs', 'song_requests', 'link_requests'] loop
     execute format('drop policy if exists admin_all on public.%I', tbl);
     execute format('create policy admin_all on public.%I for all to authenticated using (public.is_admin()) with check (public.is_admin())', tbl);
   end loop;
@@ -986,7 +1049,7 @@ drop policy if exists admin_read on public.admins;
 create policy admin_read on public.admins for select to authenticated using (public.is_admin());
 
 revoke all on public.settings, public.rooms, public.members, public.bookings, public.consults, public.admins, public.link_requests,
-  public.lesson_notes, public.monthly_evals, public.eval_reports, public.notices, public.repertoire, public.practice_logs from anon;
+  public.lesson_notes, public.monthly_evals, public.eval_reports, public.notices, public.repertoire, public.practice_logs, public.song_recs, public.song_requests from anon;
 revoke all on public.members from authenticated;
 -- 비밀번호 해시는 관리자에게도 내보내지 않습니다. 수정은 admin_save_member로만.
 grant select (id, name, phone, status, expires_on, memo, must_change_pin, kakao_user, created_at) on public.members to authenticated;
@@ -996,7 +1059,7 @@ drop policy if exists admin_delete on public.members;
 create policy admin_delete on public.members for delete to authenticated using (public.is_admin());
 grant select, insert, update, delete on public.settings, public.rooms, public.bookings, public.consults,
   public.lesson_notes, public.monthly_evals, public.eval_reports, public.audition_news,
-  public.notices, public.repertoire, public.practice_logs to authenticated;
+  public.notices, public.repertoire, public.practice_logs, public.song_recs, public.song_requests to authenticated;
 -- 오디션 소식은 공개: 누구나 올라간(published) 글만 읽기
 grant select on public.audition_news to anon;
 drop policy if exists public_read on public.audition_news;
@@ -1053,3 +1116,7 @@ revoke execute on function public.member_repertoire_save(text, text, bigint, tex
 grant execute on function public.member_repertoire_save(text, text, bigint, text, text, text, text, text),
   public.member_repertoire_delete(text, text, bigint), public.member_log_save(text, text, bigint, text, int, text, text),
   public.member_log_delete(text, text, bigint) to anon, authenticated;
+
+-- 노래 추천받기 신청
+revoke execute on function public.member_song_request(text, text, text, text, text) from public;
+grant execute on function public.member_song_request(text, text, text, text, text) to anon, authenticated;

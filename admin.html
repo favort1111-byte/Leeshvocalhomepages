@@ -37,7 +37,9 @@
       <button type="button" role="tab" data-tab="members" aria-selected="false">수강 ID <span class="adm__badge" id="linkBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="records" aria-selected="false">수업 기록</button>
       <button type="button" role="tab" data-tab="news" aria-selected="false">오디션 소식</button>
-      <button type="button" role="tab" data-tab="notices" aria-selected="false">공지</button>
+      <button type="button" role="tab" data-tab="notices" aria-selected="false">일정·공지</button>
+      <button type="button" role="tab" data-tab="songrecs" aria-selected="false">노래 추천 <span class="adm__badge" id="recBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="journal" aria-selected="false">연습 일지</button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
       <button type="button" class="sys-link adm__logout" id="logout">로그아웃</button>
@@ -193,10 +195,10 @@
       <ul class="adm__cards" id="newsList"></ul>
     </section>
 
-    <!-- 공지 (학생 "내 폴더 → 공지") -->
+    <!-- 일정·공지 (학생 "내 폴더 → 일정·공지") -->
     <section class="sys-card" data-panel="notices" hidden>
       <h3 class="sys-h" id="noticeHead">새 공지 쓰기</h3>
-      <p class="sys-note">수강생만 봐요 (내 폴더 → 공지). 휴원일, 월말평가 날, 행사처럼 학생이 알아야 할 것을 적어주세요. 끝나는 날이 지나면 저절로 안 보여요.</p>
+      <p class="sys-note">수강생만 봐요 (내 폴더 → 일정·공지). 휴원일, 월말평가 날, 행사처럼 학생이 알아야 할 것을 적어주세요. <b>날짜</b>를 넣으면 "다가오는 일정"에 날짜순으로, 안 넣으면 "공지"에 보여요. 제목에 "월말평가"·"휴원"이 들어가면 그 표시가 붙어요. 학원 내방 오디션은 "오디션 소식"에 올리면 여기에도 저절로 보여요. 끝나는 날이 지나면 저절로 안 보여요.</p>
       <form id="noticeForm" class="adm__drawer">
         <label class="sys-field"><span>제목</span><input name="title" maxlength="80" required placeholder="예) 12월 월말평가 안내"></label>
         <div class="sys-row">
@@ -214,6 +216,42 @@
       </form>
       <h3 class="sys-h">올린 공지</h3>
       <ul class="adm__cards" id="noticeList"></ul>
+    </section>
+
+    <!-- 노래 추천 (학생 "내 폴더 → 노래 추천") -->
+    <section class="sys-card" data-panel="songrecs" hidden>
+      <h3 class="sys-h">추천 신청</h3>
+      <p class="sys-note">학생이 내 폴더에서 신청하면 여기에 보여요. 노래 영상은 카카오톡 채널로 받아요 (홈페이지에는 올리지 않아요).</p>
+      <ul class="adm__cards" id="songReqList"></ul>
+
+      <h3 class="sys-h" id="recHead">노래 추천 올리기</h3>
+      <p class="sys-note">Claude와 만든 <b>목소리 분석·추천곡</b> 시트에서 ① 분석 요약부터 ③ 추천곡까지 드래그해서 복사 → 붙여넣기 하면 알아서 나눠요. 학생에게는 음역·음색·분위기·추천곡(이유, 멜론·Spotify 링크)만 보이고, 센트·dB 같은 숫자와 "참고" 칸은 안 보여요. Claude에게 "○○ 노래 추천 올려줘"라고 말해도 돼요.</p>
+      <form id="recForm" class="adm__drawer">
+        <div class="sys-row">
+          <label class="sys-field"><span>수강생</span><select name="member" required></select></label>
+          <label class="sys-field"><span>분석 날짜</span><input name="made_on" type="date" required></label>
+        </div>
+        <label class="sys-field"><span>시트 붙여넣기</span><textarea name="paste" rows="6" placeholder="구글시트에서 ① 분석 요약 ~ ③ 추천곡 칸을 드래그해서 복사 → 여기에 붙여넣기"></textarea></label>
+        <div id="recPreview"></div>
+        <label class="sys-field"><span>선생님 한마디 (선택)</span><textarea name="note" rows="2" maxlength="1000" placeholder="예) 밝은 곡에서 목소리가 제일 예뻐요. 오디션곡으로 1번 곡부터 해봐요!"></textarea></label>
+        <button class="sys-btn" type="submit" id="recSave">올리기</button>
+        <p class="sys-msg" id="recMsg" role="status"></p>
+        <div class="adm__share" id="recShare" hidden></div>
+      </form>
+      <h3 class="sys-h">올린 추천</h3>
+      <ul class="adm__cards" id="recList"></ul>
+    </section>
+
+    <!-- 연습 일지 · 레퍼토리 (학생이 직접 쓴 것, 보기만) -->
+    <section class="sys-card" data-panel="journal" hidden>
+      <div class="adm__bar">
+        <label class="sr-only" for="jrTeacher">담당 선생님</label>
+        <select id="jrTeacher"><option value="">담당 전체</option></select>
+        <label class="sr-only" for="jrMember">수강생</label>
+        <select id="jrMember"><option value="">학생 전체 (최근 2주)</option></select>
+      </div>
+      <p class="sys-note">학생이 직접 쓴 연습 일지와 레퍼토리예요. 수업 전에 참고하세요 (고치거나 지우는 건 학생만 해요).</p>
+      <div id="jrBox"></div>
     </section>
 
     <!-- 상담 신청 -->

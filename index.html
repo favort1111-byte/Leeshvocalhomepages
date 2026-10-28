@@ -86,7 +86,7 @@
       <span class="icon__img" style="height:calc(49 * var(--s))"><img src="assets/img/08.webp" alt="" loading="lazy"></span>
       <span class="icon__label">debut.jpg</span>
     </a>
-    <a class="icon" href="#scene-me" title="내 폴더 · 월말평가" data-scene="scene-me" aria-haspopup="dialog" style="--i:12;left:calc(674.5 * var(--s));top:calc(339.5 * var(--s));width:calc(58 * var(--s))">
+    <a class="icon" href="#scene-me" title="내 폴더 · 예약·일정·월말평가·노래 추천" data-scene="scene-me" aria-haspopup="dialog" style="--i:12;left:calc(674.5 * var(--s));top:calc(339.5 * var(--s));width:calc(58 * var(--s))">
       <span class="icon__img" style="height:calc(48.5 * var(--s))"><svg viewBox="0 0 58 48" aria-hidden="true"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6ACCF8"/><stop offset="1" stop-color="#2EA3EE"/></linearGradient></defs><path d="M2 6a4 4 0 0 1 4-4h14l5 5h27a4 4 0 0 1 4 4v31a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#2294DD"/><path d="M1 15a4 4 0 0 1 4-4h48a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4z" fill="url(#fg)"/><path d="M5 13h48" stroke="#A9E4FC" stroke-width="1.2" opacity=".8"/></svg></span>
       <span class="icon__label">my folder<small>내 폴더</small></span>
     </a>
@@ -107,16 +107,20 @@
         </header>
         <div class="book__tabs" role="tablist">
           <button type="button" role="tab" aria-selected="true" data-book-tab="notes">레슨 노트</button>
-          <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="bookings">내 예약</button>
-          <button type="button" role="tab" aria-selected="false" data-book-tab="notices">공지</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="notices">일정·공지</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="recs">노래 추천</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="videos">영상 추천</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="songs">레퍼토리</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="logs">연습 일지</button>
         </div>
         <div class="book__page" data-book-page="notes" id="myNotes"></div>
-        <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
         <div class="book__page" data-book-page="bookings" id="myBookings" hidden></div>
         <div class="book__page" data-book-page="notices" id="myNotices" hidden></div>
+        <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
+        <div class="book__page" data-book-page="recs" id="myRecs" hidden></div>
+        <div class="book__page" data-book-page="videos" id="myVideos" hidden></div>
         <div class="book__page" data-book-page="songs" id="mySongs" hidden></div>
         <div class="book__page" data-book-page="logs" id="myLogs" hidden></div>
       </div>

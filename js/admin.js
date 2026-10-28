@@ -115,7 +115,7 @@
       $("#app").hidden = false;
       $("#adminWho").hidden = false;
       $("#adminWho").textContent = session.email || "";
-      loadBase().then(function () { showTab("bookings"); countLinks(); });
+      loadBase().then(function () { showTab("bookings"); countLinks(); countRecs(); });
     });
   }
 
@@ -147,6 +147,8 @@
     if (name === "consults") loadConsults();
     if (name === "news") loadNews();
     if (name === "notices") loadNotices();
+    if (name === "songrecs") loadRecs();
+    if (name === "journal") loadJournal();
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
   }
@@ -561,7 +563,7 @@
   /* ---------------- 카카오톡으로 보낼 주소 ---------------- */
 
   // Links straight into a screen (js/scene.js reads the #hash). Saved sign-ins open them without a login.
-  var LINKS = [["레슨 노트", "#notes"], ["월말평가", "#evals"], ["공지", "#notices"], ["연습 일지", "#logs"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
+  var LINKS = [["레슨 노트", "#notes"], ["내 예약", "#bookings"], ["일정·공지", "#notices"], ["월말평가", "#evals"], ["노래 추천", "#recs"], ["영상 추천", "#videos"], ["연습 일지", "#logs"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
     .filter(function (l) { return cfg.lessonNotes !== false || l[1] !== "#notes"; });
   function siteLink(to) { return new URL(to.charAt(0) === "#" ? "./" + to : to, location.href).href; }
   function openHref(to) { return to.charAt(0) === "#" ? "index.html" + to : to; }
@@ -1081,7 +1083,7 @@
       .then(function (res) {
         if (!res.ok) { msg($("#noticeMsg"), friendly(res), "error"); return; }
         var wasNew = !noticeEdit;
-        msg($("#noticeMsg"), wasNew ? "올렸어요. 학생 내 폴더 → 공지에 바로 보여요." : "고쳤어요.", "ok");
+        msg($("#noticeMsg"), wasNew ? "올렸어요. 학생 내 폴더 → 일정·공지에 바로 보여요." : "고쳤어요.", "ok");
         noticeForm(null); // (reset first: the share box sits inside the form)
         if (wasNew) showShare($("#noticeShare"), "#notices", "새 공지가 올라왔어요: " + body.title);
         loadNotices();
@@ -1121,6 +1123,255 @@
       });
     });
   }
+
+  /* ---------------- 노래 추천 (학생 "내 폴더 → 노래 추천"; js/mynotes.js) ---------------- */
+
+  // What the student sees from the analysis sheet (label in the sheet → label in the folder); the rest
+  // (자료, 높은 음 비율, 셈여림 폭, ② 곡별 음역, 참고) stays with the director.
+  var REC_LABELS = { "부른 곡": "분석한 곡", "낸 음역": "낸 음역", "주로 머문 음": "편한 음역", "음정": "음정",
+    "음색": "음색", "분위기": "잘 맞는 분위기", "어울리는 곡": "어울리는 곡" };
+  function members() {
+    return state.members.length ? Promise.resolve(state.members) : api("members?select=id,name,status,memo&order=id").then(function (res) {
+      if (res.ok) state.members = res.data;
+      return state.members;
+    });
+  }
+  function memberName(id) { var m = state.members.filter(function (x) { return x.id === id; })[0]; return m ? m.name : id; }
+  /** The sheet pasted as tab-separated rows → { member, summary: [[label, text]], songs: [...] } */
+  function parseRec(text) {
+    var out = { member: null, summary: [], songs: [] }, part = 1;
+    text.split(/\r?\n/).forEach(function (line) {
+      var c = line.split("\t").map(function (x) { return x.replace(/^\[merged\]\s*/, "").trim(); })
+        .filter(function (x, i, a) { return x && x !== a[i - 1]; }); // merged cells copy as the same text again
+      if (!c.length) return;
+      var id = /\b([A-Z]\d{3})\b/.exec(c[0]);
+      if (id && !out.member && /분석|추천/.test(c[0])) { out.member = id[1]; return; }
+      if (/^②/.test(c[0])) { part = 2; return; }
+      if (/^③/.test(c[0])) { part = 3; return; }
+      if (/^참고$/.test(c[0])) { part = 4; return; }
+      if (part === 1 && REC_LABELS[c[0]] && c[1]) {
+        // 세 곡 내내 안정적 (길게 낸 음 112개, … 14센트 차이) → 세 곡 내내 안정적
+        out.summary.push([REC_LABELS[c[0]], c[1].replace(/\s*\([^)]*(센트|dB|개)[^)]*\)/g, "").trim()]);
+        return;
+      }
+      if (part === 3 || /^\[[^\]]+\]/.test(c[0])) {
+        var m = /^(?:\[([^\]]+)\]\s*)?(.+?)\s+[–—-]\s+(.+)$/.exec(c[0]);
+        if (!m || c[0] === "곡") return;
+        var song = { tag: m[1] || null, artist: m[2], title: m[3], why: null, melon: null, spotify: null, key: null };
+        c.slice(1).forEach(function (x) {
+          if (/melon\.com/.test(x)) song.melon = x;
+          else if (/spotify\.com/.test(x)) song.spotify = x;
+          else if (/링크 없음/.test(x)) return;
+          else if (!song.why) song.why = x;
+          else song.key = x;
+        });
+        out.songs.push(song);
+      }
+    });
+    return out;
+  }
+  var recDraft = null;
+  function recPreview() {
+    var f = $("#recForm"), box = $("#recPreview");
+    box.textContent = "";
+    var text = field(f, "paste").value;
+    recDraft = text.trim() ? parseRec(text) : null;
+    if (!recDraft) return;
+    if (recDraft.member && state.members.some(function (m) { return m.id === recDraft.member; })) field(f, "member").value = recDraft.member;
+    var card = el("div", "adm__card");
+    card.appendChild(el("p", "sys-note", "학생에게 이렇게 보여요 · " + memberName(field(f, "member").value)));
+    recDraft.summary.forEach(function (r) { card.appendChild(el("p", null, r[0] + ": " + r[1])); });
+    recDraft.songs.forEach(function (s, i) {
+      card.appendChild(el("p", null, "♪ " + (i + 1) + ". " + (s.tag ? "[" + s.tag + "] " : "") + s.title + " · " + s.artist + (s.melon ? " (멜론 링크 있음)" : "")));
+    });
+    if (!recDraft.songs.length) card.appendChild(el("p", "sys-msg sys-msg--error", "추천곡을 못 찾았어요. ③ 추천곡 칸까지 같이 복사해주세요."));
+    box.appendChild(card);
+  }
+  $("#recForm [name=paste]").addEventListener("input", recPreview);
+  $("#recForm [name=member]").addEventListener("change", recPreview);
+  $("#recForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, mid = field(f, "member").value, btn = $("#recSave");
+    if (!recDraft || !recDraft.songs.length) { msg($("#recMsg"), "시트를 붙여넣어 주세요 (추천곡이 1곡 이상 있어야 해요).", "error"); return; }
+    btn.disabled = true;
+    api("song_recs", { method: "POST", body: { member_id: mid, made_on: field(f, "made_on").value, summary: recDraft.summary,
+      songs: recDraft.songs, note: field(f, "note").value.trim() || null } }).then(function (res) {
+      btn.disabled = false;
+      if (!res.ok) { msg($("#recMsg"), friendly(res), "error"); return; }
+      // the student's open request is answered now
+      api("song_requests?member_id=eq." + encodeURIComponent(mid) + "&status=eq." + encodeURIComponent("접수"), { method: "PATCH", body: { status: "완료" } })
+        .then(function () { loadRecs(); });
+      msg($("#recMsg"), "올렸어요. 학생 내 폴더 → 노래 추천에 바로 보여요.", "ok");
+      field(f, "paste").value = "";
+      field(f, "note").value = "";
+      recPreview();
+      showShare($("#recShare"), "#recs", "노래 추천이 올라왔어요. 내 목소리에 맞는 곡을 확인해보세요!", memberName(mid));
+    });
+  });
+  function loadRecs() {
+    members().then(function (all) {
+      var sel = field($("#recForm"), "member"), keep = sel.value;
+      sel.textContent = "";
+      all.filter(function (m) { return m.status === "재원" || m.status === "휴원"; }).forEach(function (m) {
+        var o = el("option", null, m.name + " (" + m.id + ")");
+        o.value = m.id;
+        sel.appendChild(o);
+      });
+      if (keep) sel.value = keep;
+      if (!field($("#recForm"), "made_on").value) field($("#recForm"), "made_on").value = todayKst();
+      var req = $("#songReqList");
+      req.textContent = "";
+      api("song_requests?select=*&status=eq." + encodeURIComponent("접수") + "&order=created_at").then(function (res) {
+        if (!res.ok) { req.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+        countRecs(res.data.length);
+        if (!res.data.length) req.appendChild(el("li", "sys-empty", "새 신청이 없어요."));
+        res.data.forEach(function (q) {
+          var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+          top.appendChild(el("strong", null, memberName(q.member_id) + " (" + q.member_id + ")"));
+          if (q.goal) top.appendChild(el("span", "adm__badge adm__badge--kind", q.goal));
+          top.appendChild(el("span", "sys-note", stamp(q.created_at)));
+          li.appendChild(top);
+          if (q.likes) li.appendChild(el("p", null, "좋아하는 가수·곡: " + q.likes));
+          if (q.memo) li.appendChild(el("p", "adm__quote", q.memo));
+          var row = el("div", "adm__cardrow");
+          var write = el("button", "sys-link", "이 학생 추천 쓰기");
+          write.type = "button";
+          write.addEventListener("click", function () { field($("#recForm"), "member").value = q.member_id; recPreview(); field($("#recForm"), "paste").focus(); });
+          var done = el("button", "sys-link", "완료로 표시");
+          done.type = "button";
+          done.addEventListener("click", function () { api("song_requests?id=eq." + q.id, { method: "PATCH", body: { status: "완료" } }).then(loadRecs); });
+          row.appendChild(write);
+          row.appendChild(done);
+          li.appendChild(row);
+          req.appendChild(li);
+        });
+      });
+      var ul = $("#recList");
+      ul.textContent = "";
+      api("song_recs?select=id,member_id,made_on,songs,published&order=made_on.desc,id.desc&limit=200").then(function (res) {
+        if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+        if (!res.data.length) ul.appendChild(el("li", "sys-empty", "아직 올린 추천이 없어요."));
+        res.data.forEach(function (r) {
+          var li = el("li", "adm__card" + (r.published ? "" : " is-hidden")), top = el("div", "adm__cardtop");
+          top.appendChild(el("strong", null, memberName(r.member_id)));
+          top.appendChild(el("span", "sys-note", r.made_on));
+          if (!r.published) top.appendChild(el("span", "sys-note", "숨김"));
+          li.appendChild(top);
+          li.appendChild(el("p", null, (r.songs || []).map(function (s) { return s.title; }).join(" · ")));
+          var row = el("div", "adm__cardrow");
+          var hide = el("button", "sys-link", r.published ? "숨기기" : "다시 보이기");
+          hide.type = "button";
+          hide.addEventListener("click", function () {
+            api("song_recs?id=eq." + r.id, { method: "PATCH", body: { published: !r.published, updated_at: new Date().toISOString() } }).then(loadRecs);
+          });
+          row.appendChild(hide);
+          row.appendChild(deleteButton("song_recs", r.id, loadRecs));
+          li.appendChild(row);
+          ul.appendChild(li);
+        });
+      });
+    });
+  }
+  function countRecs(n) {
+    var b = $("#recBadge");
+    if (n != null) { b.textContent = n; b.hidden = !n; return; }
+    api("song_requests?select=id&status=eq." + encodeURIComponent("접수")).then(function (res) {
+      if (res.ok) { b.textContent = res.data.length; b.hidden = !res.data.length; }
+    });
+  }
+
+  /* ---------------- 연습 일지 · 레퍼토리 (학생이 직접 쓴 것; 보기만) ---------------- */
+
+  function teacherOf(m) { var t = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return t ? t[1] : ""; }
+  function mins(n) { var h = Math.floor(n / 60), r = n % 60; return (h ? h + "시간" : "") + (h && r ? " " : "") + (r || !h ? r + "분" : ""); }
+  function loadJournal() {
+    var box = $("#jrBox"), tsel = $("#jrTeacher"), msel = $("#jrMember");
+    box.textContent = "";
+    box.appendChild(el("p", "sys-note", "불러오는 중…"));
+    var from = addDays(todayKst(), -60);
+    Promise.all([members(), api("practice_logs?select=*&day=gte." + from + "&order=day.desc,id.desc&limit=3000"), api("repertoire?select=*&order=updated_at.desc&limit=3000")])
+      .then(function (r) {
+        var all = r[0].filter(function (m) { return m.status === "재원"; }), logs = r[1].ok ? r[1].data : [], songs = r[2].ok ? r[2].data : [];
+        // the two pickers: teacher (from "담당 ○○○" in the memo), then the students of that teacher
+        var tk = tsel.value, mk = msel.value, names = {};
+        all.forEach(function (m) { var t = teacherOf(m); if (t) names[t] = 1; });
+        tsel.length = 1;
+        Object.keys(names).sort().forEach(function (t) { var o = el("option", null, t); o.value = t; tsel.appendChild(o); });
+        tsel.value = names[tk] ? tk : "";
+        var mine = all.filter(function (m) { return !tsel.value || teacherOf(m) === tsel.value; });
+        msel.length = 1;
+        mine.forEach(function (m) { var o = el("option", null, m.name + " (" + m.id + ")"); o.value = m.id; msel.appendChild(o); });
+        msel.value = mine.some(function (m) { return m.id === mk; }) ? mk : "";
+        box.textContent = "";
+        if (!r[1].ok) { box.appendChild(el("p", "sys-msg sys-msg--error", friendly(r[1], "불러오지 못했습니다."))); return; }
+
+        if (!msel.value) {
+          // everyone: who practised in the last 2 weeks, most first
+          var since = addDays(todayKst(), -13), rows = mine.map(function (m) {
+            var l = logs.filter(function (x) { return x.member_id === m.id && x.day >= since; });
+            var days = {};
+            l.forEach(function (x) { days[x.day] = 1; });
+            return { m: m, days: Object.keys(days).length, min: l.reduce(function (s, x) { return s + (x.minutes || 0); }, 0), last: l[0] && l[0].day,
+              songs: songs.filter(function (s) { return s.member_id === m.id && s.status === "준비 중"; }).length };
+          }).sort(function (a, b) { return b.days - a.days || b.min - a.min; });
+          var used = rows.filter(function (x) { return x.days || x.songs; });
+          box.appendChild(el("p", "sys-note", "최근 2주 동안 일지를 쓴 학생 " + rows.filter(function (x) { return x.days; }).length + "명 · 학생을 누르면 자세히 봐요."));
+          if (!used.length) { box.appendChild(el("p", "sys-empty", "아직 연습 일지나 레퍼토리를 쓴 학생이 없어요.")); return; }
+          var ul = el("ul", "adm__cards");
+          used.forEach(function (x) {
+            var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+            var a = el("button", "sys-link", x.m.name + " (" + x.m.id + ")");
+            a.type = "button";
+            a.addEventListener("click", function () { msel.value = x.m.id; loadJournal(); });
+            top.appendChild(a);
+            if (teacherOf(x.m)) top.appendChild(el("span", "sys-note", teacherOf(x.m)));
+            li.appendChild(top);
+            li.appendChild(el("p", null, "2주 중 " + x.days + "일 연습" + (x.min ? " · " + mins(x.min) : "") + (x.last ? " · 마지막 " + dayLabel(x.last) : "") + " · 준비 중인 곡 " + x.songs + "곡"));
+            ul.appendChild(li);
+          });
+          box.appendChild(ul);
+          return;
+        }
+
+        var id = msel.value, cols = el("div", "adm__cols");
+        var left = el("div");
+        left.appendChild(el("h3", "sys-h", "연습 일지 (최근 60일)"));
+        var lu = el("ul", "adm__cards");
+        var my = logs.filter(function (x) { return x.member_id === id; });
+        if (!my.length) lu.appendChild(el("li", "sys-empty", "최근 60일 동안 쓴 일지가 없어요."));
+        my.forEach(function (x) {
+          var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+          top.appendChild(el("strong", null, dayLabel(x.day)));
+          if (x.minutes) top.appendChild(el("span", "sys-note", mins(x.minutes)));
+          if (x.song) top.appendChild(el("span", "sys-note", "♪ " + x.song));
+          li.appendChild(top);
+          if (x.did) li.appendChild(el("p", "adm__quote", x.did));
+          lu.appendChild(li);
+        });
+        left.appendChild(lu);
+        var right = el("div");
+        right.appendChild(el("h3", "sys-h", "레퍼토리"));
+        var su = el("ul", "adm__cards");
+        var ms = songs.filter(function (s) { return s.member_id === id; });
+        if (!ms.length) su.appendChild(el("li", "sys-empty", "적은 곡이 없어요."));
+        ms.forEach(function (s) {
+          var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+          top.appendChild(el("strong", null, s.title + (s.artist ? " · " + s.artist : "")));
+          [s.purpose, s.status].forEach(function (t) { if (t) top.appendChild(el("span", "adm__badge adm__badge--kind", t)); });
+          li.appendChild(top);
+          var total = logs.filter(function (x) { return x.member_id === id && x.song === s.title; }).reduce(function (t, x) { return t + (x.minutes || 0); }, 0);
+          if (total) li.appendChild(el("p", "sys-note", "최근 60일 연습 " + mins(total)));
+          if (s.memo) li.appendChild(el("p", "adm__quote", s.memo));
+          su.appendChild(li);
+        });
+        right.appendChild(su);
+        cols.appendChild(left);
+        cols.appendChild(right);
+        box.appendChild(cols);
+      });
+  }
+  $("#jrTeacher").addEventListener("change", function () { $("#jrMember").value = ""; loadJournal(); });
+  $("#jrMember").addEventListener("change", loadJournal);
 
   /* ---------------- 상담 신청 ---------------- */
 

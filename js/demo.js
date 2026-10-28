@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 11; // bump when the demo defaults change
+  var VERSION = 12; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -87,6 +87,7 @@
       // 내 폴더: 공지 (원장님), 레퍼토리 · 연습 일지 (학생이 직접)
       notices: [
         { id: 51, title: "12월 월말평가 안내", body: "12월 셋째 주에 월말평가가 있어요. 곡은 담당 선생님과 정해주세요.\n체험 모드 예시 공지예요.", start_date: addDays(t, 40), end_date: addDays(t, 45), pinned: true, published: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 53, title: "휴원 안내", body: "이 날은 학원이 쉬어요. 연습실 예약도 닫혀요.\n체험 모드 예시 공지예요.", start_date: addDays(t, 9), end_date: addDays(t, 9), pinned: false, published: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 52, title: "연습실 청소 시간", body: "매주 월요일 오전 10~11시는 연습실 청소 시간이에요.", start_date: null, end_date: null, pinned: false, published: true, created_at: new Date(Date.now() - 86400000 * 5).toISOString(), updated_at: new Date().toISOString() }
       ],
       repertoire: [
@@ -96,6 +97,20 @@
       practice_logs: [
         { id: 71, member_id: "S001", day: addDays(t, -1), minutes: 60, song: "Rain", did: "후렴 고음 10번, 립트릴 5분. 호흡이 모자랐음", created_at: new Date().toISOString() },
         { id: 72, member_id: "S001", day: addDays(t, -3), minutes: 40, song: "Rain", did: "1절 감정선 녹음해서 들어봄", created_at: new Date().toISOString() }
+      ],
+      // 노래 추천: a made-up analysis in the same shape as the director's sheet
+      song_recs: [
+        { id: 81, member_id: "S001", made_on: addDays(t, -10), published: true, note: "맑은 중음이 제일 예뻐요. 1번 곡부터 같이 해봐요! (체험 모드 예시)",
+          summary: [["분석한 곡", "태연 – Rain / 아이유 – 너의 의미"], ["낸 음역", "솔(G3) ~ 높은 레(D5)"], ["편한 음역", "도 ~ 라 (C4~A4) — 후렴의 높은 음도 편하게 씀"],
+            ["음정", "두 곡 내내 안정적"], ["음색", "맑고 가벼운 소리, 밝은 편"], ["잘 맞는 분위기", "잔잔한 발라드와 어쿠스틱 팝"], ["어울리는 곡", "중음 위주에 후렴에서 한 번 올라가는 곡"]],
+          songs: [
+            { tag: "국내", artist: "아이유", title: "밤편지", why: "중음에서 조용히 이야기하듯 부르는 곡이라 맑은 음색이 잘 들려요.", melon: null, spotify: null, key: null },
+            { tag: "국내", artist: "볼빨간사춘기", title: "우주를 줄게", why: "밝고 가벼운 소리와 잘 맞고, 오디션에서 표정과 함께 보여주기 좋아요.", melon: null, spotify: null, key: null },
+            { tag: "팝", artist: "Taylor Swift", title: "Love Story", why: "멜로디가 쉽고 후렴이 귀에 남아요. 편한 음역 안에서 움직여요.", melon: null, spotify: null, key: null }
+          ], created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+      ],
+      song_requests: [
+        { id: 85, member_id: "S002", likes: "Ariana Grande, 태연", goal: "입시", memo: "고음이 많은 곡도 도전해보고 싶어요. (체험 모드 예시)", status: "접수", created_at: new Date(Date.now() - 7200000).toISOString() }
       ],
       tokens: [], // "로그인 유지" keys: { key, member_id }
       consults: [
@@ -309,6 +324,11 @@
         }),
         logs: db.practice_logs.filter(function (l) { return l.member_id === who.id; })
           .sort(function (x, y) { return x.day === y.day ? y.id - x.id : (x.day < y.day ? 1 : -1); }),
+        recs: db.song_recs.filter(function (r) { return r.member_id === who.id && r.published; })
+          .sort(function (x, y) { return x.made_on === y.made_on ? y.id - x.id : (x.made_on < y.made_on ? 1 : -1); })
+          .map(function (r) { return { id: r.id, date: r.made_on, summary: r.summary, songs: r.songs, note: r.note }; }),
+        request: db.song_requests.filter(function (q) { return q.member_id === who.id && q.status === "접수"; })
+          .map(function (q) { return { at: q.created_at, likes: q.likes, goal: q.goal, memo: q.memo }; })[0] || null,
         reports: db.eval_reports.filter(function (r) { return r.member_id === who.id; })
           .sort(function (x, y) { return x.month < y.month ? 1 : -1; })
           .map(function (r) {
@@ -425,6 +445,15 @@
       save();
       return { ok: true };
     },
+    member_song_request: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var row = db.song_requests.filter(function (q) { return q.member_id === who.id && q.status === "접수"; })[0];
+      if (!row) { row = { id: ++db.next, member_id: who.id, status: "접수", created_at: new Date().toISOString() }; db.song_requests.push(row); }
+      Object.assign(row, { likes: a.p_likes || null, goal: a.p_goal || null, memo: a.p_memo || null });
+      save();
+      return { ok: true, id: row.id };
+    },
     is_admin: function () { return true; }
   };
 
@@ -527,7 +556,7 @@
       if (p.table === "rooms" && db.rooms.some(function (r) { return r.name === body.name; })) {
         return { status: 409, data: { message: "duplicate key" } };
       }
-      var row = Object.assign({ id: ++db.next }, p.table === "audition_news" || p.table === "notices" ? { created_at: new Date().toISOString(), published: true } : {}, body);
+      var row = Object.assign({ id: ++db.next }, p.table === "audition_news" || p.table === "notices" || p.table === "song_recs" ? { created_at: new Date().toISOString(), published: true } : {}, body);
       rows.push(row);
       save();
       return { status: 201, data: [row] };

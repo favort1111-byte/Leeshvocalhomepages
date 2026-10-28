@@ -1,5 +1,5 @@
 // "내 폴더" on the desktop: a signed-in student (js/signin.js — 카카오 or 수강 ID, the same sign-in
-// as 연습실 예약) reads their lesson notes and monthly evaluations. Once signed in, the folder on
+// as 연습실 예약) sees 내 예약 · 일정·공지 · 월말평가 · 노래 추천 · 영상 추천 · 레퍼토리 · 연습 일지. Once signed in, the folder on
 // the desktop carries the student's name, and the sign-in stays on this device so a link from
 // 카카오톡 (index.html#notes) opens straight in.
 (function () {
@@ -10,12 +10,13 @@
   var open = scene.querySelector("#myOpen");
   var labels = document.querySelectorAll('[data-scene="scene-me"] .icon__label');
   var who = null;
-  // 레슨 노트 can be switched off in js/config.js; then the folder holds 월말평가 only
+  // 레슨 노트 can be switched off in js/config.js; then the folder opens on 내 예약
   var NOTES = (window.LEESH || {}).lessonNotes !== false;
+  var FIRST = NOTES ? "notes" : "bookings";
   if (!NOTES) {
     scene.querySelectorAll('[data-book-tab="notes"], [data-book-page="notes"]').forEach(function (n) { n.remove(); });
-    scene.querySelector('[data-book-page="evals"]').hidden = false;
-    scene.querySelector('[data-book-tab="evals"]').setAttribute("aria-selected", "true");
+    scene.querySelector('[data-book-page="bookings"]').hidden = false;
+    scene.querySelector('[data-book-tab="bookings"]').setAttribute("aria-selected", "true");
   }
 
   function el(tag, cls, text) {
@@ -34,7 +35,7 @@
 
   var sign = LeeshSignIn.mount(box, {
     title: "내 폴더", titleClass: "book__title",
-    lede: "수강생은 월말평가, 내 예약, 공지, 레퍼토리, 연습 일지를 여기서 봐요.", ledeClass: "book__lede",
+    lede: "수강생은 내 예약, 학원 일정, 월말평가, 노래·영상 추천, 레퍼토리, 연습 일지를 여기서 봐요.", ledeClass: "book__lede",
     onSignedIn: function (res, w) { who = w; load(); }
   });
 
@@ -63,9 +64,11 @@
       setLabel(res.name);
       scene.querySelector("#myTitle").textContent = res.name + "의 폴더";
       if (NOTES) renderNotes(res.notes);
-      renderEvals(res.reports || []);
       renderBookings(res);
       renderNotices(res);
+      renderEvals(res.reports || []);
+      renderRecs(res);
+      renderVideos((res.reports || [])[0]);
       renderSongs(res.repertoire || [], res.logs || []);
       renderLogs(res.logs || [], res.repertoire || []);
       box.hidden = true;
@@ -170,11 +173,10 @@
       }
       card.appendChild(el("p", "evalr__secret", "평가지는 대외비예요. 캡처해서 다른 곳에 올리지 말아주세요."));
       box.appendChild(card);
-      if (i === 0) box.appendChild(recommend(r));
     });
   }
 
-  /* 나를 위한 연습 영상: the lowest item of the latest evaluation → 원포인트 레슨 videos about it (tips.html) */
+  /* 영상 추천: the lowest item of the latest evaluation → 원포인트 레슨 videos about it (tips.html) */
   var BASE = (window.LEESH || {}).blogBase || "";
   var TOPIC = {
     basic: /호흡|발성|숨|목관리|자세|복식|목소리가 너무 작|비음/,
@@ -190,21 +192,29 @@
     }).catch(function () { return []; });
     return tipsList;
   }
-  function recommend(r) {
-    var wrap = el("section", "rec");
-    var low = ITEMS.filter(function (it) { return num(r[it[0]]) != null; })
-      .sort(function (a, b) { return num(r[a[0]]) - num(r[b[0]]); })[0];
-    wrap.appendChild(el("h3", "rec__title", low ? "나를 위한 연습 영상 · " + low[1] : "나를 위한 연습 영상"));
-    wrap.appendChild(el("p", "sys-note", low ? "이번 평가에서 " + low[1] + " 점수가 제일 낮았어요. 원장님 영상으로 연습해 보세요." : "원장님의 원포인트 레슨 영상이에요."));
+  function renderVideos(r) {
+    var box = scene.querySelector("#myVideos");
+    box.textContent = "";
+    var low = r ? ITEMS.filter(function (it) { return num(r[it[0]]) != null; })
+      .sort(function (a, b) { return num(r[a[0]]) - num(r[b[0]]); })[0] : null;
+    var sum = el("div", "fold__sum");
+    if (low) {
+      sum.appendChild(el("p", null, "이번 평가에서 제일 낮은 항목: " + low[1] + " " + fmt(num(r[low[0]])) + "점"));
+      sum.appendChild(el("p", "sys-note", "원장님의 원포인트 레슨 영상 중에서 " + low[1] + "에 도움이 되는 영상을 골랐어요."));
+    } else {
+      sum.appendChild(el("p", null, "원장님의 원포인트 레슨 영상"));
+      sum.appendChild(el("p", "sys-note", "월말평가가 올라오면 내 점수가 제일 낮은 항목에 맞는 영상을 골라줘요."));
+    }
+    box.appendChild(sum);
     var ul = el("ul", "rec__list");
-    wrap.appendChild(ul);
+    box.appendChild(ul);
     tips().then(function (list) {
       // about this item only first (오디션 videos can be about 의상 too), then anything about it, then the newest
       var only = function (p) { return Object.keys(TOPIC).every(function (k) { return k === low[0] || !TOPIC[k].test(p.title); }); };
       var about = low ? list.filter(function (p) { return TOPIC[low[0]].test(p.title); }) : [];
       var pick = about.filter(only).concat(about.filter(function (p) { return !only(p); }));
-      if (pick.length < 3) pick = pick.concat(list.filter(function (p) { return pick.indexOf(p) === -1; })).slice(0, 3);
-      pick.slice(0, 3).forEach(function (p) {
+      if (pick.length < 4) pick = pick.concat(list.filter(function (p) { return pick.indexOf(p) === -1; })).slice(0, 4);
+      pick.slice(0, 4).forEach(function (p) {
         var li = el("li"), a = el("a", "rec__item");
         a.href = "post.html?id=" + p.id;
         var img = el("img");
@@ -216,12 +226,11 @@
         li.appendChild(a);
         ul.appendChild(li);
       });
-      if (!pick.length) wrap.remove();
+      if (!pick.length) ul.appendChild(el("li", "book__empty", "영상을 불러오지 못했어요."));
     });
     var more = el("a", "rec__more", "원포인트 레슨 전체 보기 →");
     more.href = "tips.html";
-    wrap.appendChild(more);
-    return wrap;
+    box.appendChild(more);
   }
 
   /* 내 예약: from today on, and how much the practice rooms were used this month */
@@ -236,7 +245,7 @@
     var logged = (res.logs || []).filter(function (l) { return l.day.slice(0, 7) === todayKst().slice(0, 7); })
       .reduce(function (t, l) { return t + (l.minutes || 0); }, 0);
     var sum = el("div", "fold__sum");
-    sum.appendChild(el("p", null, "이번 달 연습실 " + m.count + "번 · " + hours(m.minutes)));
+    sum.appendChild(el("p", null, "이번 달 연습실 사용 합계 " + hours(m.minutes) + " (" + m.count + "번)"));
     if (logged) sum.appendChild(el("p", "sys-note", "연습 일지에 적은 연습 " + hours(logged)));
     box.appendChild(sum);
     var list = res.bookings || [];
@@ -252,38 +261,169 @@
     box.appendChild(go);
   }
 
-  /* 공지: the academy's notices + the 학원 내방 오디션 coming up */
-  function dday(d) { var n = Math.round((new Date(d + "T00:00:00Z") - new Date(todayKst() + "T00:00:00Z")) / 86400000); return n === 0 ? "오늘" : "D-" + n; }
+  /* 일정·공지: dated things coming up (학원 내방 오디션, 월말평가 날, 휴원일 …) by date, then the other notices */
+  function dday(d) { var n = Math.round((new Date(d + "T00:00:00Z") - new Date(todayKst() + "T00:00:00Z")) / 86400000); return n === 0 ? "오늘" : n < 0 ? "진행 중" : "D-" + n; }
+  function noticeCard(n) {
+    var d = el("details", "fold__notice");
+    if (n.pinned) d.open = true;
+    var s = el("summary");
+    if (n.pinned) s.appendChild(el("b", "news__badge", "중요"));
+    s.appendChild(document.createTextNode(" " + n.title));
+    d.appendChild(s);
+    if (n.body) d.appendChild(el("p", "fold__body", n.body));
+    return d;
+  }
   function renderNotices(res) {
     var box = scene.querySelector("#myNotices");
     box.textContent = "";
-    var visits = res.visits || [], notes = res.notices || [];
-    if (visits.length) {
+    var today = todayKst(), month = today.slice(0, 7);
+    var plans = (res.visits || []).map(function (a) {
+      return { date: a.date, kind: "내방 오디션", title: (a.company ? a.company + " " : "") + a.title, href: "audition.html" };
+    }).concat((res.notices || []).filter(function (n) { return n.start; }).map(function (n) {
+      return { date: n.start, end: n.end, kind: /월말\s*평가/.test(n.title) ? "월말평가" : /휴원|휴강|쉬는/.test(n.title) ? "휴원" : "학원 일정", notice: n };
+    })).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var plain = (res.notices || []).filter(function (n) { return !n.start; });
+
+    var sum = el("div", "fold__sum");
+    var thisMonth = plans.filter(function (p) { return p.date.slice(0, 7) === month || (p.end && p.date < today); }).length;
+    var later = plans.length - thisMonth;
+    sum.appendChild(el("p", null, Number(month.slice(5)) + "월 일정 " + (thisMonth ? thisMonth + "개" : "없음") + (later ? " · 다음 달부터 " + later + "개" : "")));
+    box.appendChild(sum);
+
+    if (plans.length) {
       var v = el("section", "fold__visits");
-      v.appendChild(el("h3", "rec__title", "다가오는 학원 내방 오디션"));
-      visits.forEach(function (a) {
-        var row = el("p", "fold__visit");
-        row.appendChild(el("b", "news__badge", dday(a.date)));
-        row.appendChild(document.createTextNode(" " + dayLabel(a.date) + " · " + (a.company ? a.company + " " : "") + a.title));
+      v.appendChild(el("h3", "rec__title", "다가오는 일정"));
+      plans.forEach(function (p) {
+        var row = el("div", "fold__plan");
+        var head = el("p", "fold__visit");
+        head.appendChild(el("b", "news__badge", dday(p.date)));
+        head.appendChild(el("span", "fold__tag", p.kind));
+        head.appendChild(document.createTextNode(" " + dayLabel(p.date) + (p.end && p.end !== p.date ? " ~ " + dayLabel(p.end) : "")));
+        row.appendChild(head);
+        if (p.notice) row.appendChild(noticeCard(p.notice));
+        else {
+          var a = el("a", "fold__planlink", p.title + " →");
+          a.href = p.href;
+          row.appendChild(a);
+        }
         v.appendChild(row);
       });
-      var more = el("a", "rec__more", "오디션 소식 자세히 →");
-      more.href = "audition.html";
-      v.appendChild(more);
       box.appendChild(v);
     }
-    if (!notes.length && !visits.length) box.appendChild(el("p", "book__empty", "새 공지가 없어요."));
-    notes.forEach(function (n) {
-      var d = el("details", "fold__notice");
-      if (n.pinned) d.open = true;
-      var s = el("summary");
-      if (n.pinned) s.appendChild(el("b", "news__badge", "중요"));
-      s.appendChild(document.createTextNode(" " + n.title));
-      if (n.start) s.appendChild(el("span", "sys-note", " · " + dayLabel(n.start) + (n.end && n.end !== n.start ? " ~ " + dayLabel(n.end) : "")));
-      d.appendChild(s);
-      if (n.body) d.appendChild(el("p", "fold__body", n.body));
-      box.appendChild(d);
+    if (plain.length) {
+      box.appendChild(el("h3", "rec__title", "공지"));
+      plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
+    }
+    if (!plans.length && !plain.length) box.appendChild(el("p", "book__empty", "새 일정이나 공지가 없어요."));
+  }
+
+  /* 노래 추천: 원장님이 올린 목소리 분석 + 추천곡 (카카오톡으로 보낸 노래 영상을 분석). 학생은 여기서 신청해요. */
+  var GOALS = ["오디션", "입시", "취미", "공연"];
+  var KAKAO = (window.LEESH || {}).kakao || "";
+  function songLinks(s) {
+    var q = encodeURIComponent((s.artist ? s.artist + " " : "") + s.title);
+    var row = el("p", "fold__actions");
+    var m = el("a", "sys-link", "멜론");
+    m.href = /^https:\/\/(www\.)?melon\.com\//.test(s.melon || "") ? s.melon : "https://www.melon.com/search/total/index.htm?q=" + q;
+    var sp = el("a", "sys-link", "Spotify");
+    sp.href = /^https:\/\/open\.spotify\.com\//.test(s.spotify || "") ? s.spotify : "https://open.spotify.com/search/" + q;
+    var yt = el("a", "sys-link", "유튜브");
+    yt.href = "https://www.youtube.com/results?search_query=" + q;
+    [m, sp, yt].forEach(function (a) { a.target = "_blank"; a.rel = "noopener"; row.appendChild(a); });
+    return row;
+  }
+  function recCard(r, have) {
+    var card = el("article", "evalr songrec");
+    card.appendChild(el("p", "evalc__month", dayLabel(r.date) + " 분석"));
+    if ((r.summary || []).length) {
+      card.appendChild(el("h3", "rec__title", "내 목소리"));
+      var dl = el("dl", "songrec__voice");
+      r.summary.forEach(function (row) {
+        dl.appendChild(el("dt", null, row[0]));
+        dl.appendChild(el("dd", null, row[1]));
+      });
+      card.appendChild(dl);
+    }
+    if (r.note) card.appendChild(el("p", "evalr__say", r.note));
+    if ((r.songs || []).length) {
+      card.appendChild(el("h3", "rec__title", "추천곡"));
+      r.songs.forEach(function (s) {
+        var c = el("div", "songrec__song");
+        var top = el("p", "fold__main");
+        if (s.tag) top.appendChild(el("span", "fold__tag", s.tag));
+        top.appendChild(el("b", null, " " + s.title));
+        if (s.artist) top.appendChild(document.createTextNode(" · " + s.artist));
+        c.appendChild(top);
+        if (s.why) c.appendChild(el("p", "fold__body", s.why));
+        if (s.key) c.appendChild(el("p", "sys-note", "키: " + s.key));
+        var links = songLinks(s);
+        var add = el("button", "sys-link", have[s.title] ? "레퍼토리에 있어요" : "＋ 레퍼토리에 넣기");
+        add.type = "button";
+        add.disabled = !!have[s.title];
+        var note = el("p", "sys-msg");
+        add.addEventListener("click", function () {
+          add.disabled = true;
+          call("member_repertoire_save", { p_song: null, p_title: s.title, p_artist: s.artist || null, p_purpose: null, p_status: "준비 중", p_memo: "노래 추천" }, note)
+            .then(function (ok) { if (ok) showTab("recs"); else add.disabled = false; });
+        });
+        links.appendChild(add);
+        c.appendChild(links);
+        c.appendChild(note);
+        card.appendChild(c);
+      });
+      card.appendChild(el("p", "sys-note", "키(조)는 레슨 때 선생님과 같이 맞춰봐요."));
+    }
+    return card;
+  }
+  function renderRecs(res) {
+    var box = scene.querySelector("#myRecs");
+    box.textContent = "";
+    var recs = res.recs || [], req = res.request, have = {};
+    (res.repertoire || []).forEach(function (s) { have[s.title] = 1; });
+    if (recs.length) box.appendChild(recCard(recs[0], have));
+    else box.appendChild(el("p", "book__empty", "아직 받은 노래 추천이 없어요. 아래에서 신청해보세요."));
+    if (recs.length > 1) {
+      var old = el("details", "fold__add");
+      old.appendChild(el("summary", null, "지난 추천 " + (recs.length - 1) + "개"));
+      recs.slice(1).forEach(function (r) { old.appendChild(recCard(r, have)); });
+      box.appendChild(old);
+    }
+
+    var ask = el("section", "fold__ask");
+    ask.appendChild(el("h3", "rec__title", recs.length ? "다시 추천받기" : "노래 추천받기"));
+    if (req) ask.appendChild(el("p", "sys-msg sys-msg--ok", dayLabel(req.at.slice(0, 10)) + "에 신청했어요. 분석이 끝나면 여기에 올라와요."));
+    var steps = el("ol", "fold__steps");
+    var s1 = el("li");
+    s1.appendChild(document.createTextNode("반주 없이 부른 영상 2~3개(1분 정도)를 "));
+    var k = el("a", null, "카카오톡 채널");
+    k.href = KAKAO;
+    k.target = "_blank";
+    k.rel = "noopener";
+    s1.appendChild(k);
+    s1.appendChild(document.createTextNode("로 보내요."));
+    steps.appendChild(s1);
+    steps.appendChild(el("li", null, "아래에 좋아하는 가수·곡과 목표를 적고 신청해요."));
+    steps.appendChild(el("li", null, "음역과 음색을 분석해서 어울리는 곡을 골라 여기에 올려줘요."));
+    ask.appendChild(steps);
+    var f = el("form", "fold__form sys");
+    var likes = el("input"); likes.name = "likes"; likes.maxLength = 300; likes.placeholder = "예) 태연, 아이유 / Bruno Mars - When I Was Your Man"; likes.value = req && req.likes || "";
+    f.appendChild(field2("좋아하는 가수·곡", likes));
+    f.appendChild(field2("목표", selectOf("goal", GOALS, req && req.goal, "고르기 (선택)")));
+    var memo = el("textarea"); memo.name = "memo"; memo.rows = 2; memo.maxLength = 500; memo.placeholder = "예) 오디션용으로 밝은 곡이 필요해요 / 고음이 적은 곡이면 좋겠어요"; memo.value = req && req.memo || "";
+    f.appendChild(field2("하고 싶은 말 (선택)", memo));
+    var btn = el("button", "sys-btn", req ? "신청 내용 고치기" : "추천 신청하기");
+    btn.type = "submit";
+    f.appendChild(btn);
+    var note = el("p", "sys-msg");
+    f.appendChild(note);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      btn.disabled = true;
+      call("member_song_request", { p_likes: likes.value || null, p_goal: f.querySelector("[name=goal]").value || null, p_memo: memo.value || null }, note)
+        .then(function (ok) { btn.disabled = false; if (ok) showTab("recs"); });
     });
+    ask.appendChild(f);
+    box.appendChild(ask);
   }
 
   /* 내 레퍼토리 (학생이 직접): the songs I'm preparing; 연습 일지 adds up the minutes per song */
@@ -492,7 +632,7 @@
   // Refresh each time the folder opens, so a note written a minute ago shows up.
   // A link like index.html#evals opens the folder on that tab (js/scene.js passes it on).
   scene.addEventListener("scene:open", function (e) {
-    if (e.detail && e.detail.tab) showTab(NOTES || e.detail.tab !== "notes" ? e.detail.tab : "evals");
+    if (e.detail && e.detail.tab) showTab(NOTES || e.detail.tab !== "notes" ? e.detail.tab : FIRST);
     if (who) load();
   });
 
