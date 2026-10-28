@@ -73,14 +73,7 @@
       area.appendChild(hello);
       var list = res.auditions || [];
       if (!list.length) {
-        area.appendChild(el("p", "book__empty", "지금 신청받는 내방 오디션이 없어요. 새 오디션은 오디션 소식과 인스타그램에 올라와요."));
-        if (cfg.visitForm) {
-          var g = el("a", "sys-link", "구글 폼으로 신청하기 ↗");
-          g.href = cfg.visitForm;
-          g.target = "_blank";
-          g.rel = "noopener";
-          area.appendChild(g);
-        }
+        area.appendChild(el("p", "book__empty", "지금 신청받는 내방 오디션이 없어요. 새 오디션이 열리면 오디션 소식과 인스타그램으로 알려드려요."));
         return;
       }
       var open = list.filter(function (a) { return a.id === want; })[0] || list[0];
