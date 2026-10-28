@@ -395,12 +395,13 @@
 
     var ask = el("section", "fold__ask");
     ask.appendChild(el("h3", "rec__title", recs.length ? "다시 추천받기" : "노래 추천받기"));
-    if (req) ask.appendChild(el("p", "sys-msg sys-msg--ok", dayLabel(req.at.slice(0, 10)) + "에 신청했어요. 분석이 끝나면 여기에 올라와요."));
+    if (req) ask.appendChild(el("p", "sys-msg sys-msg--ok", dayLabel(req.at.slice(0, 10)) + "에 신청했어요. 선생님이 직접 듣고 분석해서 시간이 조금 걸릴 수 있어요. 끝나면 여기에 올라와요."));
     var steps = el("ol", "fold__steps");
     steps.appendChild(el("li", null, "반주 없이 부른 노래를 아래에서 녹음하거나 파일로 올려요 (3곡까지, 1곡 1~2분)."));
     steps.appendChild(el("li", null, "좋아하는 가수·곡과 목표를 적고 신청해요."));
     steps.appendChild(el("li", null, "음역과 음색을 분석해서 어울리는 곡을 골라 여기에 올려줘요."));
     ask.appendChild(steps);
+    ask.appendChild(el("p", "fold__wait", "⏳ 한 명 한 명 노래를 듣고 분석하기 때문에 결과가 나오기까지 시간이 조금 걸릴 수 있어요. 조금만 기다려주세요!"));
     var f = el("form", "fold__form sys");
     var songs = songRecorder(req ? req.files || [] : []);
     f.appendChild(songs.node);
