@@ -129,31 +129,22 @@
     fs.appendChild(radios("field", FIELDS, mine && mine.field));
     f.appendChild(fs);
 
-    // 댄스음원: required for 댄스 (MP3); a big file goes to the 카카오톡 channel instead
+    // 댄스음원 (always shown, like the Google Form): required for 댄스 (MP3); a big file goes to 실장님 on KakaoTalk
     var dance = el("fieldset", "apply__set apply__music");
     dance.appendChild(el("legend", null, "댄스음원"));
-    dance.appendChild(el("small", "apply__help", "* 댄스 지원자의 경우 음원 제출 필수 (MP3 파일, " + MB + "MB까지)"));
-    var kakaoLine = el("small", "apply__help");
-    kakaoLine.appendChild(document.createTextNode("* 용량이 크면 "));
-    var ka = el("a", null, "카카오톡 채널");
-    ka.href = cfg.kakao || "#";
-    ka.target = "_blank";
-    ka.rel = "noopener";
-    kakaoLine.appendChild(ka);
-    kakaoLine.appendChild(document.createTextNode("로 보내주세요."));
-    dance.appendChild(kakaoLine);
+    dance.appendChild(el("small", "apply__help", "* 댄스 지원자의 경우 음원 제출 필수(MP3파일)"));
+    dance.appendChild(el("small", "apply__help", "* 용량이 클 시 실장님께 카톡으로 제출해주세요-!"));
+    if (cfg.visitKakaoId) dance.appendChild(el("small", "apply__help", "카톡아이디 : " + cfg.visitKakaoId));
+    dance.appendChild(el("small", "apply__help apply__limit", "소리 파일(audio) 1개를 올려주세요. 최대 " + MB + "MB예요."));
     if (mine && mine.music) dance.appendChild(el("p", "sys-note", "올린 음원: " + (mine.music.name || "음원 파일") + " (새 파일을 고르면 바뀌어요)"));
     var music = el("input"); music.type = "file"; music.name = "music"; music.accept = "audio/*,.mp3,.m4a,.wav";
     dance.appendChild(music);
     var byKakao = el("label", "sys-keep");
     var bk = el("input"); bk.type = "checkbox"; bk.name = "bykakao";
     byKakao.appendChild(bk);
-    byKakao.appendChild(document.createTextNode(" 음원은 카카오톡으로 보낼게요"));
+    byKakao.appendChild(document.createTextNode(" 음원은 실장님께 카톡으로 보낼게요"));
     dance.appendChild(byKakao);
     f.appendChild(dance);
-    function showMusic() { dance.hidden = picked(f, "field") !== "댄스"; }
-    f.querySelectorAll("[name=field]").forEach(function (r) { r.addEventListener("change", showMusic); });
-    showMusic();
 
     var note = el("textarea"); note.name = "note"; note.rows = 3; note.maxLength = 1000; note.value = mine && mine.note || "";
     f.appendChild(field("특이사항", note, "순서 조정이 필요한 경우 작성해주세요! ex) 학교가 늦게 끝나서 뒷순서로 배정 부탁드립니다(7시 이후) · 지방에 살아서 7시에는 학원에서 나가야 해서 앞순서로 배정 부탁드립니다."));
@@ -172,15 +163,15 @@
       if (!gender) { say(msg, "성별을 골라주세요.", "error"); return; }
       if (!fld) { say(msg, "지원분야를 하나 골라주세요.", "error"); return; }
       if (fld === "댄스" && !file && !(mine && mine.music) && !bk.checked) {
-        say(msg, "댄스 지원자는 음원을 올려주세요. 용량이 크면 \"음원은 카카오톡으로 보낼게요\"를 체크해주세요.", "error");
+        say(msg, "댄스 지원자는 음원을 올려주세요. 용량이 크면 \"음원은 실장님께 카톡으로 보낼게요\"를 체크해주세요.", "error");
         return;
       }
       if (file && !/^audio\//.test(file.type) && !/\.(mp3|m4a|wav)$/i.test(file.name)) { say(msg, "음원은 MP3 같은 소리 파일로 올려주세요.", "error"); return; }
-      if (file && file.size > MB * 1048576) { say(msg, MB + "MB보다 커요. 카카오톡 채널로 보내고 \"음원은 카카오톡으로 보낼게요\"를 체크해주세요.", "error"); return; }
+      if (file && file.size > MB * 1048576) { say(msg, MB + "MB보다 커요. 실장님께 카톡으로 보내고 \"음원은 실장님께 카톡으로 보낼게요\"를 체크해주세요.", "error"); return; }
       btn.disabled = true;
       say(msg, file ? "음원을 올리는 중이에요…" : "보내는 중…");
       var up = Promise.resolve(null);
-      if (fld === "댄스" && file) {
+      if (file) {
         var ext = (/\.([a-z0-9]{2,4})$/i.exec(file.name) || [, "mp3"])[1].toLowerCase();
         var path = who.id + "/" + a.id + "-" + Date.now().toString(36) + "." + ext;
         var blob = file.type ? file : file.slice(0, file.size, "audio/mpeg");
@@ -190,7 +181,7 @@
         });
       }
       up.then(function (m) {
-        var extra = fld === "댄스" && bk.checked && !m && !(mine && mine.music) ? "[음원은 카카오톡으로 보냄] " : "";
+        var extra = bk.checked && !m && !(mine && mine.music) ? "[음원은 실장님께 카톡으로 보냄] " : "";
         return LeeshAPI.rpc("member_visit_apply", {
           p_id: who.id, p_pin: who.key, p_news: a.id, p_name: nm.value.trim(), p_gender: gender,
           p_birth: birth.value.trim() || null, p_size: size.value.trim() || null, p_field: fld,

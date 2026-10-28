@@ -6,6 +6,8 @@ window.LEESH = {
   supabaseKey: "sb_publishable_e65wHiIp1Psl4bNVaeU-cA_Df2VmJ-9",
   kakao: "https://pf.kakao.com/_xgNYbK",
   phone: "010-4458-5448",
+  // 내방 오디션 신청서의 댄스음원 안내 "용량이 클 시 실장님께 카톡으로" (학원 구글 폼과 같은 카톡 아이디)
+  visitKakaoId: "sjsh54",
   // 카카오 연결 요청 때 학생이 고르는 담당 선생님 (구글시트 수강ID 관리 탭 기준)
   // 레슨 노트 (선생님이 수업마다 적는 기록). 선생님들과 정하기 전까지 꺼둠 — true로 바꾸면 내 폴더·관리자 화면에 다시 나와요.
   lessonNotes: false,
