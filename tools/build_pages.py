@@ -90,6 +90,26 @@ FINDER = ('<svg viewBox="0 0 48 48" aria-hidden="true">'
           '</svg>')
 
 # 게임.exe on the desktop: a pixel game pad
+def insta_svg():
+    """Pixel camera in Instagram's sunset colours, drawn like the globe (16×16)."""
+    stops = [(0xFE, 0xDA, 0x75), (0xFA, 0x7E, 0x1E), (0xD6, 0x29, 0x76), (0x96, 0x2F, 0xBF), (0x4F, 0x5B, 0xD5)]
+    def col(t):
+        t = max(0.0, min(1.0, t)) * (len(stops) - 1)
+        i = min(int(t), len(stops) - 2)
+        a, b, f = stops[i], stops[i + 1], t - i
+        return "#%02X%02X%02X" % tuple(round(a[k] + (b[k] - a[k]) * f) for k in range(3))
+    rects = []
+    for y in range(16):
+        for x in range(16):
+            cx, cy = min(x, 15 - x), min(y, 15 - y)
+            if cx + cy < 3 and not (cx >= 2 or cy >= 2):  # rounded corners
+                continue
+            frame = (x in (3, 12) and 4 <= y <= 11) or (y in (3, 12) and 4 <= x <= 11)
+            d = ((x - 7.5) ** 2 + (y - 7.5) ** 2) ** 0.5
+            white = frame or 2.0 <= d <= 3.1 or (x, y) == (10, 5)
+            rects.append(f'<rect x="{x}" y="{y}" width="1" height="1" fill="{"#FFFFFF" if white else col((x + 15 - y) / 30)}"/>')
+    return '<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' + "".join(rects) + "</svg>"
+
 GAME_ICON = ('<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">'
              '<path d="M3 4h10v1h1v1h1v5h-1v1h-3v-1h-1v-1H6v1H5v1H2v-1H1V6h1V5h1z" fill="#1E1A18"/>'
              '<path d="M3 5h10v1h1v5h-2v-1h-1V9H5v1H4v1H2V6h1z" fill="#F2C14E"/>'
@@ -176,6 +196,8 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
     icon(74, 110, 50, 50, "유튜브", YT, globe_svg(), scene="youtube"),
+    icon(392, 150, 44, 44, "인스타 (오디션)", blog.INSTA_AUDITION, insta_svg(), external=True),
+    icon(404, 246, 44, 44, "인스타 (취미)", blog.INSTA_HOBBY, insta_svg(), external=True),
     thumb(228.5, 136, 37, 37, 1, "무대.jpg", scene="stage"),
     thumb(285.5, 216, 37, 37, 2, "레슨.jpg", scene="lesson"),
     thumb(169, 263.5, 37, 38, 3, "연습실.jpg", scene="room"),
