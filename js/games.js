@@ -1,4 +1,6 @@
-// 보컬 오락실 (games.html): four small games that train the ear and the voice.
+// 보컬 오락실 (games.html): small games that train the ear and the voice. This file has the shared parts
+// (sound, microphone + pitch, records, the launcher) and the first four games; js/games2.js adds the rest
+// (원장님 2026-10-28: docs/menu-ideas.md "미니게임 아이디어" 1~14 전부) through window.LeeshArcade.
 //   fly    목소리로 날아라 — the pitch you sing moves the bird through gaps (touch to play without a mic)
 //   pitch  음정 퀴즈 — which of two tones is higher; the gap shrinks as you get it right
 //   rhythm 리듬 탭 — tap on the beat; timing graded against the audio clock
@@ -144,8 +146,8 @@
   var games = {}, current = null;
   function showBest() {
     root.querySelectorAll("[data-best]").forEach(function (el) {
-      var k = el.getAttribute("data-best"), v = best(k);
-      el.textContent = v ? "최고 기록 " + (k === "breath" ? v.toFixed(1) + "초" : k === "rhythm" ? v + "%" : v + (k === "pitch" ? "단계" : "점")) : "아직 기록 없음";
+      var k = el.getAttribute("data-best"), v = best(k), g = games[k];
+      el.textContent = v ? "최고 기록 " + (g && g.bestText ? g.bestText(v) : k === "breath" ? v.toFixed(1) + "초" : k === "rhythm" ? v + "%" : v + (k === "pitch" ? "단계" : "점")) : "아직 기록 없음";
     });
   }
   function open(name) {
@@ -161,7 +163,7 @@
     }
   }
   root.querySelectorAll("[data-game]").forEach(function (b) {
-    b.addEventListener("click", function () { open(b.getAttribute("data-game")); });
+    b.addEventListener("click", function () { if (games[b.getAttribute("data-game")]) open(b.getAttribute("data-game")); });
   });
   root.querySelectorAll("[data-close]").forEach(function (b) {
     b.addEventListener("click", function () {
@@ -583,7 +585,17 @@
     };
   })();
 
-  showBest();
-  var first = location.hash.replace("#", "");
-  if (games[first]) open(first);
+  // for js/games2.js
+  window.LeeshArcade = {
+    $: $, audio: audio, tone: tone, click: click, openMic: openMic, closeMic: closeMic, listen: listen, best: best, setBest: setBest,
+    result: result, noteName: noteName, median: median, current: function () { return current; },
+    register: function (name, g) { games[name] = g; }
+  };
+  // after every game file has registered (the scripts sit at the end of the page)
+  function boot() {
+    showBest();
+    var first = location.hash.replace("#", "");
+    if (games[first]) open(first);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else setTimeout(boot, 0);
 })();

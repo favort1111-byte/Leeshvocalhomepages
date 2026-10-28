@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>보컬 오락실 | 이송희보컬레슨</title>
-<meta name="description" content="이송희보컬레슨 미니게임: 목소리로 날아라, 음정 퀴즈, 리듬 탭, 숨 참기 챌린지.">
+<meta name="description" content="이송희보컬레슨 미니게임 18개: 음정 퀴즈, 멜로디 따라치기, 계이름 맞히기, 밝은 소리 / 슬픈 소리, 틀린 음 찾기, 몇 박자?, 목소리로 날아라, 숨 참기 챌린지, 음 맞추기 과녁, 음계 계단 오르기, 사이렌 따라 그리기, 작게→크게, 노래방 음정 레인, 리듬 탭, 리듬 메아리, 4줄 리듬 게임, 보컬 OX 퀴즈, 오디션 시뮬레이터.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Cormorant+Garamond:wght@500&family=Gloock&family=Gowun+Batang&family=Jost:wght@400;500&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=4334772f">
 <link rel="stylesheet" href="css/system.css?v=07641685">
-<link rel="stylesheet" href="css/games.css?v=d2f5e899">
+<link rel="stylesheet" href="css/games.css?v=cba5d637">
 </head>
 <body>
 <main class="stage arcade-page">
@@ -28,12 +28,90 @@
       <h1>보컬 오락실</h1>
       <p>놀면서 귀랑 목소리를 깨워요. 기록은 이 기기에만 저장돼요.</p>
     </header>
+    <h2 class="arcade__group">귀 게임</h2>
+    <ul class="arcade__menu">
+      <li><button type="button" class="arcade__cart" data-game="pitch" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎹</span><b>음정 퀴즈</b><span>두 소리 중 더 높은 쪽은? 맞힐수록 어려워져요.</span><small class="arcade__tag">귀 훈련</small><small class="arcade__best" data-best="pitch"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="simon" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎼</span><b>멜로디 따라치기</b><span>건반이 들려준 멜로디를 순서대로. 맞힐 때마다 한 음씩 길어져요.</span><small class="arcade__tag">기억력 · 음감</small><small class="arcade__best" data-best="simon"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="solfa" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🔤</span><b>계이름 맞히기</b><span>'도'를 듣고, 다음 소리가 무슨 음인지 맞혀요.</span><small class="arcade__tag">상대 음감</small><small class="arcade__best" data-best="solfa"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="mood" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">☀️</span><b>밝은 소리 / 슬픈 소리</b><span>화음이 밝은 장조일까, 슬픈 단조일까?</span><small class="arcade__tag">화성 감각</small><small class="arcade__best" data-best="mood"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="wrong" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🔎</span><b>틀린 음 찾기</b><span>옛 동요 한 소절, 두 번째에 몰래 바뀐 음은?</span><small class="arcade__tag">음정 귀</small><small class="arcade__best" data-best="wrong"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="meter" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">💃</span><b>몇 박자?</b><span>쿵짝짝(3박)일까, 쿵짝짝짝(4박)일까?</span><small class="arcade__tag">박자 감각</small><small class="arcade__best" data-best="meter"></small></button></li>
+    </ul>
+    <h2 class="arcade__group">목소리 게임 🎤</h2>
     <ul class="arcade__menu">
       <li><button type="button" class="arcade__cart" data-game="fly" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎤</span><b>목소리로 날아라</b><span>높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.</span><small class="arcade__tag">음정 조절</small><small class="arcade__best" data-best="fly"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="pitch" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎹</span><b>음정 퀴즈</b><span>두 소리 중 더 높은 쪽은? 맞힐수록 어려워져요.</span><small class="arcade__tag">귀 훈련</small><small class="arcade__best" data-best="pitch"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="rhythm" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🥁</span><b>리듬 탭</b><span>박자에 맞춰 톡톡. 빠른지 늦은지 알려줘요.</span><small class="arcade__tag">박자감</small><small class="arcade__best" data-best="rhythm"></small></button></li>
       <li><button type="button" class="arcade__cart" data-game="breath" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">💨</span><b>숨 참기 챌린지</b><span>한 음으로 '아~' 얼마나 길게 할 수 있을까?</span><small class="arcade__tag">호흡</small><small class="arcade__best" data-best="breath"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="target" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎯</span><b>음 맞추기 과녁</b><span>피아노 음을 따라 불러서 과녁 가운데에 2초!</span><small class="arcade__tag">음정 정확도</small><small class="arcade__best" data-best="target"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="stairs" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🪜</span><b>음계 계단 오르기</b><span>도레미로 한 칸씩. 어디까지 가나 = 내 음역대.</span><small class="arcade__tag">음역대</small><small class="arcade__best" data-best="stairs"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="siren" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">〰️</span><b>사이렌 따라 그리기</b><span>낮게→높게→낮게, 선을 목소리로 따라 그려요.</span><small class="arcade__tag">워밍업</small><small class="arcade__best" data-best="siren"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="cresc" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">📢</span><b>작게→크게</b><span>선을 따라 점점 크게, 다시 점점 작게.</span><small class="arcade__tag">강약 조절</small><small class="arcade__best" data-best="cresc"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="karaoke" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">⭐</span><b>노래방 음정 레인</b><span>흘러오는 음표 높이로 '반짝반짝 작은별'을 불러요.</span><small class="arcade__tag">노래 음정</small><small class="arcade__best" data-best="karaoke"></small></button></li>
     </ul>
+    <h2 class="arcade__group">리듬 게임</h2>
+    <ul class="arcade__menu">
+      <li><button type="button" class="arcade__cart" data-game="rhythm" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🥁</span><b>리듬 탭</b><span>박자에 맞춰 톡톡. 빠른지 늦은지 알려줘요.</span><small class="arcade__tag">박자감</small><small class="arcade__best" data-best="rhythm"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="echo" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🔁</span><b>리듬 메아리</b><span>들려준 리듬을 똑같이 두드려요. 점점 복잡해져요.</span><small class="arcade__tag">리듬 기억</small><small class="arcade__best" data-best="echo"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="lanes" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎮</span><b>4줄 리듬 게임</b><span>떨어지는 노트를 D·F·J·K로 맞춰 눌러요.</span><small class="arcade__tag">리듬 반응</small><small class="arcade__best" data-best="lanes"></small></button></li>
+    </ul>
+    <h2 class="arcade__group">퀴즈 · 이야기</h2>
+    <ul class="arcade__menu">
+      <li><button type="button" class="arcade__cart" data-game="ox" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">⭕</span><b>보컬 OX 퀴즈</b><span>고음은 목에 힘을 줘야 한다? 답마다 원포인트 레슨!</span><small class="arcade__tag">보컬 상식</small><small class="arcade__best" data-best="ox"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="sim" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎬</span><b>오디션 시뮬레이터</b><span>선곡 · 옷 · 자기소개를 고르면 심사위원이 반응해요.</span><small class="arcade__tag">오디션 연습</small><small class="arcade__best" data-best="sim"></small></button></li>
+    </ul>
+    <section class="game" data-panel="pitch" hidden aria-label="음정 퀴즈">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>음정 퀴즈.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="pitch">
+          <p class="pitch__lives" aria-label="남은 기회">♥♥♥</p>
+          <p class="pitch__level"></p>
+          <p class="pitch__status" role="status"></p>
+          <div class="game__row pitch__choices">
+            <button type="button" class="game__btn pitch__choice" data-answer="1" disabled>첫 번째 소리</button>
+            <button type="button" class="game__btn pitch__choice" data-answer="2" disabled>두 번째 소리</button>
+          </div>
+          <div class="game__row">
+            <button type="button" class="game__btn" data-start>시작</button>
+            <button type="button" class="game__btn game__btn--ghost" data-replay>🔁 다시 듣기</button>
+          </div>
+        </div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="simon" hidden aria-label="멜로디 따라치기">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>멜로디 따라치기.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="solfa" hidden aria-label="계이름 맞히기">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>계이름 맞히기.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="mood" hidden aria-label="밝은 소리 / 슬픈 소리">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>밝은 소리 / 슬픈 소리.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="wrong" hidden aria-label="틀린 음 찾기">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>틀린 음 찾기.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="meter" hidden aria-label="몇 박자?">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>몇 박자?.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
     <section class="game" data-panel="fly" hidden aria-label="목소리로 날아라">
       <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>목소리로 날아라.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
       <div class="game__body">
@@ -51,22 +129,55 @@
         <div class="game__result" role="status" hidden></div>
       </div>
     </section>
-    <section class="game" data-panel="pitch" hidden aria-label="음정 퀴즈">
-      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>음정 퀴즈.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+    <section class="game" data-panel="breath" hidden aria-label="숨 참기 챌린지">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>숨 참기 챌린지.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
       <div class="game__body">
-        <div class="pitch">
-          <p class="pitch__lives" aria-label="남은 기회">♥♥♥</p>
-          <p class="pitch__level"></p>
-          <p class="pitch__status" role="status"></p>
-          <div class="game__row pitch__choices">
-            <button type="button" class="game__btn pitch__choice" data-answer="1" disabled>첫 번째 소리</button>
-            <button type="button" class="game__btn pitch__choice" data-answer="2" disabled>두 번째 소리</button>
-          </div>
+        <div class="breath">
+          <p class="breath__secs">0.0</p>
+          <p class="breath__unit">초</p>
+          <p class="breath__medal">10초면 동메달</p>
+          <div class="breath__graph"><canvas aria-label="음높이 그래프"></canvas></div>
+          <p class="breath__status" role="status">숨을 크게 들이쉬고, 편한 음으로 '아~' 길게 내 보세요. 선이 평평할수록 안정적이에요.</p>
           <div class="game__row">
-            <button type="button" class="game__btn" data-start>시작</button>
-            <button type="button" class="game__btn game__btn--ghost" data-replay>🔁 다시 듣기</button>
+            <button type="button" class="game__btn" data-start>🎤 시작</button>
           </div>
+          <p class="game__note">🥉 10초 · 🥈 15초 · 🥇 20초 · 👑 25초 · 목소리는 이 기기 안에서만 쓰여요.</p>
         </div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="target" hidden aria-label="음 맞추기 과녁">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>음 맞추기 과녁.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="stairs" hidden aria-label="음계 계단 오르기">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>음계 계단 오르기.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="siren" hidden aria-label="사이렌 따라 그리기">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>사이렌 따라 그리기.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="cresc" hidden aria-label="작게→크게">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>작게→크게.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="karaoke" hidden aria-label="노래방 음정 레인">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>노래방 음정 레인.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
         <div class="game__result" role="status" hidden></div>
       </div>
     </section>
@@ -92,20 +203,31 @@
         <div class="game__result" role="status" hidden></div>
       </div>
     </section>
-    <section class="game" data-panel="breath" hidden aria-label="숨 참기 챌린지">
-      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>숨 참기 챌린지.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+    <section class="game" data-panel="echo" hidden aria-label="리듬 메아리">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>리듬 메아리.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
       <div class="game__body">
-        <div class="breath">
-          <p class="breath__secs">0.0</p>
-          <p class="breath__unit">초</p>
-          <p class="breath__medal">10초면 동메달</p>
-          <div class="breath__graph"><canvas aria-label="음높이 그래프"></canvas></div>
-          <p class="breath__status" role="status">숨을 크게 들이쉬고, 편한 음으로 '아~' 길게 내 보세요. 선이 평평할수록 안정적이에요.</p>
-          <div class="game__row">
-            <button type="button" class="game__btn" data-start>🎤 시작</button>
-          </div>
-          <p class="game__note">🥉 10초 · 🥈 15초 · 🥇 20초 · 👑 25초 · 목소리는 이 기기 안에서만 쓰여요.</p>
-        </div>
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="lanes" hidden aria-label="4줄 리듬 게임">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>4줄 리듬 게임.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="ox" hidden aria-label="보컬 OX 퀴즈">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>보컬 OX 퀴즈.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
+        <div class="game__result" role="status" hidden></div>
+      </div>
+    </section>
+    <section class="game" data-panel="sim" hidden aria-label="오디션 시뮬레이터">
+      <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>오디션 시뮬레이터.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
+      <div class="game__body">
+        <div class="g2" data-g2></div>
         <div class="game__result" role="status" hidden></div>
       </div>
     </section>
@@ -115,7 +237,8 @@
 <footer class="legal"><a href="privacy.html"><b>개인정보처리방침</b></a><span>© 이송희보컬레슨 · 서울 강남구 테헤란로55길 21 미승(태원)빌딩 2층</span></footer>
 <script src="js/config.js?v=27cb9d9b"></script>
 <script src="js/api.js?v=ae8e391c"></script>
-<script src="js/games.js?v=cda9488f"></script>
+<script src="js/games.js?v=d6ed6e3b"></script>
+<script src="js/games2.js?v=5cdc7269"></script>
 <script src="js/pagenav.js?v=3b47d44f"></script>
 </body>
 </html>

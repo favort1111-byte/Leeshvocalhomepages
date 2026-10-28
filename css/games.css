@@ -126,3 +126,40 @@
   .pitch__choice{min-width:130px;}
 }
 @media (prefers-reduced-motion:reduce){.rhythm__pad.is-beat,.rhythm__pad.is-hit{animation:none;}}
+
+/* 게임 묶음 제목 + js/games2.js 게임들 (원장님 2026-10-28: 아이디어 1~14 전부) */
+.arcade__group{margin:6px 0 12px;font-family:var(--f-hand);font-weight:400;font-size:24px;color:#E8C27A;}
+.g2__status{margin:0 0 10px;text-align:center;font-size:16px;min-height:1.5em;}
+.g2__cv{display:block;width:100%;border-radius:10px;}
+.g2__lives{margin:0 0 6px;text-align:center;color:#B0412F;letter-spacing:.06em;}
+.g2 .is-right,.game .g2__pick.is-right,.game .g2__opt.is-right{background:#2E6B45 !important;color:#fff !important;box-shadow:none !important;}
+.g2 .is-wrong,.game .g2__opt.is-wrong{background:#B0412F !important;color:#fff !important;box-shadow:none !important;}
+.g2 .game__btn.is-on,.game .g2__opt.is-on{background:#E8C27A !important;color:#2B2522 !important;box-shadow:none !important;}
+.g2__keys{display:flex;gap:8px;justify-content:center;margin:6px 0;}
+.g2__key{flex:1;max-width:96px;height:150px;border:0;border-radius:0 0 12px 12px;font:inherit;font-size:18px;font-weight:500;color:#2B2522;cursor:pointer;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;box-shadow:0 5px 0 rgba(0,0,0,.25);transition:filter .1s,transform .1s;}
+.g2__key--0{background:#E7B9A7;}.g2__key--1{background:#F2C14E;}.g2__key--2{background:#9CC5A1;}.g2__key--3{background:#A9C4E6;}.g2__key--4{background:#D7B5E3;}
+.g2__key.is-on{filter:brightness(1.25);transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25);}
+.g2__key:disabled{cursor:default;}
+.g2__choices .game__btn{min-width:70px;}
+.g2__dots{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0;}
+.g2__dot{width:40px;height:40px;border-radius:50%;border:2px solid #6E3B28;background:#FBF3E4;font:inherit;font-weight:500;color:#6E3B28;cursor:pointer;}
+.g2__dot.is-on{background:#E8C27A;}
+.g2__dot:disabled{cursor:default;}
+.g2__stairs{display:flex;align-items:flex-end;gap:3px;height:120px;margin:8px 0;}
+.g2__step{flex:1;display:flex;align-items:flex-start;justify-content:center;background:#E7D3C4;border-radius:4px 4px 0 0;font-size:11px;color:#6E3B28;padding-top:2px;overflow:visible;}
+.g2__step.is-done{background:#9CC5A1;}
+.g2__step.is-now{background:#E8C27A;font-size:18px;}
+.g2__opts{gap:6px 14px;font-size:14px;}
+.g2__opts label{display:inline-flex;align-items:center;gap:6px;}
+.g2__pad{display:block;margin:6px auto;}
+.g2__q{margin:8px 0;text-align:center;font-family:"Gowun Batang",serif;font-size:20px;line-height:1.45;}
+.g2__why{margin:12px 0 0;padding:0;text-align:center;}
+.g2__why:not(:empty){padding:12px 14px;border-radius:10px;background:#F1E1B9;}
+.g2__why p{margin:6px 0;}
+.g2__why a{color:#6E3B28;font-weight:500;}
+.g2__opts2{display:grid;gap:8px;max-width:520px;margin:0 auto;}
+.g2__opt{height:auto;min-height:52px;padding:10px 18px;line-height:1.4;text-align:left;border-radius:14px;}
+.g2__judge{margin:12px auto 0;max-width:520px;padding:10px 14px;border-radius:10px;background:#F1E1B9;font-size:15px;}
+.g2__sim .game__row{margin-top:10px;}
+.game__result a.game__btn{display:inline-flex;align-items:center;margin-left:8px;text-decoration:none;}

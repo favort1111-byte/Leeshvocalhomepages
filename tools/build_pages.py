@@ -498,11 +498,28 @@ teacher_page = (head("선생님 | 이송희보컬레슨", "이송희보컬레슨
                 + "</main>\n" + foot("teacher"))
 
 # ---------- GAMES: 보컬 오락실 (js/games.js) ----------
+# (id, emoji, name, what, skill, group). fly·pitch·rhythm·breath live in js/games.js, the rest in js/games2.js
+# (원장님 2026-10-28: docs/menu-ideas.md 미니게임 아이디어 1~14 전부).
+GAME_GROUPS = ["귀 게임", "목소리 게임 🎤", "리듬 게임", "퀴즈 · 이야기"]
 GAME_LIST = [
-    ("fly", "🎤", "목소리로 날아라", "높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.", "음정 조절"),
-    ("pitch", "🎹", "음정 퀴즈", "두 소리 중 더 높은 쪽은? 맞힐수록 어려워져요.", "귀 훈련"),
-    ("rhythm", "🥁", "리듬 탭", "박자에 맞춰 톡톡. 빠른지 늦은지 알려줘요.", "박자감"),
-    ("breath", "💨", "숨 참기 챌린지", "한 음으로 '아~' 얼마나 길게 할 수 있을까?", "호흡"),
+    ("pitch", "🎹", "음정 퀴즈", "두 소리 중 더 높은 쪽은? 맞힐수록 어려워져요.", "귀 훈련", 0),
+    ("simon", "🎼", "멜로디 따라치기", "건반이 들려준 멜로디를 순서대로. 맞힐 때마다 한 음씩 길어져요.", "기억력 · 음감", 0),
+    ("solfa", "🔤", "계이름 맞히기", "'도'를 듣고, 다음 소리가 무슨 음인지 맞혀요.", "상대 음감", 0),
+    ("mood", "☀️", "밝은 소리 / 슬픈 소리", "화음이 밝은 장조일까, 슬픈 단조일까?", "화성 감각", 0),
+    ("wrong", "🔎", "틀린 음 찾기", "옛 동요 한 소절, 두 번째에 몰래 바뀐 음은?", "음정 귀", 0),
+    ("meter", "💃", "몇 박자?", "쿵짝짝(3박)일까, 쿵짝짝짝(4박)일까?", "박자 감각", 0),
+    ("fly", "🎤", "목소리로 날아라", "높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.", "음정 조절", 1),
+    ("breath", "💨", "숨 참기 챌린지", "한 음으로 '아~' 얼마나 길게 할 수 있을까?", "호흡", 1),
+    ("target", "🎯", "음 맞추기 과녁", "피아노 음을 따라 불러서 과녁 가운데에 2초!", "음정 정확도", 1),
+    ("stairs", "🪜", "음계 계단 오르기", "도레미로 한 칸씩. 어디까지 가나 = 내 음역대.", "음역대", 1),
+    ("siren", "〰️", "사이렌 따라 그리기", "낮게→높게→낮게, 선을 목소리로 따라 그려요.", "워밍업", 1),
+    ("cresc", "📢", "작게→크게", "선을 따라 점점 크게, 다시 점점 작게.", "강약 조절", 1),
+    ("karaoke", "⭐", "노래방 음정 레인", "흘러오는 음표 높이로 '반짝반짝 작은별'을 불러요.", "노래 음정", 1),
+    ("rhythm", "🥁", "리듬 탭", "박자에 맞춰 톡톡. 빠른지 늦은지 알려줘요.", "박자감", 2),
+    ("echo", "🔁", "리듬 메아리", "들려준 리듬을 똑같이 두드려요. 점점 복잡해져요.", "리듬 기억", 2),
+    ("lanes", "🎮", "4줄 리듬 게임", "떨어지는 노트를 D·F·J·K로 맞춰 눌러요.", "리듬 반응", 2),
+    ("ox", "⭕", "보컬 OX 퀴즈", "고음은 목에 힘을 줘야 한다? 답마다 원포인트 레슨!", "보컬 상식", 3),
+    ("sim", "🎬", "오디션 시뮬레이터", "선곡 · 옷 · 자기소개를 고르면 심사위원이 반응해요.", "오디션 연습", 3),
 ]
 
 def game_window(gid, title, body):
@@ -571,13 +588,16 @@ GAMES_BODY = {
 """,
 }
 
+def game_cart(gid, emo, name, desc, tag):
+    return (f'      <li><button type="button" class="arcade__cart" data-game="{gid}" aria-pressed="false">'
+            f'<span class="arcade__emoji" aria-hidden="true">{emo}</span><b>{name}</b><span>{desc}</span>'
+            f'<small class="arcade__tag">{tag}</small><small class="arcade__best" data-best="{gid}"></small></button></li>')
 games_menu = "\n".join(
-    f'      <li><button type="button" class="arcade__cart" data-game="{gid}" aria-pressed="false">'
-    f'<span class="arcade__emoji" aria-hidden="true">{emo}</span><b>{name}</b><span>{desc}</span>'
-    f'<small class="arcade__tag">{tag}</small><small class="arcade__best" data-best="{gid}"></small></button></li>'
-    for gid, emo, name, desc, tag in GAME_LIST)
+    f'    <h2 class="arcade__group">{grp}</h2>\n    <ul class="arcade__menu">\n'
+    + "\n".join(game_cart(*g[:5]) for g in GAME_LIST if g[5] == gi) + "\n    </ul>"
+    for gi, grp in enumerate(GAME_GROUPS))
 
-games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬레슨 미니게임: 목소리로 날아라, 음정 퀴즈, 리듬 탭, 숨 참기 챌린지.")
+games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬레슨 미니게임 " + str(len(GAME_LIST)) + "개: " + ", ".join(g[2] for g in GAME_LIST) + ".")
               .replace("</head>", '<link rel="stylesheet" href="css/games.css">\n</head>')
               + '<main class="stage arcade-page">\n'
               + nav("games", "light") + "\n"
@@ -587,11 +607,11 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + '      <h1>보컬 오락실</h1>\n'
               + '      <p>놀면서 귀랑 목소리를 깨워요. 기록은 이 기기에만 저장돼요.</p>\n'
               + '    </header>\n'
-              + f'    <ul class="arcade__menu">\n{games_menu}\n    </ul>\n'
-              + "".join(game_window(gid, name, GAMES_BODY[gid]) for gid, _, name, _, _ in GAME_LIST)
+              + games_menu + "\n"
+              + "".join(game_window(g[0], g[2], GAMES_BODY.get(g[0], '        <div class="g2" data-g2></div>\n')) for g in GAME_LIST)
               + '    <p class="arcade__more">진짜 노래 실력은 레슨에서 키워요 → <a href="about.html#steps">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
               + "  </div>\n"
-              + "</main>\n" + foot("games"))
+              + "</main>\n" + foot("games", "games2"))
 
 # ---------- AUDITION NEWS · RESULTS · TIPS: the old blog's posts, moved into the site ----------
 # tools/import_blog.py → data/blog/index.json (lists) + data/blog/posts/<id>.json (post.html shows one).
