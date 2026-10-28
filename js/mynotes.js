@@ -1,4 +1,4 @@
-// "내 폴더" on the desktop: a signed-in student (js/signin.js — 카카오 or 수강 ID, the same sign-in
+// "내 폴더" on the desktop: a signed-in student (js/signin.js — 카카오, the same sign-in
 // as 연습실 예약) sees 내 예약 · 일정·공지 · 월말평가 · 노래 추천 · 영상 추천 · 레퍼토리 · 연습 일지. Once signed in, the folder on
 // the desktop carries the student's name, and the sign-in stays on this device so a link from
 // 카카오톡 (index.html#notes) opens straight in.

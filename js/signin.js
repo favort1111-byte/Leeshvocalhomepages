@@ -1,9 +1,9 @@
 // Student sign-in, shared by 연습실 예약 (booking.js) and 내 폴더 (mynotes.js).
 //   1. 카카오로 로그인 — the usual way. The first time, the student says who they are and the
 //      director approves the link in the admin page; after that one tap (and the session stays).
-//   2. 수강 ID + 비밀번호 — tucked away. 0000 is a temporary PIN that must be changed first.
+//   (수강 ID + 비밀번호 로그인은 원장님 결정으로 없앰, 2026-10-28; the server refuses it too: settings.pin_login)
 // LeeshSignIn.mount(box, { title, lede, onSignedIn(res, who) }) → { start(), signOut(), note(text) }
-// who = { id, key, kakao } where key is the stay-signed-in token ('' for Kakao).
+// who = { id, key: '', kakao: true }
 (function () {
   var cfg = window.LEESH || {};
   var TEACHERS = cfg.teachers || [];
@@ -31,9 +31,6 @@
     l.appendChild(i);
     return l;
   }
-  function pinInput(name, label) {
-    return input(name, label, { type: "password", inputmode: "numeric", pattern: "[0-9]{4}", maxlength: "4", autocomplete: name === "pin" ? "current-password" : "new-password", required: "" });
-  }
   function button(text, cls, type) {
     var b = el("button", cls || "sys-btn", text);
     b.type = type || "button";
@@ -41,8 +38,6 @@
   }
 
   function mount(box, opts) {
-    var keep = true;
-
     function done(res, who) {
       say(box, "");
       opts.onSignedIn(res, who);
@@ -66,77 +61,11 @@
         var pl = el("a", "signin__policy", "개인정보처리방침");
         pl.href = "privacy.html";
         box.appendChild(pl);
-      }
-      var alt = el("details", "signin__alt");
-      if (!kakaoOk) alt.open = true;
-      alt.appendChild(el("summary", null, "수강 ID로 로그인"));
-      var f = el("form", "signin__form");
-      var row = el("div", "sys-row");
-      row.appendChild(input("memberId", "수강 ID", { autocomplete: "username", autocapitalize: "characters", spellcheck: "false", required: "" }));
-      row.appendChild(pinInput("pin", "비밀번호 4자리"));
-      f.appendChild(row);
-      var kl = el("label", "sys-keep");
-      var kc = el("input");
-      kc.type = "checkbox"; kc.name = "keep"; kc.checked = true;
-      kl.appendChild(kc);
-      kl.appendChild(document.createTextNode(" 이 기기에서 로그인 유지"));
-      f.appendChild(kl);
-      var sb = button("로그인", "sys-btn", "submit");
-      f.appendChild(sb);
-      f.appendChild(el("p", "sys-note", "처음 받은 비밀번호가 0000이면 로그인한 뒤 내 비밀번호로 바꿔요. 잊었으면 학원에 문의해주세요."));
-      f.addEventListener("submit", function (e) {
-        e.preventDefault();
-        keep = kc.checked;
-        sb.disabled = true;
-        say(box, "확인 중…");
-        var id = f.querySelector("[name=memberId]").value.trim(), pin = f.querySelector("[name=pin]").value.trim();
-        LeeshAPI.rpc("member_login", { p_id: id, p_pin: pin }).then(function (res) {
-          sb.disabled = false;
-          if (!res.ok) { say(box, res.error, "error"); return; }
-          var who = { id: res.id, key: res.token || pin, kakao: false };
-          if (res.mustChange) return newPin(res, who);
-          if (res.token) LeeshAPI.who.set(who, keep);
-          done(res, who);
-        });
-      });
-      alt.appendChild(f);
-      box.appendChild(alt);
+      } else box.appendChild(el("p", "sys-msg", "아직 준비 중이에요. 곧 열려요."));
       box.appendChild(el("p", "sys-msg signin__msg", ""));
       var err = LeeshAPI.kakao && LeeshAPI.kakao.lastError();
       if (err) say(box, "카카오 로그인을 마치지 못했어요. 다시 눌러주세요.", "error");
       else if (note) say(box, note, kind);
-    }
-
-    /* ---------- 0000 → my own PIN ---------- */
-    function newPin(res, who) {
-      head();
-      box.appendChild(el("p", "signin__title", res.name + "님, 처음 오셨네요!"));
-      box.appendChild(el("p", "sys-note", "앞으로 쓸 비밀번호 4자리를 정해주세요. 0000이나 1111, 1234처럼 쉬운 번호는 안 돼요."));
-      var f = el("form", "signin__form");
-      var row = el("div", "sys-row");
-      row.appendChild(pinInput("p1", "새 비밀번호"));
-      row.appendChild(pinInput("p2", "한 번 더"));
-      f.appendChild(row);
-      var sb = button("비밀번호 정하고 시작하기", "sys-btn", "submit");
-      f.appendChild(sb);
-      f.appendChild(el("p", "sys-msg signin__msg", ""));
-      f.addEventListener("submit", function (e) {
-        e.preventDefault();
-        var p1 = f.querySelector("[name=p1]").value.trim(), p2 = f.querySelector("[name=p2]").value.trim();
-        if (p1 !== p2) { say(box, "두 칸의 번호가 달라요.", "error"); return; }
-        sb.disabled = true;
-        LeeshAPI.rpc("member_change_pin", { p_id: who.id, p_pin: who.key, p_new: p1 }).then(function (r) {
-          sb.disabled = false;
-          if (!r.ok) { say(box, r.error, "error"); return; }
-          var me = { id: r.id, key: r.token, kakao: false };
-          LeeshAPI.who.set(me, keep);
-          LeeshAPI.rpc("member_login", { p_id: me.id, p_pin: me.key }).then(function (again) {
-            if (again.ok) done(again, me); else choose(again.error, "error");
-          });
-        });
-      });
-      box.appendChild(f);
-      f.querySelector("[name=p1]").focus();
     }
 
     /* ---------- Kakao, not linked yet ---------- */
@@ -218,15 +147,7 @@
     function start() {
       head();
       box.appendChild(el("p", "sys-note", "확인 중…"));
-      var saved = LeeshAPI.who.get();
-      if (saved) {
-        return LeeshAPI.rpc("member_login", { p_id: saved.id, p_pin: saved.key }).then(function (res) {
-          if (res.ok && !res.mustChange) return done(res, { id: res.id, key: saved.key, kakao: false });
-          if (res.error !== LeeshAPI.NETWORK_ERROR) LeeshAPI.who.clear();
-          if (LeeshAPI.kakao.session()) return kakaoCheck();
-          choose(res.ok ? "" : res.error, "error");
-        });
-      }
+      LeeshAPI.who.clear(); // a 수강 ID sign-in kept from before (수강 ID 로그인은 없앴어요, 2026-10-28)
       if (LeeshAPI.kakao && LeeshAPI.kakao.session()) return kakaoCheck();
       choose();
       return Promise.resolve();

@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 12; // bump when the demo defaults change
+  var VERSION = 13; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -42,8 +42,8 @@
       rooms: [["B1", "연습실"], ["B2", "연습실"], ["B3", "연습실"], ["B4", "연습실"], ["B5", "연습실"], ["C hall", "춤연습실"]]
         .map(function (r, i) { return { id: i + 1, name: r[0], kind: r[1], sort: i + 1, active: true }; }),
       members: [
-        { id: "S001", name: "김시우", phone: "010-1234-5678", pin: "5678", status: "재원", expires_on: null, memo: "담당 원장님", must_change_pin: false, kakao_user: null },
-        { id: "S002", name: "이하늘", phone: "010-2222-9999", pin: "9999", status: "재원", expires_on: null, memo: "입시반 · 담당 안유정", must_change_pin: false, kakao_user: "kakao-sample" },
+        { id: "S001", name: "김시우", phone: "010-1234-5678", pin: "5678", status: "재원", expires_on: null, memo: "담당 원장님", must_change_pin: false, kakao_user: "kakao-sample" },
+        { id: "S002", name: "이하늘", phone: "010-2222-9999", pin: "9999", status: "재원", expires_on: null, memo: "입시반 · 담당 안유정", must_change_pin: false, kakao_user: "kakao-hanul" },
         { id: "S003", name: "박새봄", phone: "010-5555-7777", pin: "7777", status: "휴원", expires_on: null, memo: "10월 복귀 예정", must_change_pin: false, kakao_user: null },
         { id: "S004", name: "정다온", phone: null, pin: "0000", status: "재원", expires_on: null, memo: "담당 이수빈", must_change_pin: true, kakao_user: null },
         { id: "S005", name: "한지우", phone: null, pin: "0000", status: "재원", expires_on: null, memo: "담당 오은지", must_change_pin: true, kakao_user: null },
@@ -137,15 +137,8 @@
     if (via === "kakao") {
       m = db.members.filter(function (x) { return x.kakao_user === uid; })[0];
       if (!m) return { ok: false, code: "not_linked", error: "아직 학원 승인 전이에요. 승인되면 바로 쓸 수 있어요." };
-    } else if (via === "token") {
-      var t = db.tokens.filter(function (x) { return x.key === raw && x.member_id === id; })[0];
-      m = t && db.members.filter(function (x) { return x.id === id; })[0];
-      if (!m) return fail("로그인이 풀렸어요. 수강 ID와 비밀번호로 다시 로그인해주세요.");
     } else {
-      pin = raw.replace(/\D/g, "");
-      if (!id || pin.length !== 4) return fail("수강 ID와 비밀번호 4자리를 입력해주세요.");
-      m = db.members.filter(function (x) { return x.id === id; })[0];
-      if (!m || m.pin !== pin) return fail("수강 ID 또는 비밀번호가 맞지 않습니다.");
+      return fail("카카오로 로그인해주세요."); // 수강 ID 로그인은 없앰 (supabase/schema.sql settings.pin_login)
     }
     if (m.status !== "재원" && m.status !== "외부") return fail("현재 이용 중인 수강 ID가 아닙니다. 학원에 문의해주세요.");
     if (m.expires_on && m.expires_on < nowKst().today) return fail("사용 기한이 지난 ID입니다. 학원에 문의해주세요.");
@@ -598,18 +591,23 @@
       ".demo-bar a,.demo-bar button{color:#F6EBDD;background:none;border:1px solid rgba(246,235,221,.5);border-radius:999px;" +
       "padding:5px 12px;font:inherit;text-decoration:none;cursor:pointer;white-space:nowrap;}" +
       ".demo-bar a:hover,.demo-bar button:hover{background:rgba(246,235,221,.12);}" +
-      ".demo-bar[data-min] span,.demo-bar[data-min] a,.demo-bar[data-min] .demo-reset,.demo-bar[data-min] .demo-intro{display:none;}" +
+      ".demo-bar[data-min] span,.demo-bar[data-min] a,.demo-bar[data-min] .demo-reset,.demo-bar[data-min] .demo-student,.demo-bar[data-min] .demo-intro{display:none;}" +
       "body{padding-bottom:84px;}" +
       "body:has(.scene:not([hidden])) .demo-bar{display:none;}";
     document.head.appendChild(css);
     var bar = document.createElement("div");
     bar.className = "demo-bar";
-    bar.innerHTML = "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 카카오 버튼은 가짜 계정으로 · 수강 ID S001/5678 · 첫 비번 체험 S005/0000 · 관리자는 아무 이메일</span>" +
-      "<a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
+    bar.innerHTML = "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 카카오 버튼은 새 가짜 계정 (처음 연결 요청 체험) · 관리자는 아무 이메일</span>" +
+      "<button type=\"button\" class=\"demo-student\">학생(김시우)으로 보기</button><a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
       "<button type=\"button\" class=\"demo-min\" aria-label=\"안내 접기\">접기</button>";
     bar.querySelector(".demo-intro").addEventListener("click", function () {
       try { localStorage.removeItem("leesh_intro"); } catch (e) { /* ignore */ }
       location.href = "index.html";
+    });
+    bar.querySelector(".demo-student").addEventListener("click", function () {
+      window.LeeshAPI.kakao.save({ access: FAKE + "kakao-sample", refresh: "demo", expires: Math.floor(Date.now() / 1000) + 3650 * 86400 });
+      // open 내 폴더 on the desktop (js/scene.js reads #me when the page loads)
+      if (/\/(index\.html)?$/.test(location.pathname)) { location.hash = "me"; location.reload(); } else location.href = "index.html#me";
     });
     bar.querySelector(".demo-reset").addEventListener("click", function () {
       db = seed();

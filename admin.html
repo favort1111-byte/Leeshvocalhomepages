@@ -104,7 +104,8 @@
         </div>
         <div class="sys-row">
           <label class="sys-field"><span>사용 기한 (외부 손님용, 비우면 무기한)</span><input name="expires" type="date"></label>
-          <label class="sys-field"><span id="pinLabel">비밀번호 4자리</span><input name="pin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}"></label>
+          <!-- 수강 ID 로그인은 없앰 (2026-10-28): 비밀번호 칸은 숨김, 비우면 0000으로 저장 -->
+          <label class="sys-field" hidden><span id="pinLabel">비밀번호 4자리</span><input name="pin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}"></label>
         </div>
         <label class="sys-field"><span>메모</span><input name="memo" maxlength="200"></label>
         <div class="adm__actions">

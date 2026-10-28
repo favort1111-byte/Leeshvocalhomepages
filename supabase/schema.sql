@@ -34,6 +34,8 @@ create table if not exists public.settings (
   check (close_min > open_min)
 );
 insert into public.settings (id) values (1) on conflict do nothing;
+-- 수강 ID + 비밀번호 로그인: 원장님 결정으로 끔 (2026-10-28, 카카오만). 다시 켜려면 true로 + js/signin.js 되살리기.
+alter table public.settings add column if not exists pin_login boolean not null default false;
 
 create table if not exists public.rooms (
   id     serial primary key,
@@ -344,6 +346,9 @@ declare
   m public.members;
   fails int;
 begin
+  if via <> 'kakao' and not coalesce((select s.pin_login from public.settings s where s.id = 1), false) then
+    return private.fail('카카오로 로그인해주세요.');
+  end if;
   if via = 'kakao' then
     -- signed in with Kakao: the approved link is the identity, p_id is ignored
     select * into m from public.members where kakao_user = auth.uid();

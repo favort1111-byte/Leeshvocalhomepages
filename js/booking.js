@@ -1,4 +1,4 @@
-// Practice-room booking for members with a 수강 ID (booking.html). Sign-in is js/signin.js.
+// Practice-room booking for students signed in with Kakao (booking.html). Sign-in is js/signin.js.
 (function () {
   var app = document.getElementById("bookingApp");
   if (!app) return;

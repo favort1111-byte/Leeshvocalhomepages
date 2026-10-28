@@ -404,7 +404,7 @@
         var td = el("td", i === 3 ? "adm__status adm__status--" + m.status : null, v);
         tr.appendChild(td);
       });
-      tr.appendChild(el("td", m.kakao_user ? "adm__kakao" : "sys-note", m.kakao_user ? "카카오" : m.must_change_pin ? "임시 비번(0000)" : "수강 ID"));
+      tr.appendChild(el("td", m.kakao_user ? "adm__kakao" : "sys-note", m.kakao_user ? "카카오" : "카카오 연결 전"));
       var td = el("td");
       var b = el("button", "sys-link", "수정");
       b.type = "button";
@@ -469,8 +469,8 @@
     token().then(function (t) { return LeeshAPI.rpc("admin_save_member", args, t); }).then(function (res) {
       if (!res.ok) { msg($("#memberMsg"), res.error, "error"); return; }
       msg($("#memberMsg"), res.created
-        ? res.id + " 발급했습니다. 비밀번호: " + pin
-        : res.id + " 저장했습니다." + (pin ? " 새 비밀번호: " + pin : ""), "ok");
+        ? res.id + " 발급했습니다. 학생이 카카오로 로그인해서 연결 요청을 보내면 승인해주세요."
+        : res.id + " 저장했습니다.", "ok");
       f.dataset.editing = "1";
       field(f, "id").readOnly = true;
       field(f, "pin").value = "";

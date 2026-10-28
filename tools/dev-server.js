@@ -2,7 +2,7 @@
 // account needed: local Postgres + PostgREST behind the same URLs Supabase uses.
 //   node tools/dev-server.js        → http://localhost:8020
 // Needs psql/Postgres and the postgrest binary (see supabase/test/local.js).
-// Demo: 수강 ID S001 / 5678 (김시우), admin.html → owner@example.com / admin1234.
+// Demo: the "학생(김시우)으로 보기" button (fake Kakao), admin.html → owner@example.com / admin1234.
 // The database is rebuilt on every start.
 const http = require('node:http');
 const fs = require('node:fs');
