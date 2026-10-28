@@ -54,29 +54,21 @@ def foot(*extra):
 SR = '<h1 class="sr-only">{}</h1>'
 
 # ---------- icon art ----------
-def globe_svg():
+def youtube_svg():
+    """YouTube's red play button as pixel art, like the Instagram camera (16×16)."""
+    corners = {(0, 2), (1, 2), (0, 3), (14, 2), (15, 2), (15, 3), (0, 12), (0, 13), (1, 13), (15, 12), (15, 13), (14, 13)}
+    play = {6: (5, 10), 7: (5, 10), 8: (6, 9), 9: (6, 9), 10: (7, 8)}  # column: rows of the white triangle
     rects = []
-    c = 7.5
-    for y in range(16):
+    for y in range(2, 14):
         for x in range(16):
-            d = ((x - c) ** 2 + (y - c) ** 2) ** 0.5
-            if d > 7.6:
+            if (x, y) in corners:
                 continue
-            if d > 6.7:
-                col = "#123E73"
-            elif (x - 4) ** 2 + (y - 4) ** 2 < 5:
-                col = "#9AD4FB"
-            elif y in (7, 8) or x in (7, 8) or abs(x - y) == 0 and 3 < x < 12:
-                col = "#1C63B4"
-            elif (x + y) % 6 == 0:
-                col = "#2A78CF"
+            if x in play and play[x][0] <= y <= play[x][1]:
+                fill = "#FFFFFF"
             else:
-                col = "#3A92E6"
-            rects.append(f'<rect x="{x}" y="{y}" width="1" height="1" fill="{col}"/>')
-    ring = ''.join(f'<rect x="{x}" y="{y}" width="1" height="1" fill="#E9F6FF"/>'
-                   for x, y in [(0, 10), (1, 9), (2, 9), (13, 5), (14, 5), (15, 4), (1, 11), (14, 6)])
-    return ('<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">'
-            + "".join(rects) + ring + '</svg>')
+                fill = "#E00000" if y >= 12 else "#FF0000"  # a darker bottom edge, like the other pixel icons
+            rects.append(f'<rect x="{x}" y="{y}" width="1" height="1" fill="{fill}"/>')
+    return '<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' + "".join(rects) + "</svg>"
 
 FINDER = ('<svg viewBox="0 0 48 48" aria-hidden="true">'
           '<rect x="1" y="1" width="46" height="46" fill="#C8C8C8" stroke="#3B3B3B" stroke-width="2"/>'
@@ -91,7 +83,7 @@ FINDER = ('<svg viewBox="0 0 48 48" aria-hidden="true">'
 
 # 게임.exe on the desktop: a pixel game pad
 def insta_svg():
-    """Pixel camera in Instagram's sunset colours, drawn like the globe (16×16)."""
+    """Pixel camera in Instagram's sunset colours, drawn like the YouTube button (16×16)."""
     stops = [(0xFE, 0xDA, 0x75), (0xFA, 0x7E, 0x1E), (0xD6, 0x29, 0x76), (0x96, 0x2F, 0xBF), (0x4F, 0x5B, 0xD5)]
     def col(t):
         t = max(0.0, min(1.0, t)) * (len(stops) - 1)
@@ -207,7 +199,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
 
 # ---------- HOME (reference 1600x900 -> 800 units) ----------
 home_icons = "\n".join([
-    icon(74, 110, 50, 50, "YouTube", YT, globe_svg(), scene="youtube", ko="유튜브"),
+    icon(74, 110, 50, 50, "YouTube", YT, youtube_svg(), scene="youtube", ko="유튜브"),
     icon(398, 196, 44, 44, "Instagram", blog.INSTA_AUDITION, insta_svg(), external=True, ko="인스타그램"),
     # 취미반 인스타그램은 지금 운영을 안 해서 뺌 (원장님 2026-10-28, 필요하면 blog.INSTA_HOBBY로 다시)
     thumb(228.5, 136, 37, 37, 1, "stage.jpg", scene="stage", ko="무대 · 원장님 소개"),
@@ -444,7 +436,7 @@ BOOKING_APP = f"""  <div class="booking__inner">
 
 # ---------- CONSULT (reference 800x450) ----------
 consult_icons = "\n".join([
-    icon(97, 110, 48, 48, "YouTube", YT, globe_svg(), scene="youtube", ko="유튜브"),
+    icon(97, 110, 48, 48, "YouTube", YT, youtube_svg(), scene="youtube", ko="유튜브"),
     thumb(70, 248, 37, 37, 1, "stage.jpg", scene="stage", ko="무대 · 원장님 소개"),
     thumb(128, 320, 37, 38, 2, "lesson.jpg", scene="lesson", ko="레슨 과정"),
     thumb(709, 205, 43, 50, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
