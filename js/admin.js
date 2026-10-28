@@ -115,7 +115,7 @@
       $("#app").hidden = false;
       $("#adminWho").hidden = false;
       $("#adminWho").textContent = session.email || "";
-      loadBase().then(function () { showTab("bookings"); countLinks(); countRecs(); });
+      loadBase().then(function () { showTab("bookings"); countLinks(); countRecs(); countVisits(); });
     });
   }
 
@@ -148,6 +148,7 @@
     if (name === "news") { loadNews(); loadIg(); }
     if (name === "notices") loadNotices();
     if (name === "songrecs") loadRecs();
+    if (name === "visits") loadVisits();
     if (name === "journal") loadJournal();
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
@@ -1218,6 +1219,107 @@
         li.appendChild(row);
         ul.appendChild(li);
       });
+    });
+  }
+
+  /* ---------------- 내방 오디션 신청서 (visit_applications; apply.html) ---------------- */
+
+  var visitRows = [];
+  function loadVisits() {
+    var sel = $("#visitPick"), keep = sel.value;
+    api("audition_news?select=id,company,title,event_date,deadline&kind=eq." + encodeURIComponent("내방") + "&order=event_date.desc.nullslast,id.desc&limit=60").then(function (res) {
+      sel.textContent = "";
+      if (!res.ok || !res.data.length) {
+        $("#visitBox").textContent = "";
+        $("#visitBox").appendChild(el("p", "sys-empty", "아직 올린 학원 내방 오디션이 없어요. 오디션 소식 탭에서 \"학원 내방 오디션\"을 올리면 신청서가 열려요."));
+        return;
+      }
+      res.data.forEach(function (n) {
+        var o = el("option", null, (n.event_date ? n.event_date + " · " : "") + (n.company ? n.company + " " : "") + n.title);
+        o.value = n.id;
+        sel.appendChild(o);
+      });
+      if (keep && res.data.some(function (n) { return String(n.id) === keep; })) sel.value = keep;
+      else {  // the next audition coming up, else the latest
+        var t = todayKst(), up = res.data.filter(function (n) { return (n.event_date || "9") >= t; }).pop();
+        sel.value = (up || res.data[0]).id;
+      }
+      loadVisitList();
+    });
+  }
+  function loadVisitList() {
+    var box = $("#visitBox"), id = $("#visitPick").value;
+    box.textContent = "";
+    if (!id) return;
+    api("visit_applications?select=*&news_id=eq." + id + "&order=created_at").then(function (res) {
+      if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      visitRows = res.data;
+      if (!res.data.length) { box.appendChild(el("p", "sys-empty", "아직 신청이 없어요.")); return; }
+      var count = {};
+      res.data.forEach(function (a) { count[a.field] = (count[a.field] || 0) + 1; });
+      box.appendChild(el("p", "sys-note", "신청 " + res.data.length + "명 · " + Object.keys(count).map(function (k) { return k + " " + count[k]; }).join(" · ")));
+      var ul = el("ul", "adm__cards");
+      res.data.forEach(function (a, i) {
+        var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, (i + 1) + ". " + a.name));
+        top.appendChild(el("span", "adm__badge adm__badge--kind", a.field || "-"));
+        top.appendChild(el("span", "sys-note", stamp(a.created_at) + (a.updated_at && a.updated_at.slice(0, 16) !== a.created_at.slice(0, 16) ? " (고침)" : "")));
+        li.appendChild(top);
+        li.appendChild(el("p", null, [a.gender, a.birth, a.body_size && "키/몸무게 " + a.body_size].filter(Boolean).join(" · ")));
+        if (a.note) li.appendChild(el("p", "adm__quote", a.note));
+        var row = el("div", "adm__cardrow");
+        if (a.music && a.music.path) {
+          var play = el("button", "sys-link", "▶ 댄스 음원 듣기 · 내려받기");
+          play.type = "button";
+          play.addEventListener("click", function () {
+            play.disabled = true;
+            token().then(function (t) { return LeeshAPI.storage.visitMusic(a.music.path, t); }).then(function (u) {
+              if (!u) { play.textContent = "불러오지 못했어요"; return; }
+              var au = el("audio", "adm__player");
+              au.controls = true;
+              au.src = u;
+              var dl = el("a", "sys-link", "내려받기");
+              dl.href = u;
+              dl.download = a.name + "-" + (a.music.name || "음원.mp3");
+              play.replaceWith(au);
+              row.insertBefore(dl, au.nextSibling);
+            });
+          });
+          row.appendChild(play);
+        }
+        var del = el("button", "sys-link adm__del", "신청 지우기");
+        del.type = "button";
+        del.addEventListener("click", function () {
+          if (del.getAttribute("data-armed") !== "1") { del.setAttribute("data-armed", "1"); del.textContent = "한 번 더 누르면 지워요 (음원도)"; return; }
+          var gone = a.music && a.music.path ? token().then(function (t) { return LeeshAPI.storage.removeVisit([a.music.path], t); }) : Promise.resolve(true);
+          gone.then(function () { return api("visit_applications?id=eq." + a.id, { method: "DELETE" }); }).then(function (r) {
+            msg($("#visitMsg"), r.ok ? "지웠어요." : friendly(r, "지우지 못했습니다."), r.ok ? "ok" : "error");
+            loadVisitList();
+          });
+        });
+        row.appendChild(del);
+        li.appendChild(row);
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    });
+  }
+  $("#visitPick").addEventListener("change", loadVisitList);
+  $("#visitCopy").addEventListener("click", function () {
+    if (!visitRows.length) { msg($("#visitMsg"), "복사할 신청이 없어요.", "error"); return; }
+    var lines = [["순번", "이름", "성별", "출생년도/나이", "키/몸무게", "지원분야", "댄스음원", "특이사항", "신청 시각"].join("\t")];
+    visitRows.forEach(function (a, i) {
+      lines.push([i + 1, a.name, a.gender || "", a.birth || "", a.body_size || "", a.field || "", a.music ? "있음" : "",
+        String(a.note || "").replace(/\s+/g, " "), stamp(a.created_at)].join("\t"));
+    });
+    copyText(lines.join("\n"), $("#visitCopy"));
+  });
+  function countVisits() {
+    // applications in the last 3 days, for the tab badge
+    var since = new Date(Date.now() - 3 * 86400000).toISOString();
+    api("visit_applications?select=id&created_at=gte." + since).then(function (res) {
+      var b = $("#visitBadge");
+      if (res.ok) { b.textContent = res.data.length; b.hidden = !res.data.length; }
     });
   }
 

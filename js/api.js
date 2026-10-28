@@ -183,6 +183,20 @@
     removeSongs: function (paths, token) {
       return fetch(base + "/storage/v1/object/song-recordings", { method: "DELETE", headers: headers(token), body: JSON.stringify({ prefixes: paths }) })
         .then(function (r) { return r.ok; }, function () { return false; });
+    },
+    /* 내방 오디션 댄스 음원: private bucket "visit-music", <수강 ID>/<file> */
+    uploadVisit: function (path, blob, token) {
+      return put("visit-music", path, blob.slice(0, blob.size, String(blob.type).split(";")[0] || "audio/mpeg"), token);
+    },
+    visitMusic: function (path, token) {
+      var h = headers(token);
+      delete h["Content-Type"];
+      return fetch(base + "/storage/v1/object/authenticated/visit-music/" + path, { headers: h })
+        .then(function (r) { return r.ok ? r.blob().then(function (b) { return URL.createObjectURL(b); }) : null; }, function () { return null; });
+    },
+    removeVisit: function (paths, token) {
+      return fetch(base + "/storage/v1/object/visit-music", { method: "DELETE", headers: headers(token), body: JSON.stringify({ prefixes: paths }) })
+        .then(function (r) { return r.ok; }, function () { return false; });
     }
   };
 

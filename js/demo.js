@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 16; // bump when the demo defaults change
+  var VERSION = 17; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -78,7 +78,7 @@
       // 오디션 소식 (audition.html): sample posts, as if written in the admin page
       audition_news: [
         { id: 41, kind: "내방", company: "체험 엔터테인먼트", title: "다음 달 학원 내방 오디션", event_date: addDays(t, 18), deadline: addDays(t, 12),
-          body: "준비곡 2곡 (1절 + 후렴)\n자기소개 30초\n복장: 몸 라인이 보이는 편한 옷\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          body: "일시 : 다음 달 금요일 오후 6시30분\n장소 : 이송희보컬레슨 C홀\n지원자격 : 남녀 04~15년생\n지원분야 : 보컬, 랩, 댄스, 라이브퍼포먼스, 연기 중 택 1\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 42, kind: "합격", company: "체험 엔터테인먼트", title: "1차 합격 (김OO)", event_date: addDays(t, -3), deadline: null,
           pass_type: "기획사", pass_stage: "1차 합격", initials: "김OO",
@@ -121,6 +121,12 @@
       song_requests: [
         { id: 85, member_id: "S002", likes: "Ariana Grande, 태연", goal: "입시", memo: "고음이 많은 곡도 도전해보고 싶어요. (체험 모드 예시)", status: "접수", created_at: new Date(Date.now() - 7200000).toISOString(),
           files: [{ path: "S002/demo-1.wav", name: "녹음 1", type: "audio/wav", size: 88244, sec: 1 }] }
+      ],
+      // 내방 오디션 신청서 (apply.html): one sample application for the audition above
+      visit_applications: [
+        { id: 91, news_id: 41, audition: "체험 엔터테인먼트 다음 달 학원 내방 오디션", member_id: "S002", name: "이하늘", gender: "여", birth: "09년/18살",
+          body_size: "163/47", field: "보컬", music: null, note: "학교가 늦게 끝나서 뒷순서로 부탁드려요 (체험 모드 예시)",
+          created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: new Date(Date.now() - 3600000).toISOString() }
       ],
       // 인스타그램에서 가져온 글 (made up): the admin page's 인스타그램 연결 starts as connected
       ig_connected: true,
@@ -471,6 +477,30 @@
       save();
       return { ok: true, id: row.id };
     },
+    member_visit_open: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var today = nowKst().today;
+      return { ok: true, name: who.name, auditions: db.audition_news.filter(function (n) {
+        return n.kind === "내방" && n.published && (n.deadline || n.event_date || today) >= today;
+      }).map(function (n) {
+        var mine = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0] || null;
+        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline, body: n.body, image: n.image, mine: mine };
+      }) };
+    },
+    member_visit_apply: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var n = db.audition_news.filter(function (x) { return x.id === a.p_news && x.kind === "내방"; })[0];
+      if (!n) return fail("신청할 오디션을 찾을 수 없어요.");
+      if (!a.p_field) return fail("지원분야를 하나 골라주세요.");
+      var row = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0];
+      if (!row) { row = { id: ++db.next, news_id: n.id, member_id: who.id, created_at: new Date().toISOString() }; db.visit_applications.push(row); }
+      Object.assign(row, { audition: (n.company ? n.company + " " : "") + n.title, name: a.p_name, gender: a.p_gender, birth: a.p_birth,
+        body_size: a.p_size, field: a.p_field, music: a.p_music || row.music || null, note: a.p_note, updated_at: new Date().toISOString() });
+      save();
+      return { ok: true, id: row.id };
+    },
     admin_instagram_status: function () {
       return { ok: true, connected: !!db.ig_connected, count: db.ig_posts.length, lastSync: new Date().toISOString(), error: null };
     },
@@ -686,6 +716,9 @@
     st.uploadSong = function (path, blob) { pictures["song/" + path] = URL.createObjectURL(blob); return Promise.resolve(true); };
     st.song = function (path) { return Promise.resolve(pictures["song/" + path] || silence()); };
     st.removeSongs = function (paths) { paths.forEach(function (x) { delete pictures["song/" + x]; }); return Promise.resolve(true); };
+    st.uploadVisit = function (path, blob) { pictures["visit/" + path] = URL.createObjectURL(blob); return Promise.resolve(true); };
+    st.visitMusic = function (path) { return Promise.resolve(pictures["visit/" + path] || silence()); };
+    st.removeVisit = function (paths) { paths.forEach(function (x) { delete pictures["visit/" + x]; }); return Promise.resolve(true); };
   }
   function silence() {
     var rate = 8000, n = rate, buf = new ArrayBuffer(44 + n), v = new DataView(buf);

@@ -1423,3 +1423,116 @@ create policy song_recordings_own_add on storage.objects for insert to authentic
 drop policy if exists song_recordings_own_remove on storage.objects;
 create policy song_recordings_own_remove on storage.objects for delete to authenticated
   using (bucket_id = 'song-recordings' and (storage.foldername(name))[1] = private.song_owner());
+
+-- 내방 오디션 신청 (2026-10-28): 학원 구글 폼과 같은 질문을 홈페이지에서. 학원생(카카오 로그인)만, 관리자에서 올린
+-- "학원 내방 오디션" 소식(audition_news kind 내방)마다 신청서가 붙음. 마감(없으면 오디션 날)까지 신청·고치기.
+create table if not exists public.visit_applications (
+  id         bigint generated always as identity primary key,
+  news_id    bigint references public.audition_news (id) on delete set null,
+  audition   text not null check (char_length(audition) <= 120),   -- 신청할 때의 오디션 이름 (소식이 지워져도 남게)
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  name       text not null check (char_length(name) between 1 and 30),
+  gender     text check (gender in ('남', '여')),
+  birth      text check (char_length(birth) <= 30),                  -- 출생년도/나이 (예: 10년/17살)
+  body_size  text check (char_length(body_size) <= 30),              -- 키/몸무게 (예: 168/48)
+  field      text check (field in ('보컬', '랩', '댄스', '라이브퍼포먼스', '연기')),
+  music      jsonb,                                                 -- 댄스 음원 {"path","name","type","size"} (visit-music 버킷)
+  note       text check (char_length(note) <= 1000),                -- 특이사항 (순서 조정 등)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (news_id, member_id)
+);
+alter table public.visit_applications enable row level security;
+drop policy if exists admin_all on public.visit_applications;
+create policy admin_all on public.visit_applications for all to authenticated using (public.is_admin()) with check (public.is_admin());
+revoke all on public.visit_applications from anon;
+grant select, update, delete on public.visit_applications to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+-- 학생: 신청 / 고치기 (같은 오디션에 한 번, 다시 보내면 고쳐짐)
+create or replace function public.member_visit_apply(p_id text, p_pin text, p_news bigint, p_name text,
+  p_gender text default null, p_birth text default null, p_size text default null, p_field text default null,
+  p_music jsonb default null, p_note text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  n public.audition_news;
+  today date := private.now_kst()::date;
+  v_name text := trim(coalesce(p_name, ''));
+  app_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into n from public.audition_news where id = p_news and kind = '내방' and published;
+  if n.id is null then return private.fail('신청할 오디션을 찾을 수 없어요.'); end if;
+  if coalesce(n.deadline, n.event_date) is not null and coalesce(n.deadline, n.event_date) < today then
+    return private.fail('신청이 마감됐어요. 학원에 문의해주세요.');
+  end if;
+  if v_name = '' or char_length(v_name) > 30 then return private.fail('이름을 적어주세요.'); end if;
+  if p_gender is not null and p_gender not in ('남', '여') then return private.fail('성별을 골라주세요.'); end if;
+  if p_field is null or p_field not in ('보컬', '랩', '댄스', '라이브퍼포먼스', '연기') then return private.fail('지원분야를 하나 골라주세요.'); end if;
+  if char_length(coalesce(p_birth, '')) > 30 or char_length(coalesce(p_size, '')) > 30 or char_length(coalesce(p_note, '')) > 1000 then
+    return private.fail('글이 너무 길어요.');
+  end if;
+  if p_music is not null and coalesce(p_music ->> 'path', '') not like mid || '/%' then return private.fail('음원을 다시 올려주세요.'); end if;
+  insert into public.visit_applications (news_id, audition, member_id, name, gender, birth, body_size, field, music, note)
+  values (n.id, left(coalesce(n.company || ' ', '') || n.title, 120), mid, v_name, p_gender,
+          nullif(trim(coalesce(p_birth, '')), ''), nullif(trim(coalesce(p_size, '')), ''), p_field, p_music,
+          nullif(trim(coalesce(p_note, '')), ''))
+  on conflict (news_id, member_id) do update set name = excluded.name, gender = excluded.gender, birth = excluded.birth,
+    body_size = excluded.body_size, field = excluded.field, music = coalesce(excluded.music, public.visit_applications.music),
+    note = excluded.note, updated_at = now()
+  returning id into app_id;
+  perform private.notify('🎤 내방 오디션 신청: ' || v_name || ' · ' || p_field || chr(10) || coalesce(n.company || ' ', '') || n.title);
+  return jsonb_build_object('ok', true, 'id', app_id);
+end $$;
+
+-- 학생: 지금 신청받는 내방 오디션 + 내가 낸 신청서
+create or replace function public.member_visit_open(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return jsonb_build_object('ok', true, 'name', who ->> 'name', 'auditions', coalesce((
+    select jsonb_agg(jsonb_build_object('id', n.id, 'company', n.company, 'title', n.title, 'date', n.event_date,
+             'deadline', n.deadline, 'body', n.body, 'image', n.image,
+             'mine', (select to_jsonb(a) - 'member_id' from public.visit_applications a where a.news_id = n.id and a.member_id = mid))
+             order by n.event_date nulls last, n.id)
+    from public.audition_news n
+    where n.kind = '내방' and n.published and coalesce(n.deadline, n.event_date, today) >= today
+  ), '[]'::jsonb));
+end $$;
+
+revoke execute on function public.member_visit_apply(text, text, bigint, text, text, text, text, text, jsonb, text),
+  public.member_visit_open(text, text) from public;
+grant execute on function public.member_visit_apply(text, text, bigint, text, text, text, text, text, jsonb, text),
+  public.member_visit_open(text, text) to anon, authenticated;
+
+-- 댄스 음원: 비공개 버킷, 학생 본인 폴더(<수강 ID>/)만 · 30MB · 6개까지. 원장님은 듣고 내려받고 지움.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('visit-music', 'visit-music', false, 31457280,
+        array['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+create or replace function private.visit_file_count(mid text) returns int
+language sql stable security definer set search_path = '' as $$
+  select count(*)::int from storage.objects o where o.bucket_id = 'visit-music' and (storage.foldername(o.name))[1] = mid;
+$$;
+grant execute on function private.visit_file_count(text) to authenticated;
+drop policy if exists visit_music_admin on storage.objects;
+create policy visit_music_admin on storage.objects for all to authenticated
+  using (bucket_id = 'visit-music' and public.is_admin()) with check (bucket_id = 'visit-music' and public.is_admin());
+drop policy if exists visit_music_own_read on storage.objects;
+create policy visit_music_own_read on storage.objects for select to authenticated
+  using (bucket_id = 'visit-music' and (storage.foldername(name))[1] = private.song_owner());
+drop policy if exists visit_music_own_add on storage.objects;
+create policy visit_music_own_add on storage.objects for insert to authenticated
+  with check (bucket_id = 'visit-music' and (storage.foldername(name))[1] = private.song_owner()
+              and private.visit_file_count(private.song_owner()) < 6);
+drop policy if exists visit_music_own_remove on storage.objects;
+create policy visit_music_own_remove on storage.objects for delete to authenticated
+  using (bucket_id = 'visit-music' and (storage.foldername(name))[1] = private.song_owner());

@@ -6,7 +6,6 @@
   // the home icon stops wiggling once the news page has been opened (js/newsbadge.js)
   try { localStorage.setItem("leesh_news_seen", String(Date.now())); } catch (e) { /* private mode */ }
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
-  var FORM = (window.LEESH || {}).visitForm;
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -59,6 +58,11 @@
       img.loading = "lazy";
       body.appendChild(img);
     }
+    if (p.kind === "내방" && !isPast(p, today)) {
+      var ap = el("a", "pill-btn news__applybtn", "이 오디션 신청하기");
+      ap.href = "apply.html?news=" + p.id;
+      body.appendChild(ap);
+    }
     if (p.link) {
       var a = el("a", "news__link", "자세히 보기 ↗");
       a.href = p.link;
@@ -71,14 +75,12 @@
     return li;
   }
 
-  // 학원 내방 오디션 신청 (구글 폼): a button under the section's lede
+  // 학원 내방 오디션 신청 (apply.html, 학원생 로그인): a button under the section's lede
   var visitSec = document.querySelector('[data-news="내방"]');
-  if (FORM && visitSec) {
+  if (visitSec) {
     var apply = el("p", "news__apply");
     var go = el("a", "pill-btn news__applybtn", "내방 오디션 신청하기 ↗");
-    go.href = FORM;
-    go.target = "_blank";
-    go.rel = "noopener";
+    go.href = "apply.html";
     apply.appendChild(go);
     apply.appendChild(el("span", "news__applynote", "학원생만 신청할 수 있어요. 일정은 아래 글에서 확인하세요."));
     var lede = visitSec.querySelector(".news__lede");

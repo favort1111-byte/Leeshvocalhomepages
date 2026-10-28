@@ -915,3 +915,17 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .pageend__btn:hover{background:var(--brown);}
 .pageend__btn:focus-visible{outline:2px solid #E6CF9E;outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){.pagenav{transition:none;}}
+
+/* 내방 오디션 신청서 (apply.html, js/apply.js) */
+.apply{display:grid;gap:14px;margin-top:10px;}
+.apply__head{display:grid;gap:6px;padding:14px 16px;border-radius:10px;background:#FFFDF8;border:1px solid rgba(90,60,40,.15);}
+.apply__poster{width:100%;max-width:360px;border-radius:8px;}
+.apply__title{margin:0;font-size:20px;font-weight:600;}
+.apply__facts{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0;font-size:14px;color:var(--brown);}
+.apply__body{margin:0;white-space:pre-wrap;font-size:14.5px;line-height:1.6;color:#4A3B30;}
+.apply__form{display:grid;gap:12px;}
+.apply__set{border:0;margin:0;padding:0;display:grid;gap:4px;}
+.apply__set legend{padding:0;margin-bottom:2px;font-size:14px;}
+.apply__help{display:block;font-size:12.5px;line-height:1.5;color:#7A6656;}
+.apply__radios{display:flex;flex-wrap:wrap;gap:6px 16px;}
+.apply__music{padding:10px 12px;border:1px dashed rgba(110,59,40,.35);border-radius:8px;}

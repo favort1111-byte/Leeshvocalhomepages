@@ -460,6 +460,27 @@ booking = (head("Booking | 이송희보컬레슨",
            + BOOKING_APP
            + "</main>\n" + foot("signin", "booking"))
 
+# ---------- APPLY: 학원 내방 오디션 신청서 (js/apply.js; 학원 구글 폼과 같은 질문) ----------
+APPLY_APP = f"""  <div class="booking__inner">
+    <h1 class="booking__title">audition apply</h1>
+    <p class="booking__note">학원 내방 오디션 신청서예요. 이송희보컬레슨 학원생만 신청할 수 있어요.</p>
+    <section class="sys sys-card" id="applyApp" aria-live="polite">
+      <div id="applyOff" hidden>
+        <p>신청서를 준비하고 있어요. 그동안은 카카오톡으로 신청해주세요.</p>
+        <a class="sys-btn" href="{KAKAO}" target="_blank" rel="noopener">카카오톡으로 문의하기</a>
+      </div>
+      <div id="applyWho" class="sys-section"></div>
+      <div id="applyArea" class="sys-section" hidden></div>
+    </section>
+    <p class="news__foot"><a class="pill-btn" href="audition.html">오디션 소식으로</a></p>
+  </div>
+"""
+apply_page = (head("Audition Apply | 이송희보컬레슨", "이송희보컬레슨 학원 내방 오디션 신청서 (학원생 전용).")
+              + '<main class="stage booking">\n'
+              + nav("audition", "dark") + "\n"
+              + APPLY_APP
+              + "</main>\n" + foot("signin", "apply"))
+
 # ---------- GAMES: 보컬 오락실 (js/games.js) ----------
 GAME_LIST = [
     ("fly", "🎤", "목소리로 날아라", "높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.", "음정 조절"),
@@ -708,7 +729,7 @@ privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송
                 + '  <div class="booking__inner">\n' + privacy.body() + "  </div>\n"
                 + "</main>\n" + foot())
 
-out = {"audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')

@@ -6,7 +6,7 @@ window.LEESH = {
   supabaseKey: "sb_publishable_e65wHiIp1Psl4bNVaeU-cA_Df2VmJ-9",
   kakao: "https://pf.kakao.com/_xgNYbK",
   phone: "010-4458-5448",
-  // 학원 내방 오디션 신청서 (구글 폼). 오디션 소식 · 내방 오디션 글 · 내 폴더 일정·공지에 "신청하기" 버튼으로 나와요.
+  // 학원 내방 오디션 신청은 홈페이지 신청서(apply.html)로 받아요. 이 구글 폼은 신청받는 오디션이 없을 때만 대신 보여줘요.
   visitForm: "https://docs.google.com/forms/d/e/1FAIpQLSfiOaU1EnRWIkJw-vWsPw3S48aGyjskYdO6H-nFiUTG33sh0g/viewform",
   // 카카오 연결 요청 때 학생이 고르는 담당 선생님 (구글시트 수강ID 관리 탭 기준)
   // 레슨 노트 (선생님이 수업마다 적는 기록). 선생님들과 정하기 전까지 꺼둠 — true로 바꾸면 내 폴더·관리자 화면에 다시 나와요.

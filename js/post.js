@@ -136,12 +136,9 @@
     });
     box.appendChild(body);
     var foot = el("p", "news__foot");
-    var form = (window.LEESH || {}).visitForm;
-    if (form && p.kind === "visit") {  // 학원 내방 오디션 글: apply right here (구글 폼)
-      var apply = el("a", "pill-btn news__applybtn", "내방 오디션 신청하기 ↗");
-      apply.href = form;
-      apply.target = "_blank";
-      apply.rel = "noopener";
+    if (p.kind === "visit") {  // 학원 내방 오디션 글: the application form (apply.html)
+      var apply = el("a", "pill-btn news__applybtn", "내방 오디션 신청하기");
+      apply.href = "apply.html";
       foot.appendChild(apply);
     }
     var list = el("a", "pill-btn", "목록으로");
