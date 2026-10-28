@@ -96,7 +96,7 @@
   var db;
   function load() {
     try { db = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { db = null; }
-    if (!db || db.version !== VERSION) db = seed(); // new defaults replace old demo data
+    if (!db || db.version !== VERSION) { db = seed(); save(); } // new defaults replace old demo data
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();

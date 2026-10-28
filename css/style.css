@@ -813,3 +813,12 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 /* English icon names; the two everyone must find keep a small Korean line */
 .icon__label{text-align:center;}
 .icon__label small{display:block;font-size:.82em;line-height:1.15;opacity:.9;}
+/* new 오디션 소식: red dot + a wiggle every few seconds (js/newsbadge.js) */
+.icon--new .icon__img{position:relative;animation:icon-wiggle 3.2s ease-in-out infinite;transform-origin:50% 90%;}
+.icon--new .icon__img::after{content:"N";position:absolute;top:calc(-6 * var(--s));right:calc(-6 * var(--s));
+  min-width:calc(14 * var(--s));height:calc(14 * var(--s));padding:0 calc(3 * var(--s));border-radius:999px;
+  background:#E5372E;color:#fff;font:700 calc(9 * var(--s))/calc(14 * var(--s)) var(--f-sans);text-align:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.35);}
+@keyframes icon-wiggle{0%,72%,100%{transform:rotate(0)}76%{transform:rotate(-9deg)}80%{transform:rotate(8deg)}84%{transform:rotate(-6deg)}88%{transform:rotate(4deg)}92%{transform:rotate(-2deg)}}
+@media (prefers-reduced-motion:reduce){ .icon--new .icon__img{animation:none;} }
+@media (max-width:760px){ .icon--new .icon__img::after{top:-6px;right:-6px;min-width:16px;height:16px;font-size:10px;line-height:16px;padding:0 4px;} }

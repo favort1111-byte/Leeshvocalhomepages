@@ -2,6 +2,8 @@
 // from the audition_news table and go on top of each section; the blog posts built into the page stay below.
 (function () {
   if (!window.LeeshAPI || !LeeshAPI.enabled()) return;
+  // the home icon stops wiggling once the news page has been opened (js/newsbadge.js)
+  try { localStorage.setItem("leesh_news_seen", String(Date.now())); } catch (e) { /* private mode */ }
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function el(tag, cls, text) {
