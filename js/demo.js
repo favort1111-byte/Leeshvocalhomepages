@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 15; // bump when the demo defaults change
+  var VERSION = 16; // bump when the demo defaults change
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -119,7 +119,8 @@
           ], created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
       ],
       song_requests: [
-        { id: 85, member_id: "S002", likes: "Ariana Grande, 태연", goal: "입시", memo: "고음이 많은 곡도 도전해보고 싶어요. (체험 모드 예시)", status: "접수", created_at: new Date(Date.now() - 7200000).toISOString() }
+        { id: 85, member_id: "S002", likes: "Ariana Grande, 태연", goal: "입시", memo: "고음이 많은 곡도 도전해보고 싶어요. (체험 모드 예시)", status: "접수", created_at: new Date(Date.now() - 7200000).toISOString(),
+          files: [{ path: "S002/demo-1.wav", name: "녹음 1", type: "audio/wav", size: 88244, sec: 1 }] }
       ],
       // 인스타그램에서 가져온 글 (made up): the admin page's 인스타그램 연결 starts as connected
       ig_connected: true,
@@ -343,7 +344,7 @@
           .sort(function (x, y) { return x.made_on === y.made_on ? y.id - x.id : (x.made_on < y.made_on ? 1 : -1); })
           .map(function (r) { return { id: r.id, date: r.made_on, summary: r.summary, songs: r.songs, note: r.note }; }),
         request: db.song_requests.filter(function (q) { return q.member_id === who.id && q.status === "접수"; })
-          .map(function (q) { return { at: q.created_at, likes: q.likes, goal: q.goal, memo: q.memo }; })[0] || null,
+          .map(function (q) { return { at: q.created_at, likes: q.likes, goal: q.goal, memo: q.memo, files: q.files || [] }; })[0] || null,
         reports: db.eval_reports.filter(function (r) { return r.member_id === who.id; })
           .sort(function (x, y) { return x.month < y.month ? 1 : -1; })
           .map(function (r) {
@@ -466,6 +467,7 @@
       var row = db.song_requests.filter(function (q) { return q.member_id === who.id && q.status === "접수"; })[0];
       if (!row) { row = { id: ++db.next, member_id: who.id, status: "접수", created_at: new Date().toISOString() }; db.song_requests.push(row); }
       Object.assign(row, { likes: a.p_likes || null, goal: a.p_goal || null, memo: a.p_memo || null });
+      if (a.p_files) row.files = a.p_files; else if (!row.files) row.files = [];
       save();
       return { ok: true, id: row.id };
     },
@@ -680,6 +682,19 @@
     var realUrl = st.newsUrl;
     st.newsUrl = function (path) { return pictures["news/" + path] || realUrl(path); };
     st.remove = function (paths) { paths.forEach(function (x) { delete pictures[x]; }); return Promise.resolve(true); };
+    // 노래 녹음: kept in this tab; the seeded one is a second of silence
+    st.uploadSong = function (path, blob) { pictures["song/" + path] = URL.createObjectURL(blob); return Promise.resolve(true); };
+    st.song = function (path) { return Promise.resolve(pictures["song/" + path] || silence()); };
+    st.removeSongs = function (paths) { paths.forEach(function (x) { delete pictures["song/" + x]; }); return Promise.resolve(true); };
+  }
+  function silence() {
+    var rate = 8000, n = rate, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+    str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, "data"); v.setUint32(40, n, true);
+    for (var i = 0; i < n; i++) v.setUint8(44 + i, 128);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
   }
 
   install(); // demo.js loads right after api.js, before the page scripts

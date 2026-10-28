@@ -100,3 +100,7 @@ section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 .adm__ig{padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid rgba(43,37,34,.12);}
 .adm__igposts{margin-top:10px;}
 .adm__igposts summary{cursor:pointer;font-weight:500;}
+.adm__songs{display:grid;gap:4px;margin:6px 0;}
+.adm__song{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0;}
+.adm__player{height:34px;max-width:100%;}
+video.adm__player{height:auto;max-height:240px;}

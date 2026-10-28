@@ -397,19 +397,13 @@
     ask.appendChild(el("h3", "rec__title", recs.length ? "다시 추천받기" : "노래 추천받기"));
     if (req) ask.appendChild(el("p", "sys-msg sys-msg--ok", dayLabel(req.at.slice(0, 10)) + "에 신청했어요. 분석이 끝나면 여기에 올라와요."));
     var steps = el("ol", "fold__steps");
-    var s1 = el("li");
-    s1.appendChild(document.createTextNode("반주 없이 부른 영상 2~3개(1분 정도)를 "));
-    var k = el("a", null, "카카오톡 채널");
-    k.href = KAKAO;
-    k.target = "_blank";
-    k.rel = "noopener";
-    s1.appendChild(k);
-    s1.appendChild(document.createTextNode("로 보내요."));
-    steps.appendChild(s1);
-    steps.appendChild(el("li", null, "아래에 좋아하는 가수·곡과 목표를 적고 신청해요."));
+    steps.appendChild(el("li", null, "반주 없이 부른 노래를 아래에서 녹음하거나 파일로 올려요 (3곡까지, 1곡 1~2분)."));
+    steps.appendChild(el("li", null, "좋아하는 가수·곡과 목표를 적고 신청해요."));
     steps.appendChild(el("li", null, "음역과 음색을 분석해서 어울리는 곡을 골라 여기에 올려줘요."));
     ask.appendChild(steps);
     var f = el("form", "fold__form sys");
+    var songs = songRecorder(req ? req.files || [] : []);
+    f.appendChild(songs.node);
     var likes = el("input"); likes.name = "likes"; likes.maxLength = 300; likes.placeholder = "예) 태연, 아이유 / Bruno Mars - When I Was Your Man"; likes.value = req && req.likes || "";
     f.appendChild(field2("좋아하는 가수·곡", likes));
     f.appendChild(field2("목표", selectOf("goal", GOALS, req && req.goal, "고르기 (선택)")));
@@ -418,16 +412,192 @@
     var btn = el("button", "sys-btn", req ? "신청 내용 고치기" : "추천 신청하기");
     btn.type = "submit";
     f.appendChild(btn);
+    var kk = el("p", "sys-note");
+    kk.appendChild(document.createTextNode("녹음이 어려우면 영상을 "));
+    var k = el("a", null, "카카오톡 채널");
+    k.href = KAKAO;
+    k.target = "_blank";
+    k.rel = "noopener";
+    kk.appendChild(k);
+    kk.appendChild(document.createTextNode("로 보내도 돼요. 녹음은 원장님만 듣고, 추천이 끝나면 지워요."));
+    f.appendChild(kk);
     var note = el("p", "sys-msg");
     f.appendChild(note);
     f.addEventListener("submit", function (e) {
       e.preventDefault();
+      if (songs.busy()) { note.textContent = "녹음을 먼저 멈춰주세요."; note.className = "sys-msg sys-msg--error"; return; }
       btn.disabled = true;
-      call("member_song_request", { p_likes: likes.value || null, p_goal: f.querySelector("[name=goal]").value || null, p_memo: memo.value || null }, note)
-        .then(function (ok) { btn.disabled = false; if (ok) showTab("recs"); });
+      note.textContent = songs.pending() ? "녹음을 올리는 중이에요…" : "";
+      note.className = "sys-msg";
+      songs.upload().then(function (files) {
+        if (!files) { btn.disabled = false; note.textContent = "녹음을 올리지 못했어요. 다시 해보거나 카카오톡 채널로 보내주세요."; note.className = "sys-msg sys-msg--error"; return; }
+        return call("member_song_request", { p_likes: likes.value || null, p_goal: f.querySelector("[name=goal]").value || null,
+          p_memo: memo.value || null, p_files: files }, note)
+          .then(function (ok) { btn.disabled = false; if (ok) showTab("recs"); });
+      });
     });
     ask.appendChild(f);
     box.appendChild(ask);
+  }
+
+  /* 노래 녹음: record with the phone's microphone (like the mini game) or pick a file; 3 at most, 2 minutes each.
+     They go to the private song-recordings bucket under the student's own folder when the request is sent. */
+  var SONG_MAX = 3, SONG_SEC = 120, SONG_MB = 30;
+  function songExt(type) {
+    return /mp4|m4a|aac/.test(type) ? (type.indexOf("video") === 0 ? "mp4" : "m4a") : /mpeg|mp3/.test(type) ? "mp3"
+      : /wav/.test(type) ? "wav" : /ogg/.test(type) ? "ogg" : /quicktime/.test(type) ? "mov" : "webm";
+  }
+  function songRecorder(saved) {
+    var kept = saved.slice(), takes = [], rec = null, chunks = [], started = 0, timer = null;
+    var node = el("div", "songrec__rec");
+    node.appendChild(el("p", "songrec__label", "내 노래 녹음 (" + SONG_MAX + "곡까지)"));
+    var list = el("ul", "songrec__takes");
+    node.appendChild(list);
+    var row = el("div", "fold__actions songrec__btns");
+    var recBtn = el("button", "sys-btn songrec__recbtn", "🎤 녹음 시작");
+    recBtn.type = "button";
+    var pick = el("label", "sys-link songrec__pick", "파일 고르기");
+    var file = el("input");
+    file.type = "file";
+    file.accept = "audio/*,video/*";
+    file.hidden = true;
+    pick.appendChild(file);
+    var clock = el("span", "sys-note");
+    row.appendChild(recBtn);
+    row.appendChild(pick);
+    row.appendChild(clock);
+    node.appendChild(row);
+    var msg = el("p", "sys-msg");
+    node.appendChild(msg);
+    var canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+    if (!canRecord) recBtn.hidden = true;
+
+    function count() { return kept.length + takes.length; }
+    function mmss(sec) { sec = Math.round(sec || 0); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+    function draw() {
+      list.textContent = "";
+      kept.forEach(function (fl, k) {
+        var li = el("li");
+        li.appendChild(el("span", null, "올린 녹음 " + (k + 1) + (fl.sec ? " · " + mmss(fl.sec) : "")));
+        var play = el("button", "sys-link", "▶ 듣기");
+        play.type = "button";
+        play.addEventListener("click", function () {
+          play.disabled = true;
+          LeeshAPI.kakao.token().then(function (t) { return LeeshAPI.storage.song(fl.path, t); }).then(function (u) {
+            if (!u) { play.textContent = "못 불러왔어요"; return; }
+            var a = el("audio");
+            a.controls = true;
+            a.src = u;
+            play.replaceWith(a);
+            a.play();
+          });
+        });
+        li.appendChild(play);
+        var del = el("button", "sys-link", "지우기");
+        del.type = "button";
+        del.addEventListener("click", function () {
+          if (del.getAttribute("data-armed") !== "1") { del.setAttribute("data-armed", "1"); del.textContent = "한 번 더 누르면 지워요"; return; }
+          LeeshAPI.kakao.token().then(function (t) { return LeeshAPI.storage.removeSongs([fl.path], t); }).then(function () {
+            kept.splice(kept.indexOf(fl), 1);
+            msg.textContent = "지웠어요. 아래 \"신청 내용 고치기\"를 눌러야 저장돼요.";
+            msg.className = "sys-msg";
+            draw();
+          });
+        });
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+      takes.forEach(function (tk, k) {
+        var li = el("li");
+        li.appendChild(el("span", null, "새 녹음 " + (k + 1) + (tk.sec ? " · " + mmss(tk.sec) : "")));
+        var a = el("audio");
+        a.controls = true;
+        a.src = tk.url;
+        li.appendChild(a);
+        var out = el("button", "sys-link", "빼기");
+        out.type = "button";
+        out.addEventListener("click", function () { takes.splice(takes.indexOf(tk), 1); draw(); });
+        li.appendChild(out);
+        list.appendChild(li);
+      });
+      if (!count()) list.appendChild(el("li", "sys-note", canRecord ? "아직 녹음이 없어요." : "이 기기에서는 녹음이 안 돼서, 녹음 파일이나 영상을 골라주세요."));
+      recBtn.disabled = !rec && count() >= SONG_MAX;
+      pick.hidden = count() >= SONG_MAX;
+    }
+    function stop() {
+      if (!rec) return;
+      rec.stop();
+    }
+    recBtn.addEventListener("click", function () {
+      if (rec) { stop(); return; }
+      msg.textContent = "";
+      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (stream) {
+        var type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].filter(function (t) { return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0];
+        rec = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
+        chunks = [];
+        rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+        rec.onstop = function () {
+          clearInterval(timer);
+          stream.getTracks().forEach(function (t) { t.stop(); });
+          var blob = new Blob(chunks, { type: rec.mimeType || type || "audio/webm" });
+          var sec = (Date.now() - started) / 1000;
+          rec = null;
+          recBtn.textContent = "🎤 녹음 시작";
+          recBtn.classList.remove("is-on");
+          clock.textContent = "";
+          if (sec >= 3 && blob.size) takes.push({ blob: blob, url: URL.createObjectURL(blob), sec: sec });
+          else { msg.textContent = "너무 짧아요. 다시 녹음해주세요."; msg.className = "sys-msg sys-msg--error"; }
+          draw();
+        };
+        rec.start(1000);
+        started = Date.now();
+        recBtn.textContent = "■ 멈추기";
+        recBtn.classList.add("is-on");
+        timer = setInterval(function () {
+          var sec = (Date.now() - started) / 1000;
+          clock.textContent = "녹음 중 " + mmss(sec) + " / " + mmss(SONG_SEC);
+          if (sec >= SONG_SEC) stop();
+        }, 250);
+      }, function () {
+        msg.textContent = "마이크를 쓸 수 없어요. 브라우저에서 마이크를 허용하거나 파일을 골라주세요.";
+        msg.className = "sys-msg sys-msg--error";
+      });
+    });
+    file.addEventListener("change", function () {
+      var fl = file.files[0];
+      file.value = "";
+      if (!fl) return;
+      if (!/^(audio|video)\//.test(fl.type)) { msg.textContent = "노래 녹음이나 영상 파일만 올릴 수 있어요."; msg.className = "sys-msg sys-msg--error"; return; }
+      if (fl.size > SONG_MB * 1048576) { msg.textContent = SONG_MB + "MB보다 커요. 짧게 잘라서 올리거나 카카오톡 채널로 보내주세요."; msg.className = "sys-msg sys-msg--error"; return; }
+      msg.textContent = "";
+      takes.push({ blob: fl, url: URL.createObjectURL(fl), sec: 0 });
+      draw();
+    });
+    draw();
+    return {
+      node: node,
+      busy: function () { return !!rec; },
+      pending: function () { return takes.length > 0; },
+      /** Uploads the new takes; resolves to the full list for the request, or null if one failed. */
+      upload: function () {
+        if (!takes.length) return Promise.resolve(kept);
+        return LeeshAPI.kakao.token().then(function (t) {
+          var stamp = Date.now().toString(36);
+          return Promise.all(takes.map(function (tk, k) {
+            var type = String(tk.blob.type).split(";")[0];
+            var path = who.id + "/" + stamp + "-" + (k + 1) + "." + songExt(type);
+            return LeeshAPI.storage.uploadSong(path, tk.blob, t).then(function (ok) {
+              return ok ? { path: path, name: "녹음 " + (kept.length + k + 1), type: type, size: tk.blob.size, sec: Math.round(tk.sec) || null } : null;
+            });
+          }));
+        }).then(function (up) {
+          if (up.some(function (x) { return !x; })) return null;
+          kept = kept.concat(up);
+          takes = [];
+          return kept;
+        });
+      }
+    };
   }
 
   /* 내 레퍼토리 (학생이 직접): the songs I'm preparing; 연습 일지 adds up the minutes per song */

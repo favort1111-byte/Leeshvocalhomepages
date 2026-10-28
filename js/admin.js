@@ -1318,18 +1318,22 @@
       if (!field($("#recForm"), "made_on").value) field($("#recForm"), "made_on").value = todayKst();
       var req = $("#songReqList");
       req.textContent = "";
-      api("song_requests?select=*&status=eq." + encodeURIComponent("접수") + "&order=created_at").then(function (res) {
+      // open requests, and finished ones whose recordings haven't been deleted yet
+      api("song_requests?select=*&order=created_at&limit=300").then(function (res) {
         if (!res.ok) { req.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
-        countRecs(res.data.length);
-        if (!res.data.length) req.appendChild(el("li", "sys-empty", "새 신청이 없어요."));
-        res.data.forEach(function (q) {
+        var rows = res.data.filter(function (q) { return q.status === "접수" || (q.files || []).length; });
+        countRecs(res.data.filter(function (q) { return q.status === "접수"; }).length);
+        if (!rows.length) req.appendChild(el("li", "sys-empty", "새 신청이 없어요."));
+        rows.forEach(function (q) {
           var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
           top.appendChild(el("strong", null, memberName(q.member_id) + " (" + q.member_id + ")"));
           if (q.goal) top.appendChild(el("span", "adm__badge adm__badge--kind", q.goal));
           top.appendChild(el("span", "sys-note", stamp(q.created_at)));
           li.appendChild(top);
+          if (q.status === "완료") top.appendChild(el("span", "sys-note", "추천 완료 · 녹음이 남아 있어요"));
           if (q.likes) li.appendChild(el("p", null, "좋아하는 가수·곡: " + q.likes));
           if (q.memo) li.appendChild(el("p", "adm__quote", q.memo));
+          if ((q.files || []).length) li.appendChild(songFiles(q));
           var row = el("div", "adm__cardrow");
           var write = el("button", "sys-link", "이 학생 추천 쓰기");
           write.type = "button";
@@ -1338,7 +1342,7 @@
           done.type = "button";
           done.addEventListener("click", function () { api("song_requests?id=eq." + q.id, { method: "PATCH", body: { status: "완료" } }).then(loadRecs); });
           row.appendChild(write);
-          row.appendChild(done);
+          if (q.status === "접수") row.appendChild(done);
           li.appendChild(row);
           req.appendChild(li);
         });
@@ -1369,6 +1373,48 @@
       });
     });
   }
+  /** The student's recordings: listen, save to this computer, and 녹음 지우기 once the recommendation is up. */
+  function songFiles(q) {
+    var box = el("div", "adm__songs");
+    q.files.forEach(function (fl, k) {
+      var line = el("p", "adm__song");
+      line.appendChild(el("span", null, "🎵 " + (fl.name || "녹음 " + (k + 1)) + (fl.sec ? " · " + Math.floor(fl.sec / 60) + ":" + String(fl.sec % 60).padStart(2, "0") : "")));
+      var play = el("button", "sys-link", "▶ 듣기 · 내려받기");
+      play.type = "button";
+      play.addEventListener("click", function () {
+        play.disabled = true;
+        token().then(function (t) { return LeeshAPI.storage.song(fl.path, t); }).then(function (u) {
+          if (!u) { play.textContent = "불러오지 못했어요"; return; }
+          var a = el(/^video/.test(fl.type || "") ? "video" : "audio", "adm__player");
+          a.controls = true;
+          a.src = u;
+          var dl = el("a", "sys-link", "내려받기");
+          dl.href = u;
+          dl.download = memberName(q.member_id) + "-" + (k + 1) + "." + String(fl.path).split(".").pop();
+          play.replaceWith(a);
+          line.appendChild(dl);
+        });
+      });
+      line.appendChild(play);
+      box.appendChild(line);
+    });
+    var wipe = el("button", "sys-link adm__del", "녹음 지우기");
+    wipe.type = "button";
+    wipe.addEventListener("click", function () {
+      if (wipe.getAttribute("data-armed") !== "1") { wipe.setAttribute("data-armed", "1"); wipe.textContent = "한 번 더 누르면 녹음 " + q.files.length + "개를 지워요"; return; }
+      wipe.disabled = true;
+      token().then(function (t) { return LeeshAPI.storage.removeSongs(q.files.map(function (f) { return f.path; }), t); }).then(function (ok) {
+        if (!ok) { wipe.disabled = false; wipe.textContent = "지우지 못했어요. 다시 눌러주세요"; return; }
+        api("song_requests?id=eq." + q.id, { method: "PATCH", body: { files: [] } }).then(function () {
+          msg($("#recMsg"), "녹음을 지웠어요.", "ok");
+          loadRecs();
+        });
+      });
+    });
+    box.appendChild(wipe);
+    return box;
+  }
+
   function countRecs(n) {
     var b = $("#recBadge");
     if (n != null) { b.textContent = n; b.hidden = !n; return; }

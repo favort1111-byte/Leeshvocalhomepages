@@ -168,6 +168,21 @@
     remove: function (paths, token) {
       return fetch(base + "/storage/v1/object/eval-reports", { method: "DELETE", headers: headers(token), body: JSON.stringify({ prefixes: paths }) })
         .then(function (r) { return r.ok; }, function () { return false; });
+    },
+    /* 노래 녹음: private bucket "song-recordings", <수강 ID>/<file> — the student (Kakao) and the admin page */
+    uploadSong: function (path, blob, token) {
+      // "audio/webm;codecs=opus" → "audio/webm": the bucket lists plain types
+      return put("song-recordings", path, blob.slice(0, blob.size, String(blob.type).split(";")[0]), token);
+    },
+    song: function (path, token) {
+      var h = headers(token);
+      delete h["Content-Type"];
+      return fetch(base + "/storage/v1/object/authenticated/song-recordings/" + path, { headers: h })
+        .then(function (r) { return r.ok ? r.blob().then(function (b) { return URL.createObjectURL(b); }) : null; }, function () { return null; });
+    },
+    removeSongs: function (paths, token) {
+      return fetch(base + "/storage/v1/object/song-recordings", { method: "DELETE", headers: headers(token), body: JSON.stringify({ prefixes: paths }) })
+        .then(function (r) { return r.ok; }, function () { return false; });
     }
   };
 

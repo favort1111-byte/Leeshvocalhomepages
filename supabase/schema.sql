@@ -242,6 +242,7 @@ create table if not exists public.song_requests (
   status     text not null default '접수' check (status in ('접수', '완료')),
   created_at timestamptz not null default now()
 );
+alter table public.song_requests add column if not exists files jsonb not null default '[]'::jsonb;  -- [{"path","name","type","size","sec"}]
 
 -- 관리자 화면에 로그인할 수 있는 이메일 (Supabase Authentication에 만든 계정)
 create table if not exists public.admins (
@@ -745,7 +746,7 @@ begin
                order by s.made_on desc, s.id desc)
       from (select * from public.song_recs where member_id = mid and published order by made_on desc, id desc limit 5) s
     ), '[]'::jsonb),
-    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo)
+    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo, 'files', q.files)
                 from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
   ));
 end $$;
@@ -829,8 +830,10 @@ begin
 end $$;
 
 -- 노래 추천받기 신청: 열린 신청이 있으면 그걸 고쳐요 (한 달에 5번까지).
+-- p_files: 학생이 올린 노래 녹음 (song-recordings/<수강 ID>/…, 3개까지). null이면 녹음은 그대로 둠.
+drop function if exists public.member_song_request(text, text, text, text, text);
 create or replace function public.member_song_request(p_id text, p_pin text, p_likes text default null,
-  p_goal text default null, p_memo text default null) returns jsonb
+  p_goal text default null, p_memo text default null, p_files jsonb default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   who jsonb := private.check_ready(p_id, p_pin);
@@ -843,15 +846,23 @@ begin
   mid := who ->> 'id';
   if p_goal is not null and p_goal not in ('오디션', '입시', '취미', '공연') then return private.fail('목표를 골라주세요.'); end if;
   if char_length(coalesce(v_likes, '')) > 300 or char_length(coalesce(v_memo, '')) > 500 then return private.fail('글이 너무 길어요.'); end if;
+  if p_files is not null then
+    if jsonb_typeof(p_files) <> 'array' or jsonb_array_length(p_files) > 3 then return private.fail('녹음은 3개까지 올릴 수 있어요.'); end if;
+    if exists (select 1 from jsonb_array_elements(p_files) f where coalesce(f ->> 'path', '') not like mid || '/%') then
+      return private.fail('녹음을 다시 올려주세요.');
+    end if;
+  end if;
   select id into open_id from public.song_requests where member_id = mid and status = '접수' order by id desc limit 1;
   if open_id is null then
     if (select count(*) from public.song_requests where member_id = mid and created_at > now() - interval '30 days') >= 5 then
       return private.fail('한 달에 5번까지 신청할 수 있어요.');
     end if;
-    insert into public.song_requests (member_id, likes, goal, memo) values (mid, v_likes, p_goal, v_memo) returning id into open_id;
-    perform private.notify('🎵 노래 추천 신청: ' || (who ->> 'name') || ' (' || mid || ')');
+    insert into public.song_requests (member_id, likes, goal, memo, files)
+    values (mid, v_likes, p_goal, v_memo, coalesce(p_files, '[]'::jsonb)) returning id into open_id;
+    perform private.notify('🎵 노래 추천 신청: ' || (who ->> 'name') || ' (' || mid || ')'
+      || case when jsonb_array_length(coalesce(p_files, '[]'::jsonb)) > 0 then ' · 녹음 ' || jsonb_array_length(p_files) || '개' else '' end);
   else
-    update public.song_requests set likes = v_likes, goal = p_goal, memo = v_memo where id = open_id;
+    update public.song_requests set likes = v_likes, goal = p_goal, memo = v_memo, files = coalesce(p_files, files) where id = open_id;
   end if;
   return jsonb_build_object('ok', true, 'id', open_id);
 end $$;
@@ -1125,8 +1136,8 @@ grant execute on function public.member_repertoire_save(text, text, bigint, text
   public.member_log_delete(text, text, bigint) to anon, authenticated;
 
 -- 노래 추천받기 신청
-revoke execute on function public.member_song_request(text, text, text, text, text) from public;
-grant execute on function public.member_song_request(text, text, text, text, text) to anon, authenticated;
+revoke execute on function public.member_song_request(text, text, text, text, text, jsonb) from public;
+grant execute on function public.member_song_request(text, text, text, text, text, jsonb) to anon, authenticated;
 
 -- ---------------------------------------------------------------- 인스타그램 → 홈페이지 (2026-10-28)
 -- 오디션반 인스타의 글을 가져와 오디션 소식에 블로그 글처럼 보여줍니다 (원장님: 해시태그 없이, 빠지는 글 없이).
@@ -1380,3 +1391,35 @@ alter table public.audition_news add column if not exists initials text check (c
 -- 학생 실명은 받지 않음: 한글 2~4자 그대로(예: 김민지)는 막고 김OO처럼만
 alter table public.audition_news drop constraint if exists audition_news_initials_not_name;
 alter table public.audition_news add constraint audition_news_initials_not_name check (initials is null or initials !~ '^[가-힣]{2,4}$');
+
+-- 노래 녹음 (2026-10-28): 학생이 내 폴더에서 녹음하거나 파일을 골라 올림. 비공개 버킷, 본인 폴더(<수강 ID>/)만 · 6개까지.
+-- 원장님(관리자)이 듣고 내려받고, 추천을 올린 뒤 관리자 화면의 "녹음 지우기"로 지움 (자동 삭제는 안 켬).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('song-recordings', 'song-recordings', false, 31457280,
+        array['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/aac', 'audio/x-m4a', 'audio/m4a', 'audio/wav', 'audio/x-wav', 'audio/ogg',
+              'video/mp4', 'video/quicktime', 'video/webm'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+create or replace function private.song_owner() returns text
+language sql stable security definer set search_path = '' as $$
+  select m.id from public.members m where m.kakao_user = auth.uid() and m.status in ('재원', '외부') limit 1;
+$$;
+create or replace function private.song_file_count(mid text) returns int
+language sql stable security definer set search_path = '' as $$
+  select count(*)::int from storage.objects o where o.bucket_id = 'song-recordings' and (storage.foldername(o.name))[1] = mid;
+$$;
+grant execute on function private.song_owner(), private.song_file_count(text) to authenticated;
+grant usage on schema private to authenticated;
+drop policy if exists song_recordings_admin on storage.objects;
+create policy song_recordings_admin on storage.objects for all to authenticated
+  using (bucket_id = 'song-recordings' and public.is_admin())
+  with check (bucket_id = 'song-recordings' and public.is_admin());
+drop policy if exists song_recordings_own_read on storage.objects;
+create policy song_recordings_own_read on storage.objects for select to authenticated
+  using (bucket_id = 'song-recordings' and (storage.foldername(name))[1] = private.song_owner());
+drop policy if exists song_recordings_own_add on storage.objects;
+create policy song_recordings_own_add on storage.objects for insert to authenticated
+  with check (bucket_id = 'song-recordings' and (storage.foldername(name))[1] = private.song_owner()
+              and private.song_file_count(private.song_owner()) < 6);
+drop policy if exists song_recordings_own_remove on storage.objects;
+create policy song_recordings_own_remove on storage.objects for delete to authenticated
+  using (bucket_id = 'song-recordings' and (storage.foldername(name))[1] = private.song_owner());
