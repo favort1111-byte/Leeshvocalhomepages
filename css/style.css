@@ -872,3 +872,15 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .songrec__song p{margin:0;}
 .songrec__song .fold__actions{flex-wrap:wrap;}
 @media (max-width:480px){.songrec__voice{grid-template-columns:1fr;gap:0;}.songrec__voice dd{margin-bottom:6px;}}
+
+/* 홈으로 · 맨 위로 (js/pagenav.js): bottom right of the long pages, after a little scrolling */
+.pagenav{position:fixed;z-index:20;right:max(14px, env(safe-area-inset-right));bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+  display:flex;flex-direction:column;gap:10px;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s, transform .2s;}
+.pagenav.is-on{opacity:1;transform:none;pointer-events:auto;}
+.pagenav__btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:52px;height:52px;padding:0;
+  border:1px solid rgba(246,235,221,.6);border-radius:50%;background:rgba(62,34,24,.88);color:#F6EBDD;text-decoration:none;cursor:pointer;
+  font:500 10.5px/1 'Jost','Noto Sans KR',sans-serif;letter-spacing:.04em;box-shadow:0 4px 14px rgba(0,0,0,.28);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}
+.pagenav__btn svg{width:20px;height:20px;}
+.pagenav__btn:hover{background:rgba(110,59,40,.95);}
+.pagenav__btn:focus-visible{outline:2px solid #E6CF9E;outline-offset:2px;}
+@media (prefers-reduced-motion:reduce){.pagenav{transition:none;}}

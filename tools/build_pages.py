@@ -47,7 +47,7 @@ LEGAL = ('<footer class="legal"><a href="privacy.html"><b>개인정보처리방�
          f'<span>© 이송희보컬레슨 · {blog.DIRECTIONS["address"]}</span></footer>\n')
 
 def foot(*extra):
-    scripts = ["config", "api"] + list(extra)
+    scripts = ["config", "api"] + list(extra) + ["pagenav"]  # 홈으로 · 맨 위로 (skips the desktop by itself)
     return LEGAL + "".join(f'<script src="js/{n}.js"></script>\n' for n in scripts) + "</body>\n</html>\n"
 
 
