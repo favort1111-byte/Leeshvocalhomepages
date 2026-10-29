@@ -44,27 +44,7 @@ DIRECTOR = {
     ],
 }
 
-DANCE = {
-    "name": "엄재연",
-    "role": "댄스 강사",
-    "lead": ["아이돌 트레이닝", "대형 기획사 위탁 트레이닝"],
-    "trained": ["뉴진스 혜인", "어썸하은 (SM 데뷔조)", "베이비몬스터 로라", "더보이즈 주연", "모모랜드 낸시",
-                "빌리 문수아", "방과후설렘 지원", "코카앤버터 리헤이 & 제트썬", "〈Lemon〉 PD"],
-    "history": [
-        ("2012", "엠넷 서바이벌 〈셔플오디션〉 최종 6인 전담 트레이닝 ('비셔플'로 데뷔)"),
-        ("2013", "걸그룹 블레이디 전담 트레이닝 · 'B형여자' 댄서"),
-        ("2015–2016", "후너스 · 스타덤 엔터테인먼트 연습생"),
-        ("2016", "FNC 아카데미 중국 지사 합동 공연"),
-        ("2017", "중국 기획사 'startowner' 연습생 위탁 트레이닝 · 화수TV 라이브 무대 생방송"),
-        ("2017", "스타캐슬 키즈플래닛 88 · 유쏘 프로젝트 안무 & 트레이닝"),
-        ("2018", "중국 'startowner' · 일본 '아뮤즈' 연습생 개인 위탁 트레이닝"),
-        ("2018", "월드비전 후원 아동 단체 워크숍 · 아프리카TV 댄서 프로젝트 (코카앤버터 리헤이)"),
-        ("2017–2019", "온리원 엔터테인먼트 연습생 트레이닝"),
-        ("2019–2020", "중국 상해 더블제이컴퍼니 초대 강사"),
-        ("2020–2021", "MBC 〈방과후설렘〉 이지원 트레이닝"),
-        ("2022–2024", "개인 트레이닝 다수 진행"),
-    ],
-}
+# 댄스 강사 프로필은 원장님 요청으로 홈페이지에서 뺌 (2026-10-29).
 STAFF_NOTE = "모든 강사진이 신인개발팀 · 연습생 경력, 강남권 학원 출강 경력을 갖고 있어요."
 
 # ---------------------------------------------------------------- curriculum
@@ -301,8 +281,6 @@ def _photo(name, caption, cls=""):
 def teacher_section():
     d = DIRECTOR
     groups = "".join(f'<div class="card__col"><h4>{t}</h4>{_ul(items)}</div>' for t, items in d["groups"])
-    dance = DANCE
-    hist = "".join(f"<li><b>{y}</b> {t}</li>" for y, t in dance["history"])
     return (_head("the teacher", "무대에 서본 사람이 가르쳐요", "teacher")
             + '    <div class="teacher">\n'
             + '      <div class="teacher__photos">' + _photo("director", "대표원장 이송희", "snap--tilt-l")
@@ -311,15 +289,6 @@ def teacher_section():
             + '        <p class="card__name">대표원장 <b>이송희</b> <span>가수 클로이 · Klloy</span></p>\n'
             + "        " + _ul(d["lead"], "card__lead") + "\n"
             + f'        <div class="card__cols">{groups}</div>\n'
-            + "      </article>\n"
-            + "    </div>\n"
-            + '    <div class="teacher teacher--dance">\n'
-            + '      <div class="teacher__photos">' + _photo("dance-teacher", f"{dance['role']} {dance['name']}", "snap--tilt-r") + "</div>\n"
-            + '      <article class="card card--paper">\n'
-            + f'        <p class="card__name">{dance["role"]} <b>{dance["name"]}</b></p>\n'
-            + "        " + _ul(dance["lead"], "card__lead") + "\n"
-            + '        <div class="card__cols"><div class="card__col"><h4>트레이닝한 아티스트</h4>' + _ul(dance["trained"], "card__chips") + "</div></div>\n"
-            + f'        <details class="card__more"><summary>경력 전체 보기</summary><ul class="card__history">{hist}</ul></details>\n'
             + "      </article>\n"
             + "    </div>\n"
             + f'    <p class="scrap__note">{STAFF_NOTE}</p>\n')
