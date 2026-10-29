@@ -216,7 +216,7 @@ home_icons = "\n".join([
     thumb(563, 256.5, 61.5, 47.5, 6, "hobby.jpg", scene="hobby", ko="원포인트 레슨"),
     thumb(637.5, 119.5, 73.5, 43, 9, "exam.jpg", scene="exam", ko="입시 합격 실적"),
     thumb(699, 150, 43.5, 49, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
-    icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가·노래 추천"),
+    icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가"),
     icon(590, 352, 44, 44, "games.exe", "games.html", GAME_ICON, ko="미니게임"),
 ])
 
@@ -444,7 +444,7 @@ consult_icons = "\n".join([
     thumb(70, 248, 37, 37, 1, "stage.jpg", scene="stage", ko="무대 · 원장님 소개"),
     thumb(128, 320, 37, 38, 2, "lesson.jpg", scene="lesson", ko="레슨 과정"),
     thumb(709, 205, 43, 50, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
-    icon(641, 338, 58, 48, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가·노래 추천"),
+    icon(641, 338, 58, 48, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가"),
 ])
 
 consult = (head("Consult | 이송희보컬레슨",

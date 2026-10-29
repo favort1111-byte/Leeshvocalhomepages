@@ -13,8 +13,14 @@
   // 레슨 노트 can be switched off in js/config.js (studentNotes: 원장님 2026-10-29 숨김); then the folder opens on 내 예약
   var NOTES = (window.LEESH || {}).lessonNotes !== false && (window.LEESH || {}).studentNotes !== false;
   var FIRST = NOTES ? "notes" : "bookings";
+  // 노래 추천도 같은 식으로 숨겨요 (songRecs: 원장님 2026-10-29)
+  var HIDDEN = [];
+  if (!NOTES) HIDDEN.push("notes");
+  if ((window.LEESH || {}).songRecs === false) HIDDEN.push("recs");
+  HIDDEN.forEach(function (name) {
+    scene.querySelectorAll('[data-book-tab="' + name + '"], [data-book-page="' + name + '"]').forEach(function (n) { n.remove(); });
+  });
   if (!NOTES) {
-    scene.querySelectorAll('[data-book-tab="notes"], [data-book-page="notes"]').forEach(function (n) { n.remove(); });
     scene.querySelector('[data-book-page="bookings"]').hidden = false;
     scene.querySelector('[data-book-tab="bookings"]').setAttribute("aria-selected", "true");
   }
@@ -70,7 +76,7 @@
       renderBookings(res);
       renderNotices(res);
       renderEvals(res.reports || []);
-      renderRecs(res);
+      if (HIDDEN.indexOf("recs") < 0) renderRecs(res);
       renderVideos((res.reports || [])[0]);
       renderSongs(res.repertoire || [], res.logs || []);
       renderLogs(res.logs || [], res.repertoire || []);
@@ -913,7 +919,7 @@
   // Refresh each time the folder opens, so a note written a minute ago shows up.
   // A link like index.html#evals opens the folder on that tab (js/scene.js passes it on).
   scene.addEventListener("scene:open", function (e) {
-    if (e.detail && e.detail.tab) showTab(NOTES || e.detail.tab !== "notes" ? e.detail.tab : FIRST);
+    if (e.detail && e.detail.tab) showTab(HIDDEN.indexOf(e.detail.tab) < 0 ? e.detail.tab : FIRST);
     if (who) load();
   });
 

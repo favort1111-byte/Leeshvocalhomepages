@@ -14,6 +14,9 @@ window.LEESH = {
   // 학생 내 폴더에 레슨 노트 보이기. 원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김 (서버도 settings.student_notes = false라 안 보냄).
   // 켤 때는 이것과 서버 둘 다: studentNotes: true + update public.settings set student_notes = true;
   studentNotes: false,
+  // 학생 내 폴더에 노래 추천 보이기. 원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김 (서버도 settings.song_recs = false라 새 신청을 막음).
+  // 켤 때는 둘 다: songRecs: true + update public.settings set song_recs = true;
+  songRecs: false,
   // 레슨 일지 칸 (선생님들이 쓰던 구글시트 그대로): [칸, 이름, 안내, 최대 글자, 줄 수]. memo는 학생에게 안 보여요.
   lessonFields: [
     ["did", "오늘 수업", "예) 호흡 · 발성 연습, ○○ 1절 디테일", 800, 3],

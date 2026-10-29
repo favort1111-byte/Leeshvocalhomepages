@@ -2670,3 +2670,18 @@ begin
   end loop;
 end $$;
 
+-- 학생 노래 추천 잠시 숨김 (원장님 2026-10-29: 선생님들과 얘기 끝날 때까지). 화면 config.js songRecs: false + 서버는 새 신청을 막음.
+-- 켤 때: update public.settings set song_recs = true; (+ config.js songRecs: true)
+alter table public.settings add column if not exists song_recs boolean not null default true;
+update public.settings set song_recs = false where id = 1;
+do $$
+declare d text := pg_get_functiondef('public.member_song_request(text,text,text,text,text,jsonb)'::regprocedure);
+        mark text := $s$if not (who ->> 'ok')::boolean then return who; end if;$s$;
+begin
+  if position('song_recs' in d) = 0 then
+    if position(mark in d) = 0 then raise exception 'member_song_request: 넣을 자리를 못 찾음'; end if;
+    execute overlay(d placing mark || chr(10) || $s$  if not coalesce((select song_recs from public.settings where id = 1), true) then
+    return private.fail('지금은 노래 추천 신청을 잠시 쉬고 있어요. 학원에 문의해주세요.');
+  end if;$s$ from position(mark in d) for length(mark));
+  end if;
+end $$;
