@@ -2693,3 +2693,109 @@ begin
     execute replace(d, $s$('전화 상담', '방문 상담', '체험 레슨')$s$, $s$('전화 상담', '방문 상담')$s$);
   end if;
 end $$;
+-- 레슨 일지 꾸미기 (원장님 2026-10-29: 선생님들이 구글시트처럼 빨간 글씨·색깔·형광펜으로 강조하며 수업 중에 씀)
+-- rich = true면 칸마다 꾸민 글(제한된 HTML: 굵게·색·형광펜·크게·줄바꿈만). 화면(js/richtext.js)이 보여줄 때 다시 걸러요.
+alter table public.lesson_notes add column if not exists rich boolean not null default false;
+
+-- 글자 수 제한은 꾸미기 표시를 뺀 글자로 (표시가 붙으면 길어지므로 저장 칸은 넉넉히)
+alter table public.lesson_notes drop constraint if exists lesson_notes_audition_check;
+alter table public.lesson_notes drop constraint if exists lesson_notes_memo_check;
+alter table public.lesson_notes drop constraint if exists lesson_notes_recommend_check;
+alter table public.lesson_notes drop constraint if exists lesson_notes_songs_check;
+
+create or replace function private.rich_text(v text) returns text
+language sql immutable set search_path = '' as $$
+  select replace(replace(replace(replace(replace(
+           regexp_replace(regexp_replace(coalesce(v, ''), '<br\s*/?>|</div>|</p>', ' ', 'gi'), '<[^>]*>', '', 'g'),
+         '&nbsp;', ' '), '&lt;', '<'), '&gt;', '>'), '&quot;', '"'), '&amp;', '&');
+$$;
+
+-- 꾸민 글에 허용하는 것만 (선생님 화면 · 관리자 화면 둘 다 이 검사를 거침)
+create or replace function private.rich_ok(v text) returns boolean
+language plpgsql immutable set search_path = '' as $$
+declare tag text;
+begin
+  if v is null then return true; end if;
+  if v ~* '(javascript|vbscript|data)\s*:|expression\s*\(|url\s*\(|@import' then return false; end if;
+  for tag in select m[1] from regexp_matches(v, '<([^>]*)>', 'g') m loop
+    if tag !~* '^/?(b|i|u|s|br|div|span)(\s+style="[a-z0-9 :;#(),.%-]*")?\s*/?$' then return false; end if;
+  end loop;
+  return true;
+end $$;
+
+create or replace function private.lesson_note_check() returns trigger
+language plpgsql set search_path = '' as $$
+declare
+  lim int[] := array[800, 2000, 400, 800, 800, 1000];
+  vals text[] := array[new.did, new.songs, new.practice, new.audition, new.recommend, new.memo];
+  i int;
+begin
+  for i in 1..6 loop
+    if vals[i] is null then continue; end if;
+    if char_length(vals[i]) > 20000 then raise exception '글이 너무 길어요.'; end if;
+    if new.rich then
+      if not private.rich_ok(vals[i]) then raise exception '꾸민 글에 쓸 수 없는 내용이 있어요.'; end if;
+      if char_length(private.rich_text(vals[i])) > lim[i] then raise exception '글이 너무 길어요.'; end if;
+    elsif char_length(vals[i]) > lim[i] then
+      raise exception '글이 너무 길어요.';
+    end if;
+  end loop;
+  return new;
+end $$;
+drop trigger if exists lesson_notes_check on public.lesson_notes;
+create trigger lesson_notes_check before insert or update on public.lesson_notes
+  for each row execute function private.lesson_note_check();
+
+-- 선생님 저장: p_rich 추가 (빈 칸 판단·글자 수는 꾸미기 표시를 뺀 글자로)
+drop function if exists public.teacher_note_save(text, date, bigint, text, text, text, text, text, text);
+create or replace function public.teacher_note_save(p_member text, p_date date, p_note bigint default null,
+  p_did text default null, p_songs text default null, p_practice text default null, p_audition text default null,
+  p_recommend text default null, p_memo text default null, p_rich boolean default false) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  v_id bigint;
+  raw text[] := array[p_did, p_songs, p_practice, p_audition, p_recommend, p_memo];
+  f text[] := '{}';
+  lim int[] := array[800, 2000, 400, 800, 800, 1000];
+  i int; txt text;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 쓸 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생만 쓸 수 있어요.'); end if;
+  if p_date is null or p_date > private.now_kst()::date + 1 or p_date < private.now_kst()::date - 366 then return private.fail('수업 날짜를 확인해주세요.'); end if;
+  for i in 1..6 loop
+    txt := case when p_rich then private.rich_text(raw[i]) else coalesce(raw[i], '') end;
+    if char_length(txt) > lim[i] then return private.fail('글이 너무 길어요.'); end if;
+    f := f || case when trim(txt) = '' then null else trim(raw[i]) end;
+  end loop;
+  if coalesce(f[1], f[2], f[3], f[4], f[5], f[6]) is null then return private.fail('한 칸 이상 적어주세요.'); end if;
+  if p_rich and not (private.rich_ok(f[1]) and private.rich_ok(f[2]) and private.rich_ok(f[3]) and private.rich_ok(f[4])
+                     and private.rich_ok(f[5]) and private.rich_ok(f[6])) then
+    return private.fail('꾸민 글에 쓸 수 없는 내용이 있어요. 다시 붙여넣어 주세요.');
+  end if;
+  if p_note is null then
+    insert into public.lesson_notes (member_id, lesson_date, teacher, teacher_id, did, songs, practice, audition, recommend, memo, rich)
+    values (p_member, p_date, t.name, t.id, f[1], f[2], f[3], f[4], f[5], f[6], coalesce(p_rich, false)) returning id into v_id;
+  else
+    update public.lesson_notes set lesson_date = p_date, did = f[1], songs = f[2], practice = f[3], audition = f[4],
+      recommend = f[5], memo = f[6], rich = coalesce(p_rich, false), updated_at = now()
+    where id = p_note and member_id = p_member and teacher_id = t.id returning id into v_id;
+    if v_id is null then return private.fail('내가 쓴 일지만 고칠 수 있어요.'); end if;
+  end if;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end $$;
+revoke all on function public.teacher_note_save(text, date, bigint, text, text, text, text, text, text, boolean) from public, anon;
+grant execute on function public.teacher_note_save(text, date, bigint, text, text, text, text, text, text, boolean) to authenticated;
+
+-- 선생님 화면 · 학생 내 폴더에 rich 표시도 같이 보냄
+do $$
+declare f text; d text;
+begin
+  foreach f in array array['public.teacher_student(text)', 'public.member_notebook(text,text)'] loop
+    d := pg_get_functiondef(f::regprocedure);
+    if position($s$'rich', n.rich$s$ in d) = 0 then
+      if position($s$'recommend', n.recommend$s$ in d) = 0 then raise exception '% 고칠 자리를 못 찾음', f; end if;
+      execute replace(d, $s$'recommend', n.recommend$s$, $s$'recommend', n.recommend, 'rich', n.rich$s$);
+    end if;
+  end loop;
+end $$;

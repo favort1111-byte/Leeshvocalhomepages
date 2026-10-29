@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 21; // bump when the demo defaults change
+  var VERSION = 22; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -66,7 +66,8 @@
           recommend: "볼빨간사춘기 - 우주를 줄게 (밝은 곡 연습용)", memo: "고음 욕심이 많아 목이 쉽게 피곤해함 (체험 모드 예시)", created_at: new Date().toISOString() },
         { id: 12, member_id: "S001", lesson_date: addDays(t, -9), teacher: "원장님", teacher_id: 504, did: "첫 소절 시작 음정 잡기. 반주 없이 첫 음 듣고 들어가기.", practice: "피아노로 첫 음 치고 따라 부르기 10번", created_at: new Date().toISOString() },
         { id: 13, member_id: "S001", lesson_date: addDays(t, -16), teacher: "원장님", teacher_id: 504, did: "노래 진단. 중음은 안정적, 고음에서 목이 조임.", practice: "하품하듯 입 벌리고 '아' 길게 5번", created_at: new Date().toISOString() },
-        { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "안유정", teacher_id: 501, did: "입시곡 2절 감정선 정리", songs: "입시곡 - 2절 브릿지 호흡 위치 바꾸기", practice: "2절 녹음해서 들어보기",
+        { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "안유정", teacher_id: 501, rich: true, did: "입시곡 2절 감정선 정리<br><span style=\"color: #d62828; font-size: x-large\"><b>끝음 처리 서두르지 않기!</b></span>",
+          songs: "입시곡 - 2절 브릿지 <span style=\"background-color: #ffe45c\">호흡 위치</span> 바꾸기", practice: "2절 녹음해서 들어보기",
           audition: "12월 입시 실기", memo: "부모님이 진도 문의하심 (체험 모드 예시)", created_at: new Date().toISOString() }
       ],
       // 선생님 (teacher.html): 안유정 선생님이 체험용 카카오로 연결된 상태 + 기다리는 요청 하나
@@ -346,7 +347,7 @@
         notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
-          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice, songs: n.songs, audition: n.audition, recommend: n.recommend }; }),
+          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice, songs: n.songs, audition: n.audition, recommend: n.recommend, rich: !!n.rich }; }),
         bookings: live().filter(function (b) { return b.member_id === who.id && b.day >= nowKst().today; })
           .sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); })
           .map(function (b) { return { room: room(b.room_id).name, date: b.day, start: hhmm(b.start_min), end: hhmm(b.end_min) }; }),
@@ -602,7 +603,7 @@
         notes: db.lesson_notes.filter(function (n) { return n.member_id === m.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .map(function (n) { return { id: n.id, date: n.lesson_date, teacher: n.teacher, did: n.did, songs: n.songs, practice: n.practice,
-            audition: n.audition, recommend: n.recommend, memo: n.memo, mine: n.teacher_id === t.id }; }),
+            audition: n.audition, recommend: n.recommend, memo: n.memo, rich: !!n.rich, mine: n.teacher_id === t.id }; }),
         logs: db.practice_logs.filter(function (l) { return l.member_id === m.id; }).map(function (l) { return { day: l.day, minutes: l.minutes, song: l.song, did: l.did }; }),
         repertoire: db.repertoire.filter(function (r) { return r.member_id === m.id; }).map(function (r) { return { title: r.title, artist: r.artist, status: r.status, purpose: r.purpose }; }) };
     },
@@ -613,6 +614,7 @@
       var keys = ["did", "songs", "practice", "audition", "recommend", "memo"], v = {};
       keys.forEach(function (k) { v[k] = String(a["p_" + k] || "").trim() || null; });
       if (!keys.some(function (k) { return v[k]; })) return fail("한 칸 이상 적어주세요.");
+      v.rich = !!a.p_rich;
       var n;
       if (a.p_note) {
         n = db.lesson_notes.filter(function (x) { return x.id === a.p_note && x.teacher_id === t.id; })[0];

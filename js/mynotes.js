@@ -99,7 +99,7 @@
       ((window.LEESH || {}).lessonFields || []).forEach(function (fd) {
         if (fd[0] === "memo" || !n[fd[0]]) return;
         card.appendChild(el("p", "lnote__label", fd[1]));
-        card.appendChild(el("p", fd[0] === "practice" ? "lnote__practice" : "lnote__did", n[fd[0]]));
+        card.appendChild(LeeshRich.view(n[fd[0]], n.rich, fd[0] === "practice" ? "lnote__practice" : "lnote__did"));
       });
       box.appendChild(card);
     });

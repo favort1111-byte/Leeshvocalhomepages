@@ -170,7 +170,8 @@
       var s = res.student;
       app.appendChild(header());
       var back = button("← 담당 학생", "sys-link tch__back");
-      back.addEventListener("click", function () { start(); });
+      // 쓰던 일지는 저장하고 나가요
+      back.addEventListener("click", function () { (form ? form.flush() : Promise.resolve()).then(function () { start(); }); });
       app.appendChild(back);
       app.appendChild(el("h3", "tch__name", s.name + (s.status !== "재원" ? " (" + s.status + ")" : "")));
       var form = noteForm(s, res.notes, null);
@@ -219,7 +220,10 @@
     });
   }
 
-  /** The write / edit form. editing = a note of mine to change, or null for a new one. */
+  /**
+   * The write / edit form. editing = a note of mine to change, or null for a new one.
+   * 칸마다 꾸미기 버튼 (js/richtext.js) + 쓰는 동안 저절로 저장 (원장님 2026-10-29: 수업하면서 같이 보며 씀).
+   */
   function noteForm(s, notes, editing) {
     var f = el("form", "sys tch__form");
     f.appendChild(el("h4", "rec__title", editing ? dayLabel(editing.date) + " 일지 고치기" : "오늘 일지 쓰기"));
@@ -231,22 +235,19 @@
     date.value = editing ? editing.date : todayKst();
     dl.appendChild(date);
     f.appendChild(dl);
+    f.appendChild(el("p", "sys-note tch__how", "글자를 고른 뒤 빨강 · 파랑 · 초록 · 형광펜 · 굵게 · 크게를 누르면 꾸며져요. 쓰는 동안 저절로 저장돼요."));
     var inputs = {};
     FIELDS.forEach(function (fd) {
-      var l = el("label", "sys-field" + (fd[0] === "memo" ? " tch__memo" : ""));
+      var l = el("div", "sys-field" + (fd[0] === "memo" ? " tch__memo" : ""));
       l.appendChild(el("span", null, fd[1] + (fd[0] === "memo" ? " 🔒" : "")));
-      var t = el("textarea");
-      t.name = fd[0];
-      t.rows = fd[4];
-      t.maxLength = fd[3];
-      t.placeholder = fd[2];
-      t.value = editing && editing[fd[0]] || "";
-      l.appendChild(t);
+      var ed = LeeshRich.editor({ value: editing && editing[fd[0]] || "", rich: editing && editing.rich, placeholder: fd[2],
+        rows: fd[4], max: fd[3], label: fd[1], onInput: later });
+      l.appendChild(ed.node);
       f.appendChild(l);
-      inputs[fd[0]] = t;
+      inputs[fd[0]] = ed;
     });
     var row = el("div", "fold__actions");
-    var save = el("button", "sys-btn", editing ? "고친 내용 저장" : "저장");
+    var save = el("button", "sys-btn", editing ? "고친 내용 저장" : "저장하고 닫기");
     save.type = "submit";
     row.appendChild(save);
     var last = notes.filter(function (n) { return n.mine; })[0] || notes[0];
@@ -254,14 +255,14 @@
       // 지난번 일지를 불러와 고치기만 (선생님 일이 늘지 않게)
       var copy = button("지난 일지 불러오기", "sys-link");
       copy.addEventListener("click", function () {
-        FIELDS.forEach(function (fd) { inputs[fd[0]].value = last[fd[0]] || ""; });
-        say(msg, dayLabel(last.date) + " 일지를 불러왔어요. 고칠 곳만 고쳐서 저장하세요.");
+        FIELDS.forEach(function (fd) { inputs[fd[0]].set(last[fd[0]] || "", last.rich); });
+        say(msg, dayLabel(last.date) + " 일지를 불러왔어요. 고칠 곳만 고치면 저절로 저장돼요.");
       });
       row.appendChild(copy);
     }
     if (editing) {
       var cancel = button("고치기 그만", "sys-link");
-      cancel.addEventListener("click", function () { open(s.id); });
+      cancel.addEventListener("click", function () { flush().then(function () { open(s.id); }); });
       row.appendChild(cancel);
     }
     f.appendChild(row);
@@ -271,22 +272,55 @@
     f.appendChild(el("p", "sys-note", cfg.studentNotes === false
       ? "지금은 학생에게 보이지 않아요 (원장님이 켜면 그때부터 학생 내 폴더 → 레슨 노트에 보여요). 🔒 선생님 메모는 언제나 학생에게 안 보여요."
       : "저장하면 학생 내 폴더 → 레슨 노트에 바로 보여요. 🔒 선생님 메모는 학생에게 안 보여요."));
+
+    // 저절로 저장: 마지막으로 쓴 뒤 2초. 처음 저장하면 그 일지 번호로 계속 고쳐요.
+    var noteId = editing ? editing.id : null, timer = null, busy = null, dirty = false;
+    function args() {
+      var a = { p_member: s.id, p_date: date.value, p_note: noteId, p_rich: true }, any = false;
+      FIELDS.forEach(function (fd) { var v = inputs[fd[0]].get(); a["p_" + fd[0]] = v || null; if (v) any = true; });
+      return any ? a : null;
+    }
+    function tooLong() { return FIELDS.filter(function (fd) { return inputs[fd[0]].over(); })[0]; }
+    function later() {
+      dirty = true;
+      clearTimeout(timer);
+      timer = setTimeout(function () { push(false); }, 2000);
+    }
+    function push(loud) {
+      clearTimeout(timer);
+      if (busy) { dirty = true; return busy; }
+      var a = args(), long = tooLong();
+      if (long) { say(msg, long[1] + " 칸이 너무 길어요 (" + long[3] + "자까지).", "error"); return Promise.resolve(false); }
+      if (!a || !date.value) { if (loud) say(msg, "한 칸 이상 적어주세요.", "error"); return Promise.resolve(!a ? null : false); }
+      dirty = false;
+      say(msg, "저장하는 중…");
+      busy = LeeshAPI.rpc("teacher_note_save", a).then(function (res) {
+        busy = null;
+        if (!res.ok) { dirty = true; say(msg, res.error, "error"); return false; }
+        noteId = res.id;
+        var t = new Date();
+        say(msg, "저장됨 " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0"), "ok");
+        students.forEach(function (x) { if (x.id === s.id && (!x.last || date.value > x.last)) x.last = date.value; });
+        if (dirty) return push(loud);
+        return true;
+      });
+      return busy;
+    }
+    function flush() { return dirty || timer ? push(false) : busy || Promise.resolve(true); }
+    date.addEventListener("change", function () { if (noteId) later(); });
+    // 다른 앱으로 넘어가거나 화면이 꺼질 때 바로 저장
+    document.addEventListener("visibilitychange", function () { if (document.hidden && f.isConnected && dirty) push(false); });
+
     f.addEventListener("submit", function (e) {
       e.preventDefault();
-      var args = { p_member: s.id, p_date: date.value, p_note: editing ? editing.id : null };
-      var any = false;
-      FIELDS.forEach(function (fd) { var v = inputs[fd[0]].value.trim(); args["p_" + fd[0]] = v || null; if (v) any = true; });
-      if (!any) { say(msg, "한 칸 이상 적어주세요.", "error"); return; }
       save.disabled = true;
-      say(msg, "저장하는 중…");
-      LeeshAPI.rpc("teacher_note_save", args).then(function (res) {
+      push(true).then(function (ok) {
         save.disabled = false;
-        if (!res.ok) { say(msg, res.error, "error"); return; }
+        if (!ok) return;
         open(s.id, cfg.studentNotes === false ? (editing ? "고쳤어요." : "저장했어요.") : editing ? "고쳤어요. 학생 화면에도 바뀌어 보여요." : "저장했어요. 학생 내 폴더에 바로 보여요.");
-        students.forEach(function (x) { if (x.id === s.id && (!x.last || date.value > x.last)) x.last = date.value; });
       });
     });
-    return { node: f, msg: msg };
+    return { node: f, msg: msg, flush: flush };
   }
 
   function noteCard(s, n, notes, form) {
@@ -297,15 +331,17 @@
     FIELDS.forEach(function (fd) {
       if (!n[fd[0]]) return;
       c.appendChild(el("p", "lnote__label", fd[1] + (fd[0] === "memo" ? " 🔒 학생에게 안 보여요" : "")));
-      c.appendChild(el("p", "lnote__did" + (fd[0] === "memo" ? " tch__memotext" : ""), n[fd[0]]));
+      c.appendChild(LeeshRich.view(n[fd[0]], n.rich, "lnote__did" + (fd[0] === "memo" ? " tch__memotext" : "")));
     });
     if (n.mine) {
       var row = el("p", "fold__actions");
       var edit = button("고치기", "sys-link");
       edit.addEventListener("click", function () {
+        form.flush();
         var f2 = noteForm(s, notes, n);
         form.node.replaceWith(f2.node);
         form.node = f2.node;
+        form.flush = f2.flush;
         f2.node.scrollIntoView({ behavior: "smooth", block: "start" });
       });
       var del = button("지우기", "sys-link adm__del");
