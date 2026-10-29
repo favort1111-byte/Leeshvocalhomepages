@@ -428,7 +428,7 @@ def find_us_section():
             '  <div class="scrap__block">\n'
             + _head("find us", "오시는 길", "map")
             + '    <div class="findus">\n'
-            + '      ' + _photo("map", "오시는 길 약도", "snap--map") + "\n"
+            + '      ' + _photo("map-2026-10", "오시는 길 약도", "snap--map")  # 청춘화로 → 남부 고친 약도 (새 이름이라 예전 그림이 남지 않음) + "\n"
             + '      <div>\n'
             + f'        <p class="findus__addr">{DIRECTIONS["address"]}</p>\n'
             + f'        <p>{DIRECTIONS["subway"]}</p>\n'
