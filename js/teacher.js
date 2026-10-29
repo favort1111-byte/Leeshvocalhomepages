@@ -160,7 +160,7 @@
     app.appendChild(ul);
   }
 
-  /* ---------- 학생 한 명: 일지 쓰기 + 지난 일지 + 연습 일지 · 레퍼토리 ---------- */
+  /* ---------- 학생 한 명: 저번 시간 내용 + 오늘의 수업 내용 + 지난 일지 + 연습 일지 · 레퍼토리 ---------- */
   function open(id, note) {
     clear();
     app.appendChild(el("p", "sys-note", "불러오는 중…"));
@@ -174,6 +174,9 @@
       back.addEventListener("click", function () { (form ? form.flush() : Promise.resolve()).then(function () { start(); }); });
       app.appendChild(back);
       app.appendChild(el("h3", "tch__name", s.name + (s.status !== "재원" ? " (" + s.status + ")" : "")));
+      // 맨 위에 저번 시간 수업 내용 (원장님 2026-10-29: 지난번 걸 보면서 오늘 수업)
+      var prev = lastTime(res.notes);
+      if (prev) app.appendChild(prev);
       var form = noteForm(s, res.notes, null);
       app.appendChild(form.node);
       if (note) say(form.msg, note, "ok");
@@ -226,7 +229,7 @@
    */
   function noteForm(s, notes, editing) {
     var f = el("form", "sys tch__form");
-    f.appendChild(el("h4", "rec__title", editing ? dayLabel(editing.date) + " 일지 고치기" : "오늘 일지 쓰기"));
+    f.appendChild(el("h4", "rec__title", editing ? dayLabel(editing.date) + " 수업 내용 고치기" : "오늘의 수업 내용"));
     var dl = el("label", "sys-field");
     dl.appendChild(el("span", null, "수업 날짜"));
     var date = el("input");
@@ -314,6 +317,34 @@
       });
     });
     return { node: f, msg: msg, flush: flush };
+  }
+
+  /** 저번 시간 수업 내용: 오늘보다 앞선 가장 최근 일지 하나를 시트 모양 그대로 (보기만). */
+  function lastTime(notes) {
+    var today = todayKst();
+    var n = notes.filter(function (x) { return x.date < today; })[0];
+    if (!n) return null;
+    var box = el("details", "tch__prev");
+    box.open = true;
+    var sum = el("summary", "tch__prevhead");
+    sum.appendChild(el("b", null, "저번 시간 수업 내용"));
+    sum.appendChild(el("span", null, " · " + dayLabel(n.date) + (n.teacher ? " · " + n.teacher + " 선생님" : "")));
+    box.appendChild(sum);
+    var grid = el("div", "rs-grid");
+    var any = false;
+    FIELDS.forEach(function (fd) {
+      if (!n[fd[0]]) return;
+      any = true;
+      var row = el("div", "rs-row");
+      var head = el("div", "rs-head");
+      head.appendChild(el("span", null, fd[1]));
+      row.appendChild(head);
+      row.appendChild(LeeshRich.view(n[fd[0]], n.rich, "rt-box rs-read"));
+      grid.appendChild(row);
+    });
+    if (!any) return null;
+    box.appendChild(grid);
+    return box;
   }
 
   function noteCard(s, n, notes, form) {
