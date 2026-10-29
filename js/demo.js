@@ -314,9 +314,15 @@
       if (digits.length < 9 || digits.length > 11) return fail("연락처를 정확히 입력해주세요.");
       var phone = digits.length === 11 ? digits.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3") : digits.replace(/(\d{3})(\d{3})(\d+)/, "$1-$2-$3");
       var method = ["전화 상담", "방문 상담"].indexOf(a.p_method) === -1 ? "전화 상담" : a.p_method;
+      var mode = a.p_mode === "온라인" ? "온라인" : "오프라인", days = String(a.p_days || ""), times = String(a.p_times || "").trim();
+      if (!/\d{2}/.test(String(a.p_birth || ""))) return fail("생년월일을 입력해주세요. 예) 2008.03.15");
+      if (mode === "온라인" && !String(a.p_region || "").trim()) return fail("온라인 레슨은 거주 지역도 적어주세요.");
+      if (!days) return fail("희망하는 상담 요일을 골라주세요.");
+      if (!times) return fail("희망하는 시간대를 적어주세요. 예) 2시~10시 사이");
       db.consults.unshift({
-        id: ++db.next, status: "접수", method: method, wish: a.p_wish || null, name: name, phone: phone,
-        track: a.p_track || null, message: a.p_message || null, memo: null, created_at: new Date().toISOString()
+        id: ++db.next, status: "접수", method: method, wish: days + " · " + times, name: name, phone: phone,
+        track: a.p_track || null, message: a.p_message || null, memo: null, created_at: new Date().toISOString(),
+        birth: a.p_birth, lesson_mode: mode, teacher_pref: a.p_teacher || null, region: mode === "온라인" ? a.p_region : null, days: days, times: times
       });
       save();
       return { ok: true, method: method };

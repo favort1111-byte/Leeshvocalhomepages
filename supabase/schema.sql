@@ -2799,3 +2799,62 @@ begin
     end if;
   end loop;
 end $$;
+-- 상담 신청 = 학원이 카톡으로 받던 양식 4가지 (원장님 2026-10-29)
+--   1. 성함 · 생년월일 · 연락처   2. 상담 유형 (방문/전화)
+--   3. 클래스명 / 온·오프라인 / 강사 (온라인은 거주 지역도)   4. 희망 요일과 시간대
+alter table public.consults add column if not exists birth text;
+alter table public.consults add column if not exists lesson_mode text;
+alter table public.consults add column if not exists teacher_pref text;
+alter table public.consults add column if not exists region text;
+alter table public.consults add column if not exists days text;
+alter table public.consults add column if not exists times text;
+
+drop function if exists public.consult_create(text, text, text, text, text, text, text);
+create or replace function public.consult_create(p_name text, p_phone text, p_track text default null, p_method text default null,
+  p_wish text default null, p_message text default null, p_website text default null,
+  p_birth text default null, p_mode text default null, p_teacher text default null, p_region text default null,
+  p_days text default null, p_times text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  nm text := left(trim(coalesce(p_name, '')), 30);
+  digits text := regexp_replace(coalesce(p_phone, ''), '\D', '', 'g');
+  v_phone text;
+  v_method text := case when p_method in ('전화 상담', '방문 상담') then p_method else '전화 상담' end;
+  v_birth text := left(trim(coalesce(p_birth, '')), 20);
+  v_mode text := case when p_mode in ('오프라인', '온라인') then p_mode else '오프라인' end;
+  v_region text := nullif(left(trim(coalesce(p_region, '')), 50), '');
+  v_days text;
+  v_times text := nullif(left(trim(coalesce(p_times, '')), 60), '');
+  v_track text := nullif(left(coalesce(p_track, ''), 30), '');
+  v_teacher text := nullif(left(trim(coalesce(p_teacher, '')), 30), '');
+  recent int;
+begin
+  if coalesce(p_website, '') <> '' then return jsonb_build_object('ok', true); end if; -- 자동 입력 프로그램
+  if nm = '' then return private.fail('성함을 입력해주세요.'); end if;
+  if v_birth !~ '\d{2}' then return private.fail('생년월일을 입력해주세요. 예) 2008.03.15'); end if;
+  if length(digits) < 9 or length(digits) > 11 then return private.fail('연락처를 정확히 입력해주세요.'); end if;
+  if v_mode = '온라인' and v_region is null then return private.fail('온라인 레슨은 거주 지역도 적어주세요.'); end if;
+  select string_agg(d, ',' order by array_position(array['월','화','수','목','금','토','일'], d)) into v_days
+    from (select distinct trim(x) d from unnest(string_to_array(coalesce(p_days, ''), ',')) x) s
+   where d in ('월','화','수','목','금','토','일');
+  if v_days is null then return private.fail('희망하는 상담 요일을 골라주세요.'); end if;
+  if v_times is null then return private.fail('희망하는 시간대를 적어주세요. 예) 2시~10시 사이'); end if;
+  v_phone := case length(digits)
+    when 11 then substr(digits, 1, 3) || '-' || substr(digits, 4, 4) || '-' || substr(digits, 8)
+    when 10 then substr(digits, 1, 3) || '-' || substr(digits, 4, 3) || '-' || substr(digits, 7)
+    else digits end;
+  perform pg_advisory_xact_lock(hashtext('consult:' || v_phone));
+  select count(*) into recent from public.consults c where c.phone = v_phone and c.created_at > now() - interval '1 hour';
+  if recent >= 3 then return private.fail('이미 여러 번 접수되었습니다. 곧 연락드릴게요.'); end if;
+
+  insert into public.consults (method, wish, name, phone, track, message, birth, lesson_mode, teacher_pref, region, days, times)
+  values (v_method, v_days || ' · ' || v_times, nm, v_phone, v_track, nullif(left(trim(coalesce(p_message, '')), 1000), ''),
+          v_birth, v_mode, v_teacher, case when v_mode = '온라인' then v_region end, v_days, v_times);
+
+  perform private.notify('📩 새 상담 신청 · ' || v_method || chr(10) || nm
+    || chr(10) || coalesce(v_track, '반 미정') || ' / ' || v_mode || coalesce(' / ' || v_teacher, '')
+    || chr(10) || '희망: ' || v_days || ' · ' || v_times);
+  return jsonb_build_object('ok', true, 'method', v_method);
+end $$;
+revoke all on function public.consult_create(text, text, text, text, text, text, text, text, text, text, text, text, text) from public;
+grant execute on function public.consult_create(text, text, text, text, text, text, text, text, text, text, text, text, text) to anon, authenticated;

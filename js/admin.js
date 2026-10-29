@@ -1928,7 +1928,15 @@
     top.appendChild(tel);
     top.appendChild(el("span", "sys-note", stamp(c.created_at)));
     li.appendChild(top);
-    li.appendChild(el("p", null, c.method + (c.wish ? " · 희망: " + c.wish : "") + (c.track ? " · " + c.track : "")));
+    // 학원 카톡 양식 4가지 (2026-10-29부터). 예전 신청은 희망·반만 있어요.
+    var info = el("dl", "adm__visit");
+    [["생년월일", c.birth], ["상담 유형", c.method], ["클래스", [c.track || (c.birth ? "아직 모르겠어요" : ""), c.lesson_mode, c.teacher_pref].filter(Boolean).join(" / ")],
+     ["거주 지역", c.region], ["희망 요일·시간", c.days ? c.days + " · " + (c.times || "") : c.wish]].forEach(function (r) {
+      if (!r[1]) return;
+      info.appendChild(el("dt", null, r[0]));
+      info.appendChild(el("dd", null, r[1]));
+    });
+    li.appendChild(info);
     if (c.message) li.appendChild(el("p", "adm__quote", c.message));
     var row = el("div", "adm__cardrow");
     var sel = el("select");

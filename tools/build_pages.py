@@ -372,32 +372,61 @@ contact = (head("Contact | 이송희보컬레슨",
            + '  <div class="collage" aria-hidden="true">\n' + collage + "\n  </div>\n"
            + "</main>\n" + blog.find_us_section() + foot())
 
+# 상담 신청 = 학원이 카톡 채널로 받던 양식 4가지 그대로 (원장님 2026-10-29)
 CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
-    <h1>Book a free consultation</h1>
+    <h1>상담 신청</h1>
+    <p class="consult__lede">📍 모든 상담은 <b>100% 예약제</b>예요. 아래 4가지를 적어 보내주시면 확인 후 상담 일정을 조율해 드려요.</p>
+
+    <h2 class="consult__step"><span>1</span> 성함 · 생년월일 · 연락처</h2>
     <div class="sys-row">
-      <label class="sys-field"><span>이름</span><input name="name" autocomplete="name" required></label>
-      <label class="sys-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+      <label class="sys-field"><span>성함</span><input name="name" autocomplete="name" maxlength="30" required></label>
+      <label class="sys-field"><span>생년월일</span><input name="birth" inputmode="numeric" maxlength="20" placeholder="예) 2008.03.15" required></label>
     </div>
-    <label class="sys-field"><span>관심 있는 반</span>
+    <label class="sys-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" required></label>
+
+    <h2 class="consult__step"><span>2</span> 상담 유형</h2>
+    <fieldset class="sys-radios">
+      <legend class="sr-only">상담 유형</legend>
+      <label><input type="radio" name="method" value="방문 상담" checked> 방문 상담</label>
+      <label><input type="radio" name="method" value="전화 상담"> 전화 상담</label>
+    </fieldset>
+
+    <h2 class="consult__step"><span>3</span> 클래스 · 온/오프라인 · 강사</h2>
+    <label class="sys-field"><span>클래스</span>
       <select name="track">
         <option value="">아직 모르겠어요</option>
         <option>오디션 심화반</option>
-        <option>오디션·입시반</option>
+        <option>오디션반</option>
+        <option>입시반</option>
         <option>전문반</option>
         <option>취미반</option>
       </select>
     </label>
     <fieldset class="sys-radios">
-      <legend>상담 방식</legend>
-      <label><input type="radio" name="method" value="전화 상담" checked> 전화 상담</label>
-      <label><input type="radio" name="method" value="방문 상담"> 방문 상담</label>
+      <legend>레슨 방식</legend>
+      <label><input type="radio" name="mode" value="오프라인" checked> 오프라인 (학원)</label>
+      <label><input type="radio" name="mode" value="온라인"> 온라인</label>
     </fieldset>
-    <label class="sys-field" id="consultWish" hidden><span>희망 날짜·시간</span><input name="wish" maxlength="100" placeholder="예) 토요일 오후 2시 이후"></label>
-    <label class="sys-field"><span>문의 내용 (선택)</span><textarea name="message" rows="3"></textarea></label>
+    <label class="sys-field" id="consultRegion" hidden><span>거주 지역 (온라인)</span><input name="region" maxlength="50" placeholder="예) 부산 해운대구"></label>
+    <label class="sys-field"><span>희망 강사 (선택)</span><input name="teacher" maxlength="30" placeholder="예) 수석 트레이너님 · 잘 모르겠어요"></label>
+
+    <h2 class="consult__step"><span>4</span> 희망하는 상담 요일 · 시간대</h2>
+    <fieldset class="sys-radios consult__days">
+      <legend>요일 (여러 개 골라도 돼요)</legend>
+      {"".join(f'<label><input type="checkbox" name="days" value="{d}"> {d}</label>' for d in "월화수목금토일")}
+    </fieldset>
+    <label class="sys-field"><span>시간대</span><input name="times" maxlength="60" placeholder="예) 2시~10시 사이" required></label>
+
+    <label class="sys-field"><span>더 하고 싶은 말 (선택)</span><textarea name="message" rows="3"></textarea></label>
     <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
     <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
     <p class="sys-msg" id="consultMsg" role="status"></p>
-    <small>번호는 상담 안내에만 사용돼요. <a href="privacy.html">개인정보처리방침</a></small>
+    <ul class="consult__notes">
+      <li>1인당 1회 상담을 원칙으로 해요.</li>
+      <li>담당 선생님을 배정해 꼼꼼히 상담하기 위해, 레슨 중에는 답장이 조금 늦어질 수 있어요.</li>
+      <li>월 · 일요일 및 공휴일은 상담 확정이 다소 늦어질 수 있어요.</li>
+    </ul>
+    <small>적어주신 정보는 상담 안내에만 사용돼요. <a href="privacy.html">개인정보처리방침</a></small>
   </form>
 """
 
