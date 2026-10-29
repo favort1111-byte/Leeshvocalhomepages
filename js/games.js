@@ -210,7 +210,7 @@
         g2.fillRect(p.x, 0, p.w, p.top);
         g2.fillRect(p.x, p.bot, p.w, H - p.bot);
         g2.fillStyle = "#F6EBDD";
-        g2.font = "bold 14px sans-serif"; g2.textAlign = "center";
+        g2.font = "bold 14px \'Gmarket Sans\', sans-serif"; g2.textAlign = "center";
         if (s.voice) g2.fillText(NOTE[((Math.round(p.st) % 12) + 12) % 12], p.x + p.w / 2, p.top - 8 > 14 ? p.top - 8 : p.bot + 18);
       });
       // the bird: a little round singer
@@ -220,11 +220,11 @@
       g2.fillStyle = "#E07A3F"; g2.beginPath();
       if (s.singing) { g2.ellipse(bx + 13, by + 3, 5, 4, 0, 0, 7); } else { g2.moveTo(bx + 11, by); g2.lineTo(bx + 20, by + 3); g2.lineTo(bx + 11, by + 6); }
       g2.fill();
-      if (s.singing) { g2.fillStyle = "rgba(43,37,34,.6)"; g2.font = "16px sans-serif"; g2.fillText("♪", bx + 26, by - 12); }
-      g2.fillStyle = "#2B2522"; g2.textAlign = "left"; g2.font = "bold 22px sans-serif";
+      if (s.singing) { g2.fillStyle = "rgba(43,37,34,.6)"; g2.font = "16px \'Gmarket Sans\', sans-serif"; g2.fillText("♪", bx + 26, by - 12); }
+      g2.fillStyle = "#2B2522"; g2.textAlign = "left"; g2.font = "bold 22px \'Gmarket Sans\', sans-serif";
       g2.fillText(String(s.score), 14, 32);
       if (s.voice) {
-        g2.font = "13px sans-serif";
+        g2.font = "13px \'Gmarket Sans\', sans-serif";
         g2.fillText(s.st != null ? "지금 음: " + noteName(s.st) : "소리를 내 보세요 ~", 14, H - 14);
       }
     }

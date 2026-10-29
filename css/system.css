@@ -1,3 +1,12 @@
+/* 글씨체: G마켓 산스 (원장님 2026-10-29, 커리큘럼 안내 이미지와 같은 글씨). 상업용 무료.
+   Medium은 저장소에 (assets/fonts), Light · Bold는 눈누 배포(jsdelivr)에서. 안 불러와지면 Noto Sans KR. */
+@font-face{font-family:"Gmarket Sans";font-weight:300;font-style:normal;font-display:swap;
+  src:url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff") format("woff");}
+@font-face{font-family:"Gmarket Sans";font-weight:500;font-style:normal;font-display:swap;
+  src:url("../assets/fonts/GmarketSansMedium.woff") format("woff");}
+@font-face{font-family:"Gmarket Sans";font-weight:700;font-style:normal;font-display:swap;
+  src:url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff") format("woff");}
+
 /*
   Functional UI (forms, booking grid, messages). Kept apart from the theme in
   style.css so a new design can restyle these by overriding the --sys-* tokens
@@ -13,7 +22,7 @@
   --sys-accent-soft:#F0E1D9;
   --sys-ok:#2E6B45;
   --sys-error:#A33A22;
-  font-family:var(--f-sans, sans-serif);
+  font-family:var(--f-sans, "Gmarket Sans", sans-serif);
   color:var(--sys-ink);
   font-size:15px;
   line-height:1.55;
@@ -140,7 +149,7 @@
 .signin__policy{display:inline-block;margin:-2px 0 10px;font-size:12.5px;color:var(--sys-muted, #7a6a60);}
 
 /* 레슨 일지 꾸미기 (js/richtext.js): 구글시트 모양 — 위에 도구 줄, 아래에 칸 (회색 머리 칸 + 흰 칸) */
-.rs{position:relative;margin:4px 0 14px;font-family:Arial,"Noto Sans KR",sans-serif;}
+.rs{position:relative;margin:4px 0 14px;font-family:"Gmarket Sans","Noto Sans KR",sans-serif;}
 .rt-bar--sheet{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:2px;align-items:center;
   padding:5px 8px;margin-bottom:8px;border-radius:24px;background:#EDF2FA;box-shadow:0 1px 2px rgba(60,64,67,.15);}
 .rt-btn{display:inline-flex;align-items:center;justify-content:center;gap:1px;min-width:34px;height:34px;padding:0 6px;

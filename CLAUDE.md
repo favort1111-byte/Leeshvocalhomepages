@@ -174,5 +174,10 @@
 - `docs/menu-ideas.md`: 메뉴 아이디어 원본 기록 (GPT 기본표·특색 5개·해외 조사 5개, Claude 아이디어). **메뉴 구성을 논의할 때 먼저 꺼내서 보여줍니다.**
 - 메뉴 아이디어 보드 아티팩트: https://claude.ai/artifact/XHhi3x4pqGu8mRmwUb2B3G (원본 `docs/menu-ideas.html`). 아이디어가 추가되면 md와 이 보드를 같이 고쳐서 다시 올립니다.
 
+## 글씨체 (원장님 2026-10-29)
+- 테스트한 사람들이 "Claude 티가 난다" → 원장님: 커리큘럼 안내 이미지와 같은 **G마켓 산스로 모두**. `css/system.css` 맨 위 @font-face "Gmarket Sans" (Medium은 저장소 `assets/fonts/GmarketSansMedium.woff`, npm `@noonnu/gmarket-sans-medium` MIT 포장 · Light/Bold는 눈누 jsdelivr — 이 클라우드 환경에선 jsdelivr가 막혀 Bold가 가짜 굵기로 보이지만 실제 방문자는 진짜 Bold).
+  `--f-display/serif/sans/hand` 전부 Gmarket Sans (+ Noto Sans KR 대신), 고운바탕·나눔펜·Caveat·Gloock·Cormorant·Jost 안 씀, 큰 제목은 700, 영어 작은 제목(the teacher 등)은 대문자 작은 글씨. 게임 캔버스 글씨도. 미리보기는 `build_preview.py`가 assets/fonts도 복사.
+  다음 후보(원장님과 얘기만 함): 색을 학원 대표색 진초록 #1D4948 + 노랑으로, 문구 짧게.
+
 ## 말투
 - 설명은 이해하기 쉽고 간단하게, 한국어로.

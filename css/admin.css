@@ -1,8 +1,8 @@
 /* Admin page (admin.html). Plain and dense on purpose: it is a work tool, used on a phone as often as on a PC. */
-:root{--ink:#2B2522;--brown:#6E3B28;--rose:#C9A095;--f-sans:"Jost","Noto Sans KR",sans-serif;--f-serif:"Cormorant Garamond","Noto Sans KR",serif;}
+:root{--ink:#2B2522;--brown:#6E3B28;--rose:#C9A095;--f-sans:"Gmarket Sans","Noto Sans KR",sans-serif;--f-serif:"Gmarket Sans","Noto Sans KR",sans-serif;}
 *,*::before,*::after{box-sizing:border-box;}
 html,body{margin:0;}
-body.adm{background:#EDE8E0;min-height:100vh;}
+body.adm{font-family:var(--f-sans);background:#EDE8E0;min-height:100vh;}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 
 .adm__main{max-width:1180px;margin:0 auto;padding:20px 16px 60px;}

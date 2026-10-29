@@ -14,9 +14,9 @@ def img(i):
 
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
          '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-         '<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Cormorant+Garamond:wght@500&'
-         'family=Gloock&family=Gowun+Batang&family=Jost:wght@400;500&family=Nanum+Pen+Script&'
-         'family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">')
+         '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>\n'
+         # 글씨체는 G마켓 산스 (css/system.css @font-face). Noto Sans KR은 못 불러올 때 대신 쓰는 것
+         '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">')
 
 PAGES = [("home", "index.html"), ("about", "about.html"), ("audition", "audition.html"), ("contact", "contact.html"),
          ("consult", "consult.html"), ("booking", "booking.html")]

@@ -11,7 +11,7 @@
 .arcade{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:calc(90 * var(--s)) 20px 0;font-family:var(--f-sans);}
 .arcade__head{text-align:center;margin-bottom:28px;}
 .arcade__kicker{margin:0;font-family:var(--f-hand);font-size:26px;color:#E8C27A;}
-.arcade__head h1{margin:4px 0 8px;font-family:"Gowun Batang",var(--f-display);font-weight:400;font-size:clamp(34px,5vw,52px);}
+.arcade__head h1{margin:4px 0 8px;font-family:var(--f-sans);font-weight:400;font-size:clamp(34px,5vw,52px);}
 .arcade__head p{margin:0;opacity:.8;}
 
 .arcade__menu{list-style:none;margin:0 0 30px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
@@ -24,7 +24,7 @@
 .arcade__cart:hover{transform:translateY(-2px);border-color:#E8C27A;}
 .arcade__cart[aria-pressed=true]{border-color:#E8C27A;background:#3A2C26;}
 .arcade__emoji{font-size:34px;line-height:1.1;}
-.arcade__cart b{font-family:"Gowun Batang",serif;font-weight:400;font-size:21px;}
+.arcade__cart b{font-family:var(--f-sans);font-weight:400;font-size:21px;}
 .arcade__cart span{font-size:14px;opacity:.85;line-height:1.45;}
 .arcade__tag{margin-top:6px;padding:2px 9px;border-radius:999px;background:#E8C27A;color:#2B2522;font-size:12px;}
 .arcade__best{font-size:12px;opacity:.7;}
@@ -55,7 +55,7 @@
 .game__note{margin:14px 0 0;font-size:13px;color:var(--taupe);text-align:center;}
 .game__result{margin:18px 0 0;padding:16px;border-radius:10px;background:#F1E1B9;text-align:center;}
 .game__result[hidden]{display:none;}
-.game__result strong{display:block;font-family:"Gowun Batang",serif;font-weight:400;font-size:28px;}
+.game__result strong{display:block;font-family:var(--f-sans);font-weight:400;font-size:28px;}
 .game__result p{margin:6px 0 0;font-size:15px;}
 .game__result .game__btn{margin-top:12px;}
 
@@ -153,7 +153,7 @@
 .g2__opts{gap:6px 14px;font-size:14px;}
 .g2__opts label{display:inline-flex;align-items:center;gap:6px;}
 .g2__pad{display:block;margin:6px auto;}
-.g2__q{margin:8px 0;text-align:center;font-family:"Gowun Batang",serif;font-size:20px;line-height:1.45;}
+.g2__q{margin:8px 0;text-align:center;font-family:var(--f-sans);font-size:20px;line-height:1.45;}
 .g2__why{margin:12px 0 0;padding:0;text-align:center;}
 .g2__why:not(:empty){padding:12px 14px;border-radius:10px;background:#F1E1B9;}
 .g2__why p{margin:6px 0;}

@@ -301,14 +301,14 @@
         g.fillStyle = ["#F3D9C9", "#E7B9A7", "#D8957E", "#6E3B28"][i];
         g.beginPath(); g.arc(cx, cy, rr, 0, 7); g.fill();
       });
-      g.fillStyle = "#2B2522"; g.font = "bold 15px sans-serif"; g.textAlign = "left";
+      g.fillStyle = "#2B2522"; g.font = "bold 15px \'Gmarket Sans\', sans-serif"; g.textAlign = "left";
       if (s && s.target != null) g.fillText((s.i + 1) + " / 5 · 목표 " + name(s.target), 12, 22);
       g.textAlign = "right"; g.fillText(s ? s.total + "점" : "", W - 12, 22);
       if (cents != null) {
         var y = cy + Math.max(-110, Math.min(110, -cents * 1.1));
         g.fillStyle = Math.abs(cents) < 35 ? "#2E6B45" : "#F2C14E";
         g.beginPath(); g.arc(cx, y, 11, 0, 7); g.fill();
-        g.fillStyle = "#2B2522"; g.textAlign = "center"; g.font = "13px sans-serif";
+        g.fillStyle = "#2B2522"; g.textAlign = "center"; g.font = "13px \'Gmarket Sans\', sans-serif";
         g.fillText(cents > 0 ? "조금 높아요 ↓" : cents < 0 ? "조금 낮아요 ↑" : "", cx, H - 10);
       }
       if (hold) { g.strokeStyle = "#2E6B45"; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, 108, -Math.PI / 2, -Math.PI / 2 + Math.min(1, hold / 2) * Math.PI * 2); g.stroke(); }
@@ -470,7 +470,7 @@
       s.trace.forEach(function (p) { if (p.st == null) { started = false; return; } var px = p.t / DUR * W, py = y(p.st); if (started) g.lineTo(px, py); else { g.moveTo(px, py); started = true; } });
       g.stroke();
       if (t != null) { g.strokeStyle = "#F2C14E"; g.lineWidth = 2; g.beginPath(); g.moveTo(t / DUR * W, 0); g.lineTo(t / DUR * W, H); g.stroke(); }
-      g.fillStyle = "#2B2522"; g.font = "bold 14px sans-serif"; g.textAlign = "left";
+      g.fillStyle = "#2B2522"; g.font = "bold 14px \'Gmarket Sans\', sans-serif"; g.textAlign = "left";
       g.fillText(s.count != null ? s.count : t != null ? Math.round(100 * s.hit / Math.max(1, s.n)) + "%" : "", 12, 22);
     }
     function tick() {
@@ -530,7 +530,7 @@
       g.strokeStyle = "#6E3B28"; g.lineWidth = 3; g.beginPath();
       s.trace.forEach(function (p, i) { var px = p.t / DUR * W, py = H - p.v * (H - 20); if (i) g.lineTo(px, py); else g.moveTo(px, py); });
       g.stroke();
-      g.fillStyle = "#2B2522"; g.font = "bold 14px sans-serif";
+      g.fillStyle = "#2B2522"; g.font = "bold 14px \'Gmarket Sans\', sans-serif";
       g.fillText(s.phase === "max" ? "제일 큰 소리로 '아!'" : t != null ? (t < DUR / 2 ? "점점 크게 ↗" : "점점 작게 ↘") : "", 12, 22);
     }
     function tick() {
@@ -689,7 +689,7 @@
       for (var l = 0; l < 4; l++) {
         g.fillStyle = s && s.flash[l] > t ? "rgba(232,194,122,.25)" : l % 2 ? "#33271F" : "#2A201B";
         g.fillRect(l * lw, 0, lw, H);
-        g.fillStyle = "rgba(246,235,221,.5)"; g.font = "13px sans-serif"; g.textAlign = "center";
+        g.fillStyle = "rgba(246,235,221,.5)"; g.font = "13px \'Gmarket Sans\', sans-serif"; g.textAlign = "center";
         g.fillText("DFJK"[l], l * lw + lw / 2, H - 16);
       }
       g.fillStyle = "#E8C27A"; g.fillRect(0, hitY - 2, W, 4);
@@ -701,9 +701,9 @@
         g.fillStyle = ["#E7B9A7", "#9CC5A1", "#9CC5A1", "#E7B9A7"][n.lane];
         g.fillRect(n.lane * lw + 8, yy - 9, lw - 16, 18);
       });
-      g.fillStyle = "#F6EBDD"; g.textAlign = "left"; g.font = "bold 15px sans-serif";
+      g.fillStyle = "#F6EBDD"; g.textAlign = "left"; g.font = "bold 15px \'Gmarket Sans\', sans-serif";
       g.fillText(s.combo > 2 ? s.combo + " 콤보" : "", 10, 22);
-      g.textAlign = "center"; g.font = "bold 20px sans-serif";
+      g.textAlign = "center"; g.font = "bold 20px \'Gmarket Sans\', sans-serif";
       if (s.label && s.labelT > t - 0.5) g.fillText(s.label, W / 2, H / 2);
     }
     function judge(lane) {

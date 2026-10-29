@@ -21,6 +21,6 @@ for page in PAGES:
     if page == "index.html":  # names the preview in the artifact gallery
         html = html.replace("<title>이송희보컬레슨 | 강남 선릉역 1:1 보컬학원</title>", "<title>이송희보컬레슨 작업 현황</title>")
     open(os.path.join(out, page), "w").write(html)
-for folder in ["css", "js", os.path.join("assets", "img")]:  # (assets/blog-posts and data/blog stay on GitHub)
+for folder in ["css", "js", os.path.join("assets", "img"), os.path.join("assets", "fonts")]:  # (assets/blog-posts and data/blog stay on GitHub)
     shutil.copytree(os.path.join(REPO, folder), os.path.join(out, folder), dirs_exist_ok=True)
 print("preview written to", out)
