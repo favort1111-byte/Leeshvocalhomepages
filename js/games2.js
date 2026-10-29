@@ -1,10 +1,10 @@
 // 보컬 오락실 2 (games.html): the rest of docs/menu-ideas.md "미니게임 아이디어" (원장님 2026-10-28 "게임을 다 넣어줘").
-//   귀 게임:     simon 멜로디 따라치기 · solfa 계이름 맞히기 · mood 밝은 소리/슬픈 소리 · wrong 틀린 음 찾기 · meter 몇 박자?
-//   목소리 게임: target 음 맞추기 과녁 · stairs 음계 계단 오르기 · siren 사이렌 따라 그리기 · cresc 작게→크게 · karaoke 노래방 음정 레인
+//   귀 게임:     simon 멜로디 따라치기 · solfa 계이름 맞히기 · mood 밝은 소리/슬픈 소리 · meter 몇 박자?
+//   목소리 게임: target 음 맞추기 과녁 · stairs 음계 계단 오르기 · siren 사이렌 따라 그리기 · cresc 작게→크게
 //   리듬 게임:   echo 리듬 메아리 · lanes 4줄 리듬 게임
 //   퀴즈·이야기: ox 보컬 OX 퀴즈 · sim 오디션 시뮬레이터
-// Sound, microphone, records and the launcher come from js/games.js (window.LeeshArcade). Melodies are old
-// public-domain tunes only (반짝반짝 작은별, 나비야, 떴다 떴다 비행기, 생일 축하, 환희의 송가); beats are made here.
+// Sound, microphone, records and the launcher come from js/games.js (window.LeeshArcade). No songs at all
+// (원장님 2026-10-29: 동요가 들어간 틀린 음 찾기 · 노래방 음정 레인은 뺌) — only single notes, chords and beats made here.
 (function () {
   var A = window.LeeshArcade;
   if (!A) return;
@@ -232,77 +232,6 @@
     again.addEventListener("click", function () { if (q && !q.lock) { q.lock = true; play(); } });
     return {
       bestText: function (v) { return v + "/10"; },
-      stop: function () { timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; go.hidden = false; }
-    };
-  })());
-
-  /* ================================================================ 4. 틀린 음 찾기 (옛 동요) */
-  var TUNES = [
-    { t: "반짝반짝 작은별", n: [60, 60, 67, 67, 69, 69, 67, 65, 65, 64, 64, 62, 62, 60], b: [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2] },
-    { t: "나비야", n: [67, 64, 64, 65, 62, 62, 60, 62, 64, 65, 67, 67, 67], b: [1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2] },
-    { t: "떴다 떴다 비행기", n: [64, 62, 60, 62, 64, 64, 64, 62, 62, 62, 64, 67, 67], b: [1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1, 2] },
-    { t: "생일 축하", n: [67, 67, 69, 67, 72, 71, 67, 67, 69, 67, 74, 72], b: [0.75, 0.25, 1, 1, 1, 2, 0.75, 0.25, 1, 1, 1, 2] },
-    { t: "환희의 송가", n: [64, 64, 65, 67, 67, 65, 64, 62, 60, 60, 62, 64, 64, 62, 62], b: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5, 0.5, 2] }
-  ];
-  A.register("wrong", (function () {
-    var f = frame("wrong", "옛 동요 한 소절을 두 번 들려줘요. 두 번째에 한 음이 틀려요. 몇 번째 음일까요? 5문제!");
-    var dots = el("div", "g2__dots"), r = row(), go = btn("시작"), again = btn("🔁 다시 듣기", "game__btn--ghost");
-    f.box.appendChild(dots);
-    r.appendChild(go); r.appendChild(again);
-    f.box.appendChild(r);
-    var st = null, q = null, timers = [];
-    function play() {
-      q.lock = true;
-      dots.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
-      var beat = 0.42, t = now() + 0.2, ms = 200;
-      [q.tune.n, q.bad].forEach(function (notes, pass) {
-        var x = 0;
-        notes.forEach(function (m, i) {
-          A.tone(m, t + x, q.tune.b[i] * beat * 0.92, 0.26);
-          (function (i, at) { timers.push(setTimeout(function () { var d = dots.children[i]; d.classList.add("is-on"); setTimeout(function () { d.classList.remove("is-on"); }, 260); }, at)); })(i, ms + x * 1000);
-          x += q.tune.b[i] * beat;
-        });
-        if (!pass) { timers.push(setTimeout(function () { f.status.textContent = "이번엔 두 번째예요. 어디가 틀렸을까요?"; }, ms + x * 1000)); t += x + 0.9; ms += (x + 0.9) * 1000; }
-        else timers.push(setTimeout(function () { q.lock = false; dots.querySelectorAll("button").forEach(function (b) { b.disabled = false; }); f.status.textContent = "틀린 음을 눌러 주세요."; }, ms + x * 1000));
-      });
-    }
-    function ask() {
-      st.n++;
-      var tune = TUNES[(st.order[st.n - 1]) % TUNES.length], k = 1 + Math.floor(Math.random() * (tune.n.length - 1));
-      var bad = tune.n.slice(), shift = pick([-2, -1, 1, 2]);
-      bad[k] += shift;
-      if (bad[k] === tune.n[k - 1] || bad[k] === tune.n[k + 1]) bad[k] += shift > 0 ? 1 : -1;
-      q = { tune: tune, bad: bad, k: k, lock: true };
-      dots.textContent = "";
-      tune.n.forEach(function (_, i) {
-        var b = el("button", "g2__dot", String(i + 1));
-        b.type = "button";
-        b.disabled = true;
-        b.addEventListener("click", function () { answer(i, b); });
-        dots.appendChild(b);
-      });
-      f.status.textContent = st.n + " / 5 · " + tune.t + " · 첫 번째는 원래 멜로디예요";
-      play();
-    }
-    function answer(i, b) {
-      if (!q || q.lock) return;
-      q.lock = true;
-      dots.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
-      dots.children[q.k].classList.add("is-right");
-      if (i !== q.k) b.classList.add("is-wrong"); else st.score++;
-      f.status.textContent = (i === q.k ? "정답! " : "아쉬워요. ") + (q.k + 1) + "번째 음이 " + name(q.tune.n[q.k]) + " 대신 " + name(q.bad[q.k]) + "였어요.";
-      timers.push(setTimeout(st.n >= 5 ? end : ask, 1800));
-    }
-    function end() {
-      var nb = record("wrong", st.score);
-      go.hidden = false;
-      A.result(f.panel, ["5문제 중 " + st.score + "개" + (nb && st.score ? " · 새 기록!" : ""), "틀린 음을 찾는 귀 = 내 노래에서 음정이 흔들리는 곳을 찾는 귀예요."],
-        "틀린 음 찾기 " + st.score + "/5! 너도 찾아 볼래?");
-    }
-    go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); st = { n: 0, score: 0, order: shuffle([0, 1, 2, 3, 4]) }; ask(); });
-    again.addEventListener("click", function () { if (q && !q.lock) play(); });
-    return {
-      bestText: function (v) { return v + "/5"; },
       stop: function () { timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; go.hidden = false; }
     };
   })());
@@ -641,78 +570,6 @@
     return {
       show: function () { c.d.fit(); draw(null); },
       bestText: function (v) { return v + "%"; },
-      stop: function () { on = false; cancelAnimationFrame(raf); A.closeMic(); go.hidden = false; }
-    };
-  })());
-
-  /* ================================================================ 10. 노래방 음정 레인 (반짝반짝 작은별) */
-  A.register("karaoke", (function () {
-    var f = frame("karaoke", "음표가 옆으로 흘러와요. 노란 선에 닿을 때 그 높이로 불러요. 곡: 반짝반짝 작은별");
-    var c = canvas(f.box, 260), opts = el("div", "game__row g2__opts"), r = row(), go = btn("🎤 시작");
-    opts.innerHTML = '<label><input type="checkbox" name="guide"> 피아노 멜로디 같이 듣기 (이어폰 끼면 켜도 돼요)</label>';
-    f.box.appendChild(opts);
-    r.appendChild(go);
-    f.box.appendChild(r);
-    f.box.appendChild(micNote());
-    var MEL = [0, 0, 7, 7, 9, 9, 7, 5, 5, 4, 4, 2, 2, 0, 7, 7, 5, 5, 4, 4, 2, 7, 7, 5, 5, 4, 4, 2];
-    var LEN = [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2];
-    var s = null, raf = 0, on = false, BEAT = 0.6, PX = 110;
-    function draw(t) {
-      var g = c.g, W = c.d.W, H = c.d.H, nowX = W * 0.25;
-      g.fillStyle = "#2E231F"; g.fillRect(0, 0, W, H);
-      if (!s) return;
-      function y(m) { return H - 30 - (m - s.key + 2) / 13 * (H - 60); }
-      s.notes.forEach(function (n) {
-        var x = nowX + (n.at - t) * PX, w = n.len * PX - 4;
-        if (x + w < 0 || x > W) return;
-        g.fillStyle = n.hit > n.frames * 0.5 && n.frames > 3 ? "#9CC5A1" : "#E8C27A";
-        g.fillRect(x, y(n.m) - 7, w, 14);
-        g.fillStyle = "#2B2522"; g.font = "11px sans-serif"; g.fillText(name(n.m), x + 3, y(n.m) + 4);
-      });
-      g.strokeStyle = "#F2C14E"; g.lineWidth = 2; g.beginPath(); g.moveTo(nowX, 0); g.lineTo(nowX, H); g.stroke();
-      g.strokeStyle = "#F6EBDD"; g.lineWidth = 3; g.beginPath();
-      var on2 = false;
-      s.trace.forEach(function (p) { var x = nowX + (p.t - t) * PX; if (x < 0 || p.st == null) { on2 = false; return; } if (on2) g.lineTo(x, y(p.st)); else { g.moveTo(x, y(p.st)); on2 = true; } });
-      g.stroke();
-      g.fillStyle = "#F6EBDD"; g.font = "bold 14px sans-serif";
-      g.fillText(t < 0 ? "준비… " + Math.ceil(-t) : Math.round(100 * s.hit / Math.max(1, s.frames)) + "%", 12, 22);
-    }
-    function tick() {
-      if (!on) return;
-      var t = now() - s.t0, r = A.listen(), cur = null;
-      s.notes.forEach(function (n) { if (t >= n.at && t < n.at + n.len * 0.95) cur = n; });
-      var st = null;
-      if (r.st != null) st = (cur ? cur.m : s.key + 4) + fold(r.st - (cur ? cur.m : s.key + 4));
-      s.trace.push({ t: t, st: st });
-      if (s.trace.length > 400) s.trace.shift();
-      if (cur) { cur.frames++; s.frames++; if (st != null && Math.abs(st - cur.m) < 1) { cur.hit++; s.hit++; } }
-      draw(t);
-      if (t > s.end) return end();
-      raf = requestAnimationFrame(tick);
-    }
-    function end() {
-      on = false; cancelAnimationFrame(raf); A.closeMic();
-      go.hidden = false;
-      var pct = Math.round(100 * s.hit / Math.max(1, s.frames)), nb = record("karaoke", pct);
-      A.result(f.panel, ["노래방 점수 " + pct + "점" + (nb && pct ? " · 새 기록!" : ""), pct >= 80 ? "음정이 정확해요! 🎤" : "음표가 바뀌는 순간에 미리 다음 음을 생각하면 더 정확해져요."], "노래방 음정 레인 " + pct + "점! 🎤");
-    }
-    go.addEventListener("click", function () {
-      go.hidden = true; f.hideResult(); on = true;
-      calibrate(f.status, function (base) {
-        c.d.fit();
-        var key = base - 4, at = 0, guide = f.box.querySelector("[name=guide]").checked;
-        s = { key: key, notes: [], trace: [], hit: 0, frames: 0, t0: now() + 4 * BEAT + 0.3 };
-        MEL.forEach(function (d, i) { s.notes.push({ m: key + d, at: at, len: LEN[i] * BEAT, hit: 0, frames: 0 }); at += LEN[i] * BEAT; });
-        s.end = at + 0.5;
-        for (var i = 0; i < 4; i++) A.click(now() + 0.3 + i * BEAT, i === 0);
-        if (guide) s.notes.forEach(function (n) { A.tone(n.m, s.t0 + n.at, n.len * 0.9, 0.18); });
-        f.status.textContent = "딱 4번 세고 시작해요. 반짝반짝 작은별~";
-        raf = requestAnimationFrame(tick);
-      }, function () { return on; });
-    });
-    return {
-      show: function () { c.d.fit(); draw(0); },
-      bestText: function (v) { return v + "점"; },
       stop: function () { on = false; cancelAnimationFrame(raf); A.closeMic(); go.hidden = false; }
     };
   })());
