@@ -214,7 +214,8 @@
   function room(id) { return db.rooms.filter(function (r) { return r.id === id; })[0]; }
 
   var fns = {
-    rooms_day: function (a) {
+    rooms_day: function (a, uid) {
+      if (!checkReady("", "", uid).ok) return { ok: false, code: "members_only", error: "수강생만 볼 수 있어요. 카카오로 로그인해주세요." };
       var s = db.settings, n = nowKst(), d = a.p_date || n.today;
       var ahead = diffDays(n.today, d);
       if (isNaN(ahead) || ahead < 0 || ahead > s.max_days) return fail("예약할 수 없는 날짜입니다.");

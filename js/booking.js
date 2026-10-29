@@ -1,4 +1,5 @@
 // Practice-room booking for students signed in with Kakao (booking.html). Sign-in is js/signin.js.
+// 수강생 전용 (원장님 2026-10-29): the free-time board shows only after sign-in (the server's rooms_day refuses guests too).
 (function () {
   var app = document.getElementById("bookingApp");
   if (!app) return;
@@ -9,6 +10,8 @@
   var area = app.querySelector("#bookArea");
   var off = app.querySelector("#bookingOff");
   var state = { who: null, date: null, rooms: null, room: null, pick: null };
+  var boardWrap = app.querySelector("#boardWrap");
+  boardWrap.hidden = true;
 
   if (!LeeshAPI.enabled()) {
     whoBox.hidden = true;
@@ -39,19 +42,23 @@
   /* ---------- identity ---------- */
   var sign = LeeshSignIn.mount(whoBox, {
     title: "로그인하고 예약하기",
+    lede: "연습실 예약은 수강생 전용이에요. 카카오로 로그인하면 빈 시간을 보고 바로 예약할 수 있어요.",
     onSignedIn: function (res, who) {
       state.who = who;
       whoBox.hidden = true;
       area.hidden = false;
       $("#hello").textContent = res.name + "님, 안녕하세요.";
       renderMine(res.bookings);
+      boardWrap.hidden = false;
       if (state.rooms) { renderRooms(state.rooms); updatePick(); } else loadDay(state.date);
     }
   });
 
   $("#switchUser").addEventListener("click", function () {
     state.who = null;
+    state.rooms = null;
     area.hidden = true;
+    boardWrap.hidden = true;
     whoBox.hidden = false;
     sign.signOut();
   });
@@ -121,7 +128,7 @@
   // Keep the board current while the page stays open: an hour that has started can't be booked any
   // more, and at midnight the new day opens. The student's pick and hours stay if still free.
   function refresh() {
-    if (!state.rooms || document.hidden) return;
+    if (!state.who || !state.rooms || document.hidden) return;
     LeeshAPI.rpc("rooms_day", { p_date: state.date }).then(function (res) {
       if (!res.ok || res.days[0] !== state.rooms.days[0]) { loadDay(null); return; }
       state.rooms = res;
@@ -313,6 +320,5 @@
     });
   });
 
-  loadDay(null);
   sign.start(); // signed in on this device before (saved key or Kakao session) → straight in
 })();

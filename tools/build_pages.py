@@ -605,12 +605,17 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + '      <p class="arcade__kicker">mini games</p>\n'
               + '      <h1>보컬 오락실</h1>\n'
               + '      <p>놀면서 귀랑 목소리를 깨워요. 기록은 이 기기에만 저장돼요.</p>\n'
+              + '      <p class="arcade__who" id="membersWho"></p>\n'
               + '    </header>\n'
+              # 수강생 전용 (원장님 2026-10-29): js/gate.js shows the games after a Kakao sign-in
+              + '    <section class="sys sys-card arcade__gate" id="membersGate" aria-live="polite"></section>\n'
+              + '    <div data-members>\n'
               + games_menu + "\n"
               + "".join(game_window(g[0], g[2], GAMES_BODY.get(g[0], '        <div class="g2" data-g2></div>\n')) for g in GAME_LIST)
+              + '    </div>\n'
               + '    <p class="arcade__more">진짜 노래 실력은 레슨에서 키워요 → <a href="about.html#steps">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
               + "  </div>\n"
-              + "</main>\n" + foot("games", "games2"))
+              + "</main>\n" + foot("signin", "gate", "games", "games2"))
 
 # ---------- AUDITION NEWS · RESULTS · TIPS: the old blog's posts, moved into the site ----------
 # tools/import_blog.py → data/blog/index.json (lists) + data/blog/posts/<id>.json (post.html shows one).
