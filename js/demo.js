@@ -570,6 +570,21 @@
         last: { added: 1, changed: 2, same: 160, newTeachers: [] } };
     },
     admin_sheet_open: function () { return { ok: true }; },
+    // 익명 건의함: 체험 모드는 이 기기에만 (누가 썼는지는 여기서도 저장 안 함)
+    member_suggest: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var body = String(a.p_body || "").trim();
+      if (body.length < 2) return fail("하고 싶은 말을 적어주세요.");
+      db.suggestions = db.suggestions || [];
+      db.suggestions.unshift({ id: ++db.next, day: nowKst().today, topic: a.p_topic || "기타", body: body, read: false });
+      save();
+      return { ok: true };
+    },
+    admin_suggestions: function () { return { ok: true, items: db.suggestions || [] }; },
+    admin_suggest_count: function () { return (db.suggestions || []).filter(function (s) { return !s.read; }).length; },
+    admin_suggest_mark: function (a) { (db.suggestions || []).forEach(function (s) { if (s.id === a.p_id) s.read = !!a.p_read; }); save(); return { ok: true }; },
+    admin_suggest_delete: function (a) { db.suggestions = (db.suggestions || []).filter(function (s) { return s.id !== a.p_id; }); save(); return { ok: true }; },
     // 텔레그램 알림 (관리자 → 설정): 체험 모드는 실제로 보내지 않고 연결된 척만
     admin_telegram_status: function () { return { ok: true, hasBot: !!demoTg.bot, bot: demoTg.bot, chats: demoTg.chats, groups: demoTg.chats ? 1 : 0, bookings: demoTg.bookings }; },
     admin_telegram_set: function (a) {

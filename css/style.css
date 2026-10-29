@@ -1011,3 +1011,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 /* G마켓 산스로 바꾼 뒤 (원장님 2026-10-29): 큰 제목은 커리큘럼 안내 이미지처럼 굵게 */
 .booking__title,.scrap__title,.about__title,.arcade__head h1,.policy h2,.news__head h1,.post__title,.book__title,.boot__ko,.scrap__sub,.step h3,.why h3,.care h3,.card__name b,.debut b,.stats b,.evalr__score b,.findus__addr{font-weight:700;letter-spacing:-.01em;}
 .scrap__kicker,.arcade__kicker,.arcade__group{font-weight:500;font-size:15px;letter-spacing:.08em;text-transform:uppercase;transform:none;}
+
+/* 내 폴더 → 건의함 (익명) */
+.suggest__lock{margin:0 0 6px;font-weight:700;font-size:17px;color:var(--brown);}
+.suggest__promise{margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:var(--ink-body);}

@@ -82,6 +82,7 @@
       renderLogs(res.logs || [], res.repertoire || []);
       box.hidden = true;
       open.hidden = false;
+      renderSuggest();
       return LeeshAPI.rpc("member_partners", { p_id: who.id, p_pin: who.key }).then(function (p) { if (p.ok) renderPartners(p); });
     });
   }
@@ -346,6 +347,52 @@
   /* 제휴 업체: 학생이 업체와 원하는 날짜·시간을 적어 신청 → 관리자 화면 "제휴 신청"에 보이고, 학원이 업체에 전화로
      예약한 뒤 결과(날짜·시간·안내)를 적으면 여기에 보여요. 아직 접수 상태면 학생이 취소할 수 있어요. */
   var PSTATE = { "접수": "예약 준비 중", "예약 완료": "예약 완료", "취소": "취소" };
+  /* 건의함 (원장님 2026-10-29): 이름 없이, 내용은 암호화해서 저장. 지금은 원장님(관리자)만 읽어요.
+     서버 member_suggest는 로그인한 수강생인지만 보고, 누가 썼는지는 저장하지 않아요. */
+  var TOPICS = ["수업", "선생님", "연습실", "시설", "홈페이지", "기타"];
+  function renderSuggest() {
+    var box = scene.querySelector("#mySuggest");
+    if (!box || box.getAttribute("data-ready") === "1") return; // 쓰던 글이 새로고침으로 지워지지 않게 한 번만
+    box.setAttribute("data-ready", "1");
+    var sum = el("div", "fold__sum suggest__sum");
+    sum.appendChild(el("p", "suggest__lock", "🔒 이름 없이 보내는 건의함"));
+    var ul = el("ul", "suggest__promise");
+    ["누가 썼는지 저장하지 않아요. 원장님도 보낸 사람을 알 수 없어요.",
+     "보낸 시각도 남기지 않고 날짜만 남아요.",
+     "내용은 암호화해서 저장되고, 원장님(관리자)만 읽을 수 있어요. 선생님 · 다른 학생은 볼 수 없어요.",
+     "편하게 적어주세요. 수업 · 연습실 · 학원 생활 무엇이든 좋아요."].forEach(function (t) { ul.appendChild(el("li", null, t)); });
+    sum.appendChild(ul);
+    box.appendChild(sum);
+    var f = el("form", "fold__form sys");
+    var sel = el("select");
+    TOPICS.forEach(function (t) { var o = el("option", null, t); o.value = t; sel.appendChild(o); });
+    f.appendChild(field2("어떤 이야기예요?", sel));
+    var ta = el("textarea");
+    ta.rows = 6; ta.maxLength = 1000; ta.required = true;
+    ta.placeholder = "하고 싶은 말 · 건의 사항을 적어주세요.";
+    f.appendChild(field2("하고 싶은 말", ta));
+    var btn = el("button", "sys-btn", "이름 없이 보내기");
+    btn.type = "submit";
+    f.appendChild(btn);
+    var note = el("p", "sys-msg");
+    note.setAttribute("role", "status");
+    f.appendChild(note);
+    f.appendChild(el("p", "sys-note", "이름이 없어서 보낸 글은 다시 볼 수 없어요. 답이 필요하면 카카오톡 채널로 물어봐 주세요. (하루 5번까지)"));
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (ta.value.trim().length < 2) { note.textContent = "하고 싶은 말을 적어주세요."; note.className = "sys-msg sys-msg--error"; return; }
+      btn.disabled = true;
+      LeeshAPI.rpc("member_suggest", { p_id: who.id, p_pin: who.key, p_topic: sel.value, p_body: ta.value }).then(function (res) {
+        btn.disabled = false;
+        if (!res.ok) { note.textContent = res.error; note.className = "sys-msg sys-msg--error"; return; }
+        ta.value = "";
+        note.textContent = "보냈어요. 소중한 이야기 고마워요! 🙏";
+        note.className = "sys-msg sys-msg--ok";
+      });
+    });
+    box.appendChild(f);
+  }
+
   function renderPartners(res) {
     var box = scene.querySelector("#myPartners");
     box.textContent = "";

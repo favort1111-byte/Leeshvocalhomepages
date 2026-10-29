@@ -2858,3 +2858,89 @@ begin
 end $$;
 revoke all on function public.consult_create(text, text, text, text, text, text, text, text, text, text, text, text, text) from public;
 grant execute on function public.consult_create(text, text, text, text, text, text, text, text, text, text, text, text, text) to anon, authenticated;
+-- 익명 건의함 (원장님 2026-10-29): 학생 내 폴더 → 건의함. 이름 없이, 내용은 암호화해서 저장. 지금은 관리자만 읽음.
+--  · 누가 썼는지 저장하지 않음 (member_id 칸 없음). 보낸 때도 날짜만 (시각으로 추측 못 하게).
+--  · 내용은 pgcrypto로 암호화(열쇠는 private.suggest_key, 화면·API로 안 나감) → 관리자 함수만 풀어서 보여줌.
+--  · 장난 방지: 로그인한 수강생만, 하루 5번. 횟수는 "수강 ID + 날짜 + 비밀 소금"의 해시로만 세서 글과 이어지지 않음.
+create table if not exists private.suggest_key (
+  id int primary key default 1 check (id = 1),
+  k text not null default encode(extensions.gen_random_bytes(32), 'hex'),
+  salt text not null default encode(extensions.gen_random_bytes(32), 'hex')
+);
+insert into private.suggest_key (id) values (1) on conflict do nothing;
+
+create table if not exists private.suggestions (
+  id bigint generated always as identity primary key,
+  day date not null,
+  topic text not null,
+  body bytea not null,
+  is_read boolean not null default false
+);
+create table if not exists private.suggest_counts (
+  h bytea not null,
+  day date not null,
+  n int not null default 0,
+  primary key (h, day)
+);
+
+create or replace function public.member_suggest(p_id text, p_pin text, p_topic text, p_body text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  k private.suggest_key;
+  today date := private.now_kst()::date;
+  v_topic text := case when p_topic in ('수업', '선생님', '연습실', '시설', '홈페이지', '기타') then p_topic else '기타' end;
+  v_body text := trim(coalesce(p_body, ''));
+  hh bytea; cnt int;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  if char_length(v_body) < 2 then return private.fail('하고 싶은 말을 적어주세요.'); end if;
+  if char_length(v_body) > 1000 then return private.fail('1000자까지 쓸 수 있어요.'); end if;
+  select * into k from private.suggest_key where id = 1;
+  hh := extensions.digest((who ->> 'id') || '|' || today::text || '|' || k.salt, 'sha256');
+  insert into private.suggest_counts (h, day, n) values (hh, today, 1)
+    on conflict (h, day) do update set n = private.suggest_counts.n + 1 returning n into cnt;
+  if cnt > 5 then return private.fail('하루에 5번까지 보낼 수 있어요. 내일 다시 보내주세요.'); end if;
+  delete from private.suggest_counts where day < today - 1;  -- 지난 횟수는 바로 지움
+  insert into private.suggestions (day, topic, body) values (today, v_topic, extensions.pgp_sym_encrypt(v_body, k.k));
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.admin_suggestions() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare k private.suggest_key;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into k from private.suggest_key where id = 1;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', s.id, 'day', s.day, 'topic', s.topic, 'read', s.is_read,
+             'body', extensions.pgp_sym_decrypt(s.body, k.k)) order by s.id desc)
+      from (select * from private.suggestions order by id desc limit 300) s), '[]'::jsonb));
+end $$;
+
+create or replace function public.admin_suggest_count() returns int
+language sql stable security definer set search_path = '' as $$
+  select case when public.is_admin() then (select count(*)::int from private.suggestions where not is_read) else 0 end;
+$$;
+
+create or replace function public.admin_suggest_mark(p_id bigint, p_read boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.suggestions set is_read = coalesce(p_read, true) where id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.admin_suggest_delete(p_id bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  delete from private.suggestions where id = p_id;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.member_suggest(text, text, text, text), public.admin_suggestions(), public.admin_suggest_count(),
+  public.admin_suggest_mark(bigint, boolean), public.admin_suggest_delete(bigint) from public, anon;
+grant execute on function public.member_suggest(text, text, text, text) to anon, authenticated;
+grant execute on function public.admin_suggestions(), public.admin_suggest_count(), public.admin_suggest_mark(bigint, boolean),
+  public.admin_suggest_delete(bigint) to authenticated;

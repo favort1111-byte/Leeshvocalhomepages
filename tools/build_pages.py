@@ -186,6 +186,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
           <button type="button" role="tab" aria-selected="false" data-book-tab="songs">레퍼토리</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="logs">연습 일지</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="partners">제휴 업체</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="suggest">건의함 🔒</button>
         </div>
         <div class="book__page" data-book-page="notes" id="myNotes"></div>
         <div class="book__page" data-book-page="bookings" id="myBookings" hidden></div>
@@ -196,6 +197,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
         <div class="book__page" data-book-page="songs" id="mySongs" hidden></div>
         <div class="book__page" data-book-page="logs" id="myLogs" hidden></div>
         <div class="book__page" data-book-page="partners" id="myPartners" hidden></div>
+        <div class="book__page" data-book-page="suggest" id="mySuggest" hidden></div>
       </div>
     </div>
   </section>

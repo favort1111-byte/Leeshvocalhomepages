@@ -154,6 +154,7 @@
     if (name === "teachers") loadTeachers();
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
+    if (name === "suggest") loadSuggest();
   }
   document.querySelectorAll("[data-tab]").forEach(function (b) {
     b.addEventListener("click", function () { var t = b.getAttribute("data-tab"); showTab(t); markSeen(t); });
@@ -203,6 +204,7 @@
     countPartners();
     countConsults();
     countTeachers();
+    countSuggest();
     countNew();
   }
   setInterval(countAll, 120000);
@@ -1962,6 +1964,48 @@
     return li;
   }
   $("#consultFilter").addEventListener("change", loadConsults);
+
+  /* ---------------- 건의함 (익명) ---------------- */
+  function countSuggest() {
+    api("rpc/admin_suggest_count", { method: "POST", body: {} }).then(function (res) { if (res.ok) setBadge("#suggestBadge", Number(res.data) || 0); });
+  }
+  function loadSuggest() {
+    var list = $("#suggestList");
+    list.textContent = "";
+    api("rpc/admin_suggestions", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { list.appendChild(el("li", "sys-msg sys-msg--error", d.error || friendly(res, "불러오지 못했습니다."))); return; }
+      var only = $("#suggestFilter").value === "new";
+      var items = (d.items || []).filter(function (s) { return !only || !s.read; });
+      if (!items.length) { list.appendChild(el("li", "sys-empty", only ? "안 읽은 건의가 없어요." : "아직 건의가 없어요.")); return; }
+      items.forEach(function (s) {
+        var li = el("li", "adm__card" + (s.read ? " is-hidden" : ""));
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("span", "adm__badge adm__badge--kind", s.topic));
+        top.appendChild(el("strong", null, s.day));
+        if (!s.read) top.appendChild(el("span", "adm__kakao", "새 건의"));
+        li.appendChild(top);
+        li.appendChild(el("p", "adm__quote", s.body));
+        var row = el("div", "adm__cardrow");
+        var mark = el("button", "sys-btn", s.read ? "안 읽음으로" : "읽음");
+        mark.type = "button";
+        mark.addEventListener("click", function () {
+          api("rpc/admin_suggest_mark", { method: "POST", body: { p_id: s.id, p_read: !s.read } }).then(function () { loadSuggest(); countSuggest(); });
+        });
+        var del = el("button", "sys-link adm__del", "지우기");
+        del.type = "button";
+        del.addEventListener("click", function () {
+          if (del.getAttribute("data-armed") !== "1") { del.setAttribute("data-armed", "1"); del.textContent = "한 번 더 누르면 지워요"; return; }
+          api("rpc/admin_suggest_delete", { method: "POST", body: { p_id: s.id } }).then(function () { loadSuggest(); countSuggest(); });
+        });
+        row.appendChild(mark);
+        row.appendChild(del);
+        li.appendChild(row);
+        list.appendChild(li);
+      });
+    });
+  }
+  $("#suggestFilter").addEventListener("change", loadSuggest);
 
   /* ---------------- 설정 ---------------- */
 

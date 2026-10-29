@@ -56,6 +56,7 @@
       <button type="button" role="tab" data-tab="journal" aria-selected="false">연습 일지 <span class="adm__badge" id="journalBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="suggest" aria-selected="false">건의함 <span class="adm__badge" id="suggestBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
       <button type="button" class="sys-link adm__logout" id="logout">로그아웃</button>
     </nav>
@@ -361,6 +362,16 @@
     </section>
 
     <!-- 상담 신청 -->
+    <!-- 익명 건의함 (학생 내 폴더 → 건의함). 이름 없이, 날짜만, 내용은 암호화 저장 → 여기서만 풀어서 보여줌 -->
+    <section class="sys-card" data-panel="suggest" hidden>
+      <h3 class="sys-h">건의함</h3>
+      <p class="sys-note">학생이 내 폴더 → <b>건의함</b>에서 이름 없이 보낸 이야기예요. 누가 썼는지는 저장되지 않아요 (날짜만). 내용은 암호화돼 있고 관리자 화면에서만 보여요.</p>
+      <div class="adm__bar">
+        <select id="suggestFilter" aria-label="보기"><option value="">전체</option><option value="new">안 읽은 것</option></select>
+      </div>
+      <ul class="adm__cards" id="suggestList"></ul>
+    </section>
+
     <section class="sys-card" data-panel="consults" hidden>
       <div class="adm__bar">
         <select id="consultFilter" aria-label="상태">
@@ -428,6 +439,6 @@
 <script src="js/config.js?v=7b848101"></script>
 <script src="js/api.js?v=ae8e391c"></script>
 <script src="js/richtext.js?v=eaa3a7a4"></script>
-<script src="js/admin.js?v=cb8ddef7"></script>
+<script src="js/admin.js?v=891eced4"></script>
 </body>
 </html>
