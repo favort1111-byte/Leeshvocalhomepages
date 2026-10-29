@@ -2578,3 +2578,95 @@ begin
                             'chats', cardinality(t.chat_ids), 'bookings', t.bookings,
                             'groups', (select count(*) from unnest(t.chat_ids) x where x like '-%'));
 end $$;
+-- 텔레그램에 묻기: 연결이 1초를 넘으면 실패하던 것 → 기다리는 시간을 늘리고 3번까지 다시 (2026-10-29)
+create or replace function private.tg_get(p_url text, out status int, out content text)
+language plpgsql security definer set search_path = '' as $$
+declare i int;
+begin
+  perform extensions.http_set_curlopt('CURLOPT_CONNECTTIMEOUT', '10');
+  perform extensions.http_set_curlopt('CURLOPT_TIMEOUT', '20');
+  for i in 1..3 loop
+    begin
+      select h.status, h.content into status, content from extensions.http_get(p_url) h;
+      return;
+    exception when others then
+      status := 0; content := null;
+      perform pg_sleep(1);
+    end;
+  end loop;
+end $$;
+revoke all on function private.tg_get(text) from public;
+
+-- 그룹이 여럿이면 봇이 가장 최근에 소식을 받은 그룹 하나만 (원장님 2026-10-29: 그룹을 두 번 만들어 둘 다 잡혔음)
+create or replace function public.admin_telegram_link() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare t private.telegram; r record; j jsonb; latest text; people text[]; found text[]; c text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  select * into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' then return private.fail('봇 토큰을 먼저 저장해주세요.'); end if;
+  select * into r from private.tg_get('https://api.telegram.org/bot' || t.bot_token || '/getUpdates');
+  begin j := r.content::jsonb; exception when others then j := null; end;
+  if r.status <> 200 or j is null then return private.fail('텔레그램에 연결하지 못했어요. 잠시 뒤 다시 눌러주세요.'); end if;
+
+  with ups as (
+    select (u ->> 'update_id')::bigint as uid, coalesce(u -> 'message', u -> 'my_chat_member', u -> 'channel_post') as m
+      from jsonb_array_elements(j -> 'result') u
+  ), gone as (  -- 슈퍼그룹으로 바뀐 옛 그룹, 봇이 나간 그룹
+    select m -> 'chat' ->> 'id' as x from ups where m ? 'migrate_to_chat_id' or m -> 'new_chat_member' ->> 'status' in ('left', 'kicked')
+  ), cand as (
+    select m -> 'chat' ->> 'id' as x, uid from ups where m -> 'chat' ->> 'type' in ('group', 'supergroup')
+    union all
+    select m ->> 'migrate_to_chat_id', uid from ups where m ? 'migrate_to_chat_id'
+  )
+  select x into latest from cand where x not in (select x from gone) group by x order by max(uid) desc limit 1;
+
+  select coalesce(array_agg(distinct u -> 'message' -> 'chat' ->> 'id'), '{}') into people
+    from jsonb_array_elements(j -> 'result') u where u -> 'message' -> 'chat' ->> 'type' = 'private';
+
+  if latest is not null then
+    found := array[latest];
+  elsif cardinality(people) > 0 then
+    found := array(select distinct x from unnest(coalesce(t.chat_ids, '{}') || people) x where x not like '-%');
+  else
+    return private.fail('봇에게 온 메시지가 없어요. 1:1이면 @' || coalesce(t.bot_name, '봇') || ' 에서 "시작", 그룹이면 봇을 그룹에 초대한 뒤 그룹에 /start 를 보내고 다시 눌러주세요.');
+  end if;
+  update private.telegram set chat_ids = found where id = 1;
+  foreach c in array found loop
+    perform net.http_post(url := 'https://api.telegram.org/bot' || t.bot_token || '/sendMessage', timeout_milliseconds := 15000,
+      body := jsonb_build_object('chat_id', c, 'text', '✅ 이송희보컬레슨 알림이 연결됐어요. 새 신청이 오면 여기로 알려드릴게요.'));
+  end loop;
+  return jsonb_build_object('ok', true, 'chats', cardinality(found), 'groups', case when latest is null then 0 else 1 end);
+end $$;
+
+create or replace function public.admin_telegram_set(p_token text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v text := trim(coalesce(p_token, '')); r record; j jsonb;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if v !~ '^[0-9]{5,15}:[A-Za-z0-9_-]{30,50}$' then return private.fail('토큰 모양이 달라요. BotFather가 준 "숫자:글자" 전체를 붙여넣어 주세요.'); end if;
+  select * into r from private.tg_get('https://api.telegram.org/bot' || v || '/getMe');
+  begin j := r.content::jsonb; exception when others then j := null; end;
+  if r.status <> 200 or not coalesce((j ->> 'ok')::boolean, false) then return private.fail('텔레그램이 이 토큰을 모른대요. 다시 복사해주세요.'); end if;
+  update private.telegram set bot_token = v, bot_name = j -> 'result' ->> 'username', chat_ids = '{}', chat_id = null where id = 1;
+  return jsonb_build_object('ok', true, 'bot', j -> 'result' ->> 'username');
+end $$;
+
+create or replace function private.notify(msg text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare t record; c text;
+begin
+  select bot_token, chat_ids, bookings into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' or cardinality(t.chat_ids) = 0 then return; end if;
+  if not t.bookings and (msg like '🎤 연습실%' or msg like '↩️ 연습실%') then return; end if;
+  foreach c in array t.chat_ids loop
+    begin
+      perform net.http_post(url := 'https://api.telegram.org/bot' || t.bot_token || '/sendMessage', timeout_milliseconds := 15000,
+        body := jsonb_build_object('chat_id', c, 'text', msg || chr(10) || chr(10) || '👉 https://leeshlesson.com/admin.html',
+                                   'disable_web_page_preview', true));
+    exception when others then
+      null; -- 알림 실패가 신청을 막으면 안 됩니다
+    end;
+  end loop;
+end $$;
+
