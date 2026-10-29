@@ -57,6 +57,8 @@
   일지 칸 = 선생님들 구글시트 그대로 (`config.js lessonFields`): 오늘 수업 · 준비곡·곡별 피드백 · 연습 포인트 · 오디션 일정 · 노래 추천 + **선생님 메모 🔒(학생에게 안 보임, 원장님은 봄)**. "지난 일지 불러오기"로 고치기만 하면 되게.
   표 `teachers`(처음엔 수강생 메모의 담당 이름 8명, 관리자에서 더하기·숨기기·연결 끊기) · `teacher_requests` · `lesson_notes` 새 칸(songs·audition·recommend·memo·teacher_id) + RPC `teacher_me`/`teacher_request`/`teacher_student`/`teacher_note_save`/`teacher_note_delete` (마이그레이션 `leesh_teachers`). 서버가 담당 학생·내 일지인지 다시 확인.
   학생: 내 폴더 첫 탭 **레슨 노트**(메모 빼고). 관리자 → 수업 기록에서 원장님도 같은 칸으로 쓰고 모두 봄. 선생님 화면 주소는 관리자 → 선생님 탭 "주소 복사".
+  **2026-10-29 원장님: 학생에게는 레슨 노트 숨김 (선생님들과 얘기 끝날 때까지).** 화면 `config.js studentNotes: false`(내 폴더 탭 없음) + 서버 `settings.student_notes = false`(member_notebook이 notes를 빈 목록으로, 마이그레이션 `leesh_hide_student_notes`).
+  선생님 화면·관리자 수업 기록은 그대로 (쓰고 볼 수 있음). 켤 때는 둘 다 켜기. 사용법 페이지·공지 문구에서도 레슨 노트를 뺌.
 
 ## 블로그 → 홈페이지 이사 (2026-10-28, 원장님: "블로그 운영 안 할 수도 있어. 블로그 내용 모두 홈페이지로")
 - 블로그 글 **전부**를 홈페이지 안으로 옮김. 이제 홈페이지는 블로그에 기대지 않음 (블로그 링크·"블로그 전체 보기" 버튼 없앰, 네이버 블로그 링크도 뺌).

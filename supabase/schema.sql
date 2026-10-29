@@ -2334,3 +2334,87 @@ begin
   );
 end $function$
 ;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_hide_student_notes (2026-10-29)
+-- 학생에게 레슨 노트 숨기기 (원장님 2026-10-29). 선생님 화면·관리자는 그대로. 켜려면 update public.settings set student_notes = true;
+alter table public.settings add column if not exists student_notes boolean not null default false;
+CREATE OR REPLACE FUNCTION public.member_notebook(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return private.with_token(who, jsonb_build_object(
+    'ok', true,
+    'id', mid,
+    'name', who ->> 'name',
+    -- 레슨 노트는 settings.student_notes가 켜져 있을 때만 학생에게 (원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김)
+    'notes', case when not coalesce((select st.student_notes from public.settings st where st.id = 1), false) then '[]'::jsonb else coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'practice', n.practice,
+        'songs', n.songs, 'audition', n.audition, 'recommend', n.recommend   -- 선생님 메모(memo)는 학생에게 안 보냄
+      ) order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = mid
+            order by lesson_date desc, id desc limit 30) n
+    ), '[]'::jsonb) end,
+    'reports', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(r.month, 'YYYY-MM'), 'pages', r.pages, 'song', r.song, 'teacher', r.teacher,
+        'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
+        'total', r.total, 'stage', r.stage
+      ) order by r.month desc)
+      from (select * from public.eval_reports where member_id = mid order by month desc limit 12) r
+    ), '[]'::jsonb),
+    -- 내 예약: 오늘부터의 예약 + 이번 달 연습실 이용
+    'bookings', coalesce((
+      select jsonb_agg(jsonb_build_object('room', rm.name, 'date', b.day,
+               'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min)) order by b.day, b.start_min)
+      from public.bookings b join public.rooms rm on rm.id = b.room_id
+      where b.member_id = mid and b.status = '확정' and b.day >= today
+    ), '[]'::jsonb),
+    'month', (select jsonb_build_object('count', count(*), 'minutes', coalesce(sum(b.end_min - b.start_min), 0))
+              from public.bookings b
+              where b.member_id = mid and b.status = '확정' and b.day >= date_trunc('month', today)::date and b.day <= today),
+    -- 공지 + 다가오는 학원 내방 오디션
+    'notices', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'title', n.title, 'body', n.body, 'start', n.start_date,
+               'end', n.end_date, 'pinned', n.pinned, 'at', n.created_at) order by n.pinned desc, coalesce(n.start_date, n.created_at::date) desc)
+      from (select * from public.notices where published and (end_date is null or end_date >= today)
+            order by pinned desc, created_at desc limit 20) n
+    ), '[]'::jsonb),
+    'visits', coalesce((
+      select jsonb_agg(jsonb_build_object('title', a.title, 'company', a.company, 'date', a.event_date, 'deadline', a.deadline)
+               order by a.event_date)
+      from (select * from public.audition_news where published and kind = '내방' and event_date >= today
+            order by event_date limit 6) a
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'title', r.title, 'artist', r.artist, 'purpose', r.purpose,
+               'status', r.status, 'memo', r.memo,
+               'minutes', (select coalesce(sum(l.minutes), 0) from public.practice_logs l where l.member_id = mid and l.song = r.title))
+               order by (r.status = '준비 중') desc, r.updated_at desc)
+      from public.repertoire r where r.member_id = mid
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did)
+               order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = mid order by day desc, id desc limit 60) l
+    ), '[]'::jsonb),
+    -- 노래 추천 (원장님이 올린 것) + 아직 답을 못 받은 내 신청
+    'recs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', s.id, 'date', s.made_on, 'summary', s.summary, 'songs', s.songs, 'note', s.note)
+               order by s.made_on desc, s.id desc)
+      from (select * from public.song_recs where member_id = mid and published order by made_on desc, id desc limit 5) s
+    ), '[]'::jsonb),
+    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo, 'files', q.files)
+                from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
+  ));
+end $function$
+;

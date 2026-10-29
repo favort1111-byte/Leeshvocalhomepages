@@ -268,7 +268,9 @@
     var msg = el("p", "sys-msg");
     msg.setAttribute("role", "status");
     f.appendChild(msg);
-    f.appendChild(el("p", "sys-note", "저장하면 학생 내 폴더 → 레슨 노트에 바로 보여요. 🔒 선생님 메모는 학생에게 안 보여요."));
+    f.appendChild(el("p", "sys-note", cfg.studentNotes === false
+      ? "지금은 학생에게 보이지 않아요 (원장님이 켜면 그때부터 학생 내 폴더 → 레슨 노트에 보여요). 🔒 선생님 메모는 언제나 학생에게 안 보여요."
+      : "저장하면 학생 내 폴더 → 레슨 노트에 바로 보여요. 🔒 선생님 메모는 학생에게 안 보여요."));
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       var args = { p_member: s.id, p_date: date.value, p_note: editing ? editing.id : null };
@@ -280,7 +282,7 @@
       LeeshAPI.rpc("teacher_note_save", args).then(function (res) {
         save.disabled = false;
         if (!res.ok) { say(msg, res.error, "error"); return; }
-        open(s.id, editing ? "고쳤어요. 학생 화면에도 바뀌어 보여요." : "저장했어요. 학생 내 폴더에 바로 보여요.");
+        open(s.id, cfg.studentNotes === false ? (editing ? "고쳤어요." : "저장했어요.") : editing ? "고쳤어요. 학생 화면에도 바뀌어 보여요." : "저장했어요. 학생 내 폴더에 바로 보여요.");
         students.forEach(function (x) { if (x.id === s.id && (!x.last || date.value > x.last)) x.last = date.value; });
       });
     });

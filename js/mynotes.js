@@ -10,8 +10,8 @@
   var open = scene.querySelector("#myOpen");
   var labels = document.querySelectorAll('[data-scene="scene-me"] .icon__label');
   var who = null;
-  // 레슨 노트 can be switched off in js/config.js; then the folder opens on 내 예약
-  var NOTES = (window.LEESH || {}).lessonNotes !== false;
+  // 레슨 노트 can be switched off in js/config.js (studentNotes: 원장님 2026-10-29 숨김); then the folder opens on 내 예약
+  var NOTES = (window.LEESH || {}).lessonNotes !== false && (window.LEESH || {}).studentNotes !== false;
   var FIRST = NOTES ? "notes" : "bookings";
   if (!NOTES) {
     scene.querySelectorAll('[data-book-tab="notes"], [data-book-page="notes"]').forEach(function (n) { n.remove(); });

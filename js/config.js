@@ -11,6 +11,9 @@ window.LEESH = {
   // 카카오 연결 요청 때 학생이 고르는 담당 선생님 (구글시트 수강ID 관리 탭 기준)
   // 레슨 노트 (선생님이 수업마다 적는 기록, 선생님 화면 teacher.html에서 씀). 원장님 2026-10-28 켬 — false면 내 폴더·관리자 화면에서 숨어요.
   lessonNotes: true,
+  // 학생 내 폴더에 레슨 노트 보이기. 원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김 (서버도 settings.student_notes = false라 안 보냄).
+  // 켤 때는 이것과 서버 둘 다: studentNotes: true + update public.settings set student_notes = true;
+  studentNotes: false,
   // 레슨 일지 칸 (선생님들이 쓰던 구글시트 그대로): [칸, 이름, 안내, 최대 글자, 줄 수]. memo는 학생에게 안 보여요.
   lessonFields: [
     ["did", "오늘 수업", "예) 호흡 · 발성 연습, ○○ 1절 디테일", 800, 3],
