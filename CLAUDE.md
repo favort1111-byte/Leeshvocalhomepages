@@ -57,8 +57,8 @@
   일지 칸 = 선생님들 구글시트 그대로 (`config.js lessonFields`): 오늘 수업 · 준비곡·곡별 피드백 · 연습 포인트 · 오디션 일정 · 노래 추천 + **선생님 메모 🔒(학생에게 안 보임, 원장님은 봄)**. "지난 일지 불러오기"로 고치기만 하면 되게.
   표 `teachers`(처음엔 수강생 메모의 담당 이름 8명, 관리자에서 더하기·숨기기·연결 끊기) · `teacher_requests` · `lesson_notes` 새 칸(songs·audition·recommend·memo·teacher_id) + RPC `teacher_me`/`teacher_request`/`teacher_student`/`teacher_note_save`/`teacher_note_delete` (마이그레이션 `leesh_teachers`). 서버가 담당 학생·내 일지인지 다시 확인.
   학생: 내 폴더 첫 탭 **레슨 노트**(메모 빼고). 관리자 → 수업 기록에서 원장님도 같은 칸으로 쓰고 모두 봄. 선생님 화면 주소는 관리자 → 선생님 탭 "주소 복사".
-  **꾸미기 + 저절로 저장 (원장님 2026-10-29, 선생님들이 구글시트에서 수업 중에 빨간 글씨·색·형광펜으로 강조하던 방식 유지, 1번 안 "보고 결정"):** 칸마다 버튼 줄 빨강·파랑·초록·형광펜·굵게·크게·지우기 (`js/richtext.js` `LeeshRich.editor/view`, 선생님 화면·관리자 수업 기록·학생 레슨 노트 모두). 구글시트에서 붙여넣으면 색·굵게는 남김.
-  저장 형식: `lesson_notes.rich = true`면 칸에 제한된 HTML(b·i·u·s·br·div·span의 color·background-color·font-size·font-weight만). 화면이 보여줄 때 다시 거르고, DB 트리거 `lesson_notes_check`(`private.rich_ok`)가 다른 태그·스크립트를 막음. 글자 수 제한은 꾸밈을 뺀 글자로. 예전 일지(rich=false)는 그대로 글자로 보임.
+  **꾸미기 + 저절로 저장 (원장님 2026-10-29, 선생님들이 구글시트에서 수업 중에 빨간 글씨·색·형광펜으로 강조하던 방식 유지, 1번 안 "보고 결정"):** **구글시트 모양** (원장님 2026-10-29 "글씨 크기 자유롭게, 스프레드시트 느낌"): 위에 도구 줄 하나(− 크기 + / 크기 목록 10~36 · 굵게 · 기울임 · 밑줄 · 취소선 · 글자 색 판 · 채우기 색 판 · 서식 지우기) + 아래 칸(왼쪽 회색 머리 칸 + 흰 칸, 칸 사이 줄). 글자를 안 고르고 누르면 그 칸 전체. (`js/richtext.js` `LeeshRich.sheet/view`, 선생님 화면·관리자 수업 기록·학생 레슨 노트 모두). 구글시트에서 붙여넣으면 색·굵게·크기는 남김.
+  저장 형식: `lesson_notes.rich = true`면 칸에 제한된 HTML(b·i·u·s·br·div·span의 color·background-color·font-size(8~48px)·font-weight·font-style·text-decoration만). 화면이 보여줄 때 다시 거르고, DB 트리거 `lesson_notes_check`(`private.rich_ok`)가 다른 태그·스크립트를 막음. 글자 수 제한은 꾸밈을 뺀 글자로. 예전 일지(rich=false)는 그대로 글자로 보임.
   선생님 화면은 마지막으로 쓴 뒤 2초면 저절로 저장("저장됨 시:분"), 처음 저장한 일지 번호로 계속 고침, 다른 앱으로 넘어가거나 "← 담당 학생"을 누를 때도 저장. 마이그레이션 `leesh_rich_notes` (`teacher_note_save`에 `p_rich`).
   **2026-10-29 원장님: 학생에게는 레슨 노트 숨김 (선생님들과 얘기 끝날 때까지).** 화면 `config.js studentNotes: false`(내 폴더 탭 없음) + 서버 `settings.student_notes = false`(member_notebook이 notes를 빈 목록으로, 마이그레이션 `leesh_hide_student_notes`).
   선생님 화면·관리자 수업 기록은 그대로 (쓰고 볼 수 있음). 켤 때는 둘 다 켜기. 사용법 페이지·공지 문구에서도 레슨 노트를 뺌.

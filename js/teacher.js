@@ -235,17 +235,10 @@
     date.value = editing ? editing.date : todayKst();
     dl.appendChild(date);
     f.appendChild(dl);
-    f.appendChild(el("p", "sys-note tch__how", "글자를 고른 뒤 빨강 · 파랑 · 초록 · 형광펜 · 굵게 · 크게를 누르면 꾸며져요. 쓰는 동안 저절로 저장돼요."));
-    var inputs = {};
-    FIELDS.forEach(function (fd) {
-      var l = el("div", "sys-field" + (fd[0] === "memo" ? " tch__memo" : ""));
-      l.appendChild(el("span", null, fd[1] + (fd[0] === "memo" ? " 🔒" : "")));
-      var ed = LeeshRich.editor({ value: editing && editing[fd[0]] || "", rich: editing && editing.rich, placeholder: fd[2],
-        rows: fd[4], max: fd[3], label: fd[1], onInput: later });
-      l.appendChild(ed.node);
-      f.appendChild(l);
-      inputs[fd[0]] = ed;
-    });
+    f.appendChild(el("p", "sys-note tch__how", "구글시트처럼 글자를 고르고 위 버튼(크기 · 굵게 · 색 · 채우기)을 누르면 꾸며져요. 안 고르고 누르면 그 칸 전체가 바뀌어요. 쓰는 동안 저절로 저장돼요."));
+    var sh = LeeshRich.sheet({ fields: FIELDS, values: editing || {}, onInput: later });
+    f.appendChild(sh.node);
+    var inputs = sh.eds;
     var row = el("div", "fold__actions");
     var save = el("button", "sys-btn", editing ? "고친 내용 저장" : "저장하고 닫기");
     save.type = "submit";

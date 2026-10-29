@@ -573,15 +573,9 @@
   // 레슨 일지 칸 (js/config.js lessonFields, 선생님 화면과 같은 칸)
   // 칸마다 꾸미기 버튼 (js/richtext.js, 선생님 화면과 같음)
   var LFIELDS = cfg.lessonFields || [];
-  var noteEds = {};
-  LFIELDS.forEach(function (fd) {
-    var l = el("div", "sys-field");
-    l.appendChild(el("span", null, fd[1] + (fd[0] === "memo" ? " 🔒 학생에게 안 보여요" : "")));
-    var ed = LeeshRich.editor({ placeholder: fd[2], rows: fd[4], max: fd[3], label: fd[1] });
-    l.appendChild(ed.node);
-    $("#noteFields").appendChild(l);
-    noteEds[fd[0]] = ed;
-  });
+  var noteSheet = LeeshRich.sheet({ fields: LFIELDS });
+  $("#noteFields").appendChild(noteSheet.node);
+  var noteEds = noteSheet.eds;
 
   function loadRecords() {
     var sel = $("#recMember"), keep = sel.value;
