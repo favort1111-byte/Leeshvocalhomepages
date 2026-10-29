@@ -1,7 +1,7 @@
 // teacher.html: 선생님 화면. 선생님은 관리자가 아니라 "선생님" 권한 (원장님 2026-10-28).
 // 카카오로 로그인 → 처음이면 이름을 골라 연결 요청 → 원장님이 관리자 → 선생님 탭에서 승인 → 담당 학생(수강생 메모
 // "담당 ○○○", 재원·휴원)만 보이고, 학생마다 레슨 일지를 씀 (js/config.js lessonFields). 학생은 내 폴더 → 레슨 노트에서
-// 봐요. "선생님 메모"는 학생에게 안 보여요. 서버(teacher_* 함수)가 담당 학생인지·내가 쓴 일지인지 다시 확인해요.
+// 봐요 (일지는 선생님과 학생이 수업하면서 같이 씀). 서버(teacher_* 함수)가 담당 학생인지·내가 쓴 일지인지 다시 확인해요.
 (function () {
   var app = document.getElementById("teacherApp");
   if (!app) return;
@@ -263,8 +263,8 @@
     msg.setAttribute("role", "status");
     f.appendChild(msg);
     f.appendChild(el("p", "sys-note", cfg.studentNotes === false
-      ? "지금은 학생에게 보이지 않아요 (원장님이 켜면 그때부터 학생 내 폴더 → 레슨 노트에 보여요). 🔒 선생님 메모는 언제나 학생에게 안 보여요."
-      : "저장하면 학생 내 폴더 → 레슨 노트에 바로 보여요. 🔒 선생님 메모는 학생에게 안 보여요."));
+      ? "지금은 학생 내 폴더에 보이지 않아요 (원장님이 켜면 그때부터 학생 내 폴더 → 레슨 노트에 보여요)."
+      : "저장하면 학생 내 폴더 → 레슨 노트에 바로 보여요."));
 
     // 저절로 저장: 마지막으로 쓴 뒤 2초. 처음 저장하면 그 일지 번호로 계속 고쳐요.
     var noteId = editing ? editing.id : null, timer = null, busy = null, dirty = false;

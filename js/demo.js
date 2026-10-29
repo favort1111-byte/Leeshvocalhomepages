@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 22; // bump when the demo defaults change
+  var VERSION = 23; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -63,7 +63,7 @@
       lesson_notes: [
         { id: 11, member_id: "S001", lesson_date: addDays(t, -2), teacher: "원장님", teacher_id: 504, did: "후렴 고음에서 턱에 힘 빼기.\n호흡을 먼저 채우고 소리를 얹는 연습.",
           songs: "밤편지 - 후렴 첫 음이 낮게 들어가요. 2절은 말하듯이 힘 빼고.", practice: "립트릴 5분 → 후렴 두 줄만 천천히 3번", audition: "다음 달 체험 엔터 내방 오디션 (보컬)",
-          recommend: "볼빨간사춘기 - 우주를 줄게 (밝은 곡 연습용)", memo: "고음 욕심이 많아 목이 쉽게 피곤해함 (체험 모드 예시)", created_at: new Date().toISOString() },
+          recommend: "볼빨간사춘기 - 우주를 줄게 (밝은 곡 연습용)", created_at: new Date().toISOString() },
         { id: 12, member_id: "S001", lesson_date: addDays(t, -9), teacher: "원장님", teacher_id: 504, did: "첫 소절 시작 음정 잡기. 반주 없이 첫 음 듣고 들어가기.", practice: "피아노로 첫 음 치고 따라 부르기 10번", created_at: new Date().toISOString() },
         { id: 13, member_id: "S001", lesson_date: addDays(t, -16), teacher: "원장님", teacher_id: 504, did: "노래 진단. 중음은 안정적, 고음에서 목이 조임.", practice: "하품하듯 입 벌리고 '아' 길게 5번", created_at: new Date().toISOString() },
         { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "안유정", teacher_id: 501, rich: true, did: "입시곡 2절 감정선 정리<br><span style=\"color: #d62828; font-size: x-large\"><b>끝음 처리 서두르지 않기!</b></span>",
