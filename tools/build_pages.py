@@ -403,7 +403,7 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
 
 BOOKING_APP = f"""  <div class="booking__inner">
     <h1 class="booking__title">practice room</h1>
-    <p class="booking__note">수강생 전용 · 연습실 5개와 춤연습실을 365일 24시간 사전예약제로 운영합니다.</p>
+    <p class="booking__note">수강생 전용 · 보컬 연습실 5개와 춤연습실을 365일 24시간 사전예약제로 운영합니다.</p>
     <section class="sys sys-card" id="bookingApp" aria-live="polite">
       <div id="bookingOff" hidden>
         <p>연습실 예약 시스템을 준비하고 있습니다. 그동안은 카카오톡으로 예약해주세요.</p>
