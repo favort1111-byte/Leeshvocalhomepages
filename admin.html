@@ -96,6 +96,16 @@
         <p class="sys-note">학생이 처음 카카오로 로그인하면 여기에 요청이 와요. 맞는 수강 ID를 골라 승인하면, 그 학생은 다음부터 카카오 버튼 한 번으로 들어와요.</p>
         <ul class="adm__cards" id="kakaoList"></ul>
       </div>
+      <!-- 구글시트 "수강ID 관리" → 홈페이지 (tools/sheet_sync.gs, 3시간마다) -->
+      <div class="adm__links-box adm__sheet" id="sheetBox">
+        <h3 class="sys-h">구글시트 연결</h3>
+        <p class="sys-note">학생 명단의 원본은 구글시트 <b>학생관리 통합 관리자 → 수강ID 관리</b>예요. 새 학생 · 휴원 · 종료 · 담당 선생님은 <b>시트에서 고치면</b> 3시간마다 여기로 들어와요 (여기서 고친 이름·상태·담당은 다음 반영 때 시트 내용으로 바뀌어요).</p>
+        <p class="sys-msg" id="sheetState" role="status">확인 중…</p>
+        <div class="adm__actions">
+          <a class="sys-btn" id="sheetNow" href="#" target="_blank" rel="noopener" hidden>지금 시트에서 가져오기</a>
+          <button type="button" class="sys-link" id="sheetOpen">시트 연결 열기</button>
+        </div>
+      </div>
       <div class="adm__bar">
         <input type="search" id="memberSearch" placeholder="이름·ID·번호 검색" aria-label="검색">
         <select id="memberFilter" aria-label="상태">
@@ -392,6 +402,6 @@
 
 <script src="js/config.js?v=27cb9d9b"></script>
 <script src="js/api.js?v=ae8e391c"></script>
-<script src="js/admin.js?v=38b9aa42"></script>
+<script src="js/admin.js?v=b0d37c69"></script>
 </body>
 </html>

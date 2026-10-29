@@ -2128,3 +2128,209 @@ begin
   ));
 end $function$
 ;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_sheet_sync + leesh_sheet_sync_url (2026-10-29)
+-- 구글시트 "학생관리 통합 관리자 → 수강ID 관리" → 홈페이지 수강생 (원장님 2026-10-29, A 방법 · 3시간마다 + 버튼).
+-- 시트가 원본. 시트 옆에 따로 만든 Apps Script(tools/sheet_sync.gs, 시트 파일은 안 건드리고 읽기 전용 권한)가
+-- 3시간마다 (바뀐 게 있을 때만) 이 함수로 보냄. 비밀 열쇠는 스크립트가 처음 한 번 스스로 등록 (채팅·저장소에 안 남음).
+-- 가져오는 것: 수강ID · 학생명 · 현재 담당교사 · 휴원·종료 보관 상태 (종료보관 → 종료, 휴원보관 → 휴원, 나머지 → 재원).
+-- 새 학생은 추가, 바뀐 건 고침, 시트에 없는 학생은 그대로 (지우지 않음). 카카오 연결·예약·평가 기록은 그대로.
+
+create table if not exists private.sheet_sync (
+  id            int primary key check (id = 1),
+  key_hash      bytea,                  -- sha256(열쇠). 열쇠 자체는 저장 안 함
+  registered_at timestamptz,
+  last_at       timestamptz,
+  last_result   jsonb,
+  open_until    timestamptz            -- 관리자가 "시트 연결 열기"를 누르면 30분 동안만 새 열쇠 등록 가능
+);
+alter table private.sheet_sync add column if not exists open_until timestamptz;
+insert into private.sheet_sync (id) values (1) on conflict (id) do nothing;
+
+-- 스크립트가 처음 한 번: 열쇠 등록. 관리자가 "시트 연결 열기"를 누른 뒤 30분 안에만 됨 (모르는 사람이 먼저 등록 못 하게)
+create or replace function public.sheet_register(p_key text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare s private.sheet_sync;
+begin
+  if char_length(coalesce(p_key, '')) < 40 then return private.fail('열쇠가 너무 짧아요.'); end if;
+  select * into s from private.sheet_sync where id = 1 for update;
+  if s.key_hash = extensions.digest(p_key, 'sha256') then return jsonb_build_object('ok', true); end if;  -- 같은 스크립트가 다시
+  if s.open_until is null or s.open_until < now() then
+    return private.fail('관리자 화면 → 수강 ID → "시트 연결 열기"를 먼저 누른 뒤 30분 안에 해주세요.');
+  end if;
+  update private.sheet_sync set key_hash = extensions.digest(p_key, 'sha256'), registered_at = now(), open_until = null where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 시트 명단 받기. p_rows = [{"id":"E001","name":"…","teacher":"안유정","archive":"종료보관"}, …]
+create or replace function public.sheet_sync_members(p_key text, p_rows jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  s private.sheet_sync;
+  r jsonb;
+  v_id text; v_name text; v_teacher text; v_status text; v_memo text;
+  m public.members;
+  added int := 0; changed int := 0; same int := 0; skipped int := 0;
+  new_teachers text[] := '{}';
+  res jsonb;
+begin
+  select * into s from private.sheet_sync where id = 1;
+  if s.key_hash is null or s.key_hash <> extensions.digest(coalesce(p_key, ''), 'sha256') then
+    return private.fail('연결 열쇠가 맞지 않아요.');
+  end if;
+  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 or jsonb_array_length(p_rows) > 2000 then
+    return private.fail('보낸 명단이 비어 있거나 너무 커요.');
+  end if;
+  for r in select * from jsonb_array_elements(p_rows) loop
+    v_id := upper(trim(coalesce(r ->> 'id', '')));
+    v_name := trim(coalesce(r ->> 'name', ''));
+    v_teacher := nullif(regexp_replace(trim(coalesce(r ->> 'teacher', '')), '\s+', '', 'g'), '');
+    v_status := case trim(coalesce(r ->> 'archive', '')) when '종료보관' then '종료' when '휴원보관' then '휴원' else '재원' end;
+    if v_id !~ '^E\d{3,}$' or v_name = '' or char_length(v_name) > 30 or char_length(coalesce(v_teacher, '')) > 20 then
+      skipped := skipped + 1;
+      continue;
+    end if;
+    select * into m from public.members where id = v_id;
+    if m.id is null then
+      insert into public.members (id, name, status, memo, pin_hash, must_change_pin)
+      values (v_id, v_name, v_status, case when v_teacher is not null then '담당 ' || v_teacher end,
+              extensions.crypt('0000', extensions.gen_salt('bf')), true);
+      added := added + 1;
+    else
+      -- 메모의 "담당 ○○○"만 바꾸고 나머지 메모는 그대로
+      v_memo := case
+        when v_teacher is null then m.memo
+        when coalesce(m.memo, '') ~ '담당\s*[^\s·,]+' then regexp_replace(m.memo, '담당\s*[^\s·,]+', '담당 ' || v_teacher)
+        else nullif(concat_ws(' · ', nullif(m.memo, ''), '담당 ' || v_teacher), '') end;
+      if m.name is distinct from v_name or m.status is distinct from v_status or m.memo is distinct from v_memo then
+        update public.members set name = v_name, status = v_status, memo = v_memo where id = v_id;
+        changed := changed + 1;
+      else
+        same := same + 1;
+      end if;
+    end if;
+    -- 시트에 새 선생님이 생기면 선생님 목록에도 (선생님 화면 연결용)
+    if v_teacher is not null and not exists (select 1 from public.teachers where name = v_teacher) then
+      insert into public.teachers (name) values (v_teacher) on conflict (name) do nothing;
+      new_teachers := array_append(new_teachers, v_teacher);
+    end if;
+  end loop;
+  res := jsonb_build_object('ok', true, 'added', added, 'changed', changed, 'same', same, 'skipped', skipped,
+                            'newTeachers', to_jsonb(new_teachers), 'at', now());
+  update private.sheet_sync set last_at = now(), last_result = res where id = 1;
+  if added > 0 then perform private.notify('📋 구글시트에서 새 수강생 ' || added || '명이 홈페이지에 들어왔어요.'); end if;
+  return res;
+end $$;
+
+-- 관리자: 연결 상태 보기 / 시트 연결 열기 (예전 열쇠를 비우고 30분 동안 새 등록 받기)
+create or replace function public.admin_sheet_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s private.sheet_sync;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into s from private.sheet_sync where id = 1;
+  return jsonb_build_object('ok', true, 'connected', s.key_hash is not null, 'registeredAt', s.registered_at, 'openUntil', s.open_until,
+                            'lastAt', s.last_at, 'last', s.last_result);
+end $$;
+create or replace function public.admin_sheet_open() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.sheet_sync set key_hash = null, registered_at = null, open_until = now() + interval '30 minutes' where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.sheet_register(text), public.sheet_sync_members(text, jsonb),
+  public.admin_sheet_status(), public.admin_sheet_open() from public;
+grant execute on function public.sheet_register(text), public.sheet_sync_members(text, jsonb) to anon, authenticated;
+grant execute on function public.admin_sheet_status(), public.admin_sheet_open() to authenticated;
+
+-- 스크립트의 "지금 보내기" 주소(웹 앱)를 같이 등록 → 관리자 화면 "지금 시트에서 가져오기" 버튼이 엶
+alter table private.sheet_sync add column if not exists web_url text;
+drop function if exists public.sheet_register(text);
+create or replace function public.sheet_register(p_key text, p_url text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare s private.sheet_sync;
+begin
+  if char_length(coalesce(p_key, '')) < 40 then return private.fail('열쇠가 너무 짧아요.'); end if;
+  if p_url is not null and p_url !~ '^https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec$' then return private.fail('웹 앱 주소가 이상해요.'); end if;
+  select * into s from private.sheet_sync where id = 1 for update;
+  if s.key_hash = extensions.digest(p_key, 'sha256') then  -- 같은 스크립트가 다시 (주소만 새로)
+    update private.sheet_sync set web_url = coalesce(p_url, web_url) where id = 1;
+    return jsonb_build_object('ok', true);
+  end if;
+  if s.open_until is null or s.open_until < now() then
+    return private.fail('관리자 화면 → 수강 ID → "시트 연결 열기"를 먼저 누른 뒤 30분 안에 해주세요.');
+  end if;
+  update private.sheet_sync set key_hash = extensions.digest(p_key, 'sha256'), registered_at = now(), open_until = null, web_url = p_url where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+revoke all on function public.sheet_register(text, text) from public;
+grant execute on function public.sheet_register(text, text) to anon, authenticated;
+create or replace function public.admin_sheet_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s private.sheet_sync;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into s from private.sheet_sync where id = 1;
+  return jsonb_build_object('ok', true, 'connected', s.key_hash is not null, 'registeredAt', s.registered_at, 'openUntil', s.open_until,
+                            'lastAt', s.last_at, 'last', s.last_result, 'webUrl', s.web_url);
+end $$;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_rooms_members_only (2026-10-29)
+-- 연습실 빈 시간표도 수강생만 (원장님 2026-10-29 "예약실 예약화면도 회원만")
+CREATE OR REPLACE FUNCTION public.rooms_day(p_date text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  s public.settings;
+  t timestamp := private.now_kst();
+  today date := t::date;
+  now_min int := extract(hour from t)::int * 60 + extract(minute from t)::int;
+  d date;
+begin
+  -- 수강생 전용 (원장님 2026-10-29): 빈 시간표도 카카오로 로그인한 승인된 학생(또는 관리자)만
+  if not public.is_admin() and not coalesce((private.check_ready('', '') ->> 'ok')::boolean, false) then
+    return jsonb_build_object('ok', false, 'code', 'members_only', 'error', '수강생만 볼 수 있어요. 카카오로 로그인해주세요.');
+  end if;
+  select * into s from public.settings where id = 1;
+  begin
+    d := coalesce(nullif(p_date, '')::date, today);
+  exception when others then
+    return private.fail('날짜 형식이 올바르지 않습니다.');
+  end;
+  if d < today or d > today + s.max_days then
+    return private.fail('예약할 수 없는 날짜입니다.');
+  end if;
+  return jsonb_build_object(
+    'ok', true,
+    'date', d,
+    'now', case when d = today then now_min end,   -- lets the page grey out hours already gone
+    'days', (select jsonb_agg(today + i order by i) from generate_series(0, s.max_days) i),
+    'unit', s.unit_min,
+    'open', private.hhmm(s.open_min),
+    'close', private.hhmm(s.close_min),
+    'maxHours', s.max_minutes / 60,
+    'dailyMaxHours', trim_scale(s.daily_max_minutes / 60.0),
+    'cancelBefore', case when s.cancel_minutes % 60 = 0 then (s.cancel_minutes / 60) || '시간' else s.cancel_minutes || '분' end,
+    'rooms', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'name', r.name, 'type', r.kind,
+        'free', coalesce((
+          select jsonb_agg(private.hhmm(g) order by g)
+          from generate_series(s.open_min, s.close_min - s.unit_min, s.unit_min) g
+          where (d > today or g > now_min)   -- 이미 시작한 시간은 안 됨 (18:05면 19:00부터, 원장님 2026-10-28)
+            and not exists (
+              select 1 from public.bookings b
+              where b.room_id = r.id and b.day = d and b.status = '확정'
+                and b.start_min < g + s.unit_min and g < b.end_min)
+        ), '[]'::jsonb)
+      ) order by r.sort, r.id)
+      from public.rooms r where r.active
+    ), '[]'::jsonb)
+  );
+end $function$
+;

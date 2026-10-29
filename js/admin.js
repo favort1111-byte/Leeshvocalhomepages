@@ -344,7 +344,40 @@
 
   /* ---------------- 수강 ID ---------------- */
 
+  /* 구글시트 연결 (tools/sheet_sync.gs → sheet_sync_members): 상태 · 지금 가져오기 · 연결 열기 */
+  function loadSheet() {
+    var st = $("#sheetState"), now = $("#sheetNow");
+    api("rpc/admin_sheet_status", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { msg(st, d.error || friendly(res, "불러오지 못했습니다."), "error"); return; }
+      now.hidden = !d.webUrl;
+      if (d.webUrl) now.href = d.webUrl;
+      if (!d.connected) {
+        var open = d.openUntil && new Date(d.openUntil) > new Date();
+        msg(st, open ? "연결을 기다리는 중이에요 (" + stamp(d.openUntil) + "까지). 스크립트에서 \"처음_한번_설정\"을 실행해주세요."
+                     : "아직 연결 전이에요. \"시트 연결 열기\"를 누른 뒤 30분 안에 스크립트를 설정해주세요.", open ? "" : "error");
+        return;
+      }
+      var l = d.last || {};
+      msg(st, d.lastAt ? "연결됨 · 마지막 반영 " + stamp(d.lastAt) + " · 새 학생 " + (l.added || 0) + " · 바뀐 학생 " + (l.changed || 0) +
+        ((l.newTeachers || []).length ? " · 새 선생님 " + l.newTeachers.join(", ") : "") : "연결됨 · 아직 반영 전이에요.", "ok");
+    });
+  }
+  $("#sheetNow").addEventListener("click", function () {
+    // the web app opens in a new tab and sends the sheet; read the result back a little later
+    msg($("#sheetState"), "시트에서 가져오는 중… (새 창에 결과가 나와요)");
+    setTimeout(function () { loadSheet(); state.members = []; loadMembers(); }, 8000);
+  });
+  $("#sheetOpen").addEventListener("click", function () {
+    var b = this;
+    if (b.getAttribute("data-armed") !== "1") { b.setAttribute("data-armed", "1"); b.textContent = "한 번 더 누르면 열어요 (지금 연결은 끊겨요)"; return; }
+    b.removeAttribute("data-armed");
+    b.textContent = "시트 연결 열기";
+    api("rpc/admin_sheet_open", { method: "POST", body: {} }).then(loadSheet);
+  });
+
   function loadMembers() {
+    loadSheet();
     api("members?select=id,name,phone,status,expires_on,memo,must_change_pin,kakao_user&order=id").then(function (res) {
       if (!res.ok) { msg($("#memberMsg"), friendly(res, "불러오지 못했습니다."), "error"); return; }
       state.members = res.data;

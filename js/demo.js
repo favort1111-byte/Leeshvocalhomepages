@@ -552,6 +552,12 @@
       save();
       return { ok: true };
     },
+    // 구글시트 연결 (관리자 → 수강 ID): 체험 모드는 연결된 척
+    admin_sheet_status: function () {
+      return { ok: true, connected: true, lastAt: new Date(Date.now() - 3600000).toISOString(), webUrl: null,
+        last: { added: 1, changed: 2, same: 160, newTeachers: [] } };
+    },
+    admin_sheet_open: function () { return { ok: true }; },
     // 선생님 화면 (teacher.html)
     teacher_me: function (a, uid) {
       if (!uid) return fail("카카오 로그인이 필요해요.");
