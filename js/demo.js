@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 23; // bump when the demo defaults change
+  var VERSION = 24; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -113,11 +113,15 @@
       ],
       repertoire: [
         { id: 61, member_id: "S001", title: "Rain", artist: "태연", purpose: "오디션", status: "준비 중", memo: "2절 후렴 고음", created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: 62, member_id: "S001", title: "너의 의미", artist: "아이유", purpose: "연습", status: "완성", memo: null, created_at: new Date().toISOString(), updated_at: new Date(Date.now() - 86400000 * 30).toISOString() }
+        { id: 62, member_id: "S001", title: "너의 의미", artist: "아이유", purpose: "연습", status: "완성", memo: null, created_at: new Date().toISOString(), updated_at: new Date(Date.now() - 86400000 * 30).toISOString() },
+        { id: 63, member_id: "S002", title: "입시곡 (자유곡)", artist: "", purpose: "입시", status: "준비 중", memo: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 64, member_id: "S002", title: "밤편지", artist: "아이유", purpose: "연습", status: "완성", memo: null, created_at: new Date().toISOString(), updated_at: new Date(Date.now() - 86400000 * 20).toISOString() }
       ],
       practice_logs: [
         { id: 71, member_id: "S001", day: addDays(t, -1), minutes: 60, song: "Rain", did: "후렴 고음 10번, 립트릴 5분. 호흡이 모자랐음", created_at: new Date().toISOString() },
-        { id: 72, member_id: "S001", day: addDays(t, -3), minutes: 40, song: "Rain", did: "1절 감정선 녹음해서 들어봄", created_at: new Date().toISOString() }
+        { id: 72, member_id: "S001", day: addDays(t, -3), minutes: 40, song: "Rain", did: "1절 감정선 녹음해서 들어봄", created_at: new Date().toISOString() },
+        { id: 73, member_id: "S002", day: addDays(t, -1), minutes: 50, song: "입시곡 (자유곡)", did: "2절 브릿지 호흡 위치 바꿔서 5번", created_at: new Date().toISOString() },
+        { id: 74, member_id: "S002", day: addDays(t, -2), minutes: 30, song: "입시곡 (자유곡)", did: "끝음 처리 녹음해서 들어봄", created_at: new Date().toISOString() }
       ],
       // 노래 추천: a made-up analysis in the same shape as the director's sheet
       song_recs: [

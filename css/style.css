@@ -962,6 +962,18 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .tch__last{font-size:12.5px;color:#7A6656;}
 .tch__back{margin:4px 0;}
 .tch__name{margin:6px 0 10px;font-size:20px;font-weight:500;}
+/* 한눈에 보기 (선생님 화면 맨 위): 왼쪽 저번 시간 수업 내용, 오른쪽 연습 일지 · 레퍼토리 */
+.tch__glance{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:16px;align-items:start;margin:0 0 16px;}
+.tch__glance .tch__prev{margin:0;}
+.tch__side{display:grid;gap:12px;}
+.tch__mini{padding:12px 14px;border-radius:10px;background:#FFFDF8;border:1px solid #E5DCCF;}
+.tch__minihead{margin:0 0 8px;font-size:15px;font-weight:600;color:#3C4043;}
+.tch__miniitem{padding:6px 0;border-top:1px dashed #E5DCCF;}
+.tch__miniitem:first-of-type{border-top:0;padding-top:0;}
+.tch__miniitem p{margin:0;}
+.tch__songs{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px;}
+.tch__songs small{color:#7A6656;}
+@media (max-width:900px){.tch__glance{grid-template-columns:1fr;}}
 /* 저번 시간 수업 내용 (선생님 화면 맨 위, 보기만) */
 .tch__prev{margin:0 0 16px;padding:12px 16px 16px;border-radius:10px;background:#F3F6FB;border:1px solid #D6DEEA;}
 .tch__prevhead{cursor:pointer;font-size:16px;color:#3C4043;padding:2px 0 10px;}
