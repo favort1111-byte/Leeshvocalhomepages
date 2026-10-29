@@ -2,7 +2,7 @@
 when a new form, field, service or retention rule is added (e.g. 텔레그램 알림, 레슨 노트 켜기),
 update the matching section here and the 시행일 history."""
 
-EFFECTIVE = "2026년 10월 27일"  # 처음 공개하는 날로 바꿔요
+EFFECTIVE = "2026년 10월 29일"  # 홈페이지를 처음 공개한 날 (leeshlesson.com 연결, 2026-10-29)
 OWNER = "이송희보컬레슨"
 CHIEF = "이송희 (원장)"
 PHONE = "010-4458-5448"
