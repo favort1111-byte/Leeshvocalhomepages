@@ -628,7 +628,7 @@
   /* ---------------- 카카오톡으로 보낼 주소 ---------------- */
 
   // Links straight into a screen (js/scene.js reads the #hash). Saved sign-ins open them without a login.
-  var LINKS = [["레슨 노트", "#notes"], ["내 예약", "#bookings"], ["일정·공지", "#notices"], ["월말평가", "#evals"], ["노래 추천", "#recs"], ["영상 추천", "#videos"], ["연습 일지", "#logs"], ["제휴 업체", "#partners"], ["연습실 예약", "booking.html"], ["상담 신청", "consult.html"]]
+  var LINKS = [["레슨 노트", "#notes"], ["내 예약", "#bookings"], ["일정·공지", "#notices"], ["월말평가", "#evals"], ["노래 추천", "#recs"], ["영상 추천", "#videos"], ["연습 일지", "#logs"], ["제휴 업체", "#partners"], ["연습실 예약", "booking.html"], ["홈페이지 사용법", "guide.html"], ["상담 신청", "consult.html"]]
     .filter(function (l) { return cfg.lessonNotes !== false || l[1] !== "#notes"; });
   function siteLink(to) { return new URL(to.charAt(0) === "#" ? "./" + to : to, location.href).href; }
   function openHref(to) { return to.charAt(0) === "#" ? "index.html" + to : to; }

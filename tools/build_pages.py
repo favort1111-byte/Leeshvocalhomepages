@@ -6,6 +6,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import blog_content as blog  # facts from the academy's Naver blog
 import privacy
+import guide  # 홈페이지 사용법 (guide.html)
 IMG = {int(k): v for k, v in json.load(open(os.path.join(HERE, "images.json"))).items()}
 
 def img(i):
@@ -43,7 +44,7 @@ def head(title, desc):
 """
 
 # 개인정보처리방침 link on every page (the law asks for it to be easy to find, in bold)
-LEGAL = ('<footer class="legal"><a href="privacy.html"><b>개인정보처리방침</b></a>'
+LEGAL = ('<footer class="legal"><a href="privacy.html"><b>개인정보처리방침</b></a><a href="guide.html">홈페이지 사용법</a>'
          f'<span>© 이송희보컬레슨 · {blog.DIRECTIONS["address"]}</span></footer>\n')
 
 def foot(*extra):
@@ -763,7 +764,14 @@ privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송
                 + '  <div class="booking__inner">\n' + privacy.body() + "  </div>\n"
                 + "</main>\n" + foot())
 
-out = {"teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+# ---------- GUIDE: 홈페이지 사용법 (tools/guide.py; 학생 안내, 카톡 공지 문구는 docs/notice.md) ----------
+guide_page = (head("Guide | 이송희보컬레슨", "이송희보컬레슨 홈페이지 사용법: 카카오 로그인, 연습실 예약, 내 폴더, 내방 오디션 신청.")
+              + '<main class="stage booking">\n'
+              + nav("guide", "dark") + "\n"
+              + '  <div class="booking__inner">\n' + guide.body() + "  </div>\n"
+              + "</main>\n" + foot())
+
+out = {"guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')

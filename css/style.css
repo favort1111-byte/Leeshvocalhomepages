@@ -956,3 +956,16 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .tch__memotext{background:#FBF1E6;padding:6px 8px;border-radius:6px;}
 .tch__tabs{margin:6px 0 10px;}
 .tch__page{display:grid;gap:10px;}
+/* 홈페이지 사용법 (guide.html, tools/guide.py) */
+.guide__step{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:18px;border-radius:10px;background:#FFFDF8;box-shadow:0 2px 6px rgba(60,40,20,.10);}
+.guide__num{margin:0;width:40px;height:40px;border-radius:50%;background:var(--brown);color:#FBF3E4;display:flex;align-items:center;justify-content:center;font-family:var(--f-serif);font-size:20px;}
+.guide__step h3{margin:6px 0 2px;}
+.guide__lede{margin:0 0 8px;color:#7A6656;font-size:14px;}
+.guide__step ul{margin:0 0 4px;padding-left:18px;}
+.guide__step li{margin:3px 0;}
+.guide__go{display:inline-block;margin-top:8px;}
+.guide__faq{margin:8px 0;padding:10px 14px;border-radius:8px;background:#FFFDF8;}
+.guide__faq summary{cursor:pointer;font-weight:500;}
+.guide__faq p{margin:8px 0 0;}
+.guide__help{text-align:center;}
+@media (max-width:600px){.guide__step{grid-template-columns:1fr;gap:6px;padding:14px;}}
