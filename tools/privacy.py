@@ -70,6 +70,7 @@ def body():
         <thead><tr><th scope="col">맡긴 곳</th><th scope="col">맡긴 일</th></tr></thead>
         <tbody>
           <tr><th scope="row">Supabase Inc.</th><td data-label="맡긴 일">홈페이지 데이터 보관 (상담 신청, 수강생 정보, 예약, 월말평가, 노래 추천·녹음, 레슨 노트, 내방 오디션 신청, 제휴 업체 신청, 로그인)</td></tr>
+          <tr><th scope="row">Telegram</th><td data-label="맡긴 일">새 신청을 학원 관리자에게 알리는 메시지 전달 (신청 종류, 이름, 신청 내용 요약 · 전화번호는 보내지 않음)</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -84,6 +85,7 @@ def body():
         <li><b>보관하는 나라:</b> 일본 (도쿄의 Amazon Web Services 데이터센터)</li>
         <li><b>옮기는 정보:</b> 위 1번 표의 정보 전부</li>
         <li><b>목적과 기간:</b> 데이터 보관 · 위 1번 표의 보관 기간과 같음</li>
+        <li><b>관리자 알림:</b> 새 신청이 오면 신청 종류·이름·신청 내용 요약을 Telegram(Telegram Messenger Inc., 아랍에미리트 회사, telegram.org/privacy)으로 학원 관리자에게 보냅니다. 메시지는 Telegram 서버(여러 나라)를 거쳐 관리자 휴대폰에 남습니다.</li>
         <li><b>거부 방법:</b> 국외 보관을 원하지 않으면 홈페이지 대신 카카오톡·전화로 상담과 예약을 할 수 있습니다. 이 경우 홈페이지 로그인은 쓸 수 없습니다.</li>
       </ul>
     </section>

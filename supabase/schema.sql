@@ -2418,3 +2418,108 @@ begin
   ));
 end $function$
 ;
+-- ---------------------------------------------------------------- 텔레그램 알림 (원장님 2026-10-29)
+-- 새 신청(카카오 연결 요청 · 선생님 연결 요청 · 상담 · 노래 추천 · 제휴 · 내방 오디션)이 오면 원장님 텔레그램으로.
+-- 원장님이 관리자 → 설정 → 텔레그램 알림에서 봇 토큰을 붙여넣고(채팅 금지), 봇에게 말을 건 뒤 "연결 확인".
+-- 연습실 예약·취소 알림은 기본으로 끔 (bookings). 여러 관리자가 각자 연결할 수 있게 chat_ids 목록.
+alter table private.telegram add column if not exists chat_ids text[] not null default '{}';
+alter table private.telegram add column if not exists bot_name text;
+alter table private.telegram add column if not exists bookings boolean not null default false;
+
+create or replace function private.notify(msg text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare t record; c text;
+begin
+  select bot_token, chat_ids, bookings into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' or cardinality(t.chat_ids) = 0 then return; end if;
+  if not t.bookings and (msg like '🎤 연습실%' or msg like '↩️ 연습실%') then return; end if;
+  foreach c in array t.chat_ids loop
+    begin
+      perform net.http_post(url := 'https://api.telegram.org/bot' || t.bot_token || '/sendMessage',
+        body := jsonb_build_object('chat_id', c, 'text', msg || chr(10) || chr(10) || '👉 https://leeshlesson.com/admin.html',
+                                   'disable_web_page_preview', true));
+    exception when others then
+      null; -- 알림 실패가 신청을 막으면 안 됩니다
+    end;
+  end loop;
+end $$;
+
+-- 상담 알림에는 전화번호를 넣지 않음 (관리자 화면에서 보기)
+do $$
+declare d text := pg_get_functiondef('public.consult_create'::regproc);
+begin
+  if position($s$nm || ' · ' || v_phone$s$ in d) > 0 then
+    execute replace(d, $s$nm || ' · ' || v_phone$s$, 'nm');
+  end if;
+end $$;
+
+create or replace function public.admin_telegram_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare t private.telegram;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into t from private.telegram where id = 1;
+  return jsonb_build_object('ok', true, 'hasBot', coalesce(t.bot_token, '') <> '', 'bot', t.bot_name,
+                            'chats', cardinality(t.chat_ids), 'bookings', t.bookings);
+end $$;
+
+-- 봇 토큰 저장 (BotFather가 준 것). 텔레그램에 물어봐서 맞는 토큰인지 확인. 토큰은 다시 보여주지 않음.
+create or replace function public.admin_telegram_set(p_token text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v text := trim(coalesce(p_token, '')); r record; j jsonb;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if v !~ '^[0-9]{5,15}:[A-Za-z0-9_-]{30,50}$' then return private.fail('토큰 모양이 달라요. BotFather가 준 "숫자:글자" 전체를 붙여넣어 주세요.'); end if;
+  select status, content into r from extensions.http_get('https://api.telegram.org/bot' || v || '/getMe');
+  begin j := r.content::jsonb; exception when others then j := null; end;
+  if r.status <> 200 or not coalesce((j ->> 'ok')::boolean, false) then return private.fail('텔레그램이 이 토큰을 모른대요. 다시 복사해주세요.'); end if;
+  update private.telegram set bot_token = v, bot_name = j -> 'result' ->> 'username', chat_ids = '{}', chat_id = null where id = 1;
+  return jsonb_build_object('ok', true, 'bot', j -> 'result' ->> 'username');
+end $$;
+
+-- 봇에게 말을 건 사람(개인 채팅)을 받는 사람으로 등록하고 시험 메시지를 보냄
+create or replace function public.admin_telegram_link() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare t private.telegram; r record; j jsonb; found text[]; c text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  select * into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' then return private.fail('봇 토큰을 먼저 저장해주세요.'); end if;
+  select status, content into r from extensions.http_get('https://api.telegram.org/bot' || t.bot_token || '/getUpdates');
+  begin j := r.content::jsonb; exception when others then j := null; end;
+  if r.status <> 200 or j is null then return private.fail('텔레그램에 연결하지 못했어요. 잠시 뒤 다시 눌러주세요.'); end if;
+  select coalesce(array_agg(distinct u -> 'message' -> 'chat' ->> 'id'), '{}') into found
+    from jsonb_array_elements(j -> 'result') u
+   where u -> 'message' -> 'chat' ->> 'type' = 'private';
+  if cardinality(found) = 0 then
+    return private.fail('봇에게 온 메시지가 없어요. 텔레그램에서 @' || coalesce(t.bot_name, '봇') || ' 을 찾아 "시작"을 누르거나 아무 말이나 보낸 뒤 다시 눌러주세요.');
+  end if;
+  update private.telegram set chat_ids = array(select distinct x from unnest(chat_ids || found) x) where id = 1
+    returning chat_ids into found;
+  foreach c in array found loop
+    perform net.http_post(url := 'https://api.telegram.org/bot' || t.bot_token || '/sendMessage',
+      body := jsonb_build_object('chat_id', c, 'text', '✅ 이송희보컬레슨 알림이 연결됐어요. 새 신청이 오면 여기로 알려드릴게요.'));
+  end loop;
+  return jsonb_build_object('ok', true, 'chats', cardinality(found));
+end $$;
+
+create or replace function public.admin_telegram_options(p_bookings boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.telegram set bookings = coalesce(p_bookings, false) where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.admin_telegram_off() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.telegram set bot_token = null, bot_name = null, chat_ids = '{}', chat_id = null where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.admin_telegram_status(), public.admin_telegram_set(text), public.admin_telegram_link(),
+  public.admin_telegram_options(boolean), public.admin_telegram_off() from public, anon;
+grant execute on function public.admin_telegram_status(), public.admin_telegram_set(text), public.admin_telegram_link(),
+  public.admin_telegram_options(boolean), public.admin_telegram_off() to authenticated;

@@ -9,6 +9,7 @@
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
   var VERSION = 20; // bump when the demo defaults change
+  var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
   function nowKst() {
@@ -558,6 +559,16 @@
         last: { added: 1, changed: 2, same: 160, newTeachers: [] } };
     },
     admin_sheet_open: function () { return { ok: true }; },
+    // 텔레그램 알림 (관리자 → 설정): 체험 모드는 실제로 보내지 않고 연결된 척만
+    admin_telegram_status: function () { return { ok: true, hasBot: !!demoTg.bot, bot: demoTg.bot, chats: demoTg.chats, bookings: demoTg.bookings }; },
+    admin_telegram_set: function (a) {
+      if (!/^[0-9]{5,15}:[A-Za-z0-9_-]{30,50}$/.test(String(a.p_token || "").trim())) return fail("토큰 모양이 달라요. BotFather가 준 \"숫자:글자\" 전체를 붙여넣어 주세요.");
+      demoTg.bot = "leesh_alarm_bot"; demoTg.chats = 0;
+      return { ok: true, bot: demoTg.bot };
+    },
+    admin_telegram_link: function () { demoTg.chats = 1; return { ok: true, chats: 1 }; },
+    admin_telegram_options: function (a) { demoTg.bookings = !!a.p_bookings; return { ok: true }; },
+    admin_telegram_off: function () { demoTg.bot = null; demoTg.chats = 0; return { ok: true }; },
     // 선생님 화면 (teacher.html)
     teacher_me: function (a, uid) {
       if (!uid) return fail("카카오 로그인이 필요해요.");

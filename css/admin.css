@@ -84,6 +84,11 @@ section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 .adm__links-box{margin:0 0 22px;padding:16px;border-radius:12px;background:#FEF6D8;border:1px solid #EBD98F;}
 .adm__links-box .sys-h{margin-top:0;}
 .adm__links-box .adm__cardrow select{flex:1 1 260px;}
+.adm__steps{margin:6px 0 10px;padding-left:20px;line-height:1.7;}
+.adm__check{display:inline-flex;gap:6px;align-items:center;font-size:14px;}
+#tgBox .adm__actions{flex-wrap:wrap;}
+#tgForm{justify-content:flex-start;}
+#tgForm input{flex:1 1 260px;max-width:420px;}
 .adm__badge{display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center;margin-left:4px;padding:0 6px;border-radius:999px;background:#C0392B;color:#fff;font-size:12px;}
 .adm__badge[hidden]{display:none;}
 .adm__kakao{color:#8A6D00;font-weight:500;}

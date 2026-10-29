@@ -1962,7 +1962,58 @@
 
   /* ---------------- 설정 ---------------- */
 
+  /* 텔레그램 알림: BotFather 토큰 저장 → 봇에게 말 걸기 → 연결 확인 (보내는 일은 서버 private.notify) */
+  function loadTelegram() {
+    var st = $("#tgState");
+    api("rpc/admin_telegram_status", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { msg(st, d.error || friendly(res, "불러오지 못했습니다."), "error"); return; }
+      var on = d.hasBot && d.chats > 0;
+      $("#tgSteps").hidden = on;
+      $("#tgForm").hidden = d.hasBot;
+      $("#tgLink").hidden = !d.hasBot;
+      $("#tgLink").textContent = on ? "받는 사람 다시 확인" : "연결 확인";
+      $("#tgOff").hidden = !d.hasBot;
+      $("#tgBookWrap").hidden = !on;
+      $("#tgBook").checked = !!d.bookings;
+      if (on) msg(st, "켜짐 · @" + (d.bot || "봇") + " → " + d.chats + "명에게 보내요. 다른 관리자도 봇에게 말을 건 뒤 \"받는 사람 다시 확인\"을 누르면 같이 받아요.", "ok");
+      else if (d.hasBot) msg(st, "봇 저장됨 (@" + (d.bot || "") + "). 텔레그램에서 이 봇을 찾아 \"시작\"을 누른 뒤 \"연결 확인\"을 눌러주세요.");
+      else msg(st, "아직 꺼져 있어요. 아래 순서대로 한 번만 해주세요.");
+    });
+  }
+  $("#tgForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var t = field(this, "token"), st = $("#tgState");
+    msg(st, "확인 중…");
+    api("rpc/admin_telegram_set", { method: "POST", body: { p_token: t.value } }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { msg(st, d.error || friendly(res, "저장하지 못했습니다."), "error"); return; }
+      t.value = "";
+      loadTelegram();
+    });
+  });
+  $("#tgLink").addEventListener("click", function () {
+    var st = $("#tgState");
+    msg(st, "확인 중…");
+    api("rpc/admin_telegram_link", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { msg(st, d.error || friendly(res, "연결하지 못했습니다."), "error"); return; }
+      loadTelegram();
+    });
+  });
+  $("#tgBook").addEventListener("change", function () {
+    api("rpc/admin_telegram_options", { method: "POST", body: { p_bookings: this.checked } }).then(loadTelegram);
+  });
+  $("#tgOff").addEventListener("click", function () {
+    var b = this;
+    if (b.getAttribute("data-armed") !== "1") { b.setAttribute("data-armed", "1"); b.textContent = "한 번 더 누르면 꺼요"; return; }
+    b.removeAttribute("data-armed");
+    b.textContent = "알림 끄기";
+    api("rpc/admin_telegram_off", { method: "POST", body: {} }).then(loadTelegram);
+  });
+
   function renderSettings() {
+    loadTelegram();
     loadBase().then(function () {
       renderRooms();
       var s = state.settings, f = $("#rulesForm");

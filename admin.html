@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Jost:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=07641685">
-<link rel="stylesheet" href="css/admin.css?v=1126c69d">
+<link rel="stylesheet" href="css/admin.css?v=3b146522">
 </head>
 <body class="sys adm">
 
@@ -370,6 +370,27 @@
 
     <!-- 설정 -->
     <section class="sys-card" data-panel="settings" hidden>
+      <!-- 새 신청이 오면 텔레그램으로 (private.notify, 원장님 2026-10-29) -->
+      <div class="adm__links-box" id="tgBox">
+        <h3 class="sys-h">텔레그램 알림</h3>
+        <p class="sys-note">카카오 연결 요청 · 선생님 연결 요청 · 상담 · 노래 추천 · 제휴 · 내방 오디션 신청이 오면 텔레그램으로 바로 알려드려요.</p>
+        <p class="sys-msg" id="tgState" role="status">확인 중…</p>
+        <ol class="sys-note adm__steps" id="tgSteps" hidden>
+          <li>텔레그램에서 <b>@BotFather</b>를 찾아 <b>/newbot</b> → 봇 이름 → 영어 아이디(끝이 bot)를 보내면 <b>토큰</b>(숫자:글자)을 줘요.</li>
+          <li>그 토큰을 아래 칸에 붙여넣고 <b>저장</b> (채팅에는 올리지 마세요).</li>
+          <li>텔레그램에서 방금 만든 봇을 찾아 <b>시작</b>을 누른 뒤, 여기서 <b>연결 확인</b>.</li>
+        </ol>
+        <form class="adm__bar" id="tgForm" hidden>
+          <input type="password" name="token" placeholder="봇 토큰 붙여넣기" autocomplete="off" aria-label="봇 토큰">
+          <button class="sys-btn" type="submit">저장</button>
+        </form>
+        <div class="adm__actions">
+          <button type="button" class="sys-btn" id="tgLink" hidden>연결 확인</button>
+          <label class="adm__check" id="tgBookWrap" hidden><input type="checkbox" id="tgBook"> 연습실 예약·취소도 알림</label>
+          <button type="button" class="sys-link" id="tgOff" hidden>알림 끄기</button>
+        </div>
+      </div>
+
       <h3 class="sys-h">카카오톡에 넣을 주소</h3>
       <p class="sys-note">카카오톡 채널 메뉴나 단톡방 공지에 넣으세요. 누르면 그 화면이 바로 열려요. 한 번 로그인한 학생은 다시 로그인하지 않아도 돼요.</p>
       <ul class="adm__links" id="linkList"></ul>
@@ -403,6 +424,6 @@
 
 <script src="js/config.js?v=4a2bf4c9"></script>
 <script src="js/api.js?v=ae8e391c"></script>
-<script src="js/admin.js?v=b0d37c69"></script>
+<script src="js/admin.js?v=119a9f96"></script>
 </body>
 </html>
