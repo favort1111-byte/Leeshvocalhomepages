@@ -560,13 +560,13 @@
     },
     admin_sheet_open: function () { return { ok: true }; },
     // 텔레그램 알림 (관리자 → 설정): 체험 모드는 실제로 보내지 않고 연결된 척만
-    admin_telegram_status: function () { return { ok: true, hasBot: !!demoTg.bot, bot: demoTg.bot, chats: demoTg.chats, bookings: demoTg.bookings }; },
+    admin_telegram_status: function () { return { ok: true, hasBot: !!demoTg.bot, bot: demoTg.bot, chats: demoTg.chats, groups: demoTg.chats ? 1 : 0, bookings: demoTg.bookings }; },
     admin_telegram_set: function (a) {
       if (!/^[0-9]{5,15}:[A-Za-z0-9_-]{30,50}$/.test(String(a.p_token || "").trim())) return fail("토큰 모양이 달라요. BotFather가 준 \"숫자:글자\" 전체를 붙여넣어 주세요.");
       demoTg.bot = "leesh_alarm_bot"; demoTg.chats = 0;
       return { ok: true, bot: demoTg.bot };
     },
-    admin_telegram_link: function () { demoTg.chats = 1; return { ok: true, chats: 1 }; },
+    admin_telegram_link: function () { demoTg.chats = 1; return { ok: true, chats: 1, groups: 1 }; },
     admin_telegram_options: function (a) { demoTg.bookings = !!a.p_bookings; return { ok: true }; },
     admin_telegram_off: function () { demoTg.bot = null; demoTg.chats = 0; return { ok: true }; },
     // 선생님 화면 (teacher.html)

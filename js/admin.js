@@ -1976,8 +1976,9 @@
       $("#tgOff").hidden = !d.hasBot;
       $("#tgBookWrap").hidden = !on;
       $("#tgBook").checked = !!d.bookings;
-      if (on) msg(st, "켜짐 · @" + (d.bot || "봇") + " → " + d.chats + "명에게 보내요. 다른 관리자도 봇에게 말을 건 뒤 \"받는 사람 다시 확인\"을 누르면 같이 받아요.", "ok");
-      else if (d.hasBot) msg(st, "봇 저장됨 (@" + (d.bot || "") + "). 텔레그램에서 이 봇을 찾아 \"시작\"을 누른 뒤 \"연결 확인\"을 눌러주세요.");
+      if (on) msg(st, "켜짐 · @" + (d.bot || "봇") + " → " + (d.groups ? "그룹 대화방" + (d.groups > 1 ? " " + d.groups + "곳" : "") + "으로 보내요." :
+        d.chats + "명에게 1:1로 보내요. 관리자와 같이 받으려면 그룹에 봇을 초대하고 /start 를 보낸 뒤 \"받는 사람 다시 확인\"을 눌러주세요."), "ok");
+      else if (d.hasBot) msg(st, "봇 저장됨 (@" + (d.bot || "") + "). 1:1은 봇에서 \"시작\", 그룹은 봇을 초대하고 그룹에 /start 를 보낸 뒤 \"연결 확인\"을 눌러주세요.");
       else msg(st, "아직 꺼져 있어요. 아래 순서대로 한 번만 해주세요.");
     });
   }

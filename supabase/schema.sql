@@ -2523,3 +2523,58 @@ revoke all on function public.admin_telegram_status(), public.admin_telegram_set
   public.admin_telegram_options(boolean), public.admin_telegram_off() from public, anon;
 grant execute on function public.admin_telegram_status(), public.admin_telegram_set(text), public.admin_telegram_link(),
   public.admin_telegram_options(boolean), public.admin_telegram_off() to authenticated;
+-- 텔레그램 알림을 그룹 대화방으로도 (원장님 2026-10-29: 관리자와 같이 받는 그룹)
+-- 봇을 그룹에 초대하면 그 그룹(초대 기록·그룹 안 /start)을 찾아 받는 곳으로 정함. 그룹이 있으면 그룹만 (1:1과 겹쳐 두 번 오지 않게).
+-- 그룹이 슈퍼그룹으로 바뀌면 번호가 바뀌므로 migrate_to_chat_id를 따라감.
+create or replace function public.admin_telegram_link() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare t private.telegram; r record; j jsonb; groups text[]; people text[]; gone text[]; found text[]; c text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  select * into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' then return private.fail('봇 토큰을 먼저 저장해주세요.'); end if;
+  select status, content into r from extensions.http_get('https://api.telegram.org/bot' || t.bot_token || '/getUpdates');
+  begin j := r.content::jsonb; exception when others then j := null; end;
+  if r.status <> 200 or j is null then return private.fail('텔레그램에 연결하지 못했어요. 잠시 뒤 다시 눌러주세요.'); end if;
+
+  with chats as (
+    select coalesce(u -> 'message', u -> 'my_chat_member', u -> 'channel_post') as m from jsonb_array_elements(j -> 'result') u
+  )
+  select coalesce(array_agg(distinct m -> 'chat' ->> 'id') filter (where m -> 'chat' ->> 'type' in ('group', 'supergroup')), '{}'),
+         coalesce(array_agg(distinct m -> 'chat' ->> 'id') filter (where m -> 'chat' ->> 'type' = 'private'), '{}'),
+         coalesce(array_agg(distinct m -> 'chat' ->> 'id') filter (where m ? 'migrate_to_chat_id'
+                    or m -> 'new_chat_member' ->> 'status' in ('left', 'kicked')), '{}')
+    into groups, people, gone
+    from chats where m is not null;
+  -- 슈퍼그룹으로 바뀐 그룹은 새 번호로
+  select coalesce(array_agg(distinct x), '{}') into groups from (
+    select g as x from unnest(groups) g where g <> all (gone)
+    union
+    select u -> 'message' ->> 'migrate_to_chat_id' from jsonb_array_elements(j -> 'result') u where u -> 'message' ? 'migrate_to_chat_id'
+  ) s;
+
+  if cardinality(groups) > 0 then
+    found := groups;
+  elsif cardinality(people) > 0 then
+    found := array(select distinct x from unnest(coalesce(t.chat_ids, '{}') || people) x where x not like '-%');
+  else
+    return private.fail('봇에게 온 메시지가 없어요. 1:1이면 @' || coalesce(t.bot_name, '봇') || ' 에서 "시작", 그룹이면 봇을 그룹에 초대한 뒤 그룹에 /start 를 보내고 다시 눌러주세요.');
+  end if;
+  update private.telegram set chat_ids = found where id = 1;
+  foreach c in array found loop
+    perform net.http_post(url := 'https://api.telegram.org/bot' || t.bot_token || '/sendMessage',
+      body := jsonb_build_object('chat_id', c, 'text', '✅ 이송희보컬레슨 알림이 연결됐어요. 새 신청이 오면 여기로 알려드릴게요.'));
+  end loop;
+  return jsonb_build_object('ok', true, 'chats', cardinality(found), 'groups', cardinality(groups));
+end $$;
+
+create or replace function public.admin_telegram_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare t private.telegram;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into t from private.telegram where id = 1;
+  return jsonb_build_object('ok', true, 'hasBot', coalesce(t.bot_token, '') <> '', 'bot', t.bot_name,
+                            'chats', cardinality(t.chat_ids), 'bookings', t.bookings,
+                            'groups', (select count(*) from unnest(t.chat_ids) x where x like '-%'));
+end $$;
