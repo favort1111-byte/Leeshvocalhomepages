@@ -103,6 +103,7 @@
 ## 첫 화면 (2026-10-28)
 - 아이콘 이름은 **영어** (YouTube, stage.jpg, audition.jpg …), 마우스를 올리면 한글 뜻(title). **map (오시는 길)**, **my folder (내 폴더)**만 한글을 작게 같이 씀.
 - 인스타그램 아이콘 **1개 "Instagram"** = 오디션반 계정. 취미반 인스타는 운영을 안 해서 홈페이지에서 전부 뺌 (원장님 2026-10-28, 필요하면 `blog_content.INSTA_HOBBY`로 다시). 아이콘을 아무 데로나 돌아다니게 하는 건 원장님과 얘기해서 안 함 (누르기 어렵고 정신없음).
+- 아이콘이 가는 곳 (원장님 2026-10-29, `tools/build_pages.py` ICON_LINKS): stage → about 원장님 소개 · lesson → 레슨 4단계 · vocal → 우리 학원만의 특징 · hobby → 원포인트 레슨 · exam → 입시 합격 실적(`#schools`) · debut → 오디션 케어 · results → 합격 실적.
 - 새 오디션 소식(14일 안, 안 본 것)이 있으면 audition.jpg에 빨간 N + 흔들림 (`js/newsbadge.js`, audition.html을 열면 꺼짐).
 
 ## 내 폴더 메뉴 (2026-10-28, 원장님이 정한 순서)

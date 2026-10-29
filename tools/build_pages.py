@@ -148,15 +148,16 @@ KAKAO = "https://pf.kakao.com/_xgNYbK"
 # ---------- where each desktop icon goes ----------
 # Icons open their detail straight away (원장님 2026-10-18: no photo scene in between).
 # These are the pages the old scenes' "자세히" buttons pointed to.
+# 원장님 2026-10-29: vocal → 우리 학원만의 특징, hobby → 원포인트 레슨, exam → 입시 합격 실적.
 ICON_LINKS = {
     "results": ("about.html#results", False),
     "stage": ("about.html#teacher", False),
     "lesson": ("about.html#steps", False),
     "room": ("booking.html", False),
     "audition": ("audition.html", False),
-    "voice": ("consult.html", False),
+    "voice": ("about.html#why", False),
     "hobby": ("about.html#tips", False),
-    "exam": ("consult.html", False),
+    "exam": ("about.html#schools", False),
     "debut": ("about.html#care", False),
     "youtube": (YT, True),
     "map": (MAP, True),
@@ -210,10 +211,10 @@ home_icons = "\n".join([
     thumb(169, 263.5, 37, 38, 3, "practice room.jpg", scene="room", ko="연습실 예약"),
     thumb(90, 296, 49, 68, 4, "audition.jpg", scene="audition", ko="오디션 소식"),
     thumb(319, 324, 37, 37, 5, "results.jpg", scene="results", ko="합격 실적"),
-    thumb(464, 349.5, 83.5, 46.5, 7, "vocal.jpg", scene="voice", ko="보컬 상담"),
+    thumb(464, 349.5, 83.5, 46.5, 7, "vocal.jpg", scene="voice", ko="우리 학원만의 특징"),
     icon(504.5, 152.5, 48, 48, "map<small>오시는 길</small>", MAP, FINDER, scene="map", ko="오시는 길 (네이버 지도)"),
-    thumb(563, 256.5, 61.5, 47.5, 6, "hobby.jpg", scene="hobby", ko="취미반"),
-    thumb(637.5, 119.5, 73.5, 43, 9, "exam.jpg", scene="exam", ko="입시 상담"),
+    thumb(563, 256.5, 61.5, 47.5, 6, "hobby.jpg", scene="hobby", ko="원포인트 레슨"),
+    thumb(637.5, 119.5, 73.5, 43, 9, "exam.jpg", scene="exam", ko="입시 합격 실적"),
     thumb(699, 150, 43.5, 49, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
     icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가·노래 추천"),
     icon(590, 352, 44, 44, "games.exe", "games.html", GAME_ICON, ko="미니게임"),

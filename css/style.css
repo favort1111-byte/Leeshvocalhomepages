@@ -527,7 +527,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .scrap__kicker{margin:0;font-family:var(--f-hand);font-size:26px;line-height:1;color:var(--pink);transform:rotate(-2deg);transform-origin:left;}
 .scrap--paper .scrap__kicker{color:var(--brown);}
 .scrap__title{margin:6px 0 0;font-family:"Gowun Batang",var(--f-display);font-weight:400;font-size:clamp(28px,4vw,42px);line-height:1.2;}
-.scrap__sub{margin:36px 0 12px;font-family:"Gowun Batang",serif;font-weight:400;font-size:22px;}
+.scrap__sub{scroll-margin-top:70px;margin:36px 0 12px;font-family:"Gowun Batang",serif;font-weight:400;font-size:22px;}
 .scrap__lede{max-width:760px;margin:0 0 18px;font-size:17px;}
 .scrap__note{margin:18px 0 0;font-size:14px;opacity:.85;}
 .scrap__note a{text-underline-offset:3px;}

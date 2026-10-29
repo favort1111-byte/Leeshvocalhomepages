@@ -364,7 +364,7 @@ def results_section():
             + f'    <details class="more"><summary>기획사 {len(rest)}곳 더 보기</summary><ul class="agencies" id="passAgenciesMore">{cards(rest)}</ul></details>\n'
             + '    <h3 class="scrap__sub">방송 · 프로그램</h3>\n'
             + f'    <ul class="agencies" id="passShows">{cards(SHOWS)}</ul>\n'
-            + '    <h3 class="scrap__sub">입시</h3>\n'
+            + '    <h3 class="scrap__sub" id="schools">입시</h3>\n'
             + f'    <article class="card card--paper" id="passSchools"><div class="card__cols">{schools}</div></article>\n'
             + '    <p class="scrap__note">합격한 학생 이름은 싣지 않았어요. 그동안의 합격 소식은 <a href="results.html">results</a>에서 볼 수 있어요.</p>\n')
 
