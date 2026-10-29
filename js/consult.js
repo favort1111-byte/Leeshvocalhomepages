@@ -70,7 +70,7 @@
       if (!res.ok) { msg(res.error, "error"); return; }
       form.reset();
       region.hidden = true;
-      msg("접수했어요! 확인 후 상담 일정을 조율해 드릴게요. 감사합니다 💖", "ok");
+      msg("접수되었습니다. 확인 후 상담 일정을 안내해 드리겠습니다. 감사합니다.", "ok");
     });
   });
 })();

@@ -45,15 +45,15 @@ DIRECTOR = {
 }
 
 # 댄스 강사 프로필은 원장님 요청으로 홈페이지에서 뺌 (2026-10-29).
-STAFF_NOTE = "모든 강사진이 신인개발팀 · 연습생 경력, 강남권 학원 출강 경력을 갖고 있어요."
+STAFF_NOTE = "모든 강사진이 신인개발팀 · 연습생 경력, 강남권 학원 출강 경력을 갖추고 있습니다."
 
 # ---------------------------------------------------------------- curriculum
 
 # 커리큘럼 (원장님 2026-10-29 새 안내 이미지 그대로: 오디션 심화반 NEW, 반 번호, STEP 문구, 심화반 추가 커리큘럼)
 CLASSES = ["오디션 심화반", "오디션반", "입시반", "전문반", "취미반"]
 CLASSES_NEW = {"오디션 심화반"}
-CLASSES_NUMS = "취미반 (1, 2번) · 전문반 (1, 2, 3번) · 입시 · 오디션반 (1, 2, 3, 4번)에 해당하여 레슨을 진행해요."
-CLASSES_NOTE = "모든 반은 담임제예요. 담당 선생님이 직접 상담부터 레슨까지 진행하고, 레슨 후 1:1 맞춤형 피드백을 드려요."
+CLASSES_NUMS = "취미반 (1, 2번) · 전문반 (1, 2, 3번) · 입시 · 오디션반 (1, 2, 3, 4번)에 해당하여 레슨을 진행합니다."
+CLASSES_NOTE = "모든 반은 담임제입니다. 담당 선생님이 상담부터 레슨까지 직접 진행하고, 레슨 후 1:1 맞춤 피드백을 드립니다."
 STEPS = [
     ("노래 진단", ["학생의 노래를 들어보며 기초 발성을 파악 후 피드백 및 맞춤형 기본기 수업 진행"]),
     ("실전 수업", ["기본기를 노래에 직접 적용하며 발성의 기량을 증진시키는 실전 방법",
@@ -114,7 +114,7 @@ CARE = [
 ]
 PARTNERS = ["헤어 메이크업", "붙임머리", "스타일링 컨설팅", "경락", "헬스장", "피부과", "성형외과", "치과", "촬영 스튜디오", "심리상담센터"]
 ONLINE = {
-    "lead": "보컬 + 댄스를 한 번에, 온라인으로도 배울 수 있어요. 고음질 · 고화질 장비로 오프라인 레슨과 똑같이 진행해요.",
+    "lead": "보컬과 댄스 모두 온라인으로 수강할 수 있습니다. 고음질 · 고화질 장비로 오프라인 레슨과 같은 수준으로 진행합니다.",
     "dance": [("기본기", "업다운 · 아이솔레이션 · 선 뻗기 · 스텝 · 힐댄스"),
               ("연습생 기본기 루틴", "대형 기획사 연습생들이 실제로 배우는 루틴"),
               ("댄스 루틴", "힙합 · 걸스힙합"),
@@ -240,13 +240,13 @@ ROOM_PHOTOS = [
 ]
 ROOM_FACTS = [
     "모든 연습실은 수강생 365일 24시간 무료",
-    "사전 예약제라 기다리지 않고 혼자 써요",
+    "사전 예약제로 대기 없이 1인 사용",
     "한 번에 최대 2시간 · 오늘·내일 예약",
     "50인치 모니터 · 노트북 · 삼각대 · 피아노 · 에어컨 · 공기청정기",
     "50cm 이상 방음벽의 스튜디오형 연습실",
     "C hall 댄스 연습실 (약 10평, 1인 단독 사용)",
 ]
-ROOM_LINE = "칸막이로만 된 연습실에서 소리가 새어 나가 마음 편히 연습 못 하셨죠? 50cm 이상 방음이 된 스튜디오형 연습실에서 프라이빗하게 연습하세요."
+ROOM_LINE = "모든 연습실은 50cm 이상 방음벽을 갖춘 스튜디오형입니다. 소리 걱정 없이 혼자 연습할 수 있습니다."
 
 # ---------------------------------------------------------------- one-point lessons (blog posts)
 
@@ -295,7 +295,7 @@ def _photo(name, caption, cls=""):
 def teacher_section():
     d = DIRECTOR
     groups = "".join(f'<div class="card__col"><h4>{t}</h4>{_ul(items)}</div>' for t, items in d["groups"])
-    return (_head("the teacher", "무대에 서본 사람이 가르쳐요", "teacher")
+    return (_head("the teacher", "대형 기획사 보컬 트레이너 출신 원장", "teacher")
             + '    <div class="teacher">\n'
             + '      <div class="teacher__photos">' + _photo("director", "대표원장 이송희", "snap--tilt-l")
             + _photo("klloy-album", "가수 클로이 (Klloy)", "snap--small snap--tilt-r") + "</div>\n"
@@ -315,15 +315,15 @@ def steps_section():
         f'<li class="step{" step--wide" if i == 3 else ""}"><span class="step__no">STEP 0{i + 1}</span>'
         f'<h3>{t}</h3>{_ul(items)}</li>' for i, (t, items) in enumerate(STEPS))
     plus = "".join(f'<li class="step step--plus"><h3>{t}</h3>{_ul(items)}</li>' for t, items in ADVANCED)
-    return (_head("4 steps", "진단부터 플래닝까지", "steps")
+    return (_head("4 steps", "커리큘럼 4 STEP", "steps")
             + f'    <ul class="classes">{classes}</ul>\n'
             + f'    <p class="scrap__lede">{CLASSES_NUMS}<br>{CLASSES_NOTE}</p>\n'
             + f'    <ol class="steps">{steps}</ol>\n'
             + '    <h3 class="scrap__sub" id="advanced">오디션 심화반 추가 커리큘럼 <span class="classes__new">NEW</span></h3>\n'
-            + '    <p class="scrap__lede">기존 오디션반 커리큘럼은 모두 적용되어 있어요.</p>\n'
+            + '    <p class="scrap__lede">기존 오디션반 커리큘럼이 모두 포함됩니다.</p>\n'
             + f'    <ul class="steps steps--plus">{plus}</ul>\n'
             + f'    <p class="scrap__note">{ADVANCED_NOTE}</p>\n'
-            + '    <p class="scrap__note">매 레슨이 끝나면 레슨일지를 써서 공유해요. 월말평가 결과는 홈 화면 <a href="index.html#evals">내 폴더</a>에서 볼 수 있어요.</p>\n')
+            + '    <p class="scrap__note">매 레슨 후 레슨일지를 작성해 공유합니다. 월말평가 결과는 홈 화면 <a href="index.html#evals">내 폴더</a>에서 확인할 수 있습니다.</p>\n')
 
 
 def why_section():
@@ -349,7 +349,7 @@ def care_section():
             + '      <div class="care-photos">' + _photo("seminar", "매달 하는 오디션 세미나", "snap--tilt-r")
             + _photo("audition-board", "학원 내방 오디션 공지", "snap--tilt-l") + "</div>\n"
             + "    </div>\n"
-            + '    <div class="partners"><p>실제 엔터 관계자가 추천한 제휴 업체로 전문가 케어까지</p>'
+            + '    <div class="partners"><p>엔터 관계자가 추천한 제휴 업체 전문가 케어</p>'
             + f'<ul class="card__chips">{partners}</ul></div>\n'
             + '    <article class="card card--paper online">\n'
             + '      <p class="card__name">온라인 레슨 <span>보컬 + 댄스</span></p>\n'
@@ -386,12 +386,12 @@ def results_section():
             + f'    <ul class="agencies" id="passShows">{cards(SHOWS)}</ul>\n'
             + '    <h3 class="scrap__sub" id="schools">입시</h3>\n'
             + f'    <article class="card card--paper" id="passSchools"><div class="card__cols">{schools}</div></article>\n'
-            + '    <p class="scrap__note">합격한 학생 이름은 싣지 않았어요. 그동안의 합격 소식은 <a href="results.html">results</a>에서 볼 수 있어요.</p>\n')
+            + '    <p class="scrap__note">학생 이름은 싣지 않습니다. 날짜별 합격 소식은 <a href="results.html">results</a>에서 확인할 수 있습니다.</p>\n')
 
 
 def rooms_section():
     snaps = "".join(_photo(n, c, f"snap--{w}" if w else "") for n, c, w in ROOM_PHOTOS)
-    return (_head("rooms", "새벽 2시에도 열려 있는 연습실", "rooms")
+    return (_head("rooms", "365일 24시간 연습실", "rooms")
             + f'    <p class="scrap__lede">{ROOM_LINE}</p>\n'
             + "    " + _ul(ROOM_FACTS, "facts") + "\n"
             + f'    <div class="gallery">{snaps}</div>\n'

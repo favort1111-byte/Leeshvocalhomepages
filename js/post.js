@@ -197,15 +197,15 @@
       }
       if (p) return render(fromInstagram(p));
       box.textContent = "";
-      box.appendChild(el("p", "news__empty", "글을 찾을 수 없어요."));
+      box.appendChild(el("p", "news__empty", "글을 찾을 수 없습니다."));
     });
     return;
   }
-  if (!id) { box.appendChild(el("p", "news__empty", "글을 찾을 수 없어요.")); return; }
+  if (!id) { box.appendChild(el("p", "news__empty", "글을 찾을 수 없습니다.")); return; }
   fetch(BASE + "data/blog/posts/" + id + ".json").then(function (r) { if (!r.ok) throw r; return r.json(); })
     .then(render, function () {
       box.textContent = "";
-      box.appendChild(el("p", "news__empty", "글을 찾을 수 없어요."));
+      box.appendChild(el("p", "news__empty", "글을 찾을 수 없습니다."));
       var a = el("a", "pill-btn", "오디션 소식으로");
       a.href = "audition.html";
       box.appendChild(a);

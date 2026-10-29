@@ -82,7 +82,7 @@
     var go = el("a", "pill-btn news__applybtn", "내방 오디션 신청하기 ↗");
     go.href = "apply.html";
     apply.appendChild(go);
-    apply.appendChild(el("span", "news__applynote", "학원생만 신청할 수 있어요. 일정은 아래 글에서 확인하세요."));
+    apply.appendChild(el("span", "news__applynote", "학원생만 신청할 수 있습니다. 일정은 아래 글을 확인하세요."));
     var lede = visitSec.querySelector(".news__lede");
     visitSec.insertBefore(apply, lede ? lede.nextSibling : visitSec.firstChild);
   }

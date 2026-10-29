@@ -366,9 +366,8 @@ contact = (head("Contact | 이송희보컬레슨",
            + nav("contact", "dark") + "\n"
            + '  <div class="contact__text">\n'
            + "    <h1>let's connect</h1>\n"
-           + "    <p>노래는 늘 깔끔하게 완성된 채로 오지 않아요. 오디션 전날 밤의 연습, 무심코 흥얼거린 가사, "
-             "처음 잡아본 마이크에서 시작되죠. 지금 어디쯤인지부터 함께 확인해요. "
-             "선릉역 7번 출구 도보 2~3분 · 카카오톡 24시간 문의 · 010-4458-5448</p>\n"
+           + "    <p>상담은 카카오톡 채널(24시간 문의)이나 전화 <a href=\"tel:01044585448\" style=\"white-space:nowrap\">010-4458-5448</a>로 받습니다. "
+             "방문 상담은 예약 후 가능합니다. 선릉역 7번 출구 도보 2~3분.</p>\n"
            + f'    <a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">contact</a>\n'
            + "  </div>\n"
            + '  <div class="collage" aria-hidden="true">\n' + collage + "\n  </div>\n"
@@ -377,7 +376,7 @@ contact = (head("Contact | 이송희보컬레슨",
 # 상담 신청 = 학원이 카톡 채널로 받던 양식 4가지 그대로 (원장님 2026-10-29)
 CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
     <h1>상담 신청</h1>
-    <p class="consult__lede">📍 모든 상담은 <b>100% 예약제</b>예요. 아래 4가지를 적어 보내주시면 확인 후 상담 일정을 조율해 드려요.</p>
+    <p class="consult__lede">모든 상담은 <b>100% 예약제</b>입니다. 아래 4가지를 적어 보내주시면 확인 후 상담 일정을 안내해 드립니다.</p>
 
     <h2 class="consult__step"><span>1</span> 성함 · 생년월일 · 연락처</h2>
     <div class="sys-row">
@@ -396,7 +395,7 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
     <h2 class="consult__step"><span>3</span> 클래스 · 온/오프라인 · 강사</h2>
     <label class="sys-field"><span>클래스</span>
       <select name="track">
-        <option value="">아직 모르겠어요</option>
+        <option value="">아직 정하지 않음</option>
         <option>오디션 심화반</option>
         <option>오디션반</option>
         <option>입시반</option>
@@ -410,11 +409,11 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
       <label><input type="radio" name="mode" value="온라인"> 온라인</label>
     </fieldset>
     <label class="sys-field" id="consultRegion" hidden><span>거주 지역 (온라인)</span><input name="region" maxlength="50" placeholder="예) 부산 해운대구"></label>
-    <label class="sys-field"><span>희망 강사 (선택)</span><input name="teacher" maxlength="30" placeholder="예) 수석 트레이너님 · 잘 모르겠어요"></label>
+    <label class="sys-field"><span>희망 강사 (선택)</span><input name="teacher" maxlength="30" placeholder="없으면 비워두세요"></label>
 
     <h2 class="consult__step"><span>4</span> 희망하는 상담 요일 · 시간대</h2>
     <fieldset class="sys-radios consult__days">
-      <legend>요일 (여러 개 골라도 돼요)</legend>
+      <legend>요일 (여러 개 선택 가능)</legend>
       {"".join(f'<label><input type="checkbox" name="days" value="{d}"> {d}</label>' for d in "월화수목금토일")}
     </fieldset>
     <label class="sys-field"><span>시간대</span><input name="times" maxlength="60" placeholder="예) 2시~10시 사이" required></label>
@@ -424,11 +423,11 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
     <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
     <p class="sys-msg" id="consultMsg" role="status"></p>
     <ul class="consult__notes">
-      <li>1인당 1회 상담을 원칙으로 해요.</li>
-      <li>담당 선생님을 배정해 꼼꼼히 상담하기 위해, 레슨 중에는 답장이 조금 늦어질 수 있어요.</li>
-      <li>월 · 일요일 및 공휴일은 상담 확정이 다소 늦어질 수 있어요.</li>
+      <li>상담은 1인 1회가 원칙입니다.</li>
+      <li>담당 선생님이 직접 상담하므로 레슨 중에는 답장이 늦어질 수 있습니다.</li>
+      <li>월 · 일요일과 공휴일은 상담 확정이 늦어질 수 있습니다.</li>
     </ul>
-    <small>적어주신 정보는 상담 안내에만 사용돼요. <a href="privacy.html">개인정보처리방침</a></small>
+    <small>적어주신 정보는 상담 안내에만 사용합니다. <a href="privacy.html">개인정보처리방침</a></small>
   </form>
 """
 
@@ -498,7 +497,7 @@ booking = (head("Booking | 이송희보컬레슨",
 # ---------- APPLY: 학원 내방 오디션 신청서 (js/apply.js; 학원 구글 폼과 같은 질문) ----------
 APPLY_APP = f"""  <div class="booking__inner">
     <h1 class="booking__title">audition apply</h1>
-    <p class="booking__note">학원 내방 오디션 신청서예요. 이송희보컬레슨 학원생만 신청할 수 있어요.</p>
+    <p class="booking__note">학원 내방 오디션 신청서 · 학원생만 신청할 수 있어요.</p>
     <section class="sys sys-card" id="applyApp" aria-live="polite">
       <div id="applyOff" hidden>
         <p>신청서를 준비하고 있어요. 그동안은 카카오톡으로 신청해주세요.</p>
@@ -519,7 +518,7 @@ apply_page = (head("Audition Apply | 이송희보컬레슨", "이송희보컬레
 # ---------- TEACHER: 선생님 화면 (js/teacher.js; 카카오 로그인 → 원장님 승인 → 담당 학생 레슨 일지) ----------
 TEACHER_APP = """  <div class="booking__inner booking__inner--wide">
     <h1 class="booking__title">teacher</h1>
-    <p class="booking__note">선생님 전용 화면이에요. 담당 학생의 레슨 일지를 쓰면 학생 내 폴더에 바로 보여요.</p>
+    <p class="booking__note">선생님 전용 화면 · 담당 학생 레슨 일지 쓰기</p>
     <section class="sys sys-card" id="teacherApp" aria-live="polite"></section>
   </div>
 """
@@ -572,7 +571,7 @@ GAMES_BODY = {
             </div>
           </div>
         </div>
-        <p class="game__note">목소리는 이 기기 안에서만 쓰이고, 녹음되거나 어디로 보내지지 않아요. 이어폰을 끼면 더 잘 돼요.</p>
+        <p class="game__note">목소리는 녹음 · 전송되지 않아요. 이어폰을 끼면 더 정확해요.</p>
 """,
     "pitch": """        <div class="pitch">
           <p class="pitch__lives" aria-label="남은 기회">♥♥♥</p>
@@ -636,7 +635,7 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + '    <header class="arcade__head">\n'
               + '      <p class="arcade__kicker">mini games</p>\n'
               + '      <h1>보컬 오락실</h1>\n'
-              + '      <p>놀면서 귀랑 목소리를 깨워요. 기록은 이 기기에만 저장돼요.</p>\n'
+              + '      <p>귀 · 목소리 워밍업 미니게임. 기록은 이 기기에만 남아요.</p>\n'
               + '      <p class="arcade__who" id="membersWho"></p>\n'
               + '    </header>\n'
               # 수강생 전용 (원장님 2026-10-29): js/gate.js shows the games after a Kakao sign-in
@@ -645,7 +644,7 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + games_menu + "\n"
               + "".join(game_window(g[0], g[2], GAMES_BODY.get(g[0], '        <div class="g2" data-g2></div>\n')) for g in GAME_LIST)
               + '    </div>\n'
-              + '    <p class="arcade__more">진짜 노래 실력은 레슨에서 키워요 → <a href="about.html#steps">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
+              + '    <p class="arcade__more">실력은 레슨에서 → <a href="about.html#steps">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
               + "  </div>\n"
               + "</main>\n" + foot("signin", "gate", "games", "games2"))
 
@@ -684,7 +683,7 @@ def news_card(p):
 def news_list(kind, first):
     items = [p for p in POSTS if p["kind"] == STATIC_KIND[kind]]
     if not items:
-        return '      <p class="news__empty">아직 올라온 소식이 없어요.</p>\n'
+        return '      <p class="news__empty">아직 올라온 소식이 없습니다.</p>\n'
     out = '      <ul class="news__list">\n' + "".join(news_card(p) for p in items[:first]) + "      </ul>\n"
     if len(items) > first:
         out += ('      <details class="news__more"><summary>지난 소식 ' + str(len(items) - first) + '개 더 보기</summary>\n'
@@ -708,29 +707,29 @@ def news_foot():
 NEWS_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">audition news</h1>\n'
-    '    <p class="booking__note">학원 내방 오디션 일정과 기획사 오디션 소식을 모았어요. 누르면 자세히 볼 수 있어요. (2020년부터 지금까지)</p>\n'
+    '    <p class="booking__note">학원 내방 오디션 일정과 기획사 오디션 소식입니다. (2020년~)</p>\n'
     # 최신 소식은 인스타그램에 먼저 올라와요: 오디션반 계정의 최근 글을 그대로 보여줌 (원장님 2026-10-28)
     '    <section class="news__sec news__insta" aria-labelledby="news-insta">\n'
     '      <h2 id="news-insta">인스타그램 최신 소식</h2>\n'
-    '      <p class="news__lede">내방 오디션·월말평가 일정 같은 새 소식은 인스타그램에 제일 먼저 올라와요.</p>\n'
+    '      <p class="news__lede">내방 오디션 · 월말평가 일정은 인스타그램에 가장 먼저 올라옵니다.</p>\n'
     f'      <iframe class="news__instaframe" src="{blog.INSTA_AUDITION}embed/" title="이송희보컬레슨 오디션반 인스타그램 최근 글" loading="lazy"></iframe>\n'
     f'      <p class="news__foot"><a class="pill-btn" href="{blog.INSTA_AUDITION}" target="_blank" rel="noopener">인스타그램에서 전체 보기 ↗</a></p>\n'
     '    </section>\n'
     '    <section class="news__sec" data-news="내방" aria-labelledby="news-visit">\n'
     '      <h2 id="news-visit">학원 내방 오디션</h2>\n'
-    '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에 와서 직접 심사해요. 일정은 수업 때나 카카오톡으로도 안내해요.</p>\n'
+    '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에서 직접 심사합니다. 일정은 수업 시간과 카카오톡으로도 안내합니다.</p>\n'
     + news_list("내방", 6) +
     '    </section>\n'
     '    <section class="news__sec" data-news="오디션" aria-labelledby="news-open">\n'
     '      <h2 id="news-open">기획사 오디션 정보</h2>\n'
-    '      <p class="news__lede">기획사 공개·온라인 오디션 소식이에요. 마감이 지났을 수도 있으니 날짜와 글을 꼭 확인하세요.</p>\n'
+    '      <p class="news__lede">기획사 공개 · 온라인 오디션 소식입니다. 지원 전에 마감일을 꼭 확인하세요.</p>\n'
     + news_list("오디션", 8) +
     '    </section>\n'
     # 인스타그램에서 가져온 글 중 오디션·합격이 아닌 것 (js/auditions.js가 채우고 보여줌)
     '    <section class="news__sec" data-news="소식" aria-labelledby="news-school-h" id="news-school" hidden>\n'
     '      <h2 id="news-school-h">학원 소식</h2>\n'
-    '      <p class="news__lede">월말평가·세미나·연습실 안내 같은 학원 소식이에요.</p>\n'
-    '      <p class="news__empty">아직 올라온 소식이 없어요.</p>\n'
+    '      <p class="news__lede">월말평가 · 세미나 · 연습실 안내 등 학원 소식입니다.</p>\n'
+    '      <p class="news__empty">아직 올라온 소식이 없습니다.</p>\n'
     '    </section>\n'
     + news_foot() +
     '  </div>\n')
@@ -738,7 +737,7 @@ NEWS_BODY = (
 RESULTS_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">results</h1>\n'
-    '    <p class="booking__note">우리 학원 학생들의 기획사·오디션 합격 소식이에요. 학생 이름은 이니셜로 적어요.</p>\n'
+    '    <p class="booking__note">이송희보컬레슨 학생들의 기획사 · 오디션 합격 소식입니다. 학생 이름은 이니셜로 표기합니다.</p>\n'
     '    <section class="news__sec" data-news="합격" aria-labelledby="news-pass">\n'
     '      <h2 id="news-pass">합격자 현황</h2>\n'
     + news_list("합격", 20) +
@@ -771,11 +770,11 @@ def tip_card(p):
 TIPS_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">one-point lesson</h1>\n'
-    f'    <p class="booking__note">원장님이 알려주는 노래 꿀팁 영상 {len(TIP_POSTS)}개. 누르면 영상과 설명을 볼 수 있어요.</p>\n'
+    f'    <p class="booking__note">이송희 원장의 노래 꿀팁 영상 {len(TIP_POSTS)}개입니다.</p>\n'
     '    <ul class="tips-grid">\n' + "".join(tip_card(p) for p in TIP_POSTS) + '    </ul>\n'
     '    <section class="news__sec" id="academy" aria-labelledby="news-academy">\n'
     '      <h2 id="news-academy">학원 이야기</h2>\n'
-    '      <p class="news__lede">학원 소개, 커리큘럼, 시설 안내 등 예전에 올렸던 글이에요. 지금 내용은 <a href="about.html">about</a>에서 확인하세요.</p>\n'
+    '      <p class="news__lede">예전에 올린 학원 소개 · 커리큘럼 · 시설 안내 글입니다. 최신 내용은 <a href="about.html">about</a>에서 확인하세요.</p>\n'
     '      <ul class="news__list">\n' + "".join(news_card(p) for p in ACADEMY_POSTS) + '      </ul>\n'
     '    </section>\n'
     + news_foot() +
