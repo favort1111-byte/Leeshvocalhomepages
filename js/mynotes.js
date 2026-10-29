@@ -41,7 +41,7 @@
 
   var sign = LeeshSignIn.mount(box, {
     title: "내 폴더", titleClass: "book__title",
-    lede: "수강생은 내 예약, 학원 일정, 월말평가, 노래·영상 추천, 레퍼토리, 연습 일지, 제휴 업체 신청을 여기서 해요.", ledeClass: "book__lede",
+    lede: "수강생은 내 예약, 학원 일정, 월말평가, " + ((window.LEESH || {}).songRecs === false ? "영상 추천" : "노래·영상 추천") + ", 레퍼토리, 연습 일지, 제휴 업체 신청을 여기서 해요.", ledeClass: "book__lede",
     onSignedIn: function (res, w) { who = w; load(); }
   });
 
