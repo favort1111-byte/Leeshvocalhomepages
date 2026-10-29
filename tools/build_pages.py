@@ -320,7 +320,7 @@ about_groups = "\n".join([
 ])
 
 about = (head("About | 이송희보컬레슨",
-              "이송희보컬레슨의 오디션·입시반, 전문반, 취미반 소개.")
+              "이송희보컬레슨의 오디션 심화반, 오디션·입시반, 전문반, 취미반 소개.")
          + '<main class="stage about">\n'
          + nav("about", "cardboard") + "\n"
          +   '  <h1 class="about__title">our vocal<br>classes</h1>\n'
@@ -381,6 +381,7 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
     <label class="sys-field"><span>관심 있는 반</span>
       <select name="track">
         <option value="">아직 모르겠어요</option>
+        <option>오디션 심화반</option>
         <option>오디션·입시반</option>
         <option>전문반</option>
         <option>취미반</option>
