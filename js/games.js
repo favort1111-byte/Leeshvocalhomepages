@@ -73,6 +73,8 @@
   }
   // Smoothed reading: median of the last few voiced frames, null when silent.
   function listen() {
+    // the game window was just closed (mic off) but its last frame still asks: answer "quiet"
+    if (!mic) return { st: null, rms: 0 };
     mic.an.getFloatTimeDomainData(mic.buf);
     var r = detect(mic.buf, ctx.sampleRate);
     if (r.st == null) { mic.hist.length = 0; return r; }
