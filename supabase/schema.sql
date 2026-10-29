@@ -2685,3 +2685,11 @@ begin
   end if;$s$ from position(mark in d) for length(mark));
   end if;
 end $$;
+-- 체험 레슨 없앰 (원장님 2026-10-29: 이제 체험 레슨 안 함). 상담 방식은 전화 · 방문만, 그 밖의 값은 전화 상담으로.
+do $$
+declare d text := pg_get_functiondef('public.consult_create'::regproc);
+begin
+  if position($s$('전화 상담', '방문 상담', '체험 레슨')$s$ in d) > 0 then
+    execute replace(d, $s$('전화 상담', '방문 상담', '체험 레슨')$s$, $s$('전화 상담', '방문 상담')$s$);
+  end if;
+end $$;

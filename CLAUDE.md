@@ -142,6 +142,7 @@
 - **시험용 주소 (2단계 테스트, 2026-10-27):** GitHub Pages가 main을 `https://favort1111-byte.github.io/Leeshvocalhomepages/`에 보여줌 (저장소 공개, 학생들은 모름).
   원장님 허락으로 2026-10-27 main에 처음 병합. 진짜 카카오 로그인은 여기서 시험. Supabase **Redirect URLs**에 `https://favort1111-byte.github.io/Leeshvocalhomepages/**` 필요 (원장님이 대시보드에서 추가, 내 토큰은 403).
 - 수강료 내용은 넣지 않습니다.
+- **체험 레슨 없음** (원장님 2026-10-29): 상담 신청 방식은 전화 상담 · 방문 상담만 (`consult_create`도 두 가지만, 마이그레이션 `leesh_no_trial_lesson`).
 
 ## 도메인
 - `leeshlesson.com` — **카페24(cafe24)**에 등록되어 있음 (원장님 확인, 2026-09-29).

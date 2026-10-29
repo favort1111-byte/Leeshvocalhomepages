@@ -390,7 +390,6 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
       <legend>상담 방식</legend>
       <label><input type="radio" name="method" value="전화 상담" checked> 전화 상담</label>
       <label><input type="radio" name="method" value="방문 상담"> 방문 상담</label>
-      <label><input type="radio" name="method" value="체험 레슨"> 체험 레슨</label>
     </fieldset>
     <label class="sys-field" id="consultWish" hidden><span>희망 날짜·시간</span><input name="wish" maxlength="100" placeholder="예) 토요일 오후 2시 이후"></label>
     <label class="sys-field"><span>문의 내용 (선택)</span><textarea name="message" rows="3"></textarea></label>

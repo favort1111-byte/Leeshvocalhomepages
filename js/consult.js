@@ -21,7 +21,7 @@
     return r ? r.value : "전화 상담";
   }
 
-  // 방문 상담 · 체험 레슨 ask when the visitor would like to come.
+  // 방문 상담 asks when the visitor would like to come. (체험 레슨은 원장님 2026-10-29 없앰)
   form.addEventListener("change", function (e) {
     if (e.target.name === "method") wish.hidden = method() === "전화 상담";
   });

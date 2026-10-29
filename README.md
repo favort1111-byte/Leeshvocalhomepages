@@ -12,7 +12,7 @@ HTML/CSS는 그걸 보여주는 "테마"라서 디자인을 바꿔도 기능은 
 index.html        home    — 블러 인물사진 배경 + 바탕화면 아이콘
 about.html        about   — "our vocal classes", 폴더 3개(오디션·입시 / 전문 / 취미)
 contact.html      contact — "let's connect" + 폴더 콜라주
-consult.html      consult — 상담 신청 (전화 / 방문 상담 / 체험 레슨)
+consult.html      consult — 상담 신청 (전화 / 방문 상담)
 booking.html      booking — 연습실 예약 (수강 ID 로그인, 연습실 5개 + 춤연습실)
 admin.html        관리자  — 예약 현황, 수강 ID, 상담 신청, 설정 (메뉴에는 안 보이는 주소)
 

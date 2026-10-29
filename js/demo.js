@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 20; // bump when the demo defaults change
+  var VERSION = 21; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -161,7 +161,7 @@
       ],
       tokens: [], // "로그인 유지" keys: { key, member_id }
       consults: [
-        { id: 1, status: "접수", method: "체험 레슨", wish: "토요일 오후", name: "홍길동", phone: "010-1111-2222", track: "취미반", message: "고음이 잘 안 올라가요.", memo: null, created_at: new Date(Date.now() - 3600000).toISOString() },
+        { id: 1, status: "접수", method: "방문 상담", wish: "토요일 오후", name: "홍길동", phone: "010-1111-2222", track: "취미반", message: "고음이 잘 안 올라가요.", memo: null, created_at: new Date(Date.now() - 3600000).toISOString() },
         { id: 2, status: "연락완료", method: "전화 상담", wish: null, name: "최유나", phone: "010-3333-4444", track: "오디션·입시반", message: null, memo: "다음 주 방문 예정", created_at: new Date(Date.now() - 86400000 * 2).toISOString() }
       ]
     };
@@ -308,7 +308,7 @@
       if (!name) return fail("이름을 입력해주세요.");
       if (digits.length < 9 || digits.length > 11) return fail("연락처를 정확히 입력해주세요.");
       var phone = digits.length === 11 ? digits.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3") : digits.replace(/(\d{3})(\d{3})(\d+)/, "$1-$2-$3");
-      var method = ["전화 상담", "방문 상담", "체험 레슨"].indexOf(a.p_method) === -1 ? "전화 상담" : a.p_method;
+      var method = ["전화 상담", "방문 상담"].indexOf(a.p_method) === -1 ? "전화 상담" : a.p_method;
       db.consults.unshift({
         id: ++db.next, status: "접수", method: method, wish: a.p_wish || null, name: name, phone: phone,
         track: a.p_track || null, message: a.p_message || null, memo: null, created_at: new Date().toISOString()
