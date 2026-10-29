@@ -8,7 +8,7 @@
   var TEXT_COLORS = ["#000000", "#666666", "#999999", "#D62828", "#E8710A", "#C9A100", "#1E8A4C", "#0B8A8A", "#1E5BD8", "#7B3FC4", "#C2185B"];
   var FILL_COLORS = ["", "#F4CCCC", "#FCE5CD", "#FFF2CC", "#FFE45C", "#D9EAD3", "#D0E0E3", "#CFE2F3", "#D9D2E9", "#EAD1DC", "#FF9A9A"];
   var SIZES = [10, 11, 12, 13, 14, 15, 16, 18, 20, 24, 28, 32, 36];
-  var BASE = 15; // 칸 글씨 기본 크기 (css .rt-box)
+  var BASE = 16; // 칸 글씨 기본 크기 (css .rt-box)
   var WORDS = { "large": 1, "x-large": 1, "xx-large": 1 }; // 예전에 쓴 "크게"
 
   function okColor(v) {
@@ -102,7 +102,8 @@
     box.setAttribute("aria-multiline", "true");
     if (opts.label) box.setAttribute("aria-label", opts.label);
     if (opts.placeholder) box.setAttribute("data-placeholder", opts.placeholder);
-    box.style.minHeight = (1.55 * (opts.rows || 2) + 0.9) + "em";
+    // 칸 높이: 수업 중에 넉넉히 쓰도록 줄 수의 두 배쯤 (원장님 2026-10-29 "입력칸 더 크게"). 오른쪽 아래를 끌면 더 늘어나요.
+    box.style.minHeight = (1.6 * Math.max(5, (opts.rows || 2) * 2) + 1) + "em";
     var count = el("span", "rt-count");
     function text() { return (box.innerText || box.textContent || "").replace(/ /g, " "); }
     function update() {

@@ -263,7 +263,7 @@ img{display:block;}
 .booking::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:var(--fibers);opacity:.14;mix-blend-mode:multiply;}
 .booking__inner{position:relative;z-index:2;max-width:760px;margin:0 auto;padding:0 20px;}
 /* 선생님 화면: 레슨 일지 칸이 넓게 보이도록 양옆으로 넓힘 (원장님 2026-10-29) */
-.booking__inner--wide{max-width:1280px;}
+.booking__inner--wide{max-width:1440px;}
 @media (max-width:640px){
   .booking__inner--wide{padding:0 8px;}
   .booking__inner--wide #teacherApp{padding:14px 10px;}
