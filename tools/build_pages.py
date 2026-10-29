@@ -485,7 +485,7 @@ apply_page = (head("Audition Apply | 이송희보컬레슨", "이송희보컬레
               + "</main>\n" + foot("signin", "apply"))
 
 # ---------- TEACHER: 선생님 화면 (js/teacher.js; 카카오 로그인 → 원장님 승인 → 담당 학생 레슨 일지) ----------
-TEACHER_APP = """  <div class="booking__inner">
+TEACHER_APP = """  <div class="booking__inner booking__inner--wide">
     <h1 class="booking__title">teacher</h1>
     <p class="booking__note">선생님 전용 화면이에요. 담당 학생의 레슨 일지를 쓰면 학생 내 폴더에 바로 보여요.</p>
     <section class="sys sys-card" id="teacherApp" aria-live="polite"></section>
