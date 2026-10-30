@@ -4,6 +4,7 @@
 // 열 · 줄 경계 끌어서 크기, 오른쪽 클릭으로 행 · 열 넣기/지우기, 확대/축소, 아래쪽 시트 탭.
 //   LeeshGrid.editor({ data, onInput, tabs }) → { node, get(), set(data), text(), over(), focus() }
 //   LeeshGrid.view(data)                      → 보기만 (쓴 곳까지만)
+//   LeeshGrid.summary(note, fields)           → 지난 일지를 칸 이름별로 정리해서 (저번 시간 · 지난 일지 · 관리자 · 학생)
 //   LeeshGrid.template(fields) / fromNote(note, fields) → 새 일지 / 예전 일지(칸 5개)를 표로
 // 저장 모양 (lesson_notes.sheet, 서버 private.sheet_ok가 다시 확인):
 //   { v:1, n:행 수, w:{열:너비}, h:{행:높이}, c:{ "행,열": { t:"꾸민 글", s:{ b,i,u,x(취소선), z:글씨px, f:글자색, g:채우기색 } } } }
@@ -78,9 +79,10 @@
     if (s.i) css.push("font-style:italic");
     var deco = (s.u ? "underline " : "") + (s.x ? "line-through" : "");
     if (deco) css.push("text-decoration:" + deco.trim());
-    if (s.z) css.push("font-size:" + s.z + "px");
-    if (s.f) css.push("color:" + s.f);
-    if (s.g) css.push("background-color:" + s.g);
+    var z = Number(s.z), f = okColor(s.f), g = okColor(s.g);
+    if (z >= 8 && z <= 48) css.push("font-size:" + z + "px");
+    if (f) css.push("color:" + f);
+    if (g) css.push("background-color:" + g);
     return css.join(";");
   }
   function fill(div, html) {
@@ -158,6 +160,64 @@
     }
     t.appendChild(bd);
     return t;
+  }
+
+  /**
+   * 정리해서 보기 (원장님 2026-10-30: 지난 수업은 시트 모양 말고 정리된 글로): 칸 이름(오늘 수업 · 준비곡 …)마다 묶고,
+   * 그 아래 줄들을 위에서부터 한 줄씩. 한 줄에 칸이 여러 개면 " · "로 이어요. 글자 색 · 굵게 · 채우기는 그대로.
+   */
+  function summary(n, fields) {
+    var labels = {};
+    (fields || []).forEach(function (fd) { labels[fd[1].replace(/\s/g, "")] = 1; });
+    var secs = [], cur = null;
+    function sec(title) { cur = { title: title, lines: [] }; secs.push(cur); }
+    if (n && n.sheet) {
+      var d = norm(n.sheet), rows = {};
+      Object.keys(d.c).forEach(function (k) {
+        var x = d.c[k];
+        if (!x || !textOf(x.t).trim()) return;
+        var p = k.split(","), r = Number(p[0]);
+        (rows[r] = rows[r] || []).push({ c: Number(p[1]), x: x });
+      });
+      Object.keys(rows).map(Number).sort(function (a, b) { return a - b; }).forEach(function (r) {
+        var cells = rows[r].sort(function (a, b) { return a.c - b.c; });
+        var first = textOf(cells[0].x.t).trim();
+        if (labels[first.replace(/\s/g, "")]) { sec(first); cells = cells.slice(1); }
+        if (!cells.length) return;
+        if (!cur) sec("");
+        cur.lines.push(cells.map(function (c) { return c.x; }));
+      });
+    } else {
+      (fields || []).forEach(function (fd) {
+        var v = n && n[fd[0]];
+        if (!v || fd[0] === "memo") return;
+        sec(fd[1]);
+        cur.lines.push([{ t: n.rich ? R.clean(v) : R.textToHtml(v) }]);
+      });
+    }
+    var box = el("div", "lsum");
+    secs = secs.filter(function (x) { return x.lines.length; });
+    if (!secs.length) { box.appendChild(el("p", "sys-note", "적힌 내용이 없어요.")); return box; }
+    secs.forEach(function (x) {
+      var s = el("section", "lsum__sec");
+      if (x.title) s.appendChild(el("h5", "lsum__title", x.title));
+      var ul = el("ul", "lsum__lines");
+      x.lines.forEach(function (cells) {
+        var li = el("li");
+        cells.forEach(function (c, i) {
+          if (i) li.appendChild(el("span", "lsum__dot", " · "));
+          var sp = el("span", "lsum__cell");
+          var css = cellCss(c.s);
+          if (css) sp.style.cssText = css;
+          fill(sp, c.t);
+          li.appendChild(sp);
+        });
+        ul.appendChild(li);
+      });
+      s.appendChild(ul);
+      box.appendChild(s);
+    });
+    return box;
   }
 
   /** 보기만: 쓴 곳까지만 (열 머리 · 줄 번호는 그대로). */
@@ -960,7 +1020,7 @@
     };
   }
 
-  window.LeeshGrid = { editor: editor, view: view, template: template, fromNote: fromNote, text: function (d) {
+  window.LeeshGrid = { editor: editor, view: view, summary: summary, template: template, fromNote: fromNote, text: function (d) {
     return Object.keys((d && d.c) || {}).map(function (k) { return textOf(d.c[k].t); }).join(" ").trim();
   } };
 })();

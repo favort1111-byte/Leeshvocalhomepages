@@ -409,7 +409,7 @@
     sum.appendChild(el("b", null, "저번 시간 수업 내용"));
     sum.appendChild(el("span", null, " · " + dayLabel(n.date) + (n.teacher ? " · " + n.teacher + " 선생님" : "")));
     box.appendChild(sum);
-    box.appendChild(LeeshGrid.view(LeeshGrid.fromNote(n, FIELDS)));
+    box.appendChild(LeeshGrid.summary(n, FIELDS));
     return box;
   }
 
@@ -418,7 +418,7 @@
     var head = el("p", "lnote__date", dayLabel(n.date));
     if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
     c.appendChild(head);
-    c.appendChild(LeeshGrid.view(LeeshGrid.fromNote(n, FIELDS)));
+    c.appendChild(LeeshGrid.summary(n, FIELDS));
     if (n.mine) {
       var row = el("p", "fold__actions");
       var edit = button("고치기", "sys-link");

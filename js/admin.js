@@ -622,7 +622,7 @@
         if (n.teacher) top.appendChild(el("span", "sys-note", n.teacher));
         top.appendChild(deleteButton("lesson_notes", n.id, loadMemberRecords));
         li.appendChild(top);
-        li.appendChild(LeeshGrid.view(LeeshGrid.fromNote(n, LFIELDS)));
+        li.appendChild(LeeshGrid.summary(n, LFIELDS));
         notes.appendChild(li);
       });
     });
