@@ -92,14 +92,13 @@
 
   /* ---------- 새 일지 · 예전 일지 ---------- */
   var HEAD = { b: 1, g: "#f3f3f3" };
-  // 칸 이름은 1행에 가로로 (A1 오늘 수업 · B1 준비곡 · C1 연습 포인트 …), 내용은 그 아래로 쭉 (원장님 2026-10-30:
-  // A열에 세로로 두면 내용이 길 때 아래 행을 잘라 붙여 내려야 해서 불편)
+  // 칸 이름은 A열에 띄엄띄엄 (A1 오늘 수업 · A5 준비곡 · A10 연습 포인트 · A15 오디션 일정 · A20 노래 추천),
+  // 그 사이 줄(B열 · 아래 줄)에 쓰면 돼요 (원장님 2026-10-30: 붙어 있으면 행을 잘라 붙여 내려야 해서 불편)
+  function headRow(i) { return i ? i * 5 - 1 : 0; }
   function template(fields) {
     var d = empty();
-    (fields || []).forEach(function (fd, i) {
-      d.w[i] = i === 1 ? 260 : 200;
-      d.c[key(0, i)] = { t: R.textToHtml(fd[1]), s: copy(HEAD) };
-    });
+    d.w = { 0: 150, 1: 360 };
+    (fields || []).forEach(function (fd, i) { d.c[key(headRow(i), 0)] = { t: R.textToHtml(fd[1]), s: copy(HEAD) }; });
     return d;
   }
   function fromNote(n, fields) {
@@ -107,7 +106,7 @@
     var d = template(fields);
     (fields || []).forEach(function (fd, i) {
       var v = n && n[fd[0]];
-      if (v) d.c[key(1, i)] = { t: n.rich ? R.clean(v) : R.textToHtml(v) };
+      if (v) d.c[key(headRow(i), 1)] = { t: n.rich ? R.clean(v) : R.textToHtml(v) };
     });
     return d;
   }
