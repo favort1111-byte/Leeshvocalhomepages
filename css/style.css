@@ -701,6 +701,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
   background:var(--paper);color:var(--ink-body);font-size:12.5px;line-height:1.5;text-align:center;}
 .legal a{color:var(--brown);}
 .legal b{font-weight:500;}
+.legal__tel{white-space:nowrap;}
 
 /* ---------- privacy.html ---------- */
 .policy{padding-bottom:20px;color:var(--ink-body);line-height:1.7;font-size:15px;}
