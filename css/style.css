@@ -587,6 +587,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .teacher{display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:30px;align-items:start;margin-bottom:34px;}
 .teacher__photos{display:flex;flex-direction:column;align-items:center;gap:22px;padding-top:12px;}
 .teacher__photos .snap img{aspect-ratio:1;}
+.teacher__photos .snap--portrait img{aspect-ratio:4/5;object-position:center top;}
 .teacher--dance .teacher__photos .snap img{aspect-ratio:9/10;object-position:top;}
 
 /* curriculum */

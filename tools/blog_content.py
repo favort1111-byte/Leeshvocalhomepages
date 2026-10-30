@@ -298,7 +298,7 @@ def teacher_section():
     groups = "".join(f'<div class="card__col"><h4>{t}</h4>{_ul(items)}</div>' for t, items in d["groups"])
     return (_head("the teacher", "대형 기획사 보컬 트레이너 출신 원장", "teacher")
             + '    <div class="teacher">\n'
-            + '      <div class="teacher__photos">' + _photo("director", "대표원장 이송희", "snap--tilt-l")
+            + '      <div class="teacher__photos">' + _photo("director-2026", "대표원장 이송희", "snap--tilt-l snap--portrait")  # 새 프로필 사진 (원장님 2026-10-30)
             + _photo("klloy-album", "가수 클로이 (Klloy)", "snap--small snap--tilt-r") + "</div>\n"
             + '      <article class="card card--paper">\n'
             + '        <p class="card__name">대표원장 <b>이송희</b> <span>가수 클로이 · Klloy</span></p>\n'
