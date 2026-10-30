@@ -97,7 +97,7 @@
   function headRow(i) { return i ? i * 5 - 1 : 0; }
   function template(fields) {
     var d = empty();
-    d.w = { 0: 150, 1: 360 };
+    d.w = { 0: 150 }; // A열만 칸 이름이 들어가게 조금 넓게, 나머지는 기본 너비
     (fields || []).forEach(function (fd, i) { d.c[key(headRow(i), 0)] = { t: R.textToHtml(fd[1]), s: copy(HEAD) }; });
     return d;
   }
