@@ -96,6 +96,8 @@
       var head = el("p", "lnote__date", dayLabel(n.date));
       if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
       card.appendChild(head);
+      // 표로 쓴 일지 (js/grid.js, 2026-10-30~)
+      if (n.sheet && window.LeeshGrid) { card.appendChild(LeeshGrid.view(n.sheet)); box.appendChild(card); return; }
       // the teachers' sheet columns (js/config.js lessonFields); 선생님 메모 never comes to the student
       ((window.LEESH || {}).lessonFields || []).forEach(function (fd) {
         if (fd[0] === "memo" || !n[fd[0]]) return;

@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 24; // bump when the demo defaults change
+  var VERSION = 25; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -357,7 +357,7 @@
         notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
-          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice, songs: n.songs, audition: n.audition, recommend: n.recommend, rich: !!n.rich }; }),
+          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice, songs: n.songs, audition: n.audition, recommend: n.recommend, rich: !!n.rich, sheet: n.sheet || null }; }),
         bookings: live().filter(function (b) { return b.member_id === who.id && b.day >= nowKst().today; })
           .sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); })
           .map(function (b) { return { room: room(b.room_id).name, date: b.day, start: hhmm(b.start_min), end: hhmm(b.end_min) }; }),
@@ -628,7 +628,7 @@
         notes: db.lesson_notes.filter(function (n) { return n.member_id === m.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .map(function (n) { return { id: n.id, date: n.lesson_date, teacher: n.teacher, did: n.did, songs: n.songs, practice: n.practice,
-            audition: n.audition, recommend: n.recommend, memo: n.memo, rich: !!n.rich, mine: n.teacher_id === t.id }; }),
+            audition: n.audition, recommend: n.recommend, memo: n.memo, rich: !!n.rich, sheet: n.sheet || null, mine: n.teacher_id === t.id }; }),
         logs: db.practice_logs.filter(function (l) { return l.member_id === m.id; }).map(function (l) { return { day: l.day, minutes: l.minutes, song: l.song, did: l.did }; }),
         repertoire: db.repertoire.filter(function (r) { return r.member_id === m.id; }).map(function (r) { return { title: r.title, artist: r.artist, status: r.status, purpose: r.purpose }; }) };
     },
@@ -637,9 +637,10 @@
       if (!t) return fail("선생님으로 연결된 계정만 쓸 수 있어요.");
       if (!teaches(t, a.p_member)) return fail("담당 학생만 쓸 수 있어요.");
       var keys = ["did", "songs", "practice", "audition", "recommend", "memo"], v = {};
-      keys.forEach(function (k) { v[k] = String(a["p_" + k] || "").trim() || null; });
-      if (!keys.some(function (k) { return v[k]; })) return fail("한 칸 이상 적어주세요.");
-      v.rich = !!a.p_rich;
+      keys.forEach(function (k) { v[k] = a.p_sheet ? null : String(a["p_" + k] || "").trim() || null; });
+      v.sheet = a.p_sheet || null;
+      if (!keys.some(function (k) { return v[k]; }) && !(v.sheet && window.LeeshGrid && LeeshGrid.text(v.sheet))) return fail("한 칸 이상 적어주세요.");
+      v.rich = !!a.p_rich || !!v.sheet;
       var n;
       if (a.p_note) {
         n = db.lesson_notes.filter(function (x) { return x.id === a.p_note && x.teacher_id === t.id; })[0];

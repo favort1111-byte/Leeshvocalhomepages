@@ -213,6 +213,43 @@
 .rs-tab{flex:none;height:30px;padding:0 14px;border:0;border-radius:6px;background:transparent;font:700 13px var(--rs-font);color:#444746;cursor:pointer;white-space:nowrap;}
 .rs-tab:hover{background:#E8EAED;}
 .rs-tab.is-active{background:#E1E9F7;color:#0B57D0;cursor:default;}
+/* 레슨 일지 표 (js/grid.js): 진짜 스프레드시트 — A~Z 열, 1~100 줄, 21px 줄, Arial 10pt (원장님 2026-10-30) */
+.xs{--rs-font:Arial,"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;position:relative;margin:4px 0 14px;font-family:var(--rs-font);}
+.xs-bar{margin-bottom:6px;}
+.sys .xs-zoom,.xs-zoom{width:auto;min-height:0;height:28px;padding:0 4px;border:1px solid #9AA0A6;border-radius:4px;background:#fff;font:13px var(--rs-font);color:#3C4043;cursor:pointer;}
+.xs .rs-fx{border:1px solid #C7C7C7;border-bottom:0;}
+.xs-scroll{position:relative;overflow:auto;max-height:min(72vh,760px);border:1px solid #C7C7C7;background:#fff;overscroll-behavior:contain;}
+.xs--view .xs-scroll{max-height:none;}
+.xs-table{border-collapse:separate;border-spacing:0;table-layout:fixed;font:13px/1.35 var(--rs-font);color:#000;background:#fff;}
+.xs-table th,.xs-table td{border-right:1px solid #E2E3E3;border-bottom:1px solid #E2E3E3;padding:0;}
+.xs-table thead th{position:sticky;top:0;z-index:2;height:20px;background:#F8F9FA;border-bottom-color:#C7C7C7;
+  font:400 11px/20px var(--rs-font);color:#5F6368;text-align:center;user-select:none;cursor:default;}
+.xs-rh{position:sticky;left:0;z-index:1;background:#F8F9FA;border-right-color:#C7C7C7 !important;
+  font:400 11px var(--rs-font);color:#5F6368;text-align:center;vertical-align:middle;user-select:none;cursor:default;}
+.xs-table thead .xs-corner{left:0;z-index:3;border-right-color:#C7C7C7;}
+.xs-table tr{height:21px;}
+.xs-table th.is-on{background:#D3E3FD;color:#0B57D0;font-weight:700;}
+.xs-c{position:relative;vertical-align:top;cursor:cell;}
+.xs-v{min-height:20px;padding:2px 4px;white-space:pre-wrap;overflow-wrap:anywhere;outline:none;caret-color:transparent;}
+.xs-c.is-edit .xs-v{caret-color:auto;cursor:text;}
+.xs-c.is-edit{background-color:#fff;}
+.xs-c.is-in{background-image:linear-gradient(rgba(14,101,235,.1),rgba(14,101,235,.1));}
+.xs-c.is-cur{box-shadow:inset 0 0 0 2px #1A73E8;z-index:1;}
+.xs-c.is-cur::after{content:"";position:absolute;right:-4px;bottom:-4px;width:6px;height:6px;background:#1A73E8;border:1px solid #fff;pointer-events:none;}
+.xs-c.is-edit::after{display:none;}
+.xs-cgrip,.xs-rgrip{position:absolute;z-index:2;touch-action:none;}
+.xs-cgrip{top:0;bottom:0;right:-3px;width:6px;cursor:col-resize;}
+.xs-rgrip{left:0;right:0;bottom:-3px;height:6px;cursor:row-resize;}
+.xs-cgrip:hover,.xs-rgrip:hover,.xs-cgrip.is-drag,.xs-rgrip.is-drag{background:#1A73E8;}
+.xs-foot{flex-wrap:nowrap;}
+.xs-more{flex:none;margin-left:auto;height:28px;padding:0 10px;border:1px solid #DADCE0;border-radius:4px;background:#fff;font:12px var(--rs-font);color:#3C4043;cursor:pointer;}
+.xs-more:hover{background:#F1F3F4;}
+.xs-menu{min-width:190px;padding:6px 0;}
+.xs-menu__item{display:block;width:100%;border:0;background:none;padding:7px 16px;font:13px var(--rs-font);color:#202124;text-align:left;cursor:pointer;}
+.xs-menu__item:hover{background:#F1F3F4;}
+.xs-menu hr{margin:4px 0;border:0;border-top:1px solid #E8EAED;}
+.xs--view .xs-c{cursor:default;}
+@media (max-width:560px){ .xs-scroll{max-height:62vh;} .xs .rs-fx__name{width:56px;} }
 .rs--single .rs-row{grid-template-columns:1fr;}
 .rs--single .rs-head,.rs--single .rs-num,.rs--single .rs-cols,.rs--single .rs-fx{display:none;}
 .rt-view{overflow-wrap:anywhere;}

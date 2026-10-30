@@ -274,7 +274,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
         + wavebed()
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "signin", "richtext", "mynotes", "newsbadge"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "signin", "richtext", "grid", "mynotes", "newsbadge"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -484,7 +484,7 @@ consult = (head("Consult | 이송희보컬레슨",
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
            + CONSULT_FORM
            + MY_FOLDER
-           + "</main>\n" + foot("consult", "scene", "signin", "richtext", "mynotes"))
+           + "</main>\n" + foot("consult", "scene", "signin", "richtext", "grid", "mynotes"))
 
 # ---------- BOOKING (practice rooms, paper theme) ----------
 booking = (head("Booking | 이송희보컬레슨",
@@ -527,7 +527,7 @@ teacher_page = (head("선생님 | 이송희보컬레슨", "이송희보컬레슨
                 + '<main class="stage booking">\n'
                 + nav("teacher", "dark") + "\n"
                 + TEACHER_APP
-                + "</main>\n" + foot("richtext", "teacher"))
+                + "</main>\n" + foot("richtext", "grid", "teacher"))
 
 # ---------- GAMES: 보컬 오락실 (js/games.js) ----------
 # (id, emoji, name, what, skill, group). fly·pitch·rhythm·breath live in js/games.js, the rest in js/games2.js

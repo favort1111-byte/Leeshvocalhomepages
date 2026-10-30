@@ -251,19 +251,20 @@
     date.value = editing ? editing.date : todayKst();
     dl.appendChild(date);
     f.appendChild(dl);
-    f.appendChild(el("p", "sys-note tch__how", "엑셀처럼 글자를 고르고 위 버튼을 누르면 꾸며져요 (안 고르면 칸 전체) · Tab = 다음 칸 · 저절로 저장 · 아래 탭 = 날짜별 일지"));
+    f.appendChild(el("p", "sys-note tch__how", "구글시트처럼: 칸 누르고 바로 쓰기 · 두 번 누르면 고치기 · Enter 아래 칸 · Alt+Enter 줄바꿈 · 오른쪽 클릭 = 행 · 열 넣기 · 저절로 저장 · 아래 탭 = 날짜별 일지"));
     // 아래쪽 시트 탭: 내가 쓴 일지(오래된 것 → 최근) + 지금 쓰는 새 일지
     var mine = notes.filter(function (n) { return n.mine; }).slice(0, 12).reverse();
     var items = mine.map(function (n) {
       return { label: short(n.date), title: dayLabel(n.date) + " 일지", active: !!editing && n.id === editing.id, note: n };
     });
     if (!editing) items.push({ label: "새 일지 " + short(todayKst()), title: "오늘의 수업 내용", active: true, note: null });
-    var sh = LeeshRich.sheet({
-      fields: FIELDS, values: editing || {}, onInput: later,
+    // 일지 한 장 = 표 한 장 (js/grid.js). 새 일지는 A열에 칸 이름만 적힌 표로 시작.
+    var blank = JSON.stringify(LeeshGrid.template(FIELDS).c);
+    var grid = LeeshGrid.editor({
+      data: editing ? LeeshGrid.fromNote(editing, FIELDS) : LeeshGrid.template(FIELDS), onInput: later,
       tabs: swap && { items: items, pick: function (i) { swap(items[i].note); }, add: function () { swap(null); }, addTitle: "새 일지 (오늘)" }
     });
-    f.appendChild(sh.node);
-    var inputs = sh.eds;
+    f.appendChild(grid.node);
     var row = el("div", "fold__actions");
     var save = el("button", "sys-btn", editing ? "고친 내용 저장" : "저장하고 닫기");
     save.type = "submit";
@@ -273,7 +274,7 @@
       // 지난번 일지를 불러와 고치기만 (선생님 일이 늘지 않게)
       var copy = button("지난 일지 불러오기", "sys-link");
       copy.addEventListener("click", function () {
-        FIELDS.forEach(function (fd) { inputs[fd[0]].set(last[fd[0]] || "", last.rich); });
+        grid.set(LeeshGrid.fromNote(last, FIELDS));
         say(msg, dayLabel(last.date) + " 일지를 불러왔어요. 고칠 곳만 고치면 저절로 저장돼요.");
       });
       row.appendChild(copy);
@@ -294,11 +295,11 @@
     // 저절로 저장: 마지막으로 쓴 뒤 2초. 처음 저장하면 그 일지 번호로 계속 고쳐요.
     var noteId = editing ? editing.id : null, timer = null, busy = null, dirty = false;
     function args() {
-      var a = { p_member: s.id, p_date: date.value, p_note: noteId, p_rich: true }, any = false;
-      FIELDS.forEach(function (fd) { var v = inputs[fd[0]].get(); a["p_" + fd[0]] = v || null; if (v) any = true; });
-      return any ? a : null;
+      var sheet = grid.get();
+      // 칸 이름만 있는 새 표는 아직 저장하지 않아요
+      if (!LeeshGrid.text(sheet) || (!noteId && JSON.stringify(sheet.c) === blank)) return null;
+      return { p_member: s.id, p_date: date.value, p_note: noteId, p_rich: true, p_sheet: sheet };
     }
-    function tooLong() { return FIELDS.filter(function (fd) { return inputs[fd[0]].over(); })[0]; }
     function later() {
       dirty = true;
       clearTimeout(timer);
@@ -307,8 +308,8 @@
     function push(loud) {
       clearTimeout(timer);
       if (busy) { dirty = true; return busy; }
-      var a = args(), long = tooLong();
-      if (long) { say(msg, long[1] + " 칸이 너무 길어요 (" + long[3] + "자까지).", "error"); return Promise.resolve(false); }
+      var a = args(), long = grid.over();
+      if (long) { say(msg, long + " 칸이 너무 길어요 (한 칸에 5000자까지).", "error"); return Promise.resolve(false); }
       if (!a || !date.value) { if (loud) say(msg, "한 칸 이상 적어주세요.", "error"); return Promise.resolve(!a ? null : false); }
       dirty = false;
       say(msg, "저장하는 중…");
@@ -335,7 +336,8 @@
       }
       n.date = a.p_date;
       n.rich = true;
-      FIELDS.forEach(function (fd) { n[fd[0]] = a["p_" + fd[0]]; });
+      n.sheet = a.p_sheet;
+      FIELDS.forEach(function (fd) { n[fd[0]] = null; });
       notes.sort(function (x, y) { return x.date < y.date ? 1 : x.date > y.date ? -1 : (y.id || 0) - (x.id || 0); });
     }
     date.addEventListener("change", function () { if (noteId) later(); });
@@ -407,9 +409,7 @@
     sum.appendChild(el("b", null, "저번 시간 수업 내용"));
     sum.appendChild(el("span", null, " · " + dayLabel(n.date) + (n.teacher ? " · " + n.teacher + " 선생님" : "")));
     box.appendChild(sum);
-    var filled = FIELDS.filter(function (fd) { return n[fd[0]]; });
-    if (!filled.length) return null;
-    box.appendChild(LeeshRich.sheet({ fields: filled, values: n, readOnly: true }).node);
+    box.appendChild(LeeshGrid.view(LeeshGrid.fromNote(n, FIELDS)));
     return box;
   }
 
@@ -418,11 +418,7 @@
     var head = el("p", "lnote__date", dayLabel(n.date));
     if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
     c.appendChild(head);
-    FIELDS.forEach(function (fd) {
-      if (!n[fd[0]]) return;
-      c.appendChild(el("p", "lnote__label", fd[1] + (fd[0] === "memo" ? " 🔒 학생에게 안 보여요" : "")));
-      c.appendChild(LeeshRich.view(n[fd[0]], n.rich, "lnote__did" + (fd[0] === "memo" ? " tch__memotext" : "")));
-    });
+    c.appendChild(LeeshGrid.view(LeeshGrid.fromNote(n, FIELDS)));
     if (n.mine) {
       var row = el("p", "fold__actions");
       var edit = button("고치기", "sys-link");

@@ -2944,3 +2944,150 @@ revoke all on function public.member_suggest(text, text, text, text), public.adm
 grant execute on function public.member_suggest(text, text, text, text) to anon, authenticated;
 grant execute on function public.admin_suggestions(), public.admin_suggest_count(), public.admin_suggest_mark(bigint, boolean),
   public.admin_suggest_delete(bigint) to authenticated;
+
+-- ============ leesh_grid_notes (2026-10-30) ============
+-- 레슨 일지를 진짜 스프레드시트처럼 (원장님 2026-10-30 "ABCDEFG 열, 1234 좁은 줄"): 일지 한 장 = 표 한 장 (lesson_notes.sheet)
+--   {"v":1, "n":행 수, "w":{"열":너비px}, "h":{"행":높이px}, "c":{"행,열":{"t":"꾸민 글", "s":{"b":1,"i":1,"u":1,"x":1,"z":글씨px,"f":"글자색","g":"채우기색"}}}}
+--   행·열은 0부터 (열 0~25 = A~Z, 행 0~999). 칸 글은 예전 꾸민 글과 같은 규칙(private.rich_ok), 칸마다 5000자, 전체 400KB.
+--   예전 일지(칸 5개)는 그대로 두고, 화면이 표 모양으로 바꿔 보여줌.
+alter table public.lesson_notes add column if not exists sheet jsonb;
+
+create or replace function private.sheet_ok(s jsonb) returns boolean
+language plpgsql immutable set search_path = '' as $$
+declare k text; v jsonb; sk text; sv jsonb;
+begin
+  if s is null then return true; end if;
+  if jsonb_typeof(s) <> 'object' or octet_length(s::text) > 400000 then return false; end if;
+  for k in select jsonb_object_keys(s) loop
+    if k not in ('v', 'n', 'w', 'h', 'c') then return false; end if;
+  end loop;
+  if s ? 'v' and jsonb_typeof(s -> 'v') <> 'number' then return false; end if;
+  if s ? 'n' and (jsonb_typeof(s -> 'n') <> 'number' or (s ->> 'n')::numeric > 1000 or (s ->> 'n')::numeric < 1) then return false; end if;
+  if jsonb_typeof(coalesce(s -> 'w', '{}')) <> 'object' or jsonb_typeof(coalesce(s -> 'h', '{}')) <> 'object'
+     or jsonb_typeof(coalesce(s -> 'c', '{}')) <> 'object' then return false; end if;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'w', '{}')) loop
+    if k !~ '^\d{1,2}$' or k::int > 25 or jsonb_typeof(v) <> 'number' or v::numeric < 20 or v::numeric > 1500 then return false; end if;
+  end loop;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'h', '{}')) loop
+    if k !~ '^\d{1,3}$' or jsonb_typeof(v) <> 'number' or v::numeric < 12 or v::numeric > 1500 then return false; end if;
+  end loop;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'c', '{}')) loop
+    if k !~ '^\d{1,3},\d{1,2}$' or split_part(k, ',', 2)::int > 25 or jsonb_typeof(v) <> 'object' then return false; end if;
+    for sk in select jsonb_object_keys(v) loop
+      if sk not in ('t', 's') then return false; end if;
+    end loop;
+    if v ? 't' and (jsonb_typeof(v -> 't') <> 'string' or char_length(v ->> 't') > 40000 or not private.rich_ok(v ->> 't')
+                    or char_length(private.rich_text(v ->> 't')) > 5000) then return false; end if;
+    if jsonb_typeof(coalesce(v -> 's', '{}')) <> 'object' then return false; end if;
+    for sk, sv in select key, value from jsonb_each(coalesce(v -> 's', '{}')) loop
+      if sk in ('b', 'i', 'u', 'x') then
+        if jsonb_typeof(sv) not in ('number', 'boolean') then return false; end if;
+      elsif sk = 'z' then
+        if jsonb_typeof(sv) <> 'number' or sv::numeric < 8 or sv::numeric > 48 then return false; end if;
+      elsif sk in ('f', 'g') then
+        if jsonb_typeof(sv) <> 'string' or (sv #>> '{}') !~* '^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[0-9.]+\s*)?\))$' then return false; end if;
+      else
+        return false;
+      end if;
+    end loop;
+  end loop;
+  return true;
+end $$;
+
+-- 표에 적힌 글 (빈 표인지 볼 때)
+create or replace function private.sheet_text(s jsonb) returns text
+language sql immutable set search_path = '' as $$
+  select coalesce(string_agg(private.rich_text(e.value ->> 't'), ' '), '')
+  from jsonb_each(case when jsonb_typeof(s -> 'c') = 'object' then s -> 'c' else '{}'::jsonb end) e;
+$$;
+revoke all on function private.sheet_ok(jsonb), private.sheet_text(jsonb) from public, anon, authenticated;
+
+create or replace function private.lesson_note_check() returns trigger
+language plpgsql set search_path = '' as $$
+declare
+  lim int[] := array[800, 2000, 400, 800, 800, 1000];
+  vals text[] := array[new.did, new.songs, new.practice, new.audition, new.recommend, new.memo];
+  i int;
+begin
+  if new.sheet is not null and not private.sheet_ok(new.sheet) then raise exception '표에 쓸 수 없는 내용이 있어요.'; end if;
+  for i in 1..6 loop
+    if vals[i] is null then continue; end if;
+    if char_length(vals[i]) > 20000 then raise exception '글이 너무 길어요.'; end if;
+    if new.rich then
+      if not private.rich_ok(vals[i]) then raise exception '꾸민 글에 쓸 수 없는 내용이 있어요.'; end if;
+      if char_length(private.rich_text(vals[i])) > lim[i] then raise exception '글이 너무 길어요.'; end if;
+    elsif char_length(vals[i]) > lim[i] then
+      raise exception '글이 너무 길어요.';
+    end if;
+  end loop;
+  return new;
+end $$;
+
+-- 선생님 저장: p_sheet (표)가 오면 표로 저장하고 예전 칸 5개는 비움
+drop function if exists public.teacher_note_save(text, date, bigint, text, text, text, text, text, text, boolean);
+create or replace function public.teacher_note_save(p_member text, p_date date, p_note bigint default null,
+  p_did text default null, p_songs text default null, p_practice text default null, p_audition text default null,
+  p_recommend text default null, p_memo text default null, p_rich boolean default false, p_sheet jsonb default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  v_id bigint;
+  raw text[] := array[p_did, p_songs, p_practice, p_audition, p_recommend, p_memo];
+  f text[] := '{}';
+  lim int[] := array[800, 2000, 400, 800, 800, 1000];
+  i int; txt text;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 쓸 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생만 쓸 수 있어요.'); end if;
+  if p_date is null or p_date > private.now_kst()::date + 1 or p_date < private.now_kst()::date - 366 then return private.fail('수업 날짜를 확인해주세요.'); end if;
+  if p_sheet is not null then
+    if not private.sheet_ok(p_sheet) then return private.fail('표에 쓸 수 없는 내용이 있거나 너무 길어요 (한 칸에 5000자까지).'); end if;
+    if trim(private.sheet_text(p_sheet)) = '' then return private.fail('한 칸 이상 적어주세요.'); end if;
+    f := array[null, null, null, null, null, null]::text[];
+  else
+    for i in 1..6 loop
+      txt := case when p_rich then private.rich_text(raw[i]) else coalesce(raw[i], '') end;
+      if char_length(txt) > lim[i] then return private.fail('글이 너무 길어요.'); end if;
+      f := f || case when trim(txt) = '' then null else trim(raw[i]) end;
+    end loop;
+    if coalesce(f[1], f[2], f[3], f[4], f[5], f[6]) is null then return private.fail('한 칸 이상 적어주세요.'); end if;
+    if p_rich and not (private.rich_ok(f[1]) and private.rich_ok(f[2]) and private.rich_ok(f[3]) and private.rich_ok(f[4])
+                       and private.rich_ok(f[5]) and private.rich_ok(f[6])) then
+      return private.fail('꾸민 글에 쓸 수 없는 내용이 있어요. 다시 붙여넣어 주세요.');
+    end if;
+  end if;
+  if p_note is null then
+    insert into public.lesson_notes (member_id, lesson_date, teacher, teacher_id, did, songs, practice, audition, recommend, memo, rich, sheet)
+    values (p_member, p_date, t.name, t.id, f[1], f[2], f[3], f[4], f[5], f[6], coalesce(p_rich, false) or p_sheet is not null, p_sheet)
+    returning id into v_id;
+  else
+    update public.lesson_notes set lesson_date = p_date, did = f[1], songs = f[2], practice = f[3], audition = f[4],
+      recommend = f[5], memo = f[6], rich = coalesce(p_rich, false) or p_sheet is not null, sheet = p_sheet, updated_at = now()
+    where id = p_note and member_id = p_member and teacher_id = t.id returning id into v_id;
+    if v_id is null then return private.fail('내가 쓴 일지만 고칠 수 있어요.'); end if;
+  end if;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end $$;
+revoke all on function public.teacher_note_save(text, date, bigint, text, text, text, text, text, text, boolean, jsonb) from public, anon;
+grant execute on function public.teacher_note_save(text, date, bigint, text, text, text, text, text, text, boolean, jsonb) to authenticated;
+
+-- 선생님 화면 · 학생 내 폴더에 표도 같이 보냄
+do $$
+declare f text; d text;
+begin
+  foreach f in array array['public.teacher_student(text)', 'public.member_notebook(text,text)'] loop
+    d := pg_get_functiondef(f::regprocedure);
+    if position($s$'sheet', n.sheet$s$ in d) = 0 then
+      if (length(d) - length(replace(d, $s$'rich', n.rich$s$, ''))) / length($s$'rich', n.rich$s$) <> 1 then raise exception '% 고칠 자리를 못 찾음', f; end if;
+      execute replace(d, $s$'rich', n.rich$s$, $s$'rich', n.rich, 'sheet', n.sheet$s$);
+    end if;
+  end loop;
+end $$;
+
+-- ============ leesh_grid_notes_content (2026-10-30) ============
+-- 표로 쓴 일지도 "내용이 있는 일지"로 (칸 5개가 비어 있어도 됨)
+alter table public.lesson_notes drop constraint if exists lesson_notes_has_content;
+alter table public.lesson_notes add constraint lesson_notes_has_content check (
+  coalesce(nullif(trim(did), ''), nullif(trim(songs), ''), nullif(trim(practice), ''), nullif(trim(audition), ''),
+           nullif(trim(recommend), ''), nullif(trim(memo), '')) is not null
+  or (sheet is not null and jsonb_typeof(sheet -> 'c') = 'object' and sheet -> 'c' <> '{}'::jsonb));

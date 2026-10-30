@@ -575,9 +575,10 @@
   // 레슨 일지 칸 (js/config.js lessonFields, 선생님 화면과 같은 칸)
   // 칸마다 꾸미기 버튼 (js/richtext.js, 선생님 화면과 같음)
   var LFIELDS = cfg.lessonFields || [];
-  var noteSheet = LeeshRich.sheet({ fields: LFIELDS });
-  $("#noteFields").appendChild(noteSheet.node);
-  var noteEds = noteSheet.eds;
+  // 선생님 화면과 같은 표 (js/grid.js): 새 일지는 A열에 칸 이름만 적힌 표로 시작
+  var noteBlank = JSON.stringify(LeeshGrid.template(LFIELDS).c);
+  var noteGrid = LeeshGrid.editor({ data: LeeshGrid.template(LFIELDS) });
+  $("#noteFields").appendChild(noteGrid.node);
 
   function loadRecords() {
     var sel = $("#recMember"), keep = sel.value;
@@ -621,11 +622,7 @@
         if (n.teacher) top.appendChild(el("span", "sys-note", n.teacher));
         top.appendChild(deleteButton("lesson_notes", n.id, loadMemberRecords));
         li.appendChild(top);
-        LFIELDS.forEach(function (fd) {
-          if (!n[fd[0]]) return;
-          li.appendChild(el("p", "sys-note", fd[1] + (fd[0] === "memo" ? " 🔒" : "")));
-          li.appendChild(LeeshRich.view(n[fd[0]], n.rich, "adm__quote"));
-        });
+        li.appendChild(LeeshGrid.view(LeeshGrid.fromNote(n, LFIELDS)));
         notes.appendChild(li);
       });
     });
@@ -720,17 +717,17 @@
     e.preventDefault();
     var f = e.target;
     var body = { member_id: recMember(), lesson_date: field(f, "date").value, teacher: field(f, "teacher").value.trim() || null, rich: true };
-    var any = false;
-    LFIELDS.forEach(function (fd) { var v = noteEds[fd[0]].get(); body[fd[0]] = v || null; if (v) any = true; });
-    if (!any) { msg($("#noteMsg"), "한 칸 이상 적어주세요.", "error"); return; }
-    var long = LFIELDS.filter(function (fd) { return noteEds[fd[0]].over(); })[0];
-    if (long) { msg($("#noteMsg"), long[1] + " 칸이 너무 길어요 (" + long[3] + "자까지).", "error"); return; }
+    var sheet = noteGrid.get();
+    if (!LeeshGrid.text(sheet) || JSON.stringify(sheet.c) === noteBlank) { msg($("#noteMsg"), "한 칸 이상 적어주세요.", "error"); return; }
+    var long = noteGrid.over();
+    if (long) { msg($("#noteMsg"), long + " 칸이 너무 길어요 (한 칸에 5000자까지).", "error"); return; }
+    body.sheet = sheet;
     api("lesson_notes", { method: "POST", body: body }).then(function (res) {
       if (!res.ok) { msg($("#noteMsg"), friendly(res), "error"); return; }
       msg($("#noteMsg"), "저장했어요. 학생 폴더에 바로 보여요.", "ok");
       var opt = $("#recMember").selectedOptions[0];
       showShare($("#noteShare"), "#notes", "오늘 레슨 노트가 올라왔어요.", opt ? opt.getAttribute("data-name") : "");
-      LFIELDS.forEach(function (fd) { noteEds[fd[0]].set(""); });
+      noteGrid.set(LeeshGrid.template(LFIELDS));
       loadMemberRecords();
     });
   });

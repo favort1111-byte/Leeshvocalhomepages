@@ -456,5 +456,6 @@
     return e;
   }
 
-  window.LeeshRich = { sheet: sheet, editor: editor, view: view, clean: cleanHtml, textToHtml: textToHtml };
+  window.LeeshRich = { sheet: sheet, editor: editor, view: view, clean: cleanHtml, textToHtml: textToHtml,
+    colors: { text: TEXT_COLORS, fill: FILL_COLORS }, icons: ICON }; // js/grid.js도 같이 씀
 })();
