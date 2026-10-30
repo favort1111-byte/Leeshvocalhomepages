@@ -599,6 +599,19 @@
         o.setAttribute("data-name", m.name);
         sel.appendChild(o);
       });
+      // 종료 학생도 지난 기록 · 월말평가를 볼 수 있게 맨 아래에 (원장님 2026-10-30)
+      var gone = res.data.filter(function (m) { return m.status === "종료"; });
+      if (gone.length) {
+        var og = el("optgroup");
+        og.label = "종료 (지난 기록 보기)";
+        gone.forEach(function (m) {
+          var o = el("option", null, m.name + " (" + m.id + ") · 종료");
+          o.value = m.id;
+          o.setAttribute("data-name", m.name);
+          og.appendChild(o);
+        });
+        sel.appendChild(og);
+      }
       if (keep) sel.value = keep;
       var f = $("#noteForm");
       if (!field(f, "date").value) field(f, "date").value = todayKst();
