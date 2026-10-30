@@ -575,7 +575,7 @@
   // 레슨 일지 칸 (js/config.js lessonFields, 선생님 화면과 같은 칸)
   // 칸마다 꾸미기 버튼 (js/richtext.js, 선생님 화면과 같음)
   var LFIELDS = cfg.lessonFields || [];
-  // 선생님 화면과 같은 표 (js/grid.js): 새 일지는 A열에 칸 이름만 적힌 표로 시작
+  // 선생님 화면과 같은 표 (js/grid.js): 새 일지는 1행에 칸 이름만 적힌 표로 시작
   var noteBlank = JSON.stringify(LeeshGrid.template(LFIELDS).c);
   var noteGrid = LeeshGrid.editor({ data: LeeshGrid.template(LFIELDS) });
   $("#noteFields").appendChild(noteGrid.node);

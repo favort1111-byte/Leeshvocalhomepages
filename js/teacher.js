@@ -258,7 +258,7 @@
       return { label: short(n.date), title: dayLabel(n.date) + " 일지", active: !!editing && n.id === editing.id, note: n };
     });
     if (!editing) items.push({ label: "새 일지 " + short(todayKst()), title: "오늘의 수업 내용", active: true, note: null });
-    // 일지 한 장 = 표 한 장 (js/grid.js). 새 일지는 A열에 칸 이름만 적힌 표로 시작.
+    // 일지 한 장 = 표 한 장 (js/grid.js). 새 일지는 1행에 칸 이름만 적힌 표로 시작.
     var blank = JSON.stringify(LeeshGrid.template(FIELDS).c);
     var grid = LeeshGrid.editor({
       data: editing ? LeeshGrid.fromNote(editing, FIELDS) : LeeshGrid.template(FIELDS), onInput: later,
