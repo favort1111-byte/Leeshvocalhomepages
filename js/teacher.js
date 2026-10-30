@@ -185,6 +185,9 @@
           var f2 = noteForm(s, res.notes, n, swap);
           form.node.replaceWith(f2.node);
           form.node = f2.node;
+          // 위쪽 "저번 시간"도 지금 쓰는 일지의 바로 전 수업으로 (같은 일지가 위아래로 두 번 보이지 않게)
+          var old = app.querySelector(".tch__prev");
+          if (old) old.replaceWith(lastTime(res.notes, n));
           form.flush = f2.flush;
           form.msg = f2.msg;
         });
@@ -359,13 +362,7 @@
   /** 한눈에 보기: 왼쪽 저번 시간 수업 내용, 오른쪽 최근 연습 일지 3개 + 레퍼토리 (준비 중인 곡 먼저). */
   function glance(res) {
     var wrap = el("div", "tch__glance");
-    var prev = lastTime(res.notes);
-    if (!prev) {
-      prev = el("section", "tch__prev");
-      prev.appendChild(el("p", "tch__prevhead", "저번 시간 수업 내용"));
-      prev.appendChild(el("p", "book__empty", "아직 지난 일지가 없어요. 오늘이 첫 기록이에요."));
-    }
-    wrap.appendChild(prev);
+    wrap.appendChild(lastTime(res.notes, null));
     var side = el("div", "tch__side");
     var logs = el("section", "tch__mini");
     logs.appendChild(el("h4", "tch__minihead", "최근 연습 일지"));
@@ -399,10 +396,16 @@
   }
 
   /** 저번 시간 수업 내용: 오늘보다 앞선 가장 최근 일지 하나를 시트 모양 그대로 (보기만). */
-  function lastTime(notes) {
-    var today = todayKst();
-    var n = notes.filter(function (x) { return x.date < today; })[0];
-    if (!n) return null;
+  // editing = 지금 고치는 일지 (없으면 오늘 새 일지): 그보다 앞선 가장 최근 일지
+  function lastTime(notes, editing) {
+    var base = editing ? editing.date : todayKst();
+    var n = notes.filter(function (x) { return x.date < base && (!editing || x.id !== editing.id); })[0];
+    if (!n) {
+      var none = el("section", "tch__prev");
+      none.appendChild(el("p", "tch__prevhead", "저번 시간 수업 내용"));
+      none.appendChild(el("p", "book__empty", editing ? "이 일지보다 앞선 일지가 없어요." : "아직 지난 일지가 없어요. 오늘이 첫 기록이에요."));
+      return none;
+    }
     var box = el("details", "tch__prev");
     box.open = true;
     var sum = el("summary", "tch__prevhead");
