@@ -123,3 +123,4 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__evalscores{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 6px;}
 .adm__evalpics{display:grid;gap:10px;margin-top:8px;}
 .adm__evalpics img{display:block;width:100%;max-width:720px;height:auto;border:1px solid #E3DDD5;border-radius:4px;}
+.adm__drawer.is-drop{outline:3px dashed #6E3B28;outline-offset:-6px;background:#FFF8EE;}

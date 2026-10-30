@@ -741,7 +741,7 @@
   var EVAL_ORDER = ["rank", "group", "name", "teacher", "song", "basic", "technique", "acting", "styling", "total", "stage"]; // the sheet's own order
   var evalDraft = {}; // name → { name, files: [{page, file}], score: {...}, member }
 
-  function plain(t) { return String(t || "").replace(/\s+/g, ""); }
+  function plain(t) { return String(t || "").normalize("NFC").replace(/\s+/g, ""); }
   function evalMonth() { return $("#evalMonth").value; }
 
   function parseScores(text) {
@@ -856,14 +856,67 @@
     });
   }
   function fileName(f) {
-    var base = f.name.replace(/\.[^.]+$/, "");
+    var base = f.name.normalize("NFC").replace(/^.*[\/]/, "").replace(/\.[^.]+$/, "");
     var hit = /^(.*?)[\s_\-(]*(\d+)\)?$/.exec(base);
     return { name: (hit && hit[1].trim()) || base, page: hit && hit[2] ? Number(hit[2]) : 0 };
   }
 
+  /* ZIP: 구글 드라이브에서 폴더나 여러 파일을 "다운로드"하면 zip 하나로 받아져요 (드라이브 화면에서 바로 끌어오기는
+     브라우저가 막음). zip은 여기 브라우저 안에서 풀어 사진 · PDF만 꺼내요 (js/vendor/fflate, MIT). */
+  var zipLib = null;
+  function loadZip() {
+    if (zipLib) return zipLib;
+    zipLib = new Promise(function (ok, fail) {
+      var sc = document.createElement("script");
+      sc.src = "js/vendor/fflate/fflate.min.js";
+      sc.onload = function () { ok(window.fflate); };
+      sc.onerror = function () { zipLib = null; fail(new Error("fflate")); };
+      document.head.appendChild(sc);
+    });
+    return zipLib;
+  }
+  function isZip(f) { return /zip/.test(f.type) || /\.zip$/i.test(f.name); }
+  var KINDS = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic", pdf: "application/pdf" };
+  var unzipped = new WeakMap(); // 점수표를 고칠 때마다 다시 풀지 않게
+  function unzip(f) {
+    if (unzipped.has(f)) return unzipped.get(f);
+    var job = Promise.all([loadZip(), f.arrayBuffer()]).then(function (r) {
+      var all = r[0].unzipSync(new Uint8Array(r[1]), {
+        filter: function (e) { return !/(^|\/)(__MACOSX|\.)/.test(e.name) && /\.(jpe?g|png|webp|heic|pdf)$/i.test(e.name); }
+      });
+      return Object.keys(all).map(function (name) {
+        var base = name.replace(/^.*\//, "").normalize("NFC");
+        return new File([all[name]], base, { type: KINDS[base.split(".").pop().toLowerCase()] || "" });
+      });
+    });
+    unzipped.set(f, job);
+    job.catch(function () { unzipped.delete(f); });
+    return job;
+  }
+  // 고른 파일 + 끌어다 놓은 파일 (zip은 풀어서)
+  var pickedFiles = [];
+  function expandFiles() {
+    var files = pickedFiles.length ? pickedFiles : Array.prototype.slice.call($("#evalFiles").files || []);
+    var zips = files.filter(isZip);
+    if (!zips.length) return Promise.resolve(files);
+    msg($("#evalMsg"), "압축 파일 푸는 중…");
+    return Promise.all(zips.map(function (z) { return unzip(z).catch(function () { return null; }); })).then(function (lists) {
+      var out = files.filter(function (f) { return !isZip(f); }), bad = [];
+      lists.forEach(function (l, i) { if (l) out = out.concat(l); else bad.push(zips[i].name); });
+      msg($("#evalMsg"), bad.length ? "풀지 못한 압축 파일: " + bad.join(", ") : "", bad.length ? "error" : "");
+      return out;
+    });
+  }
+
   var draftRun = 0;
   function rebuildDraft() {
-    var run = ++draftRun, files = Array.prototype.slice.call($("#evalFiles").files || []);
+    var run = ++draftRun;
+    return expandFiles().then(function (files) {
+      if (run !== draftRun) return;
+      return buildDraft(run, files);
+    });
+  }
+  function buildDraft(run, files) {
     var pdfs = files.filter(isPdf);
     if (pdfs.length) msg($("#evalMsg"), "PDF 읽는 중…");
     return Promise.all(pdfs.map(readPdf)).then(function (read) {
@@ -985,7 +1038,32 @@
     });
   }
 
-  $("#evalFiles").addEventListener("change", function () { rebuildDraft(); });
+  $("#evalFiles").addEventListener("change", function () { pickedFiles = []; rebuildDraft(); });
+  // 끌어다 놓기: 평가 올리기 칸 어디에 놓아도 돼요. 드라이브 화면에서 끌어오면 파일이 아니라 링크만 와서 안내해요.
+  (function () {
+    var zone = $("#evalBox .adm__drawer");
+    if (!zone) return;
+    ["dragenter", "dragover"].forEach(function (t) {
+      zone.addEventListener(t, function (e) { e.preventDefault(); zone.classList.add("is-drop"); });
+    });
+    ["dragleave", "drop"].forEach(function (t) {
+      zone.addEventListener(t, function () { zone.classList.remove("is-drop"); });
+    });
+    zone.addEventListener("drop", function (e) {
+      e.preventDefault();
+      var dt = e.dataTransfer, files = Array.prototype.slice.call((dt && dt.files) || []);
+      if (!files.length) {
+        var link = dt && (dt.getData("text/uri-list") || dt.getData("text/plain"));
+        msg($("#evalMsg"), /drive\.google|docs\.google/.test(link || "")
+          ? "드라이브 화면에서 바로 끌어오기는 안 돼요. 드라이브에서 파일(또는 폴더)을 골라 \"다운로드\"한 뒤, 받은 파일(zip)을 여기에 끌어다 놓아 주세요."
+          : "파일을 끌어다 놓아 주세요.", "error");
+        return;
+      }
+      pickedFiles = files;
+      $("#evalFiles").value = "";
+      rebuildDraft();
+    });
+  })();
   $("#evalPaste").addEventListener("input", function () { rebuildDraft(); });
   $("#evalMonth").addEventListener("change", function () { countDraft(); loadEvalList(); });
 
@@ -1015,6 +1093,7 @@
         msg($("#evalMsg"), list.length + "명 올렸어요. 학생 폴더에 바로 보여요.", "ok");
         showShare($("#evalShare"), "#evals", Number(month.slice(5, 7)) + "월 월말평가가 나왔어요.");
         $("#evalFiles").value = "";
+        pickedFiles = [];
         $("#evalPaste").value = "";
         rebuildDraft();
       }

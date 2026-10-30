@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=f71bd2b8">
-<link rel="stylesheet" href="css/admin.css?v=45afe2a1">
+<link rel="stylesheet" href="css/admin.css?v=98787a23">
 </head>
 <body class="sys adm">
 
@@ -175,7 +175,8 @@
           <p class="sys-note">평가지는 <b>PDF</b>나 <b>사진</b> 모두 돼요. 파일 이름을 <b>학생이름.pdf</b> 또는 <b>학생이름1.jpg, 학생이름2.jpg</b>처럼 두면 알아서 학생을 찾아요. 여러 학생이 든 PDF 하나도 괜찮아요 (쪽마다 적힌 "학생명"으로 나눠요). 점수는 "통합 결과" 시트에서 표를 복사해 붙여넣으면 같이 들어가요.</p>
           <div class="adm__drawer">
             <label class="sys-field"><span>평가 달</span><input id="evalMonth" type="month" required></label>
-            <label class="sys-field"><span>평가지 PDF · 사진 (여러 개 한 번에)</span><input id="evalFiles" type="file" accept="application/pdf,.pdf,image/*" multiple></label>
+            <label class="sys-field"><span>평가지 PDF · 사진 · 압축파일(zip) — 여러 개 한 번에, 여기에 끌어다 놓아도 돼요</span><input id="evalFiles" type="file" accept="application/pdf,.pdf,image/*,.zip,application/zip" multiple></label>
+            <p class="sys-note">구글 드라이브에 있는 평가지는: 드라이브에서 월말평가 폴더(또는 사진들)를 고르고 <b>오른쪽 클릭 → 다운로드</b> → 받은 <b>zip 파일 하나</b>를 여기에 넣으면 돼요. 압축은 홈페이지가 풀어요.</p>
             <label class="sys-field"><span>점수표 붙여넣기 (선택)</span><textarea id="evalPaste" rows="4" placeholder="구글시트에서 순위 ~ 단계 칸을 드래그해서 복사 → 여기에 붙여넣기"></textarea></label>
             <div id="evalReview"></div>
             <button class="sys-btn" type="button" id="evalUpload" disabled>올리기</button>
@@ -440,6 +441,6 @@
 <script src="js/api.js?v=ae8e391c"></script>
 <script src="js/richtext.js?v=25ae755f"></script>
 <script src="js/grid.js?v=847d895a"></script>
-<script src="js/admin.js?v=1e7f1bb6"></script>
+<script src="js/admin.js?v=b8d16bc5"></script>
 </body>
 </html>
