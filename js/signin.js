@@ -57,7 +57,7 @@
         k.innerHTML = KAKAO_ICON + "<span>카카오로 로그인</span>";
         k.addEventListener("click", function () { k.disabled = true; LeeshAPI.kakao.start(); });
         box.appendChild(k);
-        box.appendChild(el("p", "sys-note signin__hint", "처음이면 카카오로 로그인한 뒤 이름을 알려주세요. 원장님이 확인하면 바로 쓸 수 있어요."));
+        box.appendChild(el("p", "sys-note signin__hint", "처음이면 카카오로 로그인한 뒤 이름을 알려주세요. 실장님이 확인하면 바로 쓸 수 있어요."));
         var how = el("a", "signin__policy", "홈페이지 사용법 보기");
         how.href = "guide.html";
         box.appendChild(how);
@@ -78,7 +78,7 @@
       box.appendChild(el("p", "signin__title", req && req.status === "거절" ? "연결이 안 됐어요" : "처음 오셨네요!"));
       box.appendChild(el("p", "sys-note", req && req.status === "거절"
         ? "이름이나 선생님이 맞지 않았을 수 있어요. 다시 보내거나 학원에 문의해주세요."
-        : "이름과 담당 선생님을 알려주세요. 원장님이 확인하면 이 카카오 계정으로 바로 쓸 수 있어요."));
+        : "이름과 담당 선생님을 알려주세요. 실장님이 확인하면 이 카카오 계정으로 바로 쓸 수 있어요."));
       var f = el("form", "signin__form");
       var row = el("div", "sys-row");
       row.appendChild(input("name", "이름", { autocomplete: "name", maxlength: "30", required: "" }));
@@ -113,7 +113,7 @@
     function pending(req) {
       head();
       box.appendChild(el("p", "signin__title", req.name + "님, 확인을 기다리고 있어요"));
-      box.appendChild(el("p", "sys-note", "원장님이 확인하면 바로 쓸 수 있어요. 보통 하루 안에 확인해요."));
+      box.appendChild(el("p", "sys-note", "실장님이 확인하면 바로 쓸 수 있어요. 보통 하루 안에 확인해요."));
       var row = el("div", "signin__row");
       var again = button("확인됐는지 다시 보기", "sys-btn");
       again.addEventListener("click", function () { again.disabled = true; kakaoCheck(); });
