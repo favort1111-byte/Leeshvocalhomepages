@@ -23,6 +23,7 @@
     var dt = new Date(d + "T00:00:00Z");
     return (dt.getUTCMonth() + 1) + "월 " + dt.getUTCDate() + "일 (" + WD[dt.getUTCDay()] + ")";
   }
+  function short(d) { return Number(d.slice(5, 7)) + "/" + Number(d.slice(8)); }
   function button(text, cls) { var b = el("button", cls || "sys-btn", text); b.type = "button"; return b; }
   function clear() { app.textContent = ""; }
 
@@ -176,7 +177,20 @@
       app.appendChild(el("h3", "tch__name", s.name + (s.status !== "재원" ? " (" + s.status + ")" : "")));
       // 맨 위 한눈에 보기: 저번 시간 수업 내용 + 최근 연습 일지 + 레퍼토리 (원장님 2026-10-29: 수업하면서 한 화면에)
       app.appendChild(glance(res));
-      var form = noteForm(s, res.notes, null);
+      // 시트 탭: 날짜마다 일지 하나 (+ = 새 일지). 쓰던 것은 저장하고 넘어가요.
+      var form = null;
+      function swap(n) {
+        return form.flush().then(function (ok) {
+          if (ok === false) return; // 저장이 안 됐으면 (너무 긴 칸 · 연결 오류) 그대로 둬요
+          var f2 = noteForm(s, res.notes, n, swap);
+          form.node.replaceWith(f2.node);
+          form.node = f2.node;
+          form.flush = f2.flush;
+          form.msg = f2.msg;
+        });
+      }
+      form = noteForm(s, res.notes, null, swap);
+      form.swap = swap;
       app.appendChild(form.node);
       if (note) say(form.msg, note, "ok");
 
@@ -226,7 +240,7 @@
    * The write / edit form. editing = a note of mine to change, or null for a new one.
    * 칸마다 꾸미기 버튼 (js/richtext.js) + 쓰는 동안 저절로 저장 (원장님 2026-10-29: 수업하면서 같이 보며 씀).
    */
-  function noteForm(s, notes, editing) {
+  function noteForm(s, notes, editing, swap) {
     var f = el("form", "sys tch__form");
     f.appendChild(el("h4", "rec__title", editing ? dayLabel(editing.date) + " 수업 내용 고치기" : "오늘의 수업 내용"));
     var dl = el("label", "sys-field");
@@ -237,8 +251,17 @@
     date.value = editing ? editing.date : todayKst();
     dl.appendChild(date);
     f.appendChild(dl);
-    f.appendChild(el("p", "sys-note tch__how", "구글시트처럼 글자를 고르고 위 버튼(크기 · 굵게 · 색 · 채우기)을 누르면 꾸며져요. 안 고르고 누르면 그 칸 전체가 바뀌어요. 쓰는 동안 저절로 저장돼요."));
-    var sh = LeeshRich.sheet({ fields: FIELDS, values: editing || {}, onInput: later });
+    f.appendChild(el("p", "sys-note tch__how", "엑셀처럼 글자를 고르고 위 버튼을 누르면 꾸며져요 (안 고르면 칸 전체) · Tab = 다음 칸 · 저절로 저장 · 아래 탭 = 날짜별 일지"));
+    // 아래쪽 시트 탭: 내가 쓴 일지(오래된 것 → 최근) + 지금 쓰는 새 일지
+    var mine = notes.filter(function (n) { return n.mine; }).slice(0, 12).reverse();
+    var items = mine.map(function (n) {
+      return { label: short(n.date), title: dayLabel(n.date) + " 일지", active: !!editing && n.id === editing.id, note: n };
+    });
+    if (!editing) items.push({ label: "새 일지 " + short(todayKst()), title: "오늘의 수업 내용", active: true, note: null });
+    var sh = LeeshRich.sheet({
+      fields: FIELDS, values: editing || {}, onInput: later,
+      tabs: swap && { items: items, pick: function (i) { swap(items[i].note); }, add: function () { swap(null); }, addTitle: "새 일지 (오늘)" }
+    });
     f.appendChild(sh.node);
     var inputs = sh.eds;
     var row = el("div", "fold__actions");
@@ -293,6 +316,7 @@
         busy = null;
         if (!res.ok) { dirty = true; say(msg, res.error, "error"); return false; }
         noteId = res.id;
+        remember(a);
         var t = new Date();
         say(msg, "저장됨 " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0"), "ok");
         students.forEach(function (x) { if (x.id === s.id && (!x.last || date.value > x.last)) x.last = date.value; });
@@ -302,6 +326,18 @@
       return busy;
     }
     function flush() { return dirty || timer ? push(false) : busy || Promise.resolve(true); }
+    // 저장한 일지를 이 화면의 목록에도 (시트 탭 · 지난 일지 불러오기가 최신 내용을 쓰게)
+    function remember(a) {
+      var n = notes.filter(function (x) { return x.id === noteId; })[0];
+      if (!n) {
+        n = { id: noteId, mine: true, teacher: me };
+        notes.push(n);
+      }
+      n.date = a.p_date;
+      n.rich = true;
+      FIELDS.forEach(function (fd) { n[fd[0]] = a["p_" + fd[0]]; });
+      notes.sort(function (x, y) { return x.date < y.date ? 1 : x.date > y.date ? -1 : (y.id || 0) - (x.id || 0); });
+    }
     date.addEventListener("change", function () { if (noteId) later(); });
     // 다른 앱으로 넘어가거나 화면이 꺼질 때 바로 저장
     document.addEventListener("visibilitychange", function () { if (document.hidden && f.isConnected && dirty) push(false); });
@@ -371,20 +407,9 @@
     sum.appendChild(el("b", null, "저번 시간 수업 내용"));
     sum.appendChild(el("span", null, " · " + dayLabel(n.date) + (n.teacher ? " · " + n.teacher + " 선생님" : "")));
     box.appendChild(sum);
-    var grid = el("div", "rs-grid");
-    var any = false;
-    FIELDS.forEach(function (fd) {
-      if (!n[fd[0]]) return;
-      any = true;
-      var row = el("div", "rs-row");
-      var head = el("div", "rs-head");
-      head.appendChild(el("span", null, fd[1]));
-      row.appendChild(head);
-      row.appendChild(LeeshRich.view(n[fd[0]], n.rich, "rt-box rs-read"));
-      grid.appendChild(row);
-    });
-    if (!any) return null;
-    box.appendChild(grid);
+    var filled = FIELDS.filter(function (fd) { return n[fd[0]]; });
+    if (!filled.length) return null;
+    box.appendChild(LeeshRich.sheet({ fields: filled, values: n, readOnly: true }).node);
     return box;
   }
 
@@ -402,12 +427,7 @@
       var row = el("p", "fold__actions");
       var edit = button("고치기", "sys-link");
       edit.addEventListener("click", function () {
-        form.flush();
-        var f2 = noteForm(s, notes, n);
-        form.node.replaceWith(f2.node);
-        form.node = f2.node;
-        form.flush = f2.flush;
-        f2.node.scrollIntoView({ behavior: "smooth", block: "start" });
+        form.swap(n).then(function () { form.node.scrollIntoView({ behavior: "smooth", block: "start" }); });
       });
       var del = button("지우기", "sys-link adm__del");
       var m = el("span", "sys-msg");

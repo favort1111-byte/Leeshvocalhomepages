@@ -1,6 +1,7 @@
 // 레슨 일지 꾸미기 (원장님 2026-10-29): 선생님들이 구글시트에서 하던 그대로 — 글씨 크기 · 굵게 · 기울임 · 밑줄 · 취소선 ·
-// 글자 색 · 채우기 색. 화면도 시트처럼: 위에 도구 줄 하나, 아래에 칸(왼쪽 회색 머리 칸 + 오른쪽 흰 칸).
-//   LeeshRich.sheet({ fields, values, rich, onInput }) → { node, eds: { 칸: editor } }  (선생님 화면 · 관리자 수업 기록)
+// 글자 색 · 채우기 색. 화면도 스프레드시트처럼 (원장님 2026-10-30 "최대한 엑셀이랑 비슷하게"): 도구 줄 · 칸 이름 상자(B2) ·
+// A·B 열 글자 · 1·2·3 줄 번호 · 고른 칸 파란 테두리 · 열/줄 경계 끌어서 넓히기 · Tab으로 다음 칸 · 아래쪽 시트 탭(날짜).
+//   LeeshRich.sheet({ fields, values, onInput, readOnly, tabs }) → { node, eds: { 칸: editor } }  (선생님 화면 · 관리자 수업 기록)
 //   LeeshRich.view(html, rich, cls)                   → 저장된 칸 보여주기
 // 꾸민 글은 굵게 · 기울임 · 밑줄 · 취소선 · 색 · 채우기 · 크기 · 줄바꿈만 남기고 모두 걸러요 (서버 private.rich_ok도 한 번 더 확인).
 (function () {
@@ -102,7 +103,7 @@
     box.setAttribute("aria-multiline", "true");
     if (opts.label) box.setAttribute("aria-label", opts.label);
     if (opts.placeholder) box.setAttribute("data-placeholder", opts.placeholder);
-    // 칸 높이: 수업 중에 넉넉히 쓰도록 줄 수의 두 배쯤 (원장님 2026-10-29 "입력칸 더 크게"). 오른쪽 아래를 끌면 더 늘어나요.
+    // 칸 높이: 수업 중에 넉넉히 쓰도록 줄 수의 두 배쯤 (원장님 2026-10-29 "입력칸 더 크게"). 줄 번호 아래 경계를 끌면 더 늘어나요.
     box.style.minHeight = (1.6 * Math.max(5, (opts.rows || 2) * 2) + 1) + "em";
     var count = el("span", "rt-count");
     function text() { return (box.innerText || box.textContent || "").replace(/ /g, " "); }
@@ -142,6 +143,8 @@
 
   /* ---------- the toolbar (one for the whole sheet, works on the cell you were in) ---------- */
   var ICON = {
+    undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" fill="currentColor"/></svg>',
+    redo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z" fill="currentColor"/></svg>',
     fill: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 8.9 8.7 1 7.3 2.4l2.4 2.4-5.2 5.2c-.6.6-.6 1.5 0 2.1l5.5 5.5c.3.3.7.4 1.1.4s.8-.1 1.1-.4l5.5-5.5c.5-.6.5-1.6-.1-2.2zM5.9 11 11 5.9l5.1 5.1H5.9zM19 12.5s-2 2.2-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.3-2-3.5-2-3.5z" fill="currentColor"/></svg>',
     clear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.3 5 2 6.3 9 13.3 6.5 19h3l1.6-3.7 5.6 5.7 1.3-1.3L3.3 5zM6 5v.2L8.8 8h2.4l-.7 1.7 2.1 2.1L14.2 8H20V5H6z" fill="currentColor"/></svg>'
   };
@@ -222,6 +225,16 @@
       if (d > 0) { for (i = 0; i < SIZES.length && SIZES[i] <= now; i++); setSize(SIZES[Math.min(i, SIZES.length - 1)]); }
       else { for (i = SIZES.length - 1; i >= 0 && SIZES[i] >= now; i--); setSize(SIZES[Math.max(i, 0)]); }
     }
+    function history(cmd) {
+      var c = active || cells[0];
+      if (!c) return;
+      c.box.focus({ preventScroll: true });
+      exec(cmd);
+      c.changed();
+    }
+    btn("rt-btn--undo", ICON.undo, "실행 취소 (Ctrl+Z)", function () { history("undo"); });
+    btn("rt-btn--redo", ICON.redo, "다시 실행 (Ctrl+Y)", function () { history("redo"); });
+    sep();
     btn("rt-btn--minus", "−", "글씨 작게", function () { step(-1); });
     var sizeBtn = btn("rt-btn--size", String(BASE), "글씨 크기 고르기", function () { open(sizeMenu, sizeBtn); });
     btn("rt-btn--plus", "+", "글씨 크게", function () { step(1); });
@@ -291,33 +304,145 @@
     return { node: bar, add: function (c) { cells.push(c); c.box.addEventListener("focus", function () { active = c; showSize(); }); } };
   }
 
+  /* 끌어서 크기 바꾸기 (열 경계 · 줄 경계), 마우스 · 손가락 모두 */
+  function drag(grip, from, move, done) {
+    grip.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      var start = from(), x = e.clientX, y = e.clientY;
+      grip.setPointerCapture(e.pointerId);
+      grip.classList.add("is-drag");
+      function mv(ev) { move(start, ev.clientX - x, ev.clientY - y); }
+      function up() {
+        grip.classList.remove("is-drag");
+        grip.removeEventListener("pointermove", mv);
+        grip.removeEventListener("pointerup", up);
+        grip.removeEventListener("pointercancel", up);
+        if (done) done();
+      }
+      grip.addEventListener("pointermove", mv);
+      grip.addEventListener("pointerup", up);
+      grip.addEventListener("pointercancel", up);
+    });
+  }
+  var COL_KEY = "leesh_rs_a"; // A열 너비는 이 기기에 기억
+
   /**
-   * 시트 모양 일지: fields = lessonFields ([칸, 이름, 안내, 최대 글자, 줄 수]), values = 저장된 일지, rich = 꾸민 글인지.
+   * 스프레드시트 모양 일지: fields = lessonFields ([칸, 이름, 안내, 최대 글자, 줄 수]), values = 저장된 일지 (rich = 꾸민 글).
+   * readOnly = 보기만 (도구 줄 없이). tabs = { items: [{ label, title, active }], pick(i), add() } → 아래쪽 시트 탭.
    * Returns { node, eds: { 칸: { get(), set(v, rich), over(), text(), focus() } } }.
    */
   function sheet(opts) {
     opts = opts || {};
-    var wrap = el("div", "rs");
-    var bar = toolbar();
-    wrap.appendChild(bar.node);
+    var ro = !!opts.readOnly, fields = opts.fields || [], v = opts.values || {};
+    var wrap = el("div", "rs" + (ro ? " rs--read" : ""));
+    try { var w = Number(localStorage.getItem(COL_KEY)); if (w) wrap.style.setProperty("--rs-a", w + "px"); } catch (e) { /* private mode */ }
+    var bar = ro ? null : toolbar(), nameBox = null, fxText = null;
+    if (bar) {
+      wrap.appendChild(bar.node);
+      // 칸 이름 상자 (B2) + fx 줄
+      var fx = el("div", "rs-fx");
+      nameBox = el("span", "rs-fx__name", "B1");
+      fx.appendChild(nameBox);
+      fx.appendChild(el("span", "rs-fx__sign", "fx"));
+      fxText = el("span", "rs-fx__text", fields[0] ? fields[0][1] : "");
+      fx.appendChild(fxText);
+      wrap.appendChild(fx);
+    }
     var grid = el("div", "rs-grid");
-    var eds = {};
-    (opts.fields || []).forEach(function (fd) {
-      var key = fd[0], v = opts.values || {};
-      var row = el("div", "rs-row" + (key === "memo" ? " rs-row--memo" : ""));
+    var cols = el("div", "rs-row rs-cols");
+    cols.appendChild(el("div", "rs-corner"));
+    var colA = el("div", "rs-col", "A"), colB = el("div", "rs-col", "B");
+    var colGrip = el("span", "rs-colgrip");
+    colGrip.title = "끌어서 A열 넓히기";
+    colA.appendChild(colGrip);
+    cols.appendChild(colA);
+    cols.appendChild(colB);
+    grid.appendChild(cols);
+    drag(colGrip, function () { return colA.offsetWidth; }, function (w0, dx) {
+      wrap.style.setProperty("--rs-a", Math.max(70, Math.min(420, w0 + dx)) + "px");
+    }, function () {
+      try { localStorage.setItem(COL_KEY, String(parseInt(wrap.style.getPropertyValue("--rs-a"), 10))); } catch (e) { /* private mode */ }
+    });
+
+    var eds = {}, rows = [], list = [];
+    function activate(i) {
+      rows.forEach(function (r, k) { r.classList.toggle("is-active", k === i); });
+      colB.classList.add("is-active");
+      if (nameBox) { nameBox.textContent = "B" + (i + 1); fxText.textContent = fields[i][1]; }
+    }
+    function caretEnd(box) {
+      var r = document.createRange(); r.selectNodeContents(box); r.collapse(false);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+    fields.forEach(function (fd, i) {
+      var key = fd[0];
+      var row = el("div", "rs-row");
+      var num = el("div", "rs-num", String(i + 1));
+      var grip = el("span", "rs-rowgrip");
+      grip.title = "끌어서 칸 높이 바꾸기";
+      num.appendChild(grip);
       var head = el("div", "rs-head");
       head.appendChild(el("span", null, fd[1]));
-      if (key === "memo") head.appendChild(el("small", null, opts.memoNote || "🔒 학생에게 안 보여요"));
-      var c = cell({ value: v[key] || "", rich: v.rich, placeholder: fd[2], rows: fd[4], max: fd[3], label: fd[1], onInput: opts.onInput });
-      head.appendChild(c.count);
-      head.addEventListener("click", function () { c.focus(); });
+      var c, box;
+      if (ro) {
+        box = view(v[key], v.rich, "rt-box rs-read");
+      } else {
+        c = cell({ value: v[key] || "", rich: v.rich, placeholder: fd[2], rows: fd[4], max: fd[3], label: fd[1], onInput: opts.onInput });
+        box = c.box;
+        head.appendChild(c.count);
+        head.addEventListener("click", function () { c.focus(); });
+        num.addEventListener("click", function (e) { if (e.target === num) c.focus(); });
+        box.addEventListener("focus", function () { activate(i); });
+        // 시트처럼 Tab = 다음 칸, Shift+Tab = 앞 칸
+        box.addEventListener("keydown", function (e) {
+          if (e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
+          var next = list[i + (e.shiftKey ? -1 : 1)];
+          if (!next) return;
+          e.preventDefault();
+          next.focus();
+          caretEnd(next.box);
+        });
+        bar.add(c);
+        eds[key] = c;
+        list.push(c);
+      }
+      drag(grip, function () { return box.offsetHeight; }, function (h0, dx, dy) {
+        box.style.minHeight = Math.max(28, h0 + dy) + "px";
+        box.style.height = "";
+      });
+      row.appendChild(num);
       row.appendChild(head);
-      row.appendChild(c.box);
+      row.appendChild(box);
       grid.appendChild(row);
-      bar.add(c);
-      eds[key] = c;
+      rows.push(row);
     });
     wrap.appendChild(grid);
+
+    // 아래쪽 시트 탭 (선생님 화면: 날짜마다 시트 하나, + = 새 시트)
+    var t = opts.tabs;
+    if (t && t.items && t.items.length) {
+      var tb = el("div", "rs-tabs");
+      if (t.add) {
+        var plus = el("button", "rs-tabs__add", "+");
+        plus.type = "button";
+        plus.title = t.addTitle || "새 시트";
+        plus.setAttribute("aria-label", plus.title);
+        plus.addEventListener("click", t.add);
+        tb.appendChild(plus);
+      }
+      var tl = el("div", "rs-tabs__list");
+      t.items.forEach(function (it, i) {
+        var b = el("button", "rs-tab" + (it.active ? " is-active" : ""), it.label);
+        b.type = "button";
+        if (it.title) b.title = it.title;
+        if (it.active) b.setAttribute("aria-current", "true");
+        b.addEventListener("click", function () { if (!it.active) t.pick(i); });
+        tl.appendChild(b);
+      });
+      tb.appendChild(tl);
+      wrap.appendChild(tb);
+      setTimeout(function () { var a = tl.querySelector(".is-active"); if (a) tl.scrollLeft = a.offsetLeft - tl.clientWidth / 2; }, 0);
+    }
     return { node: wrap, eds: eds };
   }
 
