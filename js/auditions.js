@@ -135,7 +135,8 @@
       if (empty) empty.hidden = true;
       var ul = el("ul", "news__list news__list--ig");
       mine.slice(0, IG_SHOW).forEach(function (p) { ul.appendChild(igCard(p)); });
-      var first = sec.querySelector(".news__list, .news__more, .news__empty");
+      // 학원이 올린 다가오는 소식(news__list--own)은 늘 맨 위, 인스타 글은 그 아래
+      var first = sec.querySelector(".news__list:not(.news__list--own), .news__more, .news__empty");
       sec.insertBefore(ul, first);
       if (mine.length > IG_SHOW) {
         var more = el("details", "news__more");
@@ -159,12 +160,11 @@
       if (!mine.length) return;
       var now = mine.filter(function (p) { return !isPast(p, today); });
       var past = mine.filter(function (p) { return isPast(p, today); });
-      var anchor = sec.querySelector(".news__list, .news__empty");
+      var anchor = sec.querySelector(".news__list, .news__more, .news__empty");
       var empty = sec.querySelector(".news__empty");
       if (now.length) {
-        // soonest first for what is still coming up
-        now.sort(function (x, y) { return (x.deadline || x.event_date || "9") < (y.deadline || y.event_date || "9") ? -1 : 1; });
-        if (kind === "합격") now.reverse();
+        // 날짜가 가장 나중인 것이 맨 위 (원장님 2026-10-30)
+        now.sort(function (x, y) { return (x.event_date || x.deadline || "") < (y.event_date || y.deadline || "") ? 1 : -1; });
         var ul = el("ul", "news__list news__list--own");
         now.forEach(function (p) { ul.appendChild(card(p, today)); });
         sec.insertBefore(ul, anchor);
