@@ -1049,6 +1049,42 @@
         top.appendChild(del);
         li.appendChild(top);
         if (r.song) li.appendChild(el("p", "sys-note", "♪ " + r.song));
+        // 학생 내 폴더에 보이는 것 그대로 (점수 4개 · 총점 · 단계 · 평가지 사진) — 올린 뒤 확인용 (원장님 2026-10-30)
+        var look = el("button", "sys-link", "학생에게 보이는 모양 보기");
+        look.type = "button";
+        var box = el("div", "adm__evalview");
+        box.hidden = true;
+        look.addEventListener("click", function () {
+          box.hidden = !box.hidden;
+          look.textContent = box.hidden ? "학생에게 보이는 모양 보기" : "닫기";
+          if (box.hidden || box.childNodes.length) return;
+          var sc = el("p", "adm__evalscores");
+          [["basic", "기본기"], ["technique", "보컬 테크닉"], ["acting", "액팅"], ["styling", "스타일링"]].forEach(function (it) {
+            sc.appendChild(el("span", null, it[1] + " " + (r[it[0]] != null ? r[it[0]] : "–") + " / 10"));
+          });
+          box.appendChild(sc);
+          if (r.total != null) box.appendChild(el("p", null, "총점 " + r.total + " / 40" + (r.stage ? " · " + r.stage : "")));
+          var pics = el("div", "adm__evalpics");
+          box.appendChild(pics);
+          if (!r.pages) { pics.appendChild(el("p", "sys-note", "평가지 사진이 없어요.")); return; }
+          pics.appendChild(el("p", "sys-note", "평가지 불러오는 중…"));
+          token().then(function (t) {
+            var jobs = [];
+            for (var n = 1; n <= r.pages; n++) jobs.push(LeeshAPI.storage.image(r.member_id + "/" + month + "/" + n + ".webp", t));
+            return Promise.all(jobs);
+          }).then(function (urls) {
+            pics.textContent = "";
+            urls.forEach(function (u, i) {
+              if (!u) { pics.appendChild(el("p", "sys-msg sys-msg--error", (i + 1) + "쪽을 불러오지 못했어요.")); return; }
+              var img = el("img");
+              img.src = u;
+              img.alt = (names[r.member_id] || r.member_id) + " 평가지 " + (i + 1) + "쪽";
+              pics.appendChild(img);
+            });
+          });
+        });
+        li.appendChild(look);
+        li.appendChild(box);
         ul.appendChild(li);
       });
     });

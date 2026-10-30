@@ -117,3 +117,9 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__visit dt{color:#7A6656;}
 .adm__visit dd{margin:0;white-space:pre-wrap;word-break:break-word;}
 .adm__visit .adm__player{display:block;margin-top:4px;max-width:100%;}
+
+/* 월말평가: 학생에게 보이는 모양 보기 */
+.adm__evalview{margin-top:8px;padding:10px 12px;border-radius:8px;background:#fff;border:1px solid #E3DDD5;}
+.adm__evalscores{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 6px;}
+.adm__evalpics{display:grid;gap:10px;margin-top:8px;}
+.adm__evalpics img{display:block;width:100%;max-width:720px;height:auto;border:1px solid #E3DDD5;border-radius:4px;}
