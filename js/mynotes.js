@@ -359,9 +359,9 @@
     var sum = el("div", "fold__sum suggest__sum");
     sum.appendChild(el("p", "suggest__lock", "🔒 이름 없이 보내는 건의함"));
     var ul = el("ul", "suggest__promise");
-    ["누가 썼는지 저장하지 않아요. 원장님도 보낸 사람을 알 수 없어요.",
+    ["누가 썼는지 저장하지 않아요. 실장님도 보낸 사람을 알 수 없어요.",
      "보낸 시각도 남기지 않고 날짜만 남아요.",
-     "내용은 암호화해서 저장되고, 원장님(관리자)만 읽을 수 있어요. 선생님 · 다른 학생은 볼 수 없어요.",
+     "내용은 암호화해서 저장되고, 관리자(실장님)만 읽을 수 있어요. 선생님 · 다른 학생은 볼 수 없어요.",
      "편하게 적어주세요. 수업 · 연습실 · 학원 생활 무엇이든 좋아요."].forEach(function (t) { ul.appendChild(el("li", null, t)); });
     sum.appendChild(ul);
     box.appendChild(sum);
@@ -581,7 +581,7 @@
     k.target = "_blank";
     k.rel = "noopener";
     kk.appendChild(k);
-    kk.appendChild(document.createTextNode("로 보내도 돼요. 녹음은 원장님만 듣고, 추천이 끝나면 지워요."));
+    kk.appendChild(document.createTextNode("로 보내도 돼요. 녹음은 관리자(실장님)만 듣고, 추천이 끝나면 지워요."));
     f.appendChild(kk);
     var note = el("p", "sys-msg");
     f.appendChild(note);
