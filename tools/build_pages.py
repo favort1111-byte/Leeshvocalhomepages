@@ -50,7 +50,7 @@ def head(title, desc):
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.ico" sizes="48x48">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/img/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="assets/img/icon-180.png">
 <meta name="theme-color" content="#1D4948">
 {{{{LD}}}}{FONTS}

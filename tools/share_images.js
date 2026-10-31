@@ -1,5 +1,6 @@
 // 카톡·검색 미리보기 그림과 아이콘 만들기 (2026-10-31)
-//   node tools/share_images.js  → assets/img/share.jpg (1200×630), assets/img/icon-180.png, assets/img/icon-512.png, /tmp png 32·48 (favicon.ico용)
+//   node tools/share_images.js  → assets/img/share.jpg (1200×630), assets/img/icon-512.png
+//   그다음 python으로 icon-512.png를 줄여 icon-180.png · icon-192.png · favicon.ico(16·32·48)를 만듦 (CLAUDE.md 참고)
 // 글씨는 저장소의 G마켓 산스, 사진은 학원 간판(assets/img/blog/sign.webp).
 const { chromium } = require('playwright');
 const path = require('path');
@@ -25,15 +26,21 @@ const u = p => 'file://' + path.join(R, p);
     <p>오디션 · 입시 · 전문 · 취미반<br>24시간 개인 연습실</p>
     <div class="url">leeshlesson.com</div></div>`);
   await pg.goto('file://' + tmp);  // file:// 사진·글씨는 파일로 열어야 읽힘
+  await pg.evaluate(() => document.fonts.ready);
   await pg.waitForTimeout(400);
   await pg.screenshot({ path: path.join(R, 'assets/img/share.jpg'), type: 'jpeg', quality: 86 });
-  const svg = require('fs').readFileSync(path.join(R, 'favicon.svg'), 'utf8');
-  for (const [s, out] of [[180, 'assets/img/icon-180.png'], [512, 'assets/img/icon-512.png'], [32, '/tmp/leesh-ico-32.png'], [48, '/tmp/leesh-ico-48.png']]) {
-    await pg.setViewportSize({ width: s, height: s });
-    // 아이폰 홈 화면 아이콘은 둥근 모서리를 기기가 깎으므로 네모 그대로
-    const body = s >= 180 ? svg.replace('rx="14"', 'rx="0"') : svg;
-    await pg.setContent(`<style>*{margin:0}svg{display:block;width:${s}px;height:${s}px}</style>${body}`);
-    await pg.screenshot({ path: out.startsWith('/') ? out : path.join(R, out), omitBackground: true });
-  }
+  // 탭 아이콘 (원장님 2026-10-31: 학원 이름이 보이게, 진초록 바탕 + 흰 글씨): 512로 그려 두고 작은 크기는 줄여서 씀
+  const ico = path.join(require('os').tmpdir(), 'leesh-icon.html');
+  require('fs').writeFileSync(ico, `<!doctype html><meta charset="utf-8"><style>
+    @font-face{font-family:G;src:url('${u('assets/fonts/GmarketSansMedium.woff')}')}
+    *{margin:0}body{width:512px;height:512px;background:#1D4948;color:#fff;font-family:G,sans-serif;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;letter-spacing:-6px}
+    b{font-weight:normal;font-size:166px;line-height:1}i{font-style:normal;font-size:122px;line-height:1;margin-top:28px}
+  </style><b>이송희</b><i>보컬레슨</i>`);
+  await pg.setViewportSize({ width: 512, height: 512 });
+  await pg.goto('file://' + ico);
+  await pg.evaluate(() => document.fonts.ready);
+  await pg.waitForTimeout(300);
+  await pg.screenshot({ path: path.join(R, 'assets/img/icon-512.png') });
   await b.close();
 })();
