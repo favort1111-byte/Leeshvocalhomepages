@@ -1150,29 +1150,18 @@
           box.hidden = !box.hidden;
           look.textContent = box.hidden ? "학생에게 보이는 모양 보기" : "닫기";
           if (box.hidden || box.childNodes.length) return;
-          var sc = el("p", "adm__evalscores");
-          [["basic", "기본기"], ["technique", "보컬 테크닉"], ["acting", "액팅"], ["styling", "스타일링"]].forEach(function (it) {
-            sc.appendChild(el("span", null, it[1] + " " + (r[it[0]] != null ? r[it[0]] : "–") + " / 10"));
-          });
-          box.appendChild(sc);
-          if (r.total != null) box.appendChild(el("p", null, "총점 " + r.total + " / 40" + (r.stage ? " · " + r.stage : "")));
-          var pics = el("div", "adm__evalpics");
-          box.appendChild(pics);
-          if (!r.pages) { pics.appendChild(el("p", "sys-note", "평가지 사진이 없어요.")); return; }
-          pics.appendChild(el("p", "sys-note", "평가지 불러오는 중…"));
-          token().then(function (t) {
-            var jobs = [];
-            for (var n = 1; n <= r.pages; n++) jobs.push(LeeshAPI.storage.image(r.member_id + "/" + month + "/" + n + ".webp", t));
-            return Promise.all(jobs);
-          }).then(function (urls) {
-            pics.textContent = "";
-            urls.forEach(function (u, i) {
-              if (!u) { pics.appendChild(el("p", "sys-msg sys-msg--error", (i + 1) + "쪽을 불러오지 못했어요.")); return; }
-              var img = el("img");
-              img.src = u;
-              img.alt = (names[r.member_id] || r.member_id) + " 평가지 " + (i + 1) + "쪽";
-              pics.appendChild(img);
-            });
+          // 학생 내 폴더와 같은 카드 (js/evalcard.js), 항목 옆 ▲▼도 똑같이 그 전 평가와 비교
+          box.appendChild(el("p", "sys-note", "불러오는 중…"));
+          api("eval_reports?member_id=eq." + encodeURIComponent(r.member_id) + "&month=lt." + month + "-01&order=month.desc&limit=1").then(function (pr) {
+            box.textContent = "";
+            var shown = Object.assign({}, r, { month: month });
+            box.appendChild(LeeshEvalCard.card(shown, pr.ok && pr.data[0] || null, function (holder) {
+              LeeshEvalCard.pages(holder, token().then(function (t) {
+                var jobs = [];
+                for (var n = 1; n <= r.pages; n++) jobs.push(LeeshAPI.storage.image(r.member_id + "/" + month + "/" + n + ".webp", t));
+                return Promise.all(jobs);
+              }));
+            }));
           });
         });
         li.appendChild(look);
