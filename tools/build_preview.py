@@ -23,4 +23,6 @@ for page in PAGES:
     open(os.path.join(out, page), "w").write(html)
 for folder in ["css", "js", os.path.join("assets", "img"), os.path.join("assets", "fonts")]:  # (assets/blog-posts and data/blog stay on GitHub)
     shutil.copytree(os.path.join(REPO, folder), os.path.join(out, folder), dirs_exist_ok=True)
+for f in ["favicon.ico", "favicon.svg"]:  # 탭 아이콘
+    shutil.copy(os.path.join(REPO, f), os.path.join(out, f))
 print("preview written to", out)

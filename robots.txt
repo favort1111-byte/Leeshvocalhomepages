@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin.html
+Disallow: /teacher.html
+Allow: /
+
+Sitemap: https://leeshlesson.com/sitemap.xml

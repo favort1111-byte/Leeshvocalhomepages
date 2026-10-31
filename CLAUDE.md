@@ -179,6 +179,15 @@
 - `docs/menu-ideas.md`: 메뉴 아이디어 원본 기록 (GPT 기본표·특색 5개·해외 조사 5개, Claude 아이디어). **메뉴 구성을 논의할 때 먼저 꺼내서 보여줍니다.**
 - 메뉴 아이디어 보드 아티팩트: https://claude.ai/artifact/XHhi3x4pqGu8mRmwUb2B3G (원본 `docs/menu-ideas.html`). 아이디어가 추가되면 md와 이 보드를 같이 고쳐서 다시 올립니다.
 
+## 카톡 미리보기 · 아이콘 · 검색 등록 준비 (원장님 2026-10-31)
+- 모든 페이지 머리에 **og:\***(카톡·인스타·페이스북 링크 미리보기): 제목 = 페이지 제목, 설명 = description, 그림 = `assets/img/share.jpg`(1200×630, 학원 간판 사진 + 진초록 바탕 + "강남 선릉역 1:1 보컬학원 · 이송희보컬레슨 · 오디션 · 입시 · 전문 · 취미반 · 24시간 개인 연습실"). 그림·아이콘은 `node tools/share_images.js`로 다시 만듦.
+  카톡은 미리보기를 한동안 저장해 둠 → 바꾼 뒤 바로 안 바뀌면 카카오 디벨로퍼스 "공유 디버거"에서 캐시 초기화.
+- 탭 아이콘: `favicon.svg`(진초록 네모 + 노란 마이크) · `favicon.ico` · `assets/img/icon-180.png`(아이폰 홈 화면) · `icon-512.png`. admin.html에도.
+- `build_pages.py`가 `robots.txt`(admin·teacher 빼기) · `sitemap.xml`(공개 페이지 11개 + 옮긴 블로그 글 전부)을 만듦. 첫 화면·contact에 학원 정보(JSON-LD MusicSchool: 이름·주소·전화·유튜브·인스타, 좌표·영업시간은 확인 안 돼서 뺌).
+  canonical·og:url은 `https://leeshlesson.com/<파일>` (post.html은 글마다 주소가 달라서 뺌).
+- `404.html`: 없는 주소 → "찾으시는 페이지가 없습니다" + 첫 화면·오디션 소식·상담 신청 버튼. 어느 깊이의 주소에서도 보이게 링크를 /로 시작. 예전 qshop 홈페이지 주소(/EBH1n 강사소개 · /aKews 온라인 강의 → about, /pTFHc 문의 → consult)는 바로 넘김.
+- 남은 것: 원장님이 **네이버 서치어드바이저**·**구글 서치 콘솔**에 사이트 등록 → 받은 확인용 meta 태그(비밀 아님)를 `head()`에 넣고 사이트맵 제출.
+
 ## 글씨체 (원장님 2026-10-29)
 - 테스트한 사람들이 "Claude 티가 난다" → 원장님: 커리큘럼 안내 이미지와 같은 **G마켓 산스로 모두**. `css/system.css` 맨 위 @font-face "Gmarket Sans" (Medium은 저장소 `assets/fonts/GmarketSansMedium.woff`, npm `@noonnu/gmarket-sans-medium` MIT 포장 · Light/Bold는 눈누 jsdelivr — 이 클라우드 환경에선 jsdelivr가 막혀 Bold가 가짜 굵기로 보이지만 실제 방문자는 진짜 Bold).
   `--f-display/serif/sans/hand` 전부 Gmarket Sans (+ Noto Sans KR 대신), 고운바탕·나눔펜·Caveat·Gloock·Cormorant·Jost 안 씀, 큰 제목은 700, 영어 작은 제목(the teacher 등)은 대문자 작은 글씨. 게임 캔버스 글씨도. 미리보기는 `build_preview.py`가 assets/fonts도 복사.

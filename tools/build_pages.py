@@ -28,6 +28,8 @@ def nav(current, theme):
         for name, href in PAGES)
     return f'  <nav class="nav nav--{theme}" aria-label="주요 메뉴">\n{links}\n  </nav>'
 
+SITE = "https://leeshlesson.com/"
+# 카톡·검색 미리보기 (2026-10-31): og:* · 아이콘. {{PAGE}}는 아래 쓰기 단계에서 파일 이름으로 바뀜
 def head(title, desc):
     return f"""<!DOCTYPE html>
 <html lang="ko">
@@ -36,12 +38,39 @@ def head(title, desc):
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title}</title>
 <meta name="description" content="{desc}">
-{FONTS}
+<link rel="canonical" href="{SITE}{{{{PAGE}}}}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="이송희보컬레슨">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{desc}">
+<meta property="og:url" content="{SITE}{{{{PAGE}}}}">
+<meta property="og:image" content="{SITE}assets/img/share.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<meta name="theme-color" content="#1D4948">
+{{{{LD}}}}{FONTS}
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/system.css">
 </head>
 <body>
 """
+
+# 검색엔진용 학원 정보 (첫 화면 · contact). 좌표·영업시간은 확인된 게 없어서 넣지 않음
+LD = json.dumps({
+    "@context": "https://schema.org", "@type": "MusicSchool",
+    "name": "이송희보컬레슨", "url": SITE, "image": SITE + "assets/img/share.jpg", "logo": SITE + "assets/img/icon-512.png",
+    "description": "강남 선릉역 1:1 보컬학원. 오디션 · 입시 · 전문 · 취미반.",
+    "telephone": "+82-10-4458-5448",
+    "address": {"@type": "PostalAddress", "addressCountry": "KR", "addressRegion": "서울특별시", "addressLocality": "강남구",
+                "streetAddress": blog.DIRECTIONS["address"].replace("서울 강남구 ", "")},
+    "sameAs": [blog.YT, blog.YT_AUDITION, blog.INSTA_AUDITION],
+}, ensure_ascii=False)
+LD_PAGES = {"index.html", "contact.html"}
 
 # 개인정보처리방침 link on every page (the law asks for it to be easy to find, in bold)
 LEGAL = ('<footer class="legal"><a href="privacy.html"><b>개인정보처리방침</b></a><a href="guide.html">홈페이지 사용법</a>'
@@ -808,7 +837,25 @@ guide_page = (head("Guide | 이송희보컬레슨", "이송희보컬레슨 홈�
               + '  <div class="booking__inner">\n' + guide.body() + "  </div>\n"
               + "</main>\n" + foot())
 
-out = {"guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+# ---------- 404: 없는 주소 (GitHub Pages가 어느 주소에서나 이 파일을 보여줌 → 링크는 / 로 시작하게 fill에서 바꿈) ----------
+# 예전 홈페이지(qshop) 주소로 들어오면 새 페이지로 보냄: 강사소개 · 온라인 강의 · 문의하기
+OLD_URLS = {"/EBH1n": "/about.html", "/aKews": "/about.html", "/pTFHc": "/consult.html"}
+notfound_page = (head("페이지를 찾을 수 없습니다 | 이송희보컬레슨", "이송희보컬레슨 · 없는 페이지입니다.").replace(
+                     '<meta name="description"', '<meta name="robots" content="noindex">\n<meta name="description"', 1)
+                 + '<script>(function(){var m=' + json.dumps(OLD_URLS) + ',p=location.pathname.replace(/\\/+$/,"");'
+                 'if(m[p])location.replace(m[p]);})();</script>\n'
+                 + '<main class="stage booking">\n'
+                 + nav("", "dark") + "\n"
+                 + '  <div class="booking__inner">\n'
+                 '    <h1 class="booking__title">404</h1>\n'
+                 '    <p class="booking__note">찾으시는 페이지가 없습니다. 주소가 바뀌었거나 지워진 페이지입니다.</p>\n'
+                 '    <p class="news__foot"><a class="pill-btn" href="index.html">첫 화면으로</a> '
+                 '<a class="pill-btn" href="audition.html">오디션 소식</a> '
+                 '<a class="pill-btn" href="consult.html">상담 신청</a></p>\n'
+                 '  </div>\n'
+                 + "</main>\n" + foot())
+
+out = {"404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')
@@ -822,9 +869,30 @@ def stamp(html):
     return ASSET.sub(ver, html)
 
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
+def fill(name, html):
+    ld = f'<script type="application/ld+json">{LD}</script>\n' if name in LD_PAGES else ""
+    if name in ("post.html", "404.html"):  # post.html?id=… 글마다 주소가 달라서 대표 주소를 적지 않음
+        html = re.sub(r'<link rel="canonical"[^>]*>\n|<meta property="og:url"[^>]*>\n', "", html)
+    html = html.replace("{{PAGE}}", "" if name == "index.html" else name).replace("{{LD}}", ld)
+    if name == "404.html":  # /a/b/없는주소 에서도 css·그림·링크가 맞게
+        html = re.sub(r'((?:href|src)=")(?!https?:|/|#|mailto:|tel:|data:)', r'\1/', html)
+        html = html.replace("url('assets/", "url('/assets/")
+    return html
 for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
-        f.write(stamp(html))
+        f.write(fill(name, stamp(html)))
+# 검색엔진 안내 (2026-10-31): 관리자·선생님 화면은 빼고, 공개 페이지 + 옮겨온 블로그 글
+SITEMAP_PAGES = ["", "about.html", "audition.html", "results.html", "tips.html", "contact.html", "consult.html",
+                 "guide.html", "games.html", "booking.html", "privacy.html"]
+with open(os.path.join(target, "robots.txt"), "w") as f:
+    f.write("User-agent: *\nDisallow: /admin.html\nDisallow: /teacher.html\nAllow: /\n\nSitemap: " + SITE + "sitemap.xml\n")
+with open(os.path.join(target, "sitemap.xml"), "w") as f:
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n')
+    for pth in SITEMAP_PAGES:
+        f.write(f"  <url><loc>{SITE}{pth}</loc></url>\n")
+    for p in POSTS:
+        f.write(f"  <url><loc>{SITE}post.html?id={p['id']}</loc><lastmod>{p['date']}</lastmod></url>\n")
+    f.write("</urlset>\n")
 # admin.html is written by hand: only its links get the stamp
 admin = os.path.join(REPO, "admin.html")
 admin_html = open(admin).read()  # read first: opening for "w" empties the file
