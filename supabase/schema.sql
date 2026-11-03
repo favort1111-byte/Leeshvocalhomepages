@@ -3091,3 +3091,480 @@ alter table public.lesson_notes add constraint lesson_notes_has_content check (
   coalesce(nullif(trim(did), ''), nullif(trim(songs), ''), nullif(trim(practice), ''), nullif(trim(audition), ''),
            nullif(trim(recommend), ''), nullif(trim(memo), '')) is not null
   or (sheet is not null and jsonb_typeof(sheet -> 'c') = 'object' and sheet -> 'c' <> '{}'::jsonb));
+-- ---------------------------------------------------------------- 마이그레이션 leesh_lesson_import (2026-11-03)
+-- 선생님 구글시트(학생 한 명 = 파일 하나) → 홈페이지 레슨 노트 (원장님 2026-11-03).
+--   날짜 탭(2026년부터) = 레슨 노트 한 장 (lesson_notes.sheet, 칸 · 색 · 굵게 그대로)
+--   다른 탭(곡 가사 · 곡별 피드백 · OT · 발성 · 알림장) = "곡·자료" 시트 (public.lesson_sheets)
+--   당분간 계속 맞추기: 원장님 구글 계정의 Apps Script(tools/lesson_sync.gs, 읽기 전용)가 1시간마다 바뀐 파일만 보냄.
+--   홈페이지에서 고친 일지는 그 뒤로 시트가 덮지 않음(site_edited), 홈페이지에서 지운 일지는 다시 안 들어옴(lesson_skip).
+--   시트에서 탭을 지워도 홈페이지 것은 지우지 않음 (자동 삭제 안 함).
+-- 학생 맞추기: 파일 이름 앞 이름(글자까지 똑같이) + 폴더 선생님("이수빈 레슨시트", "유정T 레슨시트")이 명단 "담당 ○○○"와 같을 때만.
+--   하나라도 다르면 '확인 필요'로 두고 관리자(또는 Claude)가 정함 (원장님 2026-10-31 "이름·선생님 명확히").
+
+create table if not exists private.lesson_sync (
+  id            int primary key check (id = 1),
+  key_hash      bytea,
+  registered_at timestamptz,
+  open_until    timestamptz,
+  last_at       timestamptz,
+  last_result   jsonb
+);
+insert into private.lesson_sync (id) values (1) on conflict (id) do nothing;
+
+create table if not exists public.lesson_sources (
+  file_id         text primary key check (file_id ~ '^[A-Za-z0-9_-]{20,100}$'),
+  title           text not null,
+  folder          text,
+  member_id       text references public.members (id) on update cascade on delete set null,
+  teacher_id      bigint references public.teachers (id) on delete set null,
+  status          text not null default 'pending' check (status in ('ok', 'pending', 'ignore')),
+  why             text,
+  set_by          text not null default 'auto' check (set_by in ('auto', 'admin')),
+  modified        timestamptz,          -- 구글 드라이브의 마지막 수정 시각
+  synced_modified timestamptz,          -- 마지막으로 다 가져온 때의 수정 시각 (같으면 다시 안 가져옴)
+  synced_ver      int,
+  synced_at       timestamptz,
+  notes           int not null default 0,
+  sheets          int not null default 0,
+  kept            int not null default 0,   -- 홈페이지에서 고쳐서 시트로 안 덮은 일지
+  gone            int not null default 0,   -- 시트에서 없어졌지만 홈페이지엔 남겨둔 것
+  seen_at         timestamptz not null default now(),
+  created_at      timestamptz not null default now()
+);
+alter table public.lesson_sources enable row level security;
+drop policy if exists lesson_sources_admin on public.lesson_sources;
+create policy lesson_sources_admin on public.lesson_sources for select to authenticated using (public.is_admin());
+
+alter table public.lesson_notes add column if not exists src_file text;
+alter table public.lesson_notes add column if not exists src_tab bigint;
+alter table public.lesson_notes add column if not exists src_title text;
+alter table public.lesson_notes add column if not exists synced_at timestamptz;
+alter table public.lesson_notes add column if not exists site_edited boolean not null default false;
+create unique index if not exists lesson_notes_src_idx on public.lesson_notes (src_file, src_tab) where src_file is not null;
+
+create table if not exists public.lesson_sheets (
+  id         bigint generated always as identity primary key,
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  teacher_id bigint references public.teachers (id) on delete set null,
+  src_file   text not null,
+  src_tab    bigint not null,
+  title      text not null check (char_length(title) between 1 and 120),
+  pos        int not null default 0,
+  sheet      jsonb not null check (private.sheet_ok(sheet)),
+  synced_at  timestamptz not null default now(),
+  unique (src_file, src_tab)
+);
+create index if not exists lesson_sheets_member_idx on public.lesson_sheets (member_id, src_file, pos);
+alter table public.lesson_sheets enable row level security;
+drop policy if exists lesson_sheets_admin on public.lesson_sheets;
+create policy lesson_sheets_admin on public.lesson_sheets for select to authenticated using (public.is_admin());
+
+create table if not exists private.lesson_skip (
+  src_file text not null,
+  src_tab  bigint not null,
+  at       timestamptz not null default now(),
+  primary key (src_file, src_tab)
+);
+
+-- 폴더 이름 → 선생님 ("이수빈 레슨시트" · "유정T 레슨시트" · "이윤지T 학생 레슨 시트지"). 딱 한 명일 때만
+create or replace function private.folder_teacher(p_folder text) returns bigint
+language sql stable security definer set search_path = '' as $$
+  select case when count(*) = 1 then min(t.id) end
+  from public.teachers t
+  where t.active and t.name <> '원장님' and coalesce(p_folder, '') <> ''
+    and (position(t.name in replace(p_folder, ' ', '')) > 0
+         or (char_length(t.name) = 3 and position(substr(t.name, 2) || 'T' in replace(p_folder, ' ', '')) > 0));
+$$;
+
+-- 파일 하나의 학생 맞추기 (set_by = 'admin'이면 그대로)
+create or replace function private.lesson_match(p_file text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.lesson_sources;
+  v_name text; v_tid bigint; v_tname text; n int; v_mid text; other text;
+begin
+  select * into s from public.lesson_sources where file_id = p_file for update;
+  if s.file_id is null or s.set_by = 'admin' then return; end if;
+  v_name := substring(s.title from '^\s*([가-힣]{2,4})');
+  v_tid := private.folder_teacher(s.folder);
+  select name into v_tname from public.teachers where id = v_tid;
+  if v_name is null then
+    update public.lesson_sources set status = 'pending', member_id = null, teacher_id = v_tid, why = '파일 이름에서 학생 이름을 못 찾았어요' where file_id = p_file;
+    return;
+  end if;
+  if v_tid is null then
+    select string_agg(m.id || ' ' || coalesce(substring(m.memo from '담당\s*([^\s·,]+)'), '담당 없음'), ', ') into other
+    from public.members m where m.name = v_name and m.status in ('재원', '휴원');
+    update public.lesson_sources set status = 'pending', member_id = null, teacher_id = null,
+      why = '선생님 폴더 밖에 있어서 담당 선생님을 확인 못 했어요' || coalesce(' (명단: ' || other || ')', '') where file_id = p_file;
+    return;
+  end if;
+  select count(*), min(m.id) into n, v_mid from public.members m
+  where m.name = v_name and m.status in ('재원', '휴원') and substring(m.memo from '담당\s*([^\s·,]+)') = v_tname;
+  if n = 1 then
+    update public.lesson_sources set status = 'ok', member_id = v_mid, teacher_id = v_tid, why = null where file_id = p_file;
+    return;
+  end if;
+  select string_agg(m.id || ' ' || m.status || ' ' || coalesce(substring(m.memo from '담당\s*([^\s·,]+)'), '담당 없음'), ', ') into other
+  from public.members m where m.name = v_name;
+  update public.lesson_sources set status = 'pending', member_id = null, teacher_id = v_tid,
+    why = case when n > 1 then '이름·담당이 같은 학생이 ' || n || '명이에요'
+               when other is null then '명단에 "' || v_name || '" 학생이 없어요'
+               else '담당 선생님이 달라요 (폴더: ' || v_tname || ' / 명단: ' || other || ')' end
+  where file_id = p_file;
+end $$;
+
+-- 스크립트: 열쇠 등록 (관리자 → 선생님 → "레슨 시트 연결 열기" 뒤 30분 안에만)
+create or replace function public.lesson_register(p_key text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare s private.lesson_sync;
+begin
+  if char_length(coalesce(p_key, '')) < 40 then return private.fail('열쇠가 너무 짧아요.'); end if;
+  select * into s from private.lesson_sync where id = 1 for update;
+  if s.key_hash = extensions.digest(p_key, 'sha256') then return jsonb_build_object('ok', true); end if;
+  if s.open_until is null or s.open_until < now() then
+    return private.fail('관리자 화면 → 선생님 → "레슨 시트 연결 열기"를 먼저 누른 뒤 30분 안에 해주세요.');
+  end if;
+  update private.lesson_sync set key_hash = extensions.digest(p_key, 'sha256'), registered_at = now(), open_until = null where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function private.lesson_key_ok(p_key text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select key_hash = extensions.digest(coalesce(p_key, ''), 'sha256') from private.lesson_sync where id = 1), false);
+$$;
+
+-- 스크립트: 찾은 파일 목록 → 가져올 파일. p_files = [{"id","title","folder","modified"}]
+create or replace function public.lesson_sync_plan(p_key text, p_files jsonb, p_ver int default 1) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare r jsonb; v_id text; v_fetch text[] := '{}'; s public.lesson_sources;
+begin
+  if not private.lesson_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  if jsonb_typeof(p_files) <> 'array' or jsonb_array_length(p_files) > 3000 then return private.fail('파일 목록이 이상해요.'); end if;
+  for r in select * from jsonb_array_elements(p_files) loop
+    v_id := r ->> 'id';
+    if v_id is null or v_id !~ '^[A-Za-z0-9_-]{20,100}$' then continue; end if;
+    insert into public.lesson_sources (file_id, title, folder, modified, seen_at)
+    values (v_id, left(coalesce(r ->> 'title', ''), 200), left(r ->> 'folder', 200), (r ->> 'modified')::timestamptz, now())
+    on conflict (file_id) do update set title = excluded.title, folder = excluded.folder, modified = excluded.modified, seen_at = now();
+    perform private.lesson_match(v_id);
+    select * into s from public.lesson_sources where file_id = v_id;
+    if s.status = 'ok' and (s.synced_modified is null or s.synced_modified < s.modified or s.synced_ver is distinct from p_ver) then
+      v_fetch := v_fetch || v_id;
+    end if;
+  end loop;
+  return jsonb_build_object('ok', true, 'fetch', to_jsonb(v_fetch),
+    'pending', (select count(*) from public.lesson_sources where status = 'pending'));
+end $$;
+
+-- 스크립트: 파일 하나의 탭들 보내기 (여러 번 나눠 보내고 마지막에 p_done = true)
+--   p_notes  = [{"tab":gid,"title":"2026-10-27(1회차)","date":"2026-10-27","sheet":{…}}]
+--   p_sheets = [{"tab":gid,"title":"Curtain call","pos":3,"sheet":{…}}]
+--   p_tabs   = 이번에 시트에 있던 탭 번호 전부 (p_done 때만, 없어진 탭 세기용)
+create or replace function public.lesson_sync_push(p_key text, p_file text, p_notes jsonb default '[]', p_sheets jsonb default '[]',
+  p_done boolean default false, p_modified timestamptz default null, p_ver int default 1, p_tabs jsonb default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.lesson_sources; t public.teachers; r jsonb; v_date date; v_tab bigint; v_sheet jsonb; ex public.lesson_notes;
+  added int := 0; updated int := 0; kept int := 0; skipped int := 0; sh int := 0; bad int := 0;
+begin
+  if not private.lesson_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  select * into s from public.lesson_sources where file_id = p_file;
+  if s.file_id is null or s.status <> 'ok' or s.member_id is null then return private.fail('확인된 학생 파일이 아니에요.'); end if;
+  select * into t from public.teachers where id = s.teacher_id;
+  if jsonb_typeof(coalesce(p_notes, '[]')) <> 'array' or jsonb_typeof(coalesce(p_sheets, '[]')) <> 'array' then return private.fail('보낸 내용이 이상해요.'); end if;
+
+  for r in select * from jsonb_array_elements(coalesce(p_notes, '[]')) loop
+    begin
+      v_tab := (r ->> 'tab')::bigint; v_date := (r ->> 'date')::date; v_sheet := r -> 'sheet';
+    exception when others then bad := bad + 1; continue; end;
+    if v_tab is null or v_date is null or v_date < date '2026-01-01' or v_date > private.now_kst()::date + 400 then skipped := skipped + 1; continue; end if;
+    if exists (select 1 from private.lesson_skip k where k.src_file = p_file and k.src_tab = v_tab) then skipped := skipped + 1; continue; end if;
+    if not private.sheet_ok(v_sheet) or trim(private.sheet_text(v_sheet)) = '' then bad := bad + 1; continue; end if;
+    select * into ex from public.lesson_notes where src_file = p_file and src_tab = v_tab;
+    if ex.id is null then
+      insert into public.lesson_notes (member_id, lesson_date, teacher, teacher_id, rich, sheet, src_file, src_tab, src_title, synced_at)
+      values (s.member_id, v_date, t.name, s.teacher_id, true, v_sheet, p_file, v_tab, left(r ->> 'title', 120), now());
+      added := added + 1;
+    elsif ex.site_edited then
+      kept := kept + 1;
+    else
+      if ex.sheet is distinct from v_sheet or ex.lesson_date <> v_date or ex.member_id <> s.member_id then
+        update public.lesson_notes set member_id = s.member_id, lesson_date = v_date, sheet = v_sheet, rich = true,
+          teacher = coalesce(t.name, teacher), teacher_id = coalesce(s.teacher_id, teacher_id),
+          src_title = left(r ->> 'title', 120), synced_at = now(), updated_at = now()
+        where id = ex.id;
+        updated := updated + 1;
+      end if;
+    end if;
+  end loop;
+
+  for r in select * from jsonb_array_elements(coalesce(p_sheets, '[]')) loop
+    begin
+      v_tab := (r ->> 'tab')::bigint; v_sheet := r -> 'sheet';
+    exception when others then bad := bad + 1; continue; end;
+    if v_tab is null or coalesce(trim(r ->> 'title'), '') = '' or not private.sheet_ok(v_sheet) or trim(private.sheet_text(v_sheet)) = '' then
+      bad := bad + 1; continue;
+    end if;
+    insert into public.lesson_sheets (member_id, teacher_id, src_file, src_tab, title, pos, sheet, synced_at)
+    values (s.member_id, s.teacher_id, p_file, v_tab, left(trim(r ->> 'title'), 120), coalesce((r ->> 'pos')::int, 0), v_sheet, now())
+    on conflict (src_file, src_tab) do update set member_id = excluded.member_id, teacher_id = excluded.teacher_id, title = excluded.title,
+      pos = excluded.pos, sheet = excluded.sheet, synced_at = now()
+    where public.lesson_sheets.sheet is distinct from excluded.sheet or public.lesson_sheets.title is distinct from excluded.title
+       or public.lesson_sheets.pos is distinct from excluded.pos or public.lesson_sheets.member_id is distinct from excluded.member_id;
+    sh := sh + 1;
+  end loop;
+
+  if p_done then
+    update public.lesson_sources set synced_modified = coalesce(p_modified, modified), synced_ver = p_ver, synced_at = now(),
+      notes = (select count(*) from public.lesson_notes where src_file = p_file),
+      sheets = (select count(*) from public.lesson_sheets where src_file = p_file),
+      kept = (select count(*) from public.lesson_notes where src_file = p_file and site_edited),
+      gone = case when jsonb_typeof(p_tabs) = 'array' then
+        (select count(*) from public.lesson_notes n where n.src_file = p_file and not (p_tabs @> to_jsonb(n.src_tab)))
+        + (select count(*) from public.lesson_sheets x where x.src_file = p_file and not (p_tabs @> to_jsonb(x.src_tab)))
+        else gone end
+    where file_id = p_file;
+  end if;
+  return jsonb_build_object('ok', true, 'added', added, 'updated', updated, 'kept', kept, 'skipped', skipped, 'sheets', sh, 'bad', bad);
+end $$;
+
+-- 스크립트: 한 번 돌고 나서 결과 남기기
+create or replace function public.lesson_sync_done(p_key text, p_result jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.lesson_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  update private.lesson_sync set last_at = now(), last_result = case when jsonb_typeof(p_result) = 'object' and octet_length(p_result::text) < 20000 then p_result end where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 관리자: 상태 · 연결 열기 · 학생 직접 정하기
+create or replace function public.admin_lesson_sync_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s private.lesson_sync;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into s from private.lesson_sync where id = 1;
+  return jsonb_build_object('ok', true, 'connected', s.key_hash is not null, 'registeredAt', s.registered_at, 'openUntil', s.open_until,
+    'lastAt', s.last_at, 'last', s.last_result,
+    'sources', coalesce((select jsonb_agg(jsonb_build_object('file', x.file_id, 'title', x.title, 'folder', x.folder, 'member', x.member_id,
+        'name', m.name, 'teacher', tt.name, 'status', x.status, 'why', x.why, 'by', x.set_by, 'notes', x.notes, 'sheets', x.sheets,
+        'kept', x.kept, 'gone', x.gone, 'syncedAt', x.synced_at, 'modified', x.modified)
+        order by x.status = 'ok', x.folder nulls first, x.title)
+      from public.lesson_sources x left join public.members m on m.id = x.member_id left join public.teachers tt on tt.id = x.teacher_id), '[]'::jsonb));
+end $$;
+
+create or replace function public.admin_lesson_sync_open() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.lesson_sync set key_hash = null, registered_at = null, open_until = now() + interval '30 minutes' where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- p_member = 수강 ID → 그 학생으로 확정 · null + p_ignore → 가져오지 않기 · null → 다시 자동으로
+create or replace function public.admin_lesson_source_set(p_file text, p_member text default null, p_ignore boolean default false) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare m public.members; v_tid bigint;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if not exists (select 1 from public.lesson_sources where file_id = p_file) then return private.fail('그 파일을 못 찾았어요.'); end if;
+  if p_member is not null then
+    select * into m from public.members where id = upper(trim(p_member));
+    if m.id is null then return private.fail('그 수강 ID가 없어요.'); end if;
+    select coalesce((select teacher_id from public.lesson_sources where file_id = p_file),
+                    (select id from public.teachers where name = substring(m.memo from '담당\s*([^\s·,]+)'))) into v_tid;
+    update public.lesson_sources set status = 'ok', member_id = m.id, teacher_id = v_tid, set_by = 'admin', why = null, synced_modified = null
+    where file_id = p_file;
+    update public.lesson_notes set member_id = m.id where src_file = p_file and member_id <> m.id;
+    update public.lesson_sheets set member_id = m.id where src_file = p_file and member_id <> m.id;
+  elsif p_ignore then
+    update public.lesson_sources set status = 'ignore', member_id = null, set_by = 'admin', why = '가져오지 않기로 함' where file_id = p_file;
+  else
+    update public.lesson_sources set set_by = 'auto', synced_modified = null where file_id = p_file;
+    perform private.lesson_match(p_file);
+  end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.lesson_register(text), public.lesson_sync_plan(text, jsonb, int),
+  public.lesson_sync_push(text, text, jsonb, jsonb, boolean, timestamptz, int, jsonb), public.lesson_sync_done(text, jsonb),
+  public.admin_lesson_sync_status(), public.admin_lesson_sync_open(), public.admin_lesson_source_set(text, text, boolean),
+  private.folder_teacher(text), private.lesson_match(text), private.lesson_key_ok(text) from public;
+grant execute on function public.lesson_register(text), public.lesson_sync_plan(text, jsonb, int),
+  public.lesson_sync_push(text, text, jsonb, jsonb, boolean, timestamptz, int, jsonb), public.lesson_sync_done(text, jsonb) to anon, authenticated;
+grant execute on function public.admin_lesson_sync_status(), public.admin_lesson_sync_open(), public.admin_lesson_source_set(text, text, boolean) to authenticated;
+
+-- 선생님 화면: 가져온 일지를 홈페이지에서 고치면 그 뒤로 시트가 안 덮음 / 지우면 다시 안 들어옴
+CREATE OR REPLACE FUNCTION public.teacher_note_save(p_member text, p_date date, p_note bigint DEFAULT NULL::bigint, p_did text DEFAULT NULL::text, p_songs text DEFAULT NULL::text, p_practice text DEFAULT NULL::text, p_audition text DEFAULT NULL::text, p_recommend text DEFAULT NULL::text, p_memo text DEFAULT NULL::text, p_rich boolean DEFAULT false, p_sheet jsonb DEFAULT NULL::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  t public.teachers := private.my_teacher();
+  v_id bigint;
+  raw text[] := array[p_did, p_songs, p_practice, p_audition, p_recommend, p_memo];
+  f text[] := '{}';
+  lim int[] := array[800, 2000, 400, 800, 800, 1000];
+  i int; txt text;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 쓸 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생만 쓸 수 있어요.'); end if;
+  if p_date is null or p_date > private.now_kst()::date + 1 or p_date < private.now_kst()::date - 366 then return private.fail('수업 날짜를 확인해주세요.'); end if;
+  if p_sheet is not null then
+    if not private.sheet_ok(p_sheet) then return private.fail('표에 쓸 수 없는 내용이 있거나 너무 길어요 (한 칸에 5000자까지).'); end if;
+    if trim(private.sheet_text(p_sheet)) = '' then return private.fail('한 칸 이상 적어주세요.'); end if;
+    f := array[null, null, null, null, null, null]::text[];
+  else
+    for i in 1..6 loop
+      txt := case when p_rich then private.rich_text(raw[i]) else coalesce(raw[i], '') end;
+      if char_length(txt) > lim[i] then return private.fail('글이 너무 길어요.'); end if;
+      f := f || case when trim(txt) = '' then null else trim(raw[i]) end;
+    end loop;
+    if coalesce(f[1], f[2], f[3], f[4], f[5], f[6]) is null then return private.fail('한 칸 이상 적어주세요.'); end if;
+    if p_rich and not (private.rich_ok(f[1]) and private.rich_ok(f[2]) and private.rich_ok(f[3]) and private.rich_ok(f[4])
+                       and private.rich_ok(f[5]) and private.rich_ok(f[6])) then
+      return private.fail('꾸민 글에 쓸 수 없는 내용이 있어요. 다시 붙여넣어 주세요.');
+    end if;
+  end if;
+  if p_note is null then
+    insert into public.lesson_notes (member_id, lesson_date, teacher, teacher_id, did, songs, practice, audition, recommend, memo, rich, sheet)
+    values (p_member, p_date, t.name, t.id, f[1], f[2], f[3], f[4], f[5], f[6], coalesce(p_rich, false) or p_sheet is not null, p_sheet)
+    returning id into v_id;
+  else
+    update public.lesson_notes set
+      site_edited = site_edited or (src_file is not null and (sheet is distinct from p_sheet or lesson_date <> p_date)),
+      lesson_date = p_date, did = f[1], songs = f[2], practice = f[3], audition = f[4],
+      recommend = f[5], memo = f[6], rich = coalesce(p_rich, false) or p_sheet is not null, sheet = p_sheet, updated_at = now()
+    where id = p_note and member_id = p_member and teacher_id = t.id returning id into v_id;
+    if v_id is null then return private.fail('내가 쓴 일지만 고칠 수 있어요.'); end if;
+  end if;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.teacher_note_delete(p_note bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare t public.teachers := private.my_teacher(); n public.lesson_notes;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 할 수 있어요.'); end if;
+  select * into n from public.lesson_notes where id = p_note and teacher_id = t.id;
+  if n.id is null then return private.fail('내가 쓴 일지만 지울 수 있어요.'); end if;
+  if n.src_file is not null then
+    insert into private.lesson_skip (src_file, src_tab) values (n.src_file, n.src_tab) on conflict do nothing;
+  end if;
+  delete from public.lesson_notes where id = n.id;
+  return jsonb_build_object('ok', true);
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.teacher_student(p_member text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  t public.teachers := private.my_teacher();
+  m public.members;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생만 볼 수 있어요.'); end if;
+  select * into m from public.members where id = p_member;
+  return jsonb_build_object('ok', true, 'student', jsonb_build_object('id', m.id, 'name', m.name, 'status', m.status),
+    'notes', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'songs', n.songs,
+               'practice', n.practice, 'audition', n.audition, 'recommend', n.recommend, 'rich', n.rich, 'sheet', n.sheet, 'memo', n.memo,
+               'mine', n.teacher_id = t.id, 'src', n.src_file is not null, 'srcTitle', n.src_title, 'siteEdited', n.site_edited)
+             order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = m.id order by lesson_date desc, id desc limit 60) n
+    ), '[]'::jsonb),
+    'sheets', coalesce((
+      select jsonb_agg(jsonb_build_object('id', x.id, 'title', x.title, 'teacher', tt.name) order by x.src_file, x.pos, x.id)
+      from public.lesson_sheets x left join public.teachers tt on tt.id = x.teacher_id where x.member_id = m.id
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did) order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = m.id order by day desc, id desc limit 20) l
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('title', r.title, 'artist', r.artist, 'status', r.status, 'purpose', r.purpose) order by r.updated_at desc)
+      from public.repertoire r where r.member_id = m.id
+    ), '[]'::jsonb));
+end $function$;
+
+-- 선생님 화면: 곡·자료 시트 하나 열기 (담당 학생 것만)
+create or replace function public.teacher_lesson_sheet(p_id bigint) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare t public.teachers := private.my_teacher(); x public.lesson_sheets;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  select * into x from public.lesson_sheets where id = p_id;
+  if x.id is null or not private.teaches(t, x.member_id) then return private.fail('담당 학생 것만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'id', x.id, 'title', x.title, 'sheet', x.sheet, 'syncedAt', x.synced_at);
+end $$;
+revoke all on function public.teacher_lesson_sheet(bigint) from public;
+grant execute on function public.teacher_lesson_sheet(bigint) to authenticated;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_lesson_import_skip (2026-11-03)
+-- 가져온 일지를 누가 지우든(선생님 화면 · 관리자 수업 기록) 다시 안 들어오게
+create or replace function private.lesson_notes_gone() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if old.src_file is not null then
+    insert into private.lesson_skip (src_file, src_tab) values (old.src_file, old.src_tab) on conflict do nothing;
+  end if;
+  return old;
+end $$;
+drop trigger if exists lesson_notes_gone on public.lesson_notes;
+create trigger lesson_notes_gone after delete on public.lesson_notes for each row execute function private.lesson_notes_gone();
+-- ---------------------------------------------------------------- 마이그레이션 leesh_grid_wrap (2026-11-03)
+-- 표 칸 서식에 wr(칸 안 줄바꿈) 더하기. 나머지는 구글시트처럼 오른쪽 빈 칸으로 넘쳐 보임 (js/grid.js)
+CREATE OR REPLACE FUNCTION private.sheet_ok(s jsonb)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ IMMUTABLE
+ SET search_path TO ''
+AS $function$
+declare k text; v jsonb; sk text; sv jsonb;
+begin
+  if s is null then return true; end if;
+  if jsonb_typeof(s) <> 'object' or octet_length(s::text) > 400000 then return false; end if;
+  for k in select jsonb_object_keys(s) loop
+    if k not in ('v', 'n', 'w', 'h', 'c') then return false; end if;
+  end loop;
+  if s ? 'v' and jsonb_typeof(s -> 'v') <> 'number' then return false; end if;
+  if s ? 'n' and (jsonb_typeof(s -> 'n') <> 'number' or (s ->> 'n')::numeric > 1000 or (s ->> 'n')::numeric < 1) then return false; end if;
+  if jsonb_typeof(coalesce(s -> 'w', '{}')) <> 'object' or jsonb_typeof(coalesce(s -> 'h', '{}')) <> 'object'
+     or jsonb_typeof(coalesce(s -> 'c', '{}')) <> 'object' then return false; end if;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'w', '{}')) loop
+    if k !~ '^\d{1,2}$' or k::int > 25 or jsonb_typeof(v) <> 'number' or v::numeric < 20 or v::numeric > 1500 then return false; end if;
+  end loop;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'h', '{}')) loop
+    if k !~ '^\d{1,3}$' or jsonb_typeof(v) <> 'number' or v::numeric < 12 or v::numeric > 1500 then return false; end if;
+  end loop;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'c', '{}')) loop
+    if k !~ '^\d{1,3},\d{1,2}$' or split_part(k, ',', 2)::int > 25 or jsonb_typeof(v) <> 'object' then return false; end if;
+    for sk in select jsonb_object_keys(v) loop
+      if sk not in ('t', 's') then return false; end if;
+    end loop;
+    if v ? 't' and (jsonb_typeof(v -> 't') <> 'string' or char_length(v ->> 't') > 40000 or not private.rich_ok(v ->> 't')
+                    or char_length(private.rich_text(v ->> 't')) > 5000) then return false; end if;
+    if jsonb_typeof(coalesce(v -> 's', '{}')) <> 'object' then return false; end if;
+    for sk, sv in select key, value from jsonb_each(coalesce(v -> 's', '{}')) loop
+      if sk in ('b', 'i', 'u', 'x', 'wr') then
+        if jsonb_typeof(sv) not in ('number', 'boolean') then return false; end if;
+      elsif sk = 'z' then
+        if jsonb_typeof(sv) <> 'number' or sv::numeric < 8 or sv::numeric > 48 then return false; end if;
+      elsif sk in ('f', 'g') then
+        if jsonb_typeof(sv) <> 'string' or (sv #>> '{}') !~* '^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[0-9.]+\s*)?\))$' then return false; end if;
+      else
+        return false;
+      end if;
+    end loop;
+  end loop;
+  return true;
+end $function$;

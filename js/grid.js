@@ -7,7 +7,8 @@
 //   LeeshGrid.summary(note, fields)           → 지난 일지를 칸 이름별로 정리해서 (저번 시간 · 지난 일지 · 관리자 · 학생)
 //   LeeshGrid.template(fields) / fromNote(note, fields) → 새 일지 / 예전 일지(칸 5개)를 표로
 // 저장 모양 (lesson_notes.sheet, 서버 private.sheet_ok가 다시 확인):
-//   { v:1, n:행 수, w:{열:너비}, h:{행:높이}, c:{ "행,열": { t:"꾸민 글", s:{ b,i,u,x(취소선), z:글씨px, f:글자색, g:채우기색 } } } }
+//   { v:1, n:행 수, w:{열:너비}, h:{행:높이}, c:{ "행,열": { t:"꾸민 글", s:{ b,i,u,x(취소선), z:글씨px, f:글자색, g:채우기색, wr:칸 안 줄바꿈 } } } }
+// 긴 글은 구글시트처럼 오른쪽 빈 칸으로 넘쳐 보이고(오른쪽 칸에 글이 있으면 잘림), wr이면 칸 안에서 줄을 바꿔요 (원장님 2026-11-03, 선생님 시트 옮기기).
 (function () {
   var R = window.LeeshRich;
   if (!R) return;
@@ -85,6 +86,15 @@
     if (g) css.push("background-color:" + g);
     return css.join(";");
   }
+  /** 구글시트처럼: 오른쪽 칸에 글이 있으면 잘리고(is-clip), 줄바꿈 칸(wr)은 칸 안에서 줄을 바꿔요(is-wrap). */
+  function flags(d, cell, r, c) {
+    if (!cell) return;
+    var x = d.c[key(r, c)], right = d.c[key(r, c + 1)];
+    cell.classList.toggle("is-wrap", !!(x && x.s && x.s.wr));
+    cell.classList.toggle("is-clip", !!(right && textOf(right.t).trim()));
+    // 넘친 부분만 흰 바탕으로 덮어 옆 칸 줄을 가려요 (구글시트처럼). 칸 자기 자리는 비워 둬서 고른 칸 · 채우기 색이 보이게
+    if (cell.firstChild) cell.firstChild.style.setProperty("--w", (Number(d.w[c]) || CW) + "px");
+  }
   function fill(div, html) {
     div.textContent = "";
     var box = document.createElement("div");
@@ -154,6 +164,7 @@
         var x = d.c[key(r, c)];
         if (x) { td.style.cssText = cellCss(x.s); fill(v, x.t); }
         td.appendChild(v);
+        flags(d, td, r, c);
         tr.appendChild(td);
       }
       bd.appendChild(tr);
@@ -226,7 +237,8 @@
     var wrap = el("div", "xs xs--view");
     if (u.r < 0) { wrap.appendChild(el("p", "sys-note", "비어 있어요.")); return wrap; }
     var sc = el("div", "xs-scroll");
-    sc.appendChild(table(d, u.r + 1, Math.max(u.c + 1, 2), {}));
+    // 마지막 열의 긴 글이 넘쳐 보이게 빈 열을 조금 더 (구글시트처럼)
+    sc.appendChild(table(d, u.r + 1, Math.min(COLS, Math.max(u.c + 1, 2) + 3), {}));
     wrap.appendChild(sc);
     return wrap;
   }
@@ -291,6 +303,8 @@
       if (!cell) return;
       cell.style.cssText = x ? cellCss(x.s) : "";
       fill(cell.firstChild, x && x.t);
+      flags(d, cell, r, c);
+      if (c > 0) flags(d, td(r, c - 1), r, c - 1);
     }
     function paintSel() {
       if (!tbl) return;
@@ -727,6 +741,7 @@
     btn("rt-btn--italic", "<i>I</i>", "기울임 (Ctrl+I)", flag("i", "italic"));
     btn("rt-btn--under", "<u>U</u>", "밑줄 (Ctrl+U)", flag("u", "underline"));
     btn("rt-btn--strike", "<s>S</s>", "취소선", flag("x", "strikeThrough"));
+    btn("rt-btn--wrap", ICON.wrap, "줄바꿈: 긴 글을 칸 안에서 줄 바꾸기 (끄면 오른쪽 빈 칸으로 넘쳐 보여요)", function () { if (mode === "edit") commit(); toggle("wr"); });
     sep();
     var lastText = "#D62828", lastFill = "#FFE45C";
     var colorBtn = btn("rt-btn--color", 'A<i class="rt-swatch" style="background:' + lastText + '"></i>', "글자 색", function () { open(textMenu, colorBtn); }, true);
@@ -924,6 +939,7 @@
           v = Math.max(24, Math.min(1500, v));
           d.w[idx] = v;
           tbl.querySelector("colgroup").children[idx + 1].style.width = v + "px";
+          Array.prototype.forEach.call(tbl.tBodies[0].rows, function (tr) { var x = tr.cells[idx + 1]; if (x && x.firstChild) x.firstChild.style.setProperty("--w", v + "px"); });
           var total = 46;
           for (var c = 0; c < COLS; c++) total += Number(d.w[c]) || CW;
           tbl.style.width = total + "px";

@@ -412,6 +412,7 @@ img{display:block;}
 .lnote p,.evalc p{margin:0;}
 .lnote__date,.evalc__month{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-weight:500;}
 .lnote__teacher{font-size:13px;font-weight:400;color:#7A6656;}
+.lnote__src{display:inline-block;padding:1px 8px;border-radius:999px;background:#E6F4EA;color:#137333;font-size:12px;font-weight:400;}
 .lnote__label{margin-top:4px !important;font-size:12px;letter-spacing:.06em;color:#8A7564;}
 .lnote__did{white-space:pre-wrap;}
 .lnote__practice{
@@ -950,6 +951,9 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .tch__side{display:grid;gap:12px;}
 .tch__mini{padding:12px 14px;border-radius:10px;background:#FFFDF8;border:1px solid #E5DCCF;}
 .tch__minihead{margin:0 0 8px;font-size:15px;font-weight:600;color:#3C4043;}
+.tch__src{padding:8px 12px;border-radius:8px;background:#E6F4EA;color:#137333;}
+.tch__sheetchips{margin:4px 0 12px;}
+.tch__sheetview{margin-bottom:24px;}
 .tch__miniitem{padding:6px 0;border-top:1px dashed #E5DCCF;}
 .tch__miniitem:first-of-type{border-top:0;padding-top:0;}
 .tch__miniitem p{margin:0;}

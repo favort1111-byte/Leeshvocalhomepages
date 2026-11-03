@@ -101,6 +101,11 @@ section[data-panel] .sys-link + .sys-msg + .sys-h{margin-top:28px;}
 
 /* 오디션 소식 */
 .adm__badge--kind{background:#6E3B28;}
+/* 선생님 구글시트에서 가져온 것 */
+.adm__badge--sheet{background:#E6F4EA;color:#137333;}
+.adm__subhead{list-style:none;margin:8px 0 0;font-size:16px;}
+.adm__sheetview{margin:10px 0 20px;}
+#lessonSyncBox{margin:8px 0 20px;}
 .adm__card.is-hidden{opacity:.6;}
 .adm__ig{padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid rgba(43,37,34,.12);}
 .adm__igposts{margin-top:10px;}
