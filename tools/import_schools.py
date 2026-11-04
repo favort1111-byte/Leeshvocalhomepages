@@ -85,6 +85,63 @@ def date_after(text, words):
     return ymd(y, mo, d) if y else ymd(YEAR, mo2, d2)
 
 
+# 실기 날짜 (원장님 2026-11-04 "입시일자 언제부터 언제까지"): 요약 F칸은 첫날만이라, 메모 · 실기 내용에서 기간 · 2차 · 정시 실기를 찾음
+_MD = r"(?:(\d{4})-)?(\d{1,2})[-./](\d{1,2})"
+_RANGE = re.compile(_MD + r"\s*~\s*(?:(?:(\d{4})-)?(\d{1,2})[-./])?(\d{1,2})(?!\d)")
+
+
+def _ymd(y, mo, d, base):
+    """연도가 없으면 기준 날짜의 해 (기준이 가을인데 1~3월이면 다음 해)."""
+    if y:
+        return ymd(y, mo, d)
+    by, bm = int(base[:4]), int(base[5:7])
+    yy = by + 1 if bm >= 8 and int(mo) <= 3 else by
+    return ymd(str(yy), mo, d)
+
+
+def exam_plan(first, memo, prep):
+    """[{t: 1차/2차/정시/'', a, b}] — 실기 시험 날짜들."""
+    out, text = [], (memo or "") + " " + (prep or "")
+    base = first or "2026-10-01"
+    if first:
+        end = ""
+        for m in _RANGE.finditer(text):
+            y, mo, d, y2, mo2, d2 = m.groups()
+            if _ymd(y, mo, d, base) == first:
+                end = _ymd(y2 or y, mo2 or mo, d2, first)
+                break
+        out.append({"t": "", "a": first, "b": end if end and end > first else ""})
+    m = re.search(r"(2차|2단계)(?:[^0-9,.;)]{0,12}?)" + _MD + r"(?:\s*~\s*(?:(?:(\d{4})-)?(\d{1,2})[-./])?(\d{1,2})(?!\d))?", text)
+    if m and "발표" not in text[m.start():m.start(2) if m.group(2) else m.start(3)]:
+        lab, y, mo, d, y2, mo2, d2 = m.groups()
+        a = _ymd(y, mo, d, base)
+        b = _ymd(y2 or y, mo2 or mo, d2, a) if d2 else ""
+        if a != first and (not out or a > out[0]["a"]):
+            two = text[max(0, m.start() - 2):m.start()] == "수시"   # "수시2차 실기 12-02" = 두 번째 모집 (2단계 시험이 아님)
+            if out:
+                out[0]["t"] = "수시1차" if two else "1차"
+            out.append({"t": "수시2차" if two else "2차", "a": a, "b": b if b > a else ""})
+    m = re.search(r"정시[^.;/]{0,30}?실기\s*" + _MD + r"(?:\s*~\s*(?:(?:(\d{4})-)?(\d{1,2})[-./])?(\d{1,2})(?!\d))?", text)
+    if m:
+        y, mo, d, y2, mo2, d2 = m.groups()
+        a = _ymd(y, mo, d, "2027-01-01" if not y else y + "-01-01")
+        b = _ymd(y2 or y, mo2 or mo, d2, a) if d2 else ""
+        if out and not out[0]["t"]:
+            out[0]["t"] = "수시"
+        out.append({"t": "정시", "a": a, "b": b if b > a else ""})
+    return out
+
+
+def prep_list(text):
+    """실기 내용 → 짧은 줄 여러 개 (' / ' · '; ' · 문장 끝 '. '에서 나눔)."""
+    parts = re.split(r"\s+/\s+|;\s*|(?<=[^\d\s])\.\s+", (text or "").strip())
+    return [x.strip().rstrip(".").strip() for x in parts if x.strip().rstrip(".").strip()]
+
+
+NO_VOCAL = re.compile(r"보컬 실기 없음|학과\s*폐지|모집\s*중지|폐지|모집단위에[^.]*없음|보컬 전공 없음|모집 없음")
+NOT_YET = re.compile(r"미게시|요강 못 찾음")
+
+
 def load(name):
     with open(os.path.join(SRC, name), encoding="utf-8") as f:
         return json.load(f)
@@ -126,8 +183,8 @@ if os.path.exists(os.path.join(SRC, "guide.json")):
         r = [x.strip() for x in r] + [""] * 12
         if r[0] and r[1]:
             SUMMARY[(r[0], r[1])] = {"seats": r[2], "track": r[3], "apply": r[4], "exam": r[5], "result": r[6],
-                                    "audition": r[7], "ratio": r[8], "link": r[9], "checked": r[10]}
-out, held, skipped = [], [], 0
+                                    "audition": r[7], "ratio": r[8], "link": r[9], "checked": r[10], "memo": r[11]}
+out, held, skipped, dropped = [], [], 0, []
 for i, r in enumerate(rows):
     kind, sido, sigungu, school, found, college, major, mkind, vocal, state = [x.strip() for x in r]
     if vocal != "예" or state == "모집 없음":
@@ -172,6 +229,11 @@ for i, r in enumerate(rows):
         "guide_title": GUIDE.get(school, ("", ""))[0],
     })
     sm = SUMMARY.get((school, major))
+    if sm and not sm["audition"] and NO_VOCAL.search(sm["memo"]):
+        # 2027 모집요강에 보컬 실기가 없음 (학과 폐지 · 모집 중지 · 보컬 전공 없음) → "모집 없음"처럼 안 보임
+        dropped.append(school + " " + major)
+        del out[-(2 if cat == "both" else 1):]
+        continue
     if sm:  # 모집요강 요약이 있으면 그 값을 먼저 (원서 기간 · 실기 일정은 일정 칸으로)
         it = out[-1] if cat != "both" else None
         for x in ([it] if it else out[-2:]):
@@ -182,9 +244,14 @@ for i, r in enumerate(rows):
                 x["apply"], x["rounds"] = sm["apply"], rounds_of(sm["apply"])
             if sm["exam"]: x["exam"] = date_after("실기 " + sm["exam"], "실기") or x["exam"]
             if sm["result"]: x["result"] = date_after("합격 발표 " + sm["result"], r"합격\s*발표") or x["result"]
+            # 한눈에 (원장님 2026-11-04 "접수일자 · 입시일자 · 어떤 거 준비해야 하는지 딱"): 실기 날짜들 · 준비할 것 줄
+            x["exams"] = exam_plan(x["exam"], sm["memo"], sm["audition"])
+            x["prep"] = prep_list(sm["audition"])
+            if not sm["audition"] and not sm["apply"] and NOT_YET.search(sm["memo"]):
+                x["wait"] = True
 
 data = {
-    "updated": "2026-11-03",
+    "updated": "2026-11-04",
     "year": "2027학년도",
     "cats": [{"key": k, "name": n} for k, n in CATS],
     "regions": [{"key": k, "name": n, "sido": ss} for k, n, ss in REGIONS],
@@ -195,6 +262,7 @@ with open(os.path.join(REPO, "data", "schools.json"), "w", encoding="utf-8") as 
     json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
 from collections import Counter
 print("학과", len(out), "· 뺀 줄", skipped, "· 확인 전이라 안 보임:", held)
+print("2027 보컬 실기 없음이라 뺀 학과", len(dropped), dropped)
 print(Counter((x["cat"]) for x in out))
 print("입학처 링크", sum(1 for x in out if x["admit"]), "· 2027 모집요강 글", sum(1 for x in out if x["guide"]), "· 요약", len(SUMMARY))
 print("원서 일정", sum(1 for x in out if x["rounds"]), "· 실기 날짜", sum(1 for x in out if x["exam"]), "· 발표", sum(1 for x in out if x["result"]))

@@ -49,6 +49,7 @@
     var t = today(), best = Infinity;
     majors.forEach(function (x) {
       (x.rounds || []).forEach(function (r) { if (utc(r.b) >= t) best = Math.min(best, Math.max(t, utc(r.a))); });
+      (x.exams || []).forEach(function (e) { if (utc(e.b || e.a) >= t) best = Math.min(best, Math.max(t, utc(e.a))); });
       [x.exam, x.result].forEach(function (d) { if (d && utc(d) >= t) best = Math.min(best, utc(d)); });
     });
     return best;
@@ -221,19 +222,37 @@
       h.appendChild(el("b", null, (x.college ? x.college + " " : "") + x.major));
       h.appendChild(el("span", "sch-kind", x.kind));
       m.appendChild(h);
-      // 2027 입시요강 (원장님 2026-11-04 "카드에 바로 입시요강"): 모집인원 · 전형 · 반영 비율 · 일정 · 실기 내용
+      // 2027 입시 한눈에 (원장님 2026-11-04 "접수일자 · 입시일자 · 어떤 거 준비해야 하는지 딱"): 원서 접수 · 실기 시험 · 합격 발표 · 준비할 것
       var box = el("div", "sch-guide");
-      box.appendChild(el("p", "sch-guide__h", "2027 입시요강"));
-      if (x.seats) box.appendChild(line("모집", x.seats));
-      if (x.track) box.appendChild(line("전형", x.track));
-      if (x.ratio) box.appendChild(line("반영", x.ratio));
-      var sched = schedule(x);
-      if (sched) box.appendChild(sched);
-      else if (x.apply) box.appendChild(line("원서", x.apply));
-      if (x.audition) box.appendChild(line("실기", x.audition));
+      box.appendChild(el("p", "sch-guide__h", "2027 입시 한눈에"));
+      if (x.wait) box.appendChild(el("p", "sch-guide__none", "2027 모집요강이 아직 나오지 않았습니다. 아래 입학처에서 확인하세요."));
+      var rs = x.rounds || [], ex = x.exams || (x.exam ? [{ t: "", a: x.exam, b: "" }] : []);
+      if (rs.length) box.appendChild(row("원서 접수", rs.map(function (r) { return { t: r.t, a: r.a, b: r.b, n: r.n }; }), "접수 중"));
+      else if (x.apply) box.appendChild(row("원서 접수", [{ text: x.apply }]));
+      if (ex.length) box.appendChild(row("실기 시험", ex, "진행 중"));
+      if (x.result) box.appendChild(row("합격 발표", [{ t: "", a: x.result, b: "" }]));
+      var prep = x.prep || (x.audition ? [x.audition] : []);
+      if (prep.length) {
+        var pr = el("div", "sch-g sch-g--prep");
+        pr.appendChild(el("p", "sch-g__k", "준비할 것"));
+        var ul = el("ul", "sch-prep");
+        prep.forEach(function (t) { var li2 = el("li"); bold(li2, t); ul.appendChild(li2); });
+        pr.appendChild(ul);
+        box.appendChild(pr);
+      } else if (x.track && !x.wait) {
+        box.appendChild(el("p", "sch-guide__none", "실기 내용은 모집요강에 자세히 나와 있지 않습니다. 아래 모집요강에서 확인하세요."));
+      }
+      if (x.seats || x.track || x.ratio) {
+        var more = el("details", "sch-more");
+        more.appendChild(el("summary", null, "모집 인원 · 전형 · 반영 비율"));
+        if (x.seats) more.appendChild(line("모집", x.seats));
+        if (x.track) more.appendChild(line("전형", x.track));
+        if (x.ratio) more.appendChild(line("반영", x.ratio));
+        box.appendChild(more);
+      }
       if (box.childNodes.length === 1) box.appendChild(el("p", "sch-guide__none", "요약은 준비 중입니다. 아래 모집요강 · 입학처에서 바로 확인할 수 있습니다."));
       if (x.check) box.appendChild(el("p", "sch-note", "2027 모집 여부는 학교 입학처에서 꼭 확인하세요."));
-      if (x.checked) box.appendChild(el("p", "sch-guide__src", x.checked + " 모집요강 기준"));
+      if (x.checked) box.appendChild(el("p", "sch-guide__src", x.checked.replace(/-/g, ".") + " 모집요강 기준 · 바뀔 수 있으니 지원 전 모집요강을 꼭 확인하세요."));
       m.appendChild(box);
       if (x.home) m.appendChild(link("sch-link", "학과 홈페이지 ↗", x.home));
       li.appendChild(m);
@@ -253,31 +272,41 @@
     a.rel = "noopener";
     return a;
   }
-  // 일정 칸: 원서접수(전형마다 한 줄) · 실기 · 합격 발표 — 날짜가 하나라도 적힌 학과만
-  function schedule(x) {
-    var rs = x.rounds || [];
-    if (!rs.length && !x.exam && !x.result) return null;
-    var g = el("div", "sch-sched");
-    function box(title, rows) {
-      var b = el("div", "sch-sched__box");
-      b.appendChild(el("p", "sch-sched__k", title));
-      rows.forEach(function (r) {
-        var p = el("p", "sch-sched__row");
-        if (r.label) p.appendChild(el("span", "sch-sched__t", r.label));
-        p.appendChild(el("span", "sch-sched__d", r.text));
-        if (r.badge) p.appendChild(el("span", "sch-badge " + r.badge.cls, r.badge.text));
-        b.appendChild(p);
-        if (r.note) b.appendChild(el("p", "sch-sched__n", r.note));
-      });
-      g.appendChild(b);
-    }
-    var none = [{ text: "학교 모집요강 확인" }];
-    box("원서접수", rs.length ? rs.map(function (r) {
-      return { label: r.t, text: md(r.a) + " ~ " + md(r.b), badge: badge(r.a, r.b), note: r.n };
-    }) : none);
-    box("실기", x.exam ? [{ text: md(x.exam), badge: badge(x.exam) }] : none);
-    if (x.result) box("합격 발표", [{ text: md(x.result), badge: badge(x.result) }]);
+  // "9월 7일(월)" (올해가 아니면 "2027년 1월 4일(월)", 같은 해 끝날은 해를 다시 안 씀)
+  function fmt(v, sameYear) {
+    var p = v.split("-"), t = new Date(utc(v)), y = +p[0];
+    return (y !== new Date().getFullYear() && !sameYear ? y + "년 " : "") + (+p[1]) + "월 " + (+p[2]) + "일(" + WEEK[t.getUTCDay()] + ")";
+  }
+  // 한 칸 (원서 접수 · 실기 시험 · 합격 발표): 줄마다 [전형] 날짜 ~ 날짜 [종료 · 접수 중 · D-n]
+  function row(title, list, during) {
+    var g = el("div", "sch-g");
+    g.appendChild(el("p", "sch-g__k", title));
+    var body = el("div", "sch-g__v");
+    list.forEach(function (r) {
+      var p = el("p", "sch-g__row");
+      if (r.t) p.appendChild(el("span", "sch-g__t", r.t));
+      if (r.text) { p.appendChild(document.createTextNode(r.text)); body.appendChild(p); return; }
+      p.appendChild(el("span", "sch-g__d", fmt(r.a) + (r.b ? " ~ " + fmt(r.b, r.b.slice(0, 4) === r.a.slice(0, 4)) : "")));
+      var bd = badge(r.a, r.b);
+      if (bd.cls === "is-now" && r.b) bd.text = during || bd.text;
+      p.appendChild(el("span", "sch-badge " + bd.cls, bd.text));
+      body.appendChild(p);
+      if (r.n) body.appendChild(el("p", "sch-g__n", r.n));
+    });
+    g.appendChild(body);
     return g;
+  }
+  // 준비할 것: 자유곡 · 지정곡 · MR · 악보 · 암보 같은 말은 굵게
+  var KEY = /(자유곡\s*\d*곡?|지정곡\s*\d*곡?|자작곡|MR|암보|악보\s*\d*\s*[부매장]?|무반주|반주자\s*\d*\s*인?|본인\s*반주|자가\s*반주|직접\s*반주|영상|동영상|시창|면접|질의응답|마이크|USB|mp3|MP3)/g;
+  function bold(node, text) {
+    var last = 0, m;
+    KEY.lastIndex = 0;
+    while ((m = KEY.exec(text))) {
+      if (m.index > last) node.appendChild(document.createTextNode(text.slice(last, m.index)));
+      node.appendChild(el("b", null, m[0]));
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) node.appendChild(document.createTextNode(text.slice(last)));
   }
   function line(label, text) {
     var p = el("p", "sch-line");
