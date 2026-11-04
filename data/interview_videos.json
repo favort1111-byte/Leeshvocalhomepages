@@ -45,33 +45,6 @@
    "w": 1280,
    "h": 720,
    "sec": 306
-  },
-  {
-   "key": "v6",
-   "drive": "1Zt4uD_KHSmf0WnNHNWyoUVnPm9FcaX0f",
-   "file": "assets/interviews/v6.mp4",
-   "poster": "assets/interviews/v6.jpg",
-   "w": 720,
-   "h": 1280,
-   "sec": 86
-  },
-  {
-   "key": "v7",
-   "drive": "1WPecqWT37jMvGQCcwNqvcopoYVkE4Wa5",
-   "file": "assets/interviews/v7.mp4",
-   "poster": "assets/interviews/v7.jpg",
-   "w": 720,
-   "h": 1280,
-   "sec": 111
-  },
-  {
-   "key": "v8",
-   "drive": "1e6SK79UrMeLQShNj28h8dKGuNE4mVtLn",
-   "file": "assets/interviews/v8.mp4",
-   "poster": "assets/interviews/v8.jpg",
-   "w": 720,
-   "h": 1280,
-   "sec": 70
   }
  ]
 }
