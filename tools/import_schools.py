@@ -42,6 +42,15 @@ CREDIT_BANK = {
 }
 HIGH = {"예술고": "예술고", "특성화고": "특성화고", "대안학교": "대안학교"}
 FIX = {"수뉥": "수능"}  # 시트의 글자 오타
+# 시트의 홈페이지 주소가 학과가 아닌 곳으로 가는 것 (시트는 읽기만이라 여기서 바꿈). 학과 공식 주소는 네이버 교육 학과 정보로 확인
+HOME_FIX = {
+    # 원장님 2026-11-04: 학생회 소개 페이지로 감 → 실용음악전공 공식 홈페이지
+    "https://www.hongik.ac.kr/kr/life/seoul-performing-arts.do": "https://music.hongik.ac.kr/",
+    # 같은 날 네이버 교육 학과 정보의 '공식 홈페이지'와 맞춰 본 것: 교수 목록 · 다른 쪽 → 학과 공식 주소
+    "https://academics.cu.ac.kr/home/professor/art/music/list/": "https://academics.cu.ac.kr/home/detail/art/music/",
+    "https://dept.kmu.ac.kr/dept/10636/subview.do": "https://music.kmu.ac.kr",
+    "https://www.bu.ac.kr/web/3809/subview.do": "https://community.bu.ac.kr/art2/1655/subview.do",
+}
 
 
 DAY = r"(\d{4})-(\d{1,2})-(\d{1,2})"
@@ -123,7 +132,7 @@ for i, r in enumerate(rows):
       out.append({
         "cat": one, "sub": sub, "region": region or "", "sido": clean(sido), "sigungu": clean(sigungu),
         "school": school, "found": clean(found), "college": clean(college), "major": major, "kind": mkind,
-        "apply": clean(cell(qr, i, 0)), "audition": clean(cell(qr, i, 1)), "home": cell(o, i),
+        "apply": clean(cell(qr, i, 0)), "audition": clean(cell(qr, i, 1)), "home": HOME_FIX.get(cell(o, i), cell(o, i)),
         # 일정 칸 (원서접수 · 실기 · 합격 발표): 날짜가 적힌 것만, 화면이 오늘과 견줘 종료 · 접수 중 · D-n을 붙임
         "rounds": rounds_of(clean(cell(qr, i, 0))),
         "exam": date_after(clean(cell(qr, i, 1)), r"실기고사|실기·면접|실기"),
