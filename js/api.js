@@ -39,18 +39,33 @@
    * Call a database function. Functions answer { ok, ... } themselves.
    * token: the admin page passes its own; otherwise a student's Kakao session is used when there is one.
    */
-  function rpc(fn, args, token) {
+  function rpc(fn, args, token, opts) {
     if (!enabled()) return Promise.resolve({ ok: false, error: "disabled" });
-    var auth = token !== undefined ? Promise.resolve(token) : kakao.token();
-    return auth.then(function (t) {
-      // Through the exported object so the preview's demo backend (js/demo.js) can stand in.
-      return window.LeeshAPI.request("/rest/v1/rpc/" + fn, {
-        method: "POST", headers: headers(t), body: JSON.stringify(args || {})
+    opts = opts || {};
+    var tries = 0, refreshed = false;
+    function once(force) {
+      var auth = token !== undefined ? Promise.resolve(token) : kakao.token(force);
+      return auth.then(function (t) {
+        // Through the exported object so the preview's demo backend (js/demo.js) can stand in.
+        return window.LeeshAPI.request("/rest/v1/rpc/" + fn, {
+          method: "POST", headers: headers(t), body: JSON.stringify(args || {})
+        });
       });
-    }).then(function (res) {
-      if (res.ok && res.data && (typeof res.data === "object" || typeof res.data === "boolean")) return res.data;
-      return { ok: false, error: NETWORK_ERROR };
-    });
+    }
+    function go(force) {
+      return once(force).then(function (res) {
+        if (res.ok && res.data && (typeof res.data === "object" || typeof res.data === "boolean")) return res.data;
+        // 로그인 시간이 지났음 (기기 시계가 틀려도): 새로 받아서 한 번 더. 서버는 아무것도 안 했으니 다시 보내도 돼요.
+        if (res.status === 401 && token === undefined && !refreshed) { refreshed = true; return go(true); }
+        // 연결이 끊김 · 서버가 바쁨: opts.retry번까지 조금 쉬었다가 다시 (같은 걸 두 번 보내도 괜찮은 함수만)
+        if ((res.status === 0 || res.status === 408 || res.status === 429 || res.status >= 500) && tries < (opts.retry || 0)) {
+          tries++;
+          return new Promise(function (ok) { setTimeout(ok, tries * 1500); }).then(function () { return go(false); });
+        }
+        return { ok: false, error: NETWORK_ERROR, offline: res.status === 0 || res.status >= 500 || res.status === 408 || res.status === 429, status: res.status };
+      });
+    }
+    return go(false);
   }
 
   /*
@@ -59,6 +74,7 @@
     student the Kakao account is gets decided by the director (link_requests → admin_kakao_decide).
   */
   var KAKAO = "leesh_kakao", AFTER = "leesh_after_kakao", KAKAO_ERR = "leesh_kakao_error";
+  var refreshing = null;
   var kakao = {
     available: function () { return enabled() && !!base; },
     session: function () { try { return JSON.parse(localStorage.getItem(KAKAO) || "null"); } catch (e) { return null; } },
@@ -69,18 +85,26 @@
         encodeURIComponent(location.origin + location.pathname + location.search);
     },
     /** A fresh access token for the Kakao session, or null when signed out. */
-    token: function () {
+    token: function (force) {
       var s = kakao.session();
       if (!s) return Promise.resolve(null);
-      if (s.expires - 60 > Date.now() / 1000) return Promise.resolve(s.access);
-      return window.LeeshAPI.request("/auth/v1/token?grant_type=refresh_token", {
+      if (!force && s.expires - 60 > Date.now() / 1000) return Promise.resolve(s.access);
+      if (refreshing) return refreshing; // 여러 저장이 한꺼번에 새로 받지 않게 (한 번만)
+      refreshing = window.LeeshAPI.request("/auth/v1/token?grant_type=refresh_token", {
         method: "POST", headers: headers(), body: JSON.stringify({ refresh_token: s.refresh })
       }).then(function (res) {
+        refreshing = null;
         var d = res.data;
-        if (!res.ok || !d || !d.access_token) { if (res.status) kakao.save(null); return null; }
+        if (!res.ok || !d || !d.access_token) {
+          // 인터넷이 잠깐 끊긴 것(0 · 5xx)이면 로그인은 그대로 두고 예전 열쇠로 (서버가 거절하면 그때 다시)
+          if (res.status === 0 || res.status >= 500) return s.access;
+          if (res.status) kakao.save(null);
+          return null;
+        }
         kakao.save({ access: d.access_token, refresh: d.refresh_token, expires: d.expires_at || Math.floor(Date.now() / 1000) + (d.expires_in || 3600) });
         return d.access_token;
       });
+      return refreshing;
     },
     signOut: function () {
       var s = kakao.session();

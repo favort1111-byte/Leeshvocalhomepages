@@ -410,6 +410,7 @@
       var top = el("div", "adm__cardtop");
       top.appendChild(el("strong", null, r.name));
       if (r.teacher) top.appendChild(el("span", null, r.teacher + " 선생님"));
+      if (r.guardian) top.appendChild(el("span", "fold__tag", "부모님 계정 (만 14세 미만)"));
       if (r.kakao_name) top.appendChild(el("span", "sys-note", "카카오 이름: " + r.kakao_name));
       top.appendChild(el("span", "sys-note", new Date(r.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })));
       li.appendChild(top);

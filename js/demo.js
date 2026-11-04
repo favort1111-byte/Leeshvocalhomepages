@@ -459,7 +459,7 @@
       if (!name || name.length > 30) return fail("이름을 정확히 적어주세요.");
       var r = db.link_requests.filter(function (x) { return x.user_id === uid; })[0];
       if (!r) { r = { id: ++db.next, user_id: uid, kakao_name: "체험 카카오" }; db.link_requests.push(r); }
-      Object.assign(r, { name: name, teacher: String(a.p_teacher || "").trim() || null, status: "대기", member_id: null, created_at: new Date().toISOString(), decided_at: null });
+      Object.assign(r, { name: name, teacher: String(a.p_teacher || "").trim() || null, guardian: !!a.p_guardian, status: "대기", member_id: null, created_at: new Date().toISOString(), decided_at: null });
       save();
       return { ok: true };
     },
@@ -659,9 +659,9 @@
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .map(function (n) { return { id: n.id, date: n.lesson_date, teacher: n.teacher, did: n.did, songs: n.songs, practice: n.practice,
             audition: n.audition, recommend: n.recommend, memo: n.memo, rich: !!n.rich, sheet: n.sheet || null, mine: n.teacher_id === t.id,
-            src: !!n.src_file, srcTitle: n.src_title || null, siteEdited: !!n.site_edited }; }),
+            src: !!n.src_file, srcTitle: n.src_title || null, siteEdited: !!n.site_edited, title: n.title || null, tabPos: n.tab_pos == null ? null : n.tab_pos }; }),
         sheets: (db.lesson_sheets || []).filter(function (x) { return x.member_id === m.id; }).sort(function (x, y) { return x.pos - y.pos; })
-          .map(function (x) { return { id: x.id, title: x.title, teacher: t.name }; }),
+          .map(function (x) { return { id: x.id, title: x.title, teacher: t.name, pos: x.pos || 0, tabPos: x.tab_pos == null ? null : x.tab_pos, src: !!x.src_file, siteEdited: !!x.site_edited }; }),
         logs: db.practice_logs.filter(function (l) { return l.member_id === m.id; }).map(function (l) { return { day: l.day, minutes: l.minutes, song: l.song, did: l.did }; }),
         repertoire: db.repertoire.filter(function (r) { return r.member_id === m.id; }).map(function (r) { return { title: r.title, artist: r.artist, status: r.status, purpose: r.purpose }; }) };
     },
@@ -675,12 +675,17 @@
       if (!keys.some(function (k) { return v[k]; }) && !(v.sheet && window.LeeshGrid && LeeshGrid.text(v.sheet))) return fail("한 칸 이상 적어주세요.");
       v.rich = !!a.p_rich || !!v.sheet;
       var n;
+      if (!a.p_note && a.p_key) {
+        var dup = db.lesson_notes.filter(function (x) { return x.client_key === a.p_key && x.teacher_id === t.id; })[0];
+        if (dup) a.p_note = dup.id;
+      }
+      if (a.p_title != null) v.title = String(a.p_title).trim() || null;
       if (a.p_note) {
         n = db.lesson_notes.filter(function (x) { return x.id === a.p_note && x.teacher_id === t.id; })[0];
         if (!n) return fail("내가 쓴 일지만 고칠 수 있어요.");
         if (n.src_file && JSON.stringify(n.sheet) !== JSON.stringify(v.sheet)) n.site_edited = true;
       } else {
-        n = { id: ++db.next, member_id: a.p_member, teacher: t.name, teacher_id: t.id, created_at: new Date().toISOString() };
+        n = { id: ++db.next, member_id: a.p_member, teacher: t.name, teacher_id: t.id, created_at: new Date().toISOString(), client_key: a.p_key || null };
         db.lesson_notes.push(n);
       }
       Object.assign(n, v, { lesson_date: a.p_date });
@@ -690,7 +695,65 @@
     teacher_lesson_sheet: function (a, uid) {
       var t = myTeacher(uid), x = (db.lesson_sheets || []).filter(function (y) { return y.id === a.p_id; })[0];
       if (!t || !x || !teaches(t, x.member_id)) return fail("담당 학생 것만 볼 수 있어요.");
-      return { ok: true, id: x.id, title: x.title, sheet: x.sheet, syncedAt: x.synced_at };
+      return { ok: true, id: x.id, title: x.title, sheet: x.sheet, syncedAt: x.synced_at, src: !!x.src_file, siteEdited: !!x.site_edited };
+    },
+    // 시트 탭: 이름 · 순서 · 곡·자료 고치기 · 신입생 OT · 양식 (2026-11-04)
+    teacher_note_title: function (a, uid) {
+      var t = myTeacher(uid), n = t && db.lesson_notes.filter(function (x) { return x.id === a.p_note && x.teacher_id === t.id; })[0];
+      if (!n) return fail("내가 쓴 일지만 바꿀 수 있어요.");
+      n.title = String(a.p_title || "").trim() || null;
+      save();
+      return { ok: true };
+    },
+    teacher_sheet_save: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t || !teaches(t, a.p_member)) return fail("담당 학생만 쓸 수 있어요.");
+      db.lesson_sheets = db.lesson_sheets || [];
+      var x = a.p_id ? db.lesson_sheets.filter(function (y) { return y.id === a.p_id && y.member_id === a.p_member; })[0]
+        : a.p_key ? db.lesson_sheets.filter(function (y) { return y.client_key === a.p_key; })[0] : null;
+      var title = a.p_title == null ? null : String(a.p_title).trim();
+      if (!x) {
+        if (a.p_id) return fail("이 학생의 탭이 아니에요.");
+        if (!title) return fail("탭 이름을 적어주세요.");
+        x = { id: ++db.next, member_id: a.p_member, teacher_id: t.id, title: title, pos: 0, sheet: a.p_sheet || { v: 1, n: 100, c: {} }, site_edited: true, client_key: a.p_key || null };
+        db.lesson_sheets.push(x);
+      } else {
+        if (title === "") return fail("탭 이름을 적어주세요.");
+        if (title) x.title = title;
+        if (a.p_sheet) x.sheet = a.p_sheet;
+        if (x.src_file) x.site_edited = true;
+      }
+      save();
+      return { ok: true, id: x.id };
+    },
+    teacher_sheet_delete: function (a, uid) {
+      var x = (db.lesson_sheets || []).filter(function (y) { return y.id === a.p_id; })[0];
+      if (!x) return fail("담당 학생 것만 지울 수 있어요.");
+      if (x.src_file) return fail("구글시트에서 가져온 탭은 구글시트에서 지워주세요.");
+      db.lesson_sheets = db.lesson_sheets.filter(function (y) { return y !== x; });
+      save();
+      return { ok: true };
+    },
+    teacher_tab_order: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t || !teaches(t, a.p_member)) return fail("담당 학생만 할 수 있어요.");
+      (a.p_order || []).forEach(function (e, i) {
+        var id = Number(String(e).slice(1));
+        var list = e[0] === "n" ? db.lesson_notes.filter(function (x) { return x.id === id && x.teacher_id === t.id; }) : (db.lesson_sheets || []).filter(function (x) { return x.id === id; });
+        list.forEach(function (x) { x.tab_pos = i; });
+      });
+      save();
+      return { ok: true };
+    },
+    teacher_starter: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t || !teaches(t, a.p_member)) return fail("담당 학생만 할 수 있어요.");
+      db.lesson_sheets = db.lesson_sheets || [];
+      if (db.lesson_notes.some(function (n) { return n.member_id === a.p_member; }) || db.lesson_sheets.some(function (x) { return x.member_id === a.p_member; })) return { ok: true, made: false };
+      db.lesson_sheets.push({ id: ++db.next, member_id: a.p_member, teacher_id: t.id, title: "OT", pos: 0, tab_pos: 0, sheet: a.p_ot, site_edited: true });
+      db.lesson_sheets.push({ id: ++db.next, member_id: a.p_member, teacher_id: t.id, title: "양식", pos: 1, tab_pos: 1, sheet: a.p_form, site_edited: true });
+      save();
+      return { ok: true, made: true };
     },
     // 선생님 구글시트 → 레슨 노트 (관리자 → 선생님): 체험 모드는 연결된 척
     admin_lesson_sync_status: function () {

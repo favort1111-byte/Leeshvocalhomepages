@@ -92,6 +92,7 @@
 .sys-msg{min-height:1.4em;margin:10px 0 0;font-size:14px;}
 .sys-msg--ok{color:var(--sys-ok);}
 .sys-msg--error{color:var(--sys-error);}
+.sys-msg--warn{color:#7A4A00;background:#FFF4D6;padding:6px 10px;border-radius:6px;}
 .sys-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
 
 @media (prefers-reduced-motion:reduce){.sys *{transition:none !important;}}
@@ -138,6 +139,9 @@
 .signin__kakao svg{width:22px;height:22px;}
 .signin__kakao:disabled{opacity:.6;cursor:default;}
 .signin__hint{margin:8px 0 18px;}
+.signin__kid{margin:-8px 0 18px;padding:10px 12px;border-radius:8px;background:#FFF4D6;color:#5C4300;font-size:13px;line-height:1.5;}
+.signin__guardian{align-items:flex-start;margin:4px 0 14px;line-height:1.5;}
+.signin__guardian input{flex:none;margin-top:2px;}
 .signin__alt{margin-top:6px;}
 .signin__alt summary{cursor:pointer;color:var(--sys-accent);font-size:14px;text-decoration:underline;padding:6px 0;}
 .signin__alt[open] summary{margin-bottom:12px;}
@@ -167,6 +171,18 @@
 .rt-menu__size{border:0;background:none;padding:6px 16px;font:inherit;font-size:14px;text-align:left;cursor:pointer;}
 .rt-menu__size:hover{background:#F1F3F4;}
 .rt-menu--color{display:grid;grid-template-columns:repeat(6,26px);gap:6px;}
+/* 표(시트) 색 판: 구글시트처럼 10색 × 8줄 + 맞춤 색 */
+.xs-bar .rt-menu--color{display:block;width:250px;padding:10px;}
+.rt-pal__reset{display:block;width:100%;margin:0 0 8px;padding:6px 8px;border:0;border-radius:4px;background:transparent;font:500 13px var(--rs-font,Arial);color:#202124;text-align:left;cursor:pointer;}
+.rt-pal__reset:hover{background:#F1F3F4;}
+.rt-pal{display:grid;grid-template-columns:repeat(10,20px);gap:4px;}
+.rt-pal__gap{grid-column:1/-1;height:4px;}
+.rt-pal__chip{width:20px;height:20px;padding:0;border:0;border-radius:50%;cursor:pointer;font:400 15px/20px Arial;color:#5F6368;}
+.rt-pal__chip.is-gray{box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);}
+.rt-pal__chip:hover{box-shadow:0 0 0 2px #fff,0 0 0 3px #1A73E8;}
+.rt-pal__add{background:#fff;box-shadow:inset 0 0 0 1px #DADCE0;}
+.rt-pal__head{margin:10px 0 4px;font:700 11px var(--rs-font,Arial);color:#5F6368;}
+.rt-pal__input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
 .rt-chip{width:26px;height:26px;padding:0;border:1px solid rgba(0,0,0,.15);border-radius:50%;cursor:pointer;}
 .rt-chip:hover{box-shadow:0 0 0 2px #1A73E8;}
 .rt-chip--none{background:#fff linear-gradient(135deg,transparent 46%,#D93025 46%,#D93025 54%,transparent 54%) !important;}
@@ -213,6 +229,14 @@
 .rs-tab{flex:none;height:30px;padding:0 14px;border:0;border-radius:6px;background:transparent;font:700 13px var(--rs-font);color:#444746;cursor:pointer;white-space:nowrap;}
 .rs-tab:hover{background:#E8EAED;}
 .rs-tab.is-active{background:#E1E9F7;color:#0B57D0;cursor:default;}
+.rs-tab{display:inline-flex;align-items:center;gap:4px;}
+.rs-tab__caret{display:inline-block;padding:2px 4px;margin-right:-8px;border-radius:4px;font-size:11px;cursor:pointer;}
+.rs-tab__caret:hover{background:#C9D7F2;}
+.rs-tab--s:not(.is-active){color:#5F6368;font-weight:500;}
+.rs-tab.is-drag{opacity:.4;}
+.rs-tab.is-over{box-shadow:inset 3px 0 0 #1A73E8;}
+.rs-tab__input{flex:none;height:30px;padding:0 10px;border:2px solid #1A73E8;border-radius:6px;font:700 13px var(--rs-font);color:#202124;background:#fff;}
+.xs-menu__item.is-danger{color:#C5221F;}
 /* 레슨 일지 표 (js/grid.js): 진짜 스프레드시트 — A~Z 열, 1~100 줄, 21px 줄, Arial 10pt (원장님 2026-10-30) */
 .xs{--rs-font:Arial,"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;position:relative;margin:4px 0 14px;font-family:var(--rs-font);}
 .xs-bar{margin-bottom:6px;}

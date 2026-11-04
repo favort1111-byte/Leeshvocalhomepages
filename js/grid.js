@@ -17,7 +17,26 @@
   var ZOOMS = [75, 90, 100, 110, 125, 150, 200];
   var ZOOM_KEY = "leesh_grid_zoom";
   var SIZES = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 36];
-  var TEXT_COLORS = R.colors.text, FILL_COLORS = R.colors.fill;
+  // 구글시트 색 판 그대로 (회색 줄 · 밝은 색 줄 · 옅은 색 3줄 · 짙은 색 3줄)
+  var SHEET_COLORS = [
+    ["#000000", "#434343", "#666666", "#999999", "#b7b7b7", "#cccccc", "#d9d9d9", "#efefef", "#f3f3f3", "#ffffff"],
+    ["#980000", "#ff0000", "#ff9900", "#ffff00", "#00ff00", "#00ffff", "#4a86e8", "#0000ff", "#9900ff", "#ff00ff"],
+    ["#e6b8af", "#f4cccc", "#fce5cd", "#fff2cc", "#d9ead3", "#d0e0e3", "#c9daf8", "#cfe2f3", "#d9d2e9", "#ead1dc"],
+    ["#dd7e6b", "#ea9999", "#f9cb9c", "#ffe599", "#b6d7a8", "#a2c4c9", "#a4c2f4", "#9fc5e8", "#b4a7d6", "#d5a6bd"],
+    ["#cc4125", "#e06666", "#f6b26b", "#ffd966", "#93c47d", "#76a5af", "#6d9eeb", "#6fa8dc", "#8e7cc3", "#c27ba0"],
+    ["#a61c00", "#cc0000", "#e69138", "#f1c232", "#6aa84f", "#45818e", "#3c78d8", "#3d85c6", "#674ea7", "#a64d79"],
+    ["#85200c", "#990000", "#b45f06", "#bf9000", "#38761d", "#134f5c", "#1155cc", "#0b5394", "#351c75", "#741b47"],
+    ["#5b0f00", "#660000", "#783f04", "#7f6000", "#274e13", "#0c343d", "#1c4587", "#073763", "#20124d", "#4c1130"]
+  ];
+  var CUSTOM_KEY = "leesh_rs_colors"; // 맞춤 색 (이 기기에 기억, 10개)
+  function customColors() {
+    try { var l = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "[]"); return Array.isArray(l) ? l.filter(function (c) { return /^#[0-9a-f]{6}$/i.test(c); }).slice(0, 10) : []; }
+    catch (e) { return []; }
+  }
+  function addCustom(c) {
+    var l = [c].concat(customColors().filter(function (x) { return x.toLowerCase() !== c.toLowerCase(); })).slice(0, 10);
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(l)); } catch (e) { /* private mode */ }
+  }
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -647,7 +666,7 @@
     function showMenu(x, y) {
       menuBox.textContent = "";
       var rows = rng.r2 - rng.r1 + 1, cols = rng.c2 - rng.c1 + 1;
-      [["위에 행 " + rows + "개 넣기", function () { rowsAt(rng.r1, rows); }],
+      menuAt([["위에 행 " + rows + "개 넣기", function () { rowsAt(rng.r1, rows); }],
        ["아래에 행 " + rows + "개 넣기", function () { rowsAt(rng.r2 + 1, rows); }],
        ["행 " + (rng.r1 + 1) + (rows > 1 ? "~" + (rng.r2 + 1) : "") + " 지우기", delRows],
        null,
@@ -657,17 +676,22 @@
        null,
        ["내용 지우기 (Delete)", clearRange],
        ["서식 지우기", function () { clearFormat(); }]
-      ].forEach(function (it) {
+      ], x, y, true);
+    }
+    // 메뉴 하나 (오른쪽 클릭 · 시트 탭): list = [[글, 할 일] | null(줄)]
+    function menuAt(list, x, y, refocus, up) {
+      menuBox.textContent = "";
+      list.forEach(function (it) {
         if (!it) { menuBox.appendChild(el("hr")); return; }
-        var b = el("button", "xs-menu__item", it[0]);
+        var b = el("button", "xs-menu__item" + (it[2] ? " is-danger" : ""), it[0]);
         b.type = "button";
-        b.addEventListener("click", function () { closeMenus(); it[1](); focusCur(null, true); });
+        b.addEventListener("click", function () { closeMenus(); it[1](); if (refocus) focusCur(null, true); });
         menuBox.appendChild(b);
       });
       var box = wrap.getBoundingClientRect();
       menuBox.hidden = false;
-      menuBox.style.left = Math.min(x - box.left, wrap.clientWidth - menuBox.offsetWidth - 4) + "px";
-      menuBox.style.top = (y - box.top) + "px";
+      menuBox.style.left = Math.max(4, Math.min(x - box.left, wrap.clientWidth - menuBox.offsetWidth - 4)) + "px";
+      menuBox.style.top = (up ? y - box.top - menuBox.offsetHeight - 6 : y - box.top) + "px";
     }
 
     /* --- 도구 줄 --- */
@@ -786,29 +810,64 @@
       b.addEventListener("click", function () { setSize(px); closeMenus(true); });
       sizeMenu.appendChild(b);
     });
-    function palette(m, list, apply) {
-      list.forEach(function (c) {
-        var b = el("button", "rt-chip" + (c ? "" : " rt-chip--none"));
-        b.type = "button";
-        b.style.background = c || "#fff";
-        b.title = c || "없음";
-        b.setAttribute("aria-label", c ? "색 " + c : "색 없음");
-        b.addEventListener("click", function () { apply(c); closeMenus(true); });
-        m.appendChild(b);
+    // 구글시트와 같은 색 판 (선생님들 의견 2026-11-04 "글씨 색깔 다양하게, 스프레드시트처럼"): 80색 + 맞춤 색
+    function palette(m, apply, resetLabel) {
+      var reset = el("button", "rt-pal__reset", resetLabel);
+      reset.type = "button";
+      reset.addEventListener("click", function () { apply(null); closeMenus(true); });
+      m.appendChild(reset);
+      var grid = el("div", "rt-pal");
+      SHEET_COLORS.forEach(function (row, ri) {
+        row.forEach(function (c) {
+          var b = el("button", "rt-pal__chip" + (ri === 0 ? " is-gray" : ""));
+          b.type = "button";
+          b.style.background = c;
+          b.title = c;
+          b.setAttribute("aria-label", "색 " + c);
+          b.addEventListener("click", function () { apply(c); closeMenus(true); });
+          grid.appendChild(b);
+        });
+        if (ri === 1) grid.appendChild(el("i", "rt-pal__gap"));
       });
+      m.appendChild(grid);
+      m.appendChild(el("p", "rt-pal__head", "맞춤"));
+      var mine = el("div", "rt-pal rt-pal--mine");
+      m.appendChild(mine);
+      var pick = el("input");
+      pick.type = "color";
+      pick.className = "rt-pal__input";
+      pick.value = "#d62828";
+      pick.addEventListener("change", function () { addCustom(pick.value); apply(pick.value); closeMenus(true); });
+      m._drawMine = function () {
+        mine.textContent = "";
+        var add = el("button", "rt-pal__chip rt-pal__add", "+");
+        add.type = "button";
+        add.title = "맞춤 색 고르기";
+        add.addEventListener("click", function () { pick.click(); });
+        mine.appendChild(add);
+        mine.appendChild(pick);
+        customColors().forEach(function (c) {
+          var b = el("button", "rt-pal__chip");
+          b.type = "button";
+          b.style.background = c;
+          b.title = c;
+          b.addEventListener("click", function () { apply(c); closeMenus(true); });
+          mine.appendChild(b);
+        });
+      };
+      m._drawMine();
     }
     var textMenu = menu("rt-menu--color"), fillMenu = menu("rt-menu--color");
-    palette(textMenu, ["#000000"].concat(TEXT_COLORS.filter(function (c) { return c !== "#000000"; })), function (c) {
-      lastText = c;
-      colorBtn.querySelector(".rt-swatch").style.background = c;
-      if (inlineSel()) inline(function () { exec("foreColor", c, true); });
-      else setStyle(function (s) { s.f = /^#0{3,6}$/.test(c) ? null : c; });
-    });
-    palette(fillMenu, FILL_COLORS, function (c) {
+    palette(textMenu, function (c) {
+      if (c) { lastText = c; colorBtn.querySelector(".rt-swatch").style.background = c; }
+      if (inlineSel()) inline(function () { exec("foreColor", c || "#000000", true); });
+      else setStyle(function (s) { s.f = !c || /^#0{3,6}$/.test(c) ? null : c; });
+    }, "재설정 (검정)");
+    palette(fillMenu, function (c) {
       if (c) { lastFill = c; fillBtn.querySelector(".rt-swatch").style.background = c; }
       if (mode === "edit") commit();
-      setStyle(function (s) { s.g = c || null; }); // 채우기는 시트처럼 칸 전체
-    });
+      setStyle(function (s) { s.g = !c || isWhite(c) ? null : c; }); // 채우기는 시트처럼 칸 전체
+    }, "재설정 (채우기 없음)");
     var opened = null;
     function closeMenus(keepFocus) {
       if (opened) { opened.hidden = true; opened = null; }
@@ -818,9 +877,12 @@
     function open(m, from) {
       if (opened === m) { closeMenus(); return; }
       closeMenus();
+      if (m._drawMine) m._drawMine();
       m.hidden = false;
       m.style.left = from.offsetLeft + "px";
       m.style.top = (from.offsetTop + from.offsetHeight + 4) + "px";
+      var over = m.offsetLeft + m.offsetWidth - Math.max(bar.clientWidth, wrap.clientWidth);
+      if (over > 0) m.style.left = Math.max(0, from.offsetLeft - over) + "px"; // 휴대폰: 화면 밖으로 안 나가게
       opened = m;
     }
     document.addEventListener("mousedown", function (e) {
@@ -832,22 +894,57 @@
     function drawFoot() {
       foot.textContent = "";
       var t = opts.tabs;
-      if (t && t.add) {
+      if (t && (t.add || t.addMenu)) {
         var plus = el("button", "rs-tabs__add", "+");
         plus.type = "button";
         plus.title = t.addTitle || "새 시트";
         plus.setAttribute("aria-label", plus.title);
-        plus.addEventListener("click", t.add);
+        plus.addEventListener("click", function () {
+          if (mode === "edit") commit();
+          if (!t.addMenu) { t.add(); return; }
+          var r = plus.getBoundingClientRect();
+          menuAt(t.addMenu, r.left, r.top, false, true);
+        });
         foot.appendChild(plus);
       }
       if (t && t.items && t.items.length) {
         var tl = el("div", "rs-tabs__list");
+        var dragFrom = null, tabClick = null;
         t.items.forEach(function (it, i) {
-          var b = el("button", "rs-tab" + (it.active ? " is-active" : ""), it.label);
+          var b = el("button", "rs-tab" + (it.active ? " is-active" : "") + (it.kind ? " rs-tab--" + it.kind : ""));
           b.type = "button";
+          b.appendChild(el("span", "rs-tab__name", it.label));
           if (it.title) b.title = it.title;
           if (it.active) b.setAttribute("aria-current", "true");
-          b.addEventListener("click", function () { if (!it.active) { commit(); t.pick(i); } });
+          function tabMenu(x, y) {
+            var list = t.menu ? t.menu(i) : null;
+            if (!list || !list.length) return;
+            if (t.rename) list.unshift(["이름 바꾸기", function () { renameTab(b, i); }]);
+            menuAt(list, x, y, false, true);
+          }
+          if (it.active && (t.menu || t.rename)) {
+            var caret = el("span", "rs-tab__caret", "▾");
+            caret.setAttribute("aria-label", "시트 메뉴");
+            caret.addEventListener("click", function (e) { e.stopPropagation(); var r = b.getBoundingClientRect(); tabMenu(r.left, r.top); });
+            b.appendChild(caret);
+          }
+          // 한 번 = 그 탭으로, 두 번 = 이름 바꾸기 (구글시트처럼). 두 번 누를 틈을 조금 기다려요.
+          b.addEventListener("click", function () {
+            if (it.active) return;
+            clearTimeout(tabClick);
+            tabClick = setTimeout(function () { commit(); t.pick(i); }, t.rename ? 230 : 0);
+          });
+          b.addEventListener("dblclick", function () { clearTimeout(tabClick); if (t.rename) renameTab(b, i); });
+          b.addEventListener("contextmenu", function (e) { if (!t.menu) return; e.preventDefault(); tabMenu(e.clientX, e.clientY); });
+          if (t.reorder) {
+            // 끌어서 옮기기 (컴퓨터). 휴대폰은 ▾ 메뉴의 "왼쪽으로 · 오른쪽으로"
+            b.draggable = true;
+            b.addEventListener("dragstart", function (e) { dragFrom = i; b.classList.add("is-drag"); try { e.dataTransfer.setData("text/plain", String(i)); e.dataTransfer.effectAllowed = "move"; } catch (x) { /* old browsers */ } });
+            b.addEventListener("dragend", function () { b.classList.remove("is-drag"); tl.querySelectorAll(".is-over").forEach(function (n) { n.classList.remove("is-over"); }); });
+            b.addEventListener("dragover", function (e) { if (dragFrom == null) return; e.preventDefault(); b.classList.add("is-over"); });
+            b.addEventListener("dragleave", function () { b.classList.remove("is-over"); });
+            b.addEventListener("drop", function (e) { e.preventDefault(); var from = dragFrom; dragFrom = null; if (from != null && from !== i) t.reorder(from, i); });
+          }
           tl.appendChild(b);
         });
         foot.appendChild(tl);
@@ -859,6 +956,32 @@
         more.addEventListener("click", function () { d.n = Math.min(MAX_ROWS, d.n + 100); render(); changed(); });
         foot.appendChild(more);
       }
+    }
+    // 탭 이름 바꾸기: 탭 자리에 글 칸 (Enter = 바꾸기, Esc = 그만)
+    function renameTab(b, i) {
+      var t = opts.tabs, it = t.items[i];
+      var inp = el("input", "rs-tab__input");
+      inp.value = it.name != null ? it.name : it.label;
+      inp.maxLength = it.max || 60;
+      inp.setAttribute("aria-label", "시트 이름");
+      inp.style.width = Math.max(80, b.offsetWidth) + "px";
+      var done = false;
+      function finish(ok) {
+        if (done) return;
+        done = true;
+        var v = inp.value.trim();
+        inp.replaceWith(b);
+        if (ok && v !== (it.name != null ? it.name : it.label)) t.rename(i, v);
+      }
+      inp.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); finish(true); }
+        else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+        e.stopPropagation();
+      });
+      inp.addEventListener("blur", function () { finish(true); });
+      b.replaceWith(inp);
+      inp.focus();
+      inp.select();
     }
 
     /* --- 마우스 · 손가락 --- */
@@ -1032,7 +1155,9 @@
         });
         return bad;
       },
-      focus: function () { focusCur(); }
+      focus: function () { focusCur(); },
+      /** 아래쪽 시트 탭을 새로 (이름 · 순서가 바뀌었을 때) */
+      tabs: function (t) { opts.tabs = t; drawFoot(); }
     };
   }
 

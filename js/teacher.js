@@ -161,118 +161,366 @@
     app.appendChild(ul);
   }
 
-  /* ---------- 학생 한 명: 저번 시간 내용 + 오늘의 수업 내용 + 지난 일지 + 연습 일지 · 레퍼토리 ---------- */
-  function open(id, note) {
-    clear();
-    app.appendChild(el("p", "sys-note", "불러오는 중…"));
-    return LeeshAPI.rpc("teacher_student", { p_member: id }).then(function (res) {
-      if (!res.ok) { list(); var m = el("p", "sys-msg sys-msg--error", res.error); app.insertBefore(m, app.children[1] || null); return; }
-      clear();
-      var s = res.student;
-      app.appendChild(header());
-      var back = button("← 담당 학생", "sys-link tch__back");
-      // 쓰던 일지는 저장하고 나가요
-      back.addEventListener("click", function () { (form ? form.flush() : Promise.resolve()).then(function () { start(); }); });
-      app.appendChild(back);
-      app.appendChild(el("h3", "tch__name", s.name + (s.status !== "재원" ? " (" + s.status + ")" : "")));
-      // 맨 위 한눈에 보기: 저번 시간 수업 내용 + 최근 연습 일지 + 레퍼토리 (원장님 2026-10-29: 수업하면서 한 화면에)
-      app.appendChild(glance(res));
-      // 시트 탭: 날짜마다 일지 하나 (+ = 새 일지). 쓰던 것은 저장하고 넘어가요.
-      var form = null;
-      function swap(n) {
-        return form.flush().then(function (ok) {
-          if (ok === false) return; // 저장이 안 됐으면 (너무 긴 칸 · 연결 오류) 그대로 둬요
-          var f2 = noteForm(s, res.notes, n, swap);
-          form.node.replaceWith(f2.node);
-          form.node = f2.node;
-          // 위쪽 "저번 시간"도 지금 쓰는 일지의 바로 전 수업으로 (같은 일지가 위아래로 두 번 보이지 않게)
-          var old = app.querySelector(".tch__prev");
-          if (old) old.replaceWith(lastTime(res.notes, n));
-          form.flush = f2.flush;
-          form.msg = f2.msg;
+  /* ---------- 학생 한 명: 저번 시간 내용 + 시트(일지 · 곡·자료 탭) + 지난 일지 + 연습 일지 · 레퍼토리 ---------- */
+  // 선생님들 의견 (2026-11-04): 시트 탭 이름 바꾸기 · 앞뒤로 옮기기 · 신입생은 OT · 양식 탭과 같이 · 곡(가사) 탭도 아래 탭에서 · 저장이 끊겨도 안 날아가게
+  function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function cellOf(text, s) { var c = { t: esc(text) }; if (s) c.s = s; return c; }
+  /** 신입생 OT 탭 (상담 · 등록 일지의 신상 칸 — 생년월일 · 사는 곳 · 학교 · 키 몸무게 — 은 빼고 수업에 필요한 칸만, 원장님 2026-11-04) */
+  function otTemplate() {
+    var d = { v: 1, n: 100, w: { 0: 190, 1: 520 }, h: {}, c: {} };
+    d.c["0,0"] = cellOf("OT (첫 수업)", { b: 1, z: 18 });
+    var rows = ["등록 경로", "보컬 레슨 경험", "댄스 레슨 경험", "악기", null, "희망 클래스", "좋아하는 가수", "좋아하는 노래 · 장르", null,
+      "지망하는 기획사 · 학교", "가수 장르 · 포지션", "오디션 경험", "합격 경험", null, "레슨 목표 · 방향성", "특이사항"];
+    var r = 2;
+    rows.forEach(function (label) {
+      if (label) d.c[r + ",0"] = cellOf(label, /목표|특이/.test(label) ? { b: 1, f: "#ff0000" } : { b: 1 });
+      r++;
+    });
+    return d;
+  }
+  var DRAFT = "leesh_draft:";
+  function draftGet(k) { try { return JSON.parse(localStorage.getItem(DRAFT + k) || "null"); } catch (e) { return null; } }
+  function draftSet(k, v) { try { localStorage.setItem(DRAFT + k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function draftDel(k) { try { localStorage.removeItem(DRAFT + k); } catch (e) { /* private mode */ } }
+  function newDrafts(member) {
+    var out = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(DRAFT + member + ":new:") === 0) { var v = draftGet(k.slice(DRAFT.length)); if (v) out.push(v); }
+      }
+    } catch (e) { /* private mode */ }
+    return out.sort(function (a, b) { return a.at - b.at; });
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+  var savers = {}; // 고치는 중인 시트마다 저장기 하나 (같은 시트를 다시 열면 예전 것은 멈춤)
+
+  /**
+   * 저절로 저장 (2초) + 인터넷이 약할 때: 이 기기에 보관 → 5 · 10 · 20 · 30초마다, 다시 연결되면 바로 다시 보내요.
+   * o = { key, msg, args() → 보낼 것 | null, call(a) → Promise(res), saved(res, a), check() → 오류 글 | null }
+   */
+  function saver(o) {
+    if (savers[o.key]) savers[o.key].stop();
+    var timer = null, retry = null, busy = null, dirty = false, wait = 0, stopped = false;
+    function later() {
+      dirty = true;
+      clearTimeout(timer);
+      timer = setTimeout(function () { push(false); }, 2000);
+    }
+    function push(loud) {
+      clearTimeout(timer); timer = null;
+      clearTimeout(retry); retry = null;
+      if (stopped) return Promise.resolve(true);
+      if (busy) { dirty = true; return busy; }
+      var bad = o.check ? o.check() : null;
+      if (bad) { say(o.msg, bad, "error"); return Promise.resolve(false); }
+      var a = o.args();
+      if (!a) { if (loud) say(o.msg, "한 칸 이상 적어주세요.", "error"); return Promise.resolve(null); }
+      dirty = false;
+      draftSet(o.key, { at: Date.now(), a: a, title: o.title ? o.title() : null });
+      say(o.msg, "저장하는 중…");
+      busy = o.call(a).then(function (res) {
+        busy = null;
+        if (stopped) return true;
+        if (!res.ok) {
+          dirty = true;
+          if (res.offline || res.error === LeeshAPI.NETWORK_ERROR) {
+            // 내용은 이 기기에 있어요. 조금 뒤 · 다시 연결되면 저절로
+            wait = Math.min(30000, wait ? wait * 2 : 5000);
+            say(o.msg, "인터넷이 약해서 아직 서버에 저장하지 못했어요. 쓴 내용은 이 기기에 보관해 두었고, 연결되면 저절로 저장돼요. (" + Math.round(wait / 1000) + "초 뒤 다시)", "warn");
+            retry = setTimeout(function () { push(false); }, wait);
+            return "kept";
+          }
+          say(o.msg, res.error, "error");
+          return false;
+        }
+        wait = 0;
+        o.saved(res, a);
+        if (dirty) return push(loud);
+        draftDel(o.key);
+        if (o.rekey) { var nk = o.rekey(); if (nk && nk !== o.key) { delete savers[o.key]; o.key = nk; savers[nk] = api; } }
+        var t = new Date();
+        say(o.msg, "저장됨 " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0"), "ok");
+        return true;
+      });
+      return busy;
+    }
+    function flush() { return dirty || timer || retry ? push(false) : busy || Promise.resolve(true); }
+    function online() { if (dirty || retry) push(false); }
+    window.addEventListener("online", online);
+    // 다른 앱으로 넘어가거나 화면이 꺼질 때 바로 저장
+    function hide() { if (document.hidden && dirty) push(false); }
+    document.addEventListener("visibilitychange", hide);
+    var api = {
+      later: later, push: push, flush: flush,
+      stop: function () {
+        stopped = true; clearTimeout(timer); clearTimeout(retry);
+        window.removeEventListener("online", online);
+        document.removeEventListener("visibilitychange", hide);
+        if (savers[o.key] === api) delete savers[o.key];
+      },
+      /** 탭을 바꿔도 될까: 저장됨 · 이 기기에 보관됨이면 괜찮아요 */
+      leave: function () {
+        return flush().then(function (ok) {
+          if (ok === false) return false;
+          if (ok === "kept") { savers[o.key] = api; return true; } // 뒤에서 계속 다시 보내요
+          api.stop();
+          return true;
         });
       }
-      form = noteForm(s, res.notes, null, swap);
-      form.swap = swap;
-      app.appendChild(form.node);
-      if (note) say(form.msg, note, "ok");
+    };
+    savers[o.key] = api;
+    return api;
+  }
 
-      var tabs = el("div", "sys-chips tch__tabs");
-      var pages = {};
-      var sheets = res.sheets || [];
-      [["notes", "지난 일지 " + res.notes.length], ["sheets", "곡·자료 " + sheets.length], ["logs", "연습 일지"], ["songs", "레퍼토리"]].forEach(function (t, i) {
-        var b = button(t[1], "sys-chip");
-        b.setAttribute("aria-pressed", i ? "false" : "true");
-        b.addEventListener("click", function () {
-          tabs.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
-          Object.keys(pages).forEach(function (k) { pages[k].hidden = k !== t[0]; });
+  function open(id, note, made) {
+    clear();
+    app.appendChild(el("p", "sys-note", "불러오는 중…"));
+    return LeeshAPI.rpc("teacher_student", { p_member: id }, undefined, { retry: 2 }).then(function (res) {
+      if (!res.ok) { list(); var m = el("p", "sys-msg sys-msg--error", res.error); app.insertBefore(m, app.children[1] || null); return; }
+      // 신입생 (일지 · 곡·자료가 하나도 없음): 첫 수업에 OT · 양식 탭을 같이 만들어요
+      if (!made && !res.notes.length && !res.sheets.length) {
+        return LeeshAPI.rpc("teacher_starter", { p_member: id, p_ot: otTemplate(), p_form: LeeshGrid.template(FIELDS) }).then(function (st) {
+          return open(id, st.ok && st.made ? "신입생이라 OT · 양식 탭을 같이 만들었어요. 아래 탭에서 골라 쓰세요." : note, true);
         });
-        tabs.appendChild(b);
-        pages[t[0]] = el("section", "tch__page");
-        pages[t[0]].hidden = !!i;
+      }
+      var formSheet = res.sheets.filter(function (x) { return x.title.trim() === "양식"; })[0];
+      if (formSheet && !formSheet.data) {
+        // 새 일지는 이 학생의 "양식" 탭 모양으로 시작
+        return LeeshAPI.rpc("teacher_lesson_sheet", { p_id: formSheet.id }, undefined, { retry: 1 }).then(function (x) {
+          if (x.ok) formSheet.data = x.sheet;
+          return show(res, note, formSheet);
+        });
+      }
+      return show(res, note, null);
+    });
+  }
+
+  function show(res, note, formSheet) {
+    clear();
+    var s = res.student;
+    var book = { s: s, notes: res.notes, sheets: res.sheets, form: formSheet, cur: null, page: null };
+    app.appendChild(header());
+    var back = button("← 담당 학생", "sys-link tch__back");
+    // 쓰던 일지는 저장하고 나가요 (인터넷이 약하면 이 기기에 보관한 채로)
+    back.addEventListener("click", function () { (book.page ? book.page.leave() : Promise.resolve(true)).then(function (ok) { if (ok !== false) start(); }); });
+    app.appendChild(back);
+    app.appendChild(el("h3", "tch__name", s.name + (s.status !== "재원" ? " (" + s.status + ")" : "")));
+    // 맨 위 한눈에 보기: 저번 시간 수업 내용 + 최근 연습 일지 + 레퍼토리 (원장님 2026-10-29: 수업하면서 한 화면에)
+    app.appendChild(glance(res));
+    var slot = el("div", "tch__slot");
+    app.appendChild(slot);
+
+    book.go = function (target) {
+      var leaving = book.page ? book.page.leave() : Promise.resolve(true);
+      return leaving.then(function (ok) {
+        if (ok === false) return; // 저장이 안 됐으면 (너무 긴 칸 등) 그대로 둬요
+        var p = target && target.kind === "s" ? sheetForm(book, target.obj) : noteForm(book, target ? target.obj : null, target && target.draft);
+        slot.textContent = "";
+        slot.appendChild(p.node);
+        book.page = p;
+        // 위쪽 "저번 시간"도 지금 쓰는 일지의 바로 전 수업으로 (같은 일지가 위아래로 두 번 보이지 않게)
+        var old = app.querySelector(".tch__prev");
+        if (old) old.replaceWith(lastTime(book.notes, target && target.kind === "n" ? target.obj : null));
+        return p;
       });
-      app.appendChild(tabs);
+    };
+    // 저장 안 된 새 일지가 이 기기에 있으면 그것부터 (인터넷이 끊겼던 수업)
+    var pend = newDrafts(s.id)[0];
+    book.go(pend ? { kind: "new", draft: pend } : null).then(function (p) {
+      if (pend && p) say(p.msg, "인터넷이 끊겨서 저장하지 못했던 일지를 이 기기에서 불러왔어요. 지금 다시 저장해요.", "warn");
+      else if (note && p) say(p.msg, note, "ok");
+    });
 
-      if (!res.notes.length) pages.notes.appendChild(el("p", "book__empty", "아직 쓴 일지가 없어요."));
-      res.notes.forEach(function (n) { pages.notes.appendChild(noteCard(s, n, res.notes, form)); });
-
-      sheetPage(pages.sheets, sheets);
-
-      if (!res.logs.length) pages.logs.appendChild(el("p", "book__empty", "학생이 쓴 연습 일지가 없어요."));
-      res.logs.forEach(function (l) {
-        var c = el("article", "fold__card");
-        c.appendChild(el("p", "fold__date", dayLabel(l.day) + (l.minutes ? " · " + l.minutes + "분" : "")));
-        if (l.song) c.appendChild(el("p", "fold__main", l.song));
-        if (l.did) c.appendChild(el("p", "fold__body", l.did));
-        pages.logs.appendChild(c);
+    var tabs = el("div", "sys-chips tch__tabs");
+    var pages = {};
+    var sheets = res.sheets || [];
+    [["notes", "지난 일지 " + res.notes.length], ["sheets", "곡·자료 " + sheets.length], ["logs", "연습 일지"], ["songs", "레퍼토리"]].forEach(function (t, i) {
+      var b = button(t[1], "sys-chip");
+      b.setAttribute("aria-pressed", i ? "false" : "true");
+      b.addEventListener("click", function () {
+        tabs.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+        Object.keys(pages).forEach(function (k) { pages[k].hidden = k !== t[0]; });
       });
+      tabs.appendChild(b);
+      pages[t[0]] = el("section", "tch__page");
+      pages[t[0]].hidden = !!i;
+    });
+    app.appendChild(tabs);
 
-      if (!res.repertoire.length) pages.songs.appendChild(el("p", "book__empty", "학생이 적은 레퍼토리가 없어요."));
-      res.repertoire.forEach(function (r) {
-        var c = el("article", "fold__card");
-        var top = el("p", "fold__main");
-        top.appendChild(el("span", "fold__tag" + (r.status === "완성" ? " is-done" : ""), r.status));
-        top.appendChild(el("b", null, " " + r.title));
-        if (r.artist) top.appendChild(document.createTextNode(" · " + r.artist));
-        c.appendChild(top);
-        if (r.purpose) c.appendChild(el("p", "fold__date", r.purpose));
-        pages.songs.appendChild(c);
+    if (!res.notes.length) pages.notes.appendChild(el("p", "book__empty", "아직 쓴 일지가 없어요."));
+    res.notes.slice(0, 60).forEach(function (n) { pages.notes.appendChild(noteCard(s, n, book)); });
+
+    sheetPage(pages.sheets, sheets, book);
+
+    if (!res.logs.length) pages.logs.appendChild(el("p", "book__empty", "학생이 쓴 연습 일지가 없어요."));
+    res.logs.forEach(function (l) {
+      var c = el("article", "fold__card");
+      c.appendChild(el("p", "fold__date", dayLabel(l.day) + (l.minutes ? " · " + l.minutes + "분" : "")));
+      if (l.song) c.appendChild(el("p", "fold__main", l.song));
+      if (l.did) c.appendChild(el("p", "fold__body", l.did));
+      pages.logs.appendChild(c);
+    });
+
+    if (!res.repertoire.length) pages.songs.appendChild(el("p", "book__empty", "학생이 적은 레퍼토리가 없어요."));
+    res.repertoire.forEach(function (r) {
+      var c = el("article", "fold__card");
+      var top = el("p", "fold__main");
+      top.appendChild(el("span", "fold__tag" + (r.status === "완성" ? " is-done" : ""), r.status));
+      top.appendChild(el("b", null, " " + r.title));
+      if (r.artist) top.appendChild(document.createTextNode(" · " + r.artist));
+      c.appendChild(top);
+      if (r.purpose) c.appendChild(el("p", "fold__date", r.purpose));
+      pages.songs.appendChild(c);
+    });
+    Object.keys(pages).forEach(function (k) { app.appendChild(pages[k]); });
+  }
+
+  /* ---------- 아래쪽 시트 탭: 내 일지 + 곡·자료 (구글시트처럼 이름 바꾸기 · 옮기기) ---------- */
+  function noteLabel(n) { return n.title || n.srcTitle || short(n.date); }
+  /** 탭 순서: 옮긴 적 있는 탭(tabPos) 먼저 그 순서로, 나머지는 곡·자료(구글시트 순서) → 일지(오래된 날 → 최근) */
+  function entries(book) {
+    var list = book.notes.filter(function (n) { return n.mine && n.id; }).map(function (n) { return { kind: "n", id: n.id, obj: n }; })
+      .concat(book.sheets.map(function (x) { return { kind: "s", id: x.id, obj: x }; }));
+    return list.sort(function (a, b) {
+      var pa = a.obj.tabPos, pb = b.obj.tabPos;
+      if (pa != null && pb != null) return pa - pb || (a.kind < b.kind ? -1 : 1);
+      if (pa != null) return -1;
+      if (pb != null) return 1;
+      if (a.kind !== b.kind) return a.kind === "s" ? -1 : 1;
+      if (a.kind === "s") return (a.obj.pos || 0) - (b.obj.pos || 0) || a.id - b.id;
+      return a.obj.date < b.obj.date ? -1 : a.obj.date > b.obj.date ? 1 : a.id - b.id;
+    });
+  }
+  /** cur = { kind: "n" | "s", id } 또는 { kind: "new", label } */
+  function tabsFor(book, cur) {
+    var list = entries(book);
+    var items = list.map(function (e) {
+      var isN = e.kind === "n";
+      return {
+        kind: e.kind, label: isN ? noteLabel(e.obj) : e.obj.title, name: isN ? (e.obj.title || "") : e.obj.title,
+        title: isN ? dayLabel(e.obj.date) + " 일지" + (e.obj.title || e.obj.srcTitle ? " · " + noteLabel(e.obj) : "") : "곡·자료 · " + e.obj.title,
+        active: cur.kind === e.kind && cur.id === e.id, entry: e, max: isN ? 60 : 100
+      };
+    });
+    if (cur.kind === "new") items.push({ kind: "n", label: cur.label, name: cur.name || "", title: "오늘의 수업 내용", active: true, entry: null, max: 60 });
+    function sendOrder() {
+      var ids = items.filter(function (x) { return x.entry; }).map(function (x) { return x.entry.kind + x.entry.id; });
+      items.forEach(function (x, i) { if (x.entry) x.entry.obj.tabPos = i; });
+      LeeshAPI.rpc("teacher_tab_order", { p_member: book.s.id, p_order: ids }, undefined, { retry: 2 }).then(function (r) {
+        if (!r.ok && book.page) say(book.page.msg, "탭 순서를 저장하지 못했어요. " + r.error, "error");
       });
-      Object.keys(pages).forEach(function (k) { app.appendChild(pages[k]); });
+    }
+    function move(from, to) {
+      if (to < 0 || to >= items.length || from === to) return;
+      var it = items.splice(from, 1)[0];
+      items.splice(to, 0, it);
+      sendOrder();
+      if (book.page) book.page.redrawTabs();
+    }
+    return {
+      items: items,
+      pick: function (i) { var e = items[i].entry; if (e) book.go(e); },
+      addTitle: "새 시트 · 새 일지",
+      addMenu: [
+        ["새 일지 (오늘 수업)", function () { book.go(null); }],
+        ["새 빈 시트 (곡 · 가사 · 자료)", function () { newSheet(book); }]
+      ],
+      rename: function (i, v) {
+        var it = items[i], e = it.entry;
+        if (!e) { if (book.page && book.page.setName) book.page.setName(v); return; }
+        if (e.kind === "n") {
+          LeeshAPI.rpc("teacher_note_title", { p_note: e.id, p_title: v }, undefined, { retry: 2 }).then(function (r) {
+            if (!r.ok) { if (book.page) say(book.page.msg, r.error, "error"); return; }
+            e.obj.title = v || null;
+            if (book.page) book.page.redrawTabs();
+          });
+        } else {
+          if (!v) { if (book.page) say(book.page.msg, "곡·자료 탭은 이름이 있어야 해요.", "error"); return; }
+          LeeshAPI.rpc("teacher_sheet_save", { p_member: book.s.id, p_id: e.id, p_title: v }, undefined, { retry: 2 }).then(function (r) {
+            if (!r.ok) { if (book.page) say(book.page.msg, r.error, "error"); return; }
+            e.obj.title = v;
+            if (e.obj.src) e.obj.siteEdited = true;
+            if (book.page) book.page.redrawTabs();
+          });
+        }
+      },
+      reorder: function (from, to) { move(from, to); },
+      menu: function (i) {
+        var it = items[i], e = it.entry, out = [];
+        if (i > 0) out.push(["← 왼쪽으로 옮기기", function () { move(i, i - 1); }]);
+        if (i < items.length - 1) out.push(["오른쪽으로 옮기기 →", function () { move(i, i + 1); }]);
+        if (e && e.kind === "n" && e.obj.title) out.push(["이름을 날짜로 되돌리기", function () { tabsFor(book, cur).rename(i, ""); }]);
+        if (e && e.kind === "s" && !e.obj.src) out.push(null, ["이 시트 지우기", function () { delSheet(book, e.obj); }, true]);
+        if (e && e.kind === "n") out.push(null, ["이 일지 지우기", function () { delNote(book, e.obj); }, true]);
+        return out;
+      }
+    };
+  }
+  function newSheet(book) {
+    var names = {};
+    book.sheets.forEach(function (x) { names[x.title] = 1; });
+    var n = 1;
+    while (names["시트" + n]) n++;
+    var key = uid();
+    LeeshAPI.rpc("teacher_sheet_save", { p_member: book.s.id, p_title: "시트" + n, p_sheet: { v: 1, n: 100, w: {}, h: {}, c: {} }, p_key: key }, undefined, { retry: 2 }).then(function (r) {
+      if (!r.ok) { if (book.page) say(book.page.msg, r.error, "error"); return; }
+      var x = { id: r.id, title: "시트" + n, src: false, siteEdited: true, pos: 0, tabPos: null, data: { v: 1, n: 100, w: {}, h: {}, c: {} } };
+      book.sheets.push(x);
+      book.go({ kind: "s", id: x.id, obj: x }).then(function (p) { if (p) say(p.msg, "새 시트를 만들었어요. 탭을 두 번 누르면 이름을 바꿔요.", "ok"); });
+    });
+  }
+  function delSheet(book, x) {
+    if (!window.confirm("\"" + x.title + "\" 시트를 지울까요? 되돌릴 수 없어요.")) return;
+    LeeshAPI.rpc("teacher_sheet_delete", { p_id: x.id }).then(function (r) {
+      if (!r.ok) { if (book.page) say(book.page.msg, r.error, "error"); return; }
+      if (book.page && book.page.stop) book.page.stop();
+      book.page = null;
+      open(book.s.id, "\"" + x.title + "\" 시트를 지웠어요.");
+    });
+  }
+  function delNote(book, n) {
+    if (!window.confirm(noteLabel(n) + " 일지를 지울까요? 되돌릴 수 없어요.")) return;
+    LeeshAPI.rpc("teacher_note_delete", { p_note: n.id }).then(function (r) {
+      if (!r.ok) { if (book.page) say(book.page.msg, r.error, "error"); return; }
+      if (book.page && book.page.stop) book.page.stop();
+      book.page = null;
+      open(book.s.id, "일지를 지웠어요.");
     });
   }
 
   /**
-   * The write / edit form. editing = a note of mine to change, or null for a new one.
-   * 칸마다 꾸미기 버튼 (js/richtext.js) + 쓰는 동안 저절로 저장 (원장님 2026-10-29: 수업하면서 같이 보며 씀).
+   * 일지 한 장. editing = 내가 쓴 일지 (없으면 새 일지). draft = 이 기기에 보관된 저장 안 된 새 일지.
+   * 칸마다 꾸미기 (js/grid.js) + 쓰는 동안 저절로 저장 (원장님 2026-10-29: 수업하면서 같이 보며 씀).
    */
-  function noteForm(s, notes, editing, swap) {
+  function noteForm(book, editing, draft) {
+    var s = book.s, notes = book.notes;
     var f = el("form", "sys tch__form");
-    f.appendChild(el("h4", "rec__title", editing ? dayLabel(editing.date) + " 수업 내용 고치기" : "오늘의 수업 내용"));
+    var head = el("h4", "rec__title", editing ? dayLabel(editing.date) + " 수업 내용 고치기" : "오늘의 수업 내용");
+    f.appendChild(head);
     var dl = el("label", "sys-field");
     dl.appendChild(el("span", null, "수업 날짜"));
     var date = el("input");
     date.type = "date";
     date.required = true;
-    date.value = editing ? editing.date : todayKst();
+    date.value = draft && draft.a ? draft.a.p_date : editing ? editing.date : todayKst();
     dl.appendChild(date);
     f.appendChild(dl);
     if (editing && editing.src && !editing.siteEdited) {
       f.appendChild(el("p", "sys-note tch__src", "선생님 구글시트에서 가져온 일지예요. 여기서 고치면 그 뒤로는 시트 내용으로 바뀌지 않아요."));
     }
-    f.appendChild(el("p", "sys-note tch__how", "구글시트처럼: 칸 누르고 바로 쓰기 · 두 번 누르면 고치기 · Enter 아래 칸 · Alt+Enter 줄바꿈 · 오른쪽 클릭 = 행 · 열 넣기 · 저절로 저장 · 아래 탭 = 날짜별 일지"));
-    // 아래쪽 시트 탭: 내가 쓴 일지(오래된 것 → 최근) + 지금 쓰는 새 일지
-    var mine = notes.filter(function (n) { return n.mine; }).slice(0, 12).reverse();
-    var items = mine.map(function (n) {
-      return { label: short(n.date), title: dayLabel(n.date) + " 일지", active: !!editing && n.id === editing.id, note: n };
-    });
-    if (!editing) items.push({ label: "새 일지 " + short(todayKst()), title: "오늘의 수업 내용", active: true, note: null });
-    // 일지 한 장 = 표 한 장 (js/grid.js). 새 일지는 A열에 칸 이름만 띄엄띄엄 적힌 표로 시작.
-    var blank = JSON.stringify(LeeshGrid.template(FIELDS).c);
-    var grid = LeeshGrid.editor({
-      data: editing ? LeeshGrid.fromNote(editing, FIELDS) : LeeshGrid.template(FIELDS), onInput: later,
-      tabs: swap && { items: items, pick: function (i) { swap(items[i].note); }, add: function () { swap(null); }, addTitle: "새 일지 (오늘)" }
-    });
+    f.appendChild(el("p", "sys-note tch__how", "구글시트처럼: 칸 누르고 바로 쓰기 · 두 번 누르면 고치기 · Enter 아래 칸 · Alt+Enter 줄바꿈 · 오른쪽 클릭 = 행 · 열 넣기 · 저절로 저장 · 아래 탭 = 일지 · 곡·자료 (탭 두 번 누르기 = 이름 바꾸기, ▾ = 옮기기)"));
+    // 새 일지는 이 학생의 "양식" 탭 모양으로, 없으면 A열에 칸 이름만 띄엄띄엄 적힌 표로 시작
+    var startSheet = book.form && book.form.data ? JSON.parse(JSON.stringify(book.form.data)) : LeeshGrid.template(FIELDS);
+    var blank = JSON.stringify(startSheet.c || {});
+    var noteId = editing ? editing.id : null;
+    var key = draft && draft.a && draft.a.p_key ? draft.a.p_key : uid(); // 새 일지: 끊겨서 다시 보내도 한 장만
+    var name = draft && draft.title != null ? draft.title : (editing ? null : "");
+    var saved = editing ? draftGet(s.id + ":n:" + editing.id) : null; // 이 일지를 고치다가 못 보낸 것
+    var data = draft && draft.a ? draft.a.p_sheet : saved && saved.a ? saved.a.p_sheet : editing ? LeeshGrid.fromNote(editing, FIELDS) : startSheet;
+    if (saved && saved.a) date.value = saved.a.p_date;
+    function cur() { return noteId ? { kind: "n", id: noteId } : { kind: "new", label: name || "새 일지 " + short(date.value || todayKst()), name: name }; }
+    var grid = LeeshGrid.editor({ data: data, onInput: function () { sv.later(); }, tabs: tabsFor(book, cur()) });
     f.appendChild(grid.node);
     var row = el("div", "fold__actions");
     var save = el("button", "sys-btn", editing ? "고친 내용 저장" : "저장하고 닫기");
@@ -288,11 +536,6 @@
       });
       row.appendChild(copy);
     }
-    if (editing) {
-      var cancel = button("고치기 그만", "sys-link");
-      cancel.addEventListener("click", function () { flush().then(function () { open(s.id); }); });
-      row.appendChild(cancel);
-    }
     f.appendChild(row);
     var msg = el("p", "sys-msg");
     msg.setAttribute("role", "status");
@@ -301,46 +544,38 @@
       ? "지금은 학생 내 폴더에 보이지 않아요 (원장님이 켜면 그때부터 학생 내 폴더 → 레슨 노트에 보여요)."
       : "저장하면 학생 내 폴더 → 레슨 노트에 바로 보여요."));
 
-    // 저절로 저장: 마지막으로 쓴 뒤 2초. 처음 저장하면 그 일지 번호로 계속 고쳐요.
-    var noteId = editing ? editing.id : null, timer = null, busy = null, dirty = false;
-    function args() {
-      var sheet = grid.get();
-      // 칸 이름만 있는 새 표는 아직 저장하지 않아요
-      if (!LeeshGrid.text(sheet) || (!noteId && JSON.stringify(sheet.c) === blank)) return null;
-      return { p_member: s.id, p_date: date.value, p_note: noteId, p_rich: true, p_sheet: sheet };
-    }
-    function later() {
-      dirty = true;
-      clearTimeout(timer);
-      timer = setTimeout(function () { push(false); }, 2000);
-    }
-    function push(loud) {
-      clearTimeout(timer);
-      if (busy) { dirty = true; return busy; }
-      var a = args(), long = grid.over();
-      if (long) { say(msg, long + " 칸이 너무 길어요 (한 칸에 5000자까지).", "error"); return Promise.resolve(false); }
-      if (!a || !date.value) { if (loud) say(msg, "한 칸 이상 적어주세요.", "error"); return Promise.resolve(!a ? null : false); }
-      dirty = false;
-      say(msg, "저장하는 중…");
-      busy = LeeshAPI.rpc("teacher_note_save", a).then(function (res) {
-        busy = null;
-        if (!res.ok) { dirty = true; say(msg, res.error, "error"); return false; }
+    var sv = saver({
+      key: noteId ? s.id + ":n:" + noteId : s.id + ":new:" + key, msg: msg,
+      check: function () { var long = grid.over(); return long ? long + " 칸이 너무 길어요 (한 칸에 5000자까지)." : (date.value ? null : "수업 날짜를 골라주세요."); },
+      title: function () { return name; },
+      args: function () {
+        var sheet = grid.get();
+        // 칸 이름만 있는 새 표는 아직 저장하지 않아요
+        if (!LeeshGrid.text(sheet) || (!noteId && JSON.stringify(sheet.c) === blank)) return null;
+        var a = { p_member: s.id, p_date: date.value, p_note: noteId, p_rich: true, p_sheet: sheet, p_key: noteId ? null : key };
+        if (!noteId && name) a.p_title = name;
+        return a;
+      },
+      call: function (a) { return LeeshAPI.rpc("teacher_note_save", a, undefined, { retry: 2 }); },
+      saved: function (res, a) {
+        var wasNew = !noteId;
         noteId = res.id;
         remember(a);
-        var t = new Date();
-        say(msg, "저장됨 " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0"), "ok");
         students.forEach(function (x) { if (x.id === s.id && (!x.last || date.value > x.last)) x.last = date.value; });
-        if (dirty) return push(loud);
-        return true;
-      });
-      return busy;
-    }
-    function flush() { return dirty || timer ? push(false) : busy || Promise.resolve(true); }
+        if (wasNew) {
+          draftDel(s.id + ":new:" + key);
+          grid.tabs(tabsFor(book, cur()));
+          if (book.page && book.page.node !== f) book.page.redrawTabs(); // 뒤에서 늦게 저장된 일지도 지금 탭에
+        }
+      },
+      rekey: function () { return noteId ? s.id + ":n:" + noteId : null; }
+    });
+    if ((draft && draft.a) || (saved && saved.a)) setTimeout(function () { sv.push(false); }, 300);
     // 저장한 일지를 이 화면의 목록에도 (시트 탭 · 지난 일지 불러오기가 최신 내용을 쓰게)
     function remember(a) {
       var n = notes.filter(function (x) { return x.id === noteId; })[0];
       if (!n) {
-        n = { id: noteId, mine: true, teacher: me };
+        n = { id: noteId, mine: true, teacher: me, title: a.p_title || null, tabPos: null };
         notes.push(n);
       }
       n.date = a.p_date;
@@ -349,20 +584,64 @@
       FIELDS.forEach(function (fd) { n[fd[0]] = null; });
       notes.sort(function (x, y) { return x.date < y.date ? 1 : x.date > y.date ? -1 : (y.id || 0) - (x.id || 0); });
     }
-    date.addEventListener("change", function () { if (noteId) later(); });
-    // 다른 앱으로 넘어가거나 화면이 꺼질 때 바로 저장
-    document.addEventListener("visibilitychange", function () { if (document.hidden && f.isConnected && dirty) push(false); });
+    date.addEventListener("change", function () { if (noteId) sv.later(); grid.tabs(tabsFor(book, cur())); });
 
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       save.disabled = true;
-      push(true).then(function (ok) {
+      sv.push(true).then(function (ok) {
         save.disabled = false;
+        if (ok === "kept") return;
         if (!ok) return;
-        open(s.id, cfg.studentNotes === false ? (editing ? "고쳤어요." : "저장했어요.") : editing ? "고쳤어요. 학생 화면에도 바뀌어 보여요." : "저장했어요. 학생 내 폴더에 바로 보여요.");
+        sv.stop();
+        book.page = null;
+        open(s.id, editing ? "고쳤어요." : "저장했어요.");
       });
     });
-    return { node: f, msg: msg, flush: flush };
+    return {
+      node: f, msg: msg, leave: sv.leave, stop: sv.stop,
+      redrawTabs: function () { grid.tabs(tabsFor(book, cur())); },
+      setName: function (v) { name = v; grid.tabs(tabsFor(book, cur())); if (noteId) LeeshAPI.rpc("teacher_note_title", { p_note: noteId, p_title: v }); }
+    };
+  }
+
+  /** 곡·자료 한 장 (노래 가사 · 발성 · OT · 양식 …): 아래 탭에서 열고 고쳐요. 구글시트에서 온 탭을 고치면 그 뒤로 시트가 덮지 않아요. */
+  function sheetForm(book, x) {
+    var s = book.s;
+    var f = el("div", "sys tch__form");
+    f.appendChild(el("h4", "rec__title", "곡·자료 · " + x.title));
+    var msg = el("p", "sys-msg");
+    msg.setAttribute("role", "status");
+    var box = el("div");
+    f.appendChild(box);
+    f.appendChild(msg);
+    var grid = null, sv = null, dead = false;
+    var page = {
+      node: f, msg: msg,
+      leave: function () { return sv ? sv.leave() : Promise.resolve(true); },
+      stop: function () { dead = true; if (sv) sv.stop(); },
+      redrawTabs: function () { if (grid) grid.tabs(tabsFor(book, { kind: "s", id: x.id })); f.firstChild.textContent = "곡·자료 · " + x.title; }
+    };
+    box.appendChild(el("p", "sys-note", "불러오는 중…"));
+    (x.data ? Promise.resolve({ ok: true, sheet: x.data, src: x.src, siteEdited: x.siteEdited }) : LeeshAPI.rpc("teacher_lesson_sheet", { p_id: x.id }, undefined, { retry: 2 })).then(function (res) {
+      if (dead) return;
+      box.textContent = "";
+      if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", res.error)); return; }
+      x.data = res.sheet;
+      if (res.src && !res.siteEdited) box.appendChild(el("p", "sys-note tch__src", "선생님 구글시트에서 가져온 탭이에요. 여기서 고치면 그 뒤로는 구글시트 내용으로 바뀌지 않아요."));
+      var kept = draftGet(s.id + ":s:" + x.id);
+      grid = LeeshGrid.editor({ data: kept && kept.a ? kept.a.p_sheet : res.sheet, onInput: function () { sv.later(); }, tabs: tabsFor(book, { kind: "s", id: x.id }) });
+      box.appendChild(grid.node);
+      sv = saver({
+        key: s.id + ":s:" + x.id, msg: msg,
+        check: function () { var long = grid.over(); return long ? long + " 칸이 너무 길어요 (한 칸에 5000자까지)." : null; },
+        args: function () { return { p_member: s.id, p_id: x.id, p_sheet: grid.get() }; },
+        call: function (a) { return LeeshAPI.rpc("teacher_sheet_save", a, undefined, { retry: 2 }); },
+        saved: function (r, a) { x.data = a.p_sheet; if (x.src) x.siteEdited = true; }
+      });
+      if (kept && kept.a) setTimeout(function () { sv.push(false); }, 300);
+    });
+    return page;
   }
 
   /** 한눈에 보기: 왼쪽 저번 시간 수업 내용, 오른쪽 최근 연습 일지 3개 + 레퍼토리 (준비 중인 곡 먼저). */
@@ -423,12 +702,12 @@
   }
 
   /** 곡·자료: 선생님 구글시트의 날짜 아닌 탭 (곡 가사 · 곡별 피드백 · OT · 발성 · 알림장). 보기만, 누르면 열려요. */
-  function sheetPage(page, sheets) {
+  function sheetPage(page, sheets, book) {
     if (!sheets.length) {
       page.appendChild(el("p", "book__empty", "아직 없어요. 선생님 구글시트의 곡 · OT · 발성 탭이 여기에 저절로 들어와요."));
       return;
     }
-    page.appendChild(el("p", "sys-note", "선생님 구글시트에서 저절로 가져와요 (1시간마다). 고칠 때는 구글시트에서 고쳐주세요."));
+    page.appendChild(el("p", "sys-note", "선생님 구글시트에서 1시간마다 저절로 가져와요. 위쪽 시트 아래 탭에서 열면 바로 고칠 수 있어요 (고친 탭은 그 뒤로 구글시트가 덮지 않아요)."));
     var chips = el("div", "sys-chips tch__sheetchips"), box = el("div", "tch__sheetview"), cache = {};
     sheets.forEach(function (x) {
       var b = button(x.title, "sys-chip");
@@ -443,6 +722,12 @@
           cache[x.id] = res;
           box.appendChild(el("h4", "tch__minihead", res.title));
           box.appendChild(LeeshGrid.view(res.sheet));
+          var go = button("이 시트 열어서 고치기", "sys-link");
+          go.addEventListener("click", function () {
+            var obj = book.sheets.filter(function (y) { return y.id === x.id; })[0] || x;
+            book.go({ kind: "s", id: x.id, obj: obj }).then(function (p) { if (p) p.node.scrollIntoView({ behavior: "smooth", block: "start" }); });
+          });
+          box.appendChild(go);
         });
       });
       chips.appendChild(b);
@@ -451,7 +736,7 @@
     page.appendChild(box);
   }
 
-  function noteCard(s, n, notes, form) {
+  function noteCard(s, n, book) {
     var c = el("article", "lnote");
     var head = el("p", "lnote__date", dayLabel(n.date));
     if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
@@ -462,7 +747,7 @@
       var row = el("p", "fold__actions");
       var edit = button("고치기", "sys-link");
       edit.addEventListener("click", function () {
-        form.swap(n).then(function () { form.node.scrollIntoView({ behavior: "smooth", block: "start" }); });
+        book.go({ kind: "n", id: n.id, obj: n }).then(function (p) { if (p) p.node.scrollIntoView({ behavior: "smooth", block: "start" }); });
       });
       var del = button("지우기", "sys-link adm__del");
       var m = el("span", "sys-msg");
