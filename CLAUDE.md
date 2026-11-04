@@ -189,6 +189,11 @@
 - `404.html`: 없는 주소 → "찾으시는 페이지가 없습니다" + 첫 화면·오디션 소식·상담 신청 버튼. 어느 깊이의 주소에서도 보이게 링크를 /로 시작. 예전 qshop 홈페이지 주소(/EBH1n 강사소개 · /aKews 온라인 강의 → about, /pTFHc 문의 → consult)는 바로 넘김.
 - 남은 것: 원장님이 **네이버 서치어드바이저**·**구글 서치 콘솔**에 사이트 등록 → 받은 확인용 meta 태그(비밀 아님)를 `head()`에 넣고 사이트맵 제출.
 
+## 입시반 학교 목록 시트 · 요강 자동 확인 (2026-11-04)
+- 구글시트 "입시반 음악 관련 학과 학교 목록" (원장님 드라이브, 학교 목록 · 자동 확인 · 새 소식 · 요약 · 더 확인할 곳 · 자료 출처 탭). 홈페이지와는 따로.
+- `tools/ipsi_watch.gs` + `tools/ipsi_watch.appsscript.json`: 그 시트에 붙이는 Apps Script. 트리거 **1개, 하루 한 번 새벽 4시**(원장님 계정에 트리거가 많아서 최소로). '자동 확인' 탭의 입학처 주소를 열어 모집요강·시행계획·수시·정시 링크 중 처음 보는 것 → '새 소식' 탭 + PDF는 드라이브 "입시 모집요강 자동 수집" 폴더 + 이메일. 처음 보는 학교는 기억만, 4분 넘으면 다음 날 이어서.
+- 이 클라우드 환경에선 학교 사이트가 막혀 있어서 시험은 가짜 환경(node)으로만 함. 실제 결과는 실행 기록·'자동 확인' 결과 칸으로 확인.
+
 ## 글씨체 (원장님 2026-10-29)
 - 테스트한 사람들이 "Claude 티가 난다" → 원장님: 커리큘럼 안내 이미지와 같은 **G마켓 산스로 모두**. `css/system.css` 맨 위 @font-face "Gmarket Sans" (Medium은 저장소 `assets/fonts/GmarketSansMedium.woff`, npm `@noonnu/gmarket-sans-medium` MIT 포장 · Light/Bold는 눈누 jsdelivr — 이 클라우드 환경에선 jsdelivr가 막혀 Bold가 가짜 굵기로 보이지만 실제 방문자는 진짜 Bold).
   `--f-display/serif/sans/hand` 전부 Gmarket Sans (+ Noto Sans KR 대신), 고운바탕·나눔펜·Caveat·Gloock·Cormorant·Jost 안 씀, 큰 제목은 700, 영어 작은 제목(the teacher 등)은 대문자 작은 글씨. 게임 캔버스 글씨도. 미리보기는 `build_preview.py`가 assets/fonts도 복사.
