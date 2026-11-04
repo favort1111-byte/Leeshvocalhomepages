@@ -1,0 +1,108 @@
+"""입시 학교 찾기 (schools.html) 자료 만들기 — 원장님 2026-11-04.
+
+원본: 구글시트 "입시반 음악 관련 학과 학교 목록" → '학교 목록' 탭 (읽기만).
+시트 도구로 읽은 그대로를 폴더 하나에 넣고 돌려요:
+    a_j.json  = '학교 목록'!A4:J  (구분 · 시도 · 시군구 · 학교명 · 설립 · 단과대 · 학과 · 학과 종류 · 보컬 실기 · 상태)
+    m.json    = M4:M (학원 합격 이력)    o.json = O4:O (학교·학과 홈페이지)    qr.json = Q4:R (2027 원서 기간 · 실기 내용)
+    python3 tools/import_schools.py <그 폴더>   → data/schools.json
+
+원장님이 정한 것: 누구나 보는 페이지 · 모집구분 3개(4년제 대학 / 전문대학 / 고등학교, 학점은행은 4년제·2년제 과정으로 나눠
+그 칸에 "학점은행"으로 표시) · 지역은 권역 7개 · 보컬 실기 '예'인 학과만 · 모집 없는 학과는 뺌.
+학교 이름 · 학과 · 원서 기간 · 실기 내용 · 홈페이지 · 학원 합격 이력만 보여줌 (확인 정도 · 근거 자료 · 메모 같은 학원 안쪽 칸은 안 씀).
+"""
+import json, os, re, sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
+SRC = sys.argv[1]
+
+REGIONS = [
+    ("seoul", "서울", ["서울"]),
+    ("gyeonggi", "경기 · 인천", ["경기", "인천"]),
+    ("gangwon", "강원", ["강원"]),
+    ("chung", "충청", ["대전", "세종", "충북", "충남"]),
+    ("jeolla", "전라", ["광주", "전북", "전남"]),
+    ("gyeong", "경상", ["대구", "경북", "부산", "울산", "경남"]),
+    ("jeju", "제주", ["제주"]),
+]
+REGION_OF = {s: key for key, _, ss in REGIONS for s in ss}
+CATS = [("univ", "4년제 대학"), ("college", "전문대학"), ("high", "고등학교")]
+# 학점은행: 학사(4년제) 과정이면 4년제 칸, 전문학사(2년제) 과정이면 전문대학 칸 (원장님 2026-11-04 "명확히 표기").
+# 시트에 과정 길이가 없어서 학교마다 정함. 모르는 곳은 원장님 확인 전까지 안 보여줌.
+CREDIT_BANK = {
+    "국민대학교 평생교육원 KMA": "univ",
+    "서경대학교 예술교육원": "univ",
+    "한양대학교 미래인재교육원": "univ",
+    "명지대학교 미래교육원": "univ",
+}
+HIGH = {"예술고": "예술고", "특성화고": "특성화고", "대안학교": "대안학교"}
+FIX = {"수뉥": "수능"}  # 시트의 글자 오타
+
+
+def load(name):
+    with open(os.path.join(SRC, name), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def cell(rows, i, k=0):
+    return (rows[i][k] if i < len(rows) and k < len(rows[i]) else "").strip()
+
+
+def clean(v):
+    v = (v or "").strip()
+    for a, b in FIX.items():
+        v = v.replace(a, b)
+    return "" if "(확인 필요)" == v else re.sub(r"\(확인 필요\)", "", v).strip()
+
+
+rows, m, o, qr = load("a_j.json"), load("m.json"), load("o.json"), load("qr.json")
+out, held, skipped = [], [], 0
+for i, r in enumerate(rows):
+    kind, sido, sigungu, school, found, college, major, mkind, vocal, state = [x.strip() for x in r]
+    if vocal != "예" or state == "모집 없음":
+        skipped += 1
+        continue
+    sub = ""
+    if kind == "4년제 대학":
+        cat = "univ"
+    elif kind == "전문대학":
+        cat = "college"
+    elif kind in HIGH:
+        cat, sub = "high", HIGH[kind]
+    elif "학점은행" in kind:
+        cat = CREDIT_BANK.get(school)
+        if not cat:
+            held.append(school)
+            continue
+        sub = "학점은행 · 4년제(학사) 과정" if cat == "univ" else "학점은행 · 2년제(전문학사) 과정"
+    else:
+        held.append(school)
+        continue
+    region = REGION_OF.get(sido)
+    if not region:
+        held.append(school)
+        continue
+    pas = cell(m, i)
+    out.append({
+        "cat": cat, "sub": sub, "region": region, "sido": sido, "sigungu": clean(sigungu),
+        "school": school, "found": clean(found), "college": clean(college), "major": major, "kind": mkind,
+        "apply": clean(cell(qr, i, 0)), "audition": clean(cell(qr, i, 1)), "home": cell(o, i),
+        # 학원 합격 이력: 학과·캠퍼스가 확실한 것만 (시트에 "확인 필요"가 붙은 건 안 보여줌)
+        "pass": "" if "확인 필요" in pas else pas,
+        "check": state == "확인 필요",
+    })
+
+data = {
+    "updated": "2026-11-03",
+    "year": "2027학년도",
+    "cats": [{"key": k, "name": n} for k, n in CATS],
+    "regions": [{"key": k, "name": n, "sido": ss} for k, n, ss in REGIONS],
+    "items": out,
+}
+os.makedirs(os.path.join(REPO, "data"), exist_ok=True)
+with open(os.path.join(REPO, "data", "schools.json"), "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+from collections import Counter
+print("학과", len(out), "· 뺀 줄", skipped, "· 확인 전이라 안 보임:", held)
+print(Counter((x["cat"]) for x in out))
+print(Counter((x["cat"], x["region"]) for x in out))

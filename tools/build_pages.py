@@ -837,6 +837,25 @@ guide_page = (head("Guide | 이송희보컬레슨", "이송희보컬레슨 홈�
               + '  <div class="booking__inner">\n' + guide.body() + "  </div>\n"
               + "</main>\n" + foot())
 
+# ---------- SCHOOLS: 입시 학교 찾기 (js/schools.js + data/schools.json, 원장님 2026-11-04) ----------
+SCHOOLS_BODY = (
+    '  <div class="booking__inner sch">\n'
+    '    <h1 class="booking__title">school finder</h1>\n'
+    '    <p class="booking__note">실용음악 · K-POP · 뮤지컬 입시 학교 찾기 · <span id="schoolUpdated">2027학년도 입시</span></p>\n'
+    '    <p class="sch-lede">모집구분과 지역을 고르면 보컬 실기가 있는 학과를 보여줍니다. 학원 합격 이력이 있는 학교가 먼저 나옵니다.</p>\n'
+    '    <div id="schoolApp" aria-live="polite"></div>\n'
+    '    <p class="sch-foot">학교 · 학과 홈페이지, 커리어넷, 입시 경쟁률 사이트, 입시 기사를 모아 정리했습니다. '
+    '원서 기간과 실기 내용은 해마다 바뀌므로 지원 전에 반드시 각 학교 모집요강으로 확인하세요.</p>\n'
+    '    <p class="news__foot"><a class="pill-btn" href="consult.html">입시 상담 신청</a> '
+    f'<a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">카카오톡으로 문의 ↗</a> '
+    '<a class="pill-btn" href="about.html#schools">입시 합격 실적</a></p>\n'
+    '  </div>\n')
+schools_page = (head("School Finder | 이송희보컬레슨", "실용음악과 · K-POP · 뮤지컬 입시 학교 찾기. 4년제 대학 · 전문대학 · 예술고를 지역별로 고르면 보컬 실기 학과와 원서 기간, 실기 내용을 볼 수 있습니다.")
+                + '<main class="stage booking">\n'
+                + nav("about", "dark") + "\n"
+                + SCHOOLS_BODY
+                + "</main>\n" + foot("schools"))
+
 # ---------- 404: 없는 주소 (GitHub Pages가 어느 주소에서나 이 파일을 보여줌 → 링크는 / 로 시작하게 fill에서 바꿈) ----------
 # 예전 홈페이지(qshop) 주소로 들어오면 새 페이지로 보냄: 강사소개 · 온라인 강의 · 문의하기
 OLD_URLS = {"/EBH1n": "/about.html", "/aKews": "/about.html", "/pTFHc": "/consult.html"}
@@ -855,7 +874,7 @@ notfound_page = (head("페이지를 찾을 수 없습니다 | 이송희보컬레
                  '  </div>\n'
                  + "</main>\n" + foot())
 
-out = {"404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')
@@ -882,7 +901,7 @@ for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
         f.write(fill(name, stamp(html)))
 # 검색엔진 안내 (2026-10-31): 관리자·선생님 화면은 빼고, 공개 페이지 + 옮겨온 블로그 글
-SITEMAP_PAGES = ["", "about.html", "audition.html", "results.html", "tips.html", "contact.html", "consult.html",
+SITEMAP_PAGES = ["", "about.html", "schools.html", "audition.html", "results.html", "tips.html", "contact.html", "consult.html",
                  "guide.html", "games.html", "booking.html", "privacy.html"]
 with open(os.path.join(target, "robots.txt"), "w") as f:
     f.write("User-agent: *\nDisallow: /admin.html\nDisallow: /teacher.html\nAllow: /\n\nSitemap: " + SITE + "sitemap.xml\n")

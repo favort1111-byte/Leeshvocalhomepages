@@ -992,3 +992,35 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 /* 내 폴더 → 건의함 (익명) */
 .suggest__lock{margin:0 0 6px;font-weight:700;font-size:17px;color:var(--brown);}
 .suggest__promise{margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:var(--ink-body);}
+
+/* ---------- schools.html: 입시 학교 찾기 (js/schools.js, 원장님 2026-11-04) ---------- */
+.sch{--sch-green:#1D4948;--sch-soft:#E8F0EF;--sch-yellow:#F5C518;}
+.sch-lede{margin:0 0 18px;color:var(--ink-body);font-size:15px;line-height:1.6;}
+.sch-step{margin:0 0 18px;}
+.sch-step__q{margin:0 0 10px;font-size:17px;font-weight:700;color:var(--ink);}
+.sch-step--small .sch-step__q{font-size:14px;font-weight:500;color:var(--ink-body);}
+.sch-chips{display:flex;flex-wrap:wrap;gap:8px;}
+.sch-chip{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 16px;border:1.5px solid var(--sch-green);border-radius:999px;background:#fff;
+  font:inherit;font-size:15px;color:var(--sch-green);cursor:pointer;}
+.sch-chip[aria-pressed=true]{background:var(--sch-green);color:#fff;}
+.sch-chip.is-empty{opacity:.45;}
+.sch-chip__n{font-size:12px;opacity:.75;}
+.sch-hint{margin:8px 0 20px;padding:14px 16px;border-radius:10px;background:var(--sch-soft);color:var(--sch-green);font-size:14.5px;}
+.sch-count{margin:22px 0 12px;font-weight:700;color:var(--sch-green);}
+.sch-list{list-style:none;margin:0;padding:0;display:grid;gap:12px;}
+.sch-card{padding:16px 18px;border-radius:12px;background:#fff;border:1px solid rgba(29,73,72,.18);box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.sch-card__top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;}
+.sch-card__name{margin:0;font-size:18px;font-weight:700;color:var(--ink);}
+.sch-tag{display:inline-block;padding:2px 9px;border-radius:999px;background:var(--sch-soft);color:var(--sch-green);font-size:12px;}
+.sch-tag--sub{background:var(--sch-green);color:#fff;}
+.sch-card__where{margin:4px 0 8px;font-size:13.5px;color:var(--ink-body);}
+.sch-pass{margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#FFF6D6;font-size:14px;color:#5C4500;}
+.sch-pass b{color:#1D4948;}
+.sch-major{padding:10px 0 2px;border-top:1px dashed rgba(29,73,72,.2);}
+.sch-major__name{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 6px;font-size:15px;}
+.sch-kind{font-size:12px;color:var(--sch-green);border:1px solid rgba(29,73,72,.35);border-radius:999px;padding:1px 8px;}
+.sch-line{display:grid;grid-template-columns:3em 1fr;gap:8px;margin:0 0 6px;font-size:14px;line-height:1.55;color:var(--ink-body);}
+.sch-line__k{font-weight:700;color:var(--sch-green);}
+.sch-note{margin:0 0 6px;font-size:13px;color:#8A5A12;}
+.sch-link{display:inline-block;margin:2px 0 8px;font-size:13.5px;color:var(--sch-green);}
+.sch-foot{margin:28px 0 12px;font-size:13px;line-height:1.6;color:var(--ink-body);}

@@ -5,7 +5,7 @@ Used for private previews before launch; the real pages are never touched."""
 import os, re, shutil, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGES = ["index.html", "about.html", "contact.html", "consult.html", "booking.html", "games.html", "audition.html", "results.html", "tips.html", "post.html", "privacy.html", "apply.html", "teacher.html", "guide.html", "admin.html"]
+PAGES = ["schools.html", "index.html", "about.html", "contact.html", "consult.html", "booking.html", "games.html", "audition.html", "results.html", "tips.html", "post.html", "privacy.html", "apply.html", "teacher.html", "guide.html", "admin.html"]
 API = '<script src="js/api.js"></script>\n'
 BLOG_BASE = "https://raw.githubusercontent.com/favort1111-byte/Leeshvocalhomepages/claude/dazzling-bardeen-mw08yt/"
 
@@ -23,6 +23,8 @@ for page in PAGES:
     open(os.path.join(out, page), "w").write(html)
 for folder in ["css", "js", os.path.join("assets", "img"), os.path.join("assets", "fonts")]:  # (assets/blog-posts and data/blog stay on GitHub)
     shutil.copytree(os.path.join(REPO, folder), os.path.join(out, folder), dirs_exist_ok=True)
+os.makedirs(os.path.join(out, "data"), exist_ok=True)
+shutil.copy(os.path.join(REPO, "data", "schools.json"), os.path.join(out, "data", "schools.json"))  # 입시 학교 찾기
 for f in ["favicon.ico"]:  # 탭 아이콘
     shutil.copy(os.path.join(REPO, f), os.path.join(out, f))
 print("preview written to", out)
