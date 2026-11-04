@@ -74,7 +74,7 @@ LD_PAGES = {"index.html", "contact.html"}
 
 # 개인정보처리방침 link on every page (the law asks for it to be easy to find, in bold)
 LEGAL = ('<footer class="legal"><a href="privacy.html"><b>개인정보처리방침</b></a><a href="guide.html">홈페이지 사용법</a>'
-         f'<span>© 이송희보컬레슨 · {blog.DIRECTIONS["address"]} '
+         f'<span>© 이송희 보컬레슨 학원 · {blog.DIRECTIONS["address"]} '
          '<span class="legal__tel">(상담문의 : <a href="tel:01044585448">010-4458-5448</a>)</span></span></footer>\n')
 
 def foot(*extra):
