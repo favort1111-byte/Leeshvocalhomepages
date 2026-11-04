@@ -842,7 +842,7 @@ SCHOOLS_BODY = (
     '  <div class="booking__inner sch">\n'
     '    <h1 class="booking__title">school finder</h1>\n'
     '    <p class="booking__note">실용음악 · K-POP · 뮤지컬 입시 학교 찾기 · <span id="schoolUpdated">2027학년도 입시</span></p>\n'
-    '    <p class="sch-lede">모집구분과 지역을 고르면 보컬 실기가 있는 학과를 보여줍니다. 학원 합격 이력이 있는 학교가 먼저 나옵니다.</p>\n'
+    '    <p class="sch-lede">학교 이름으로 검색하거나, 모집구분과 지역을 고르면 보컬 실기가 있는 학과를 보여줍니다. 원서접수 · 실기 · 합격 발표 일정은 오늘 기준으로 종료 · 접수 중 · D-day를 표시합니다.</p>\n'
     '    <div id="schoolApp" aria-live="polite"></div>\n'
     '    <p class="sch-foot">학교 · 학과 홈페이지, 커리어넷, 입시 경쟁률 사이트, 입시 기사를 모아 정리했습니다. '
     '원서 기간과 실기 내용은 해마다 바뀌므로 지원 전에 반드시 각 학교 모집요강으로 확인하세요.</p>\n'

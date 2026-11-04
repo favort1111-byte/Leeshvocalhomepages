@@ -1,10 +1,13 @@
 // 입시 학교 찾기 (schools.html, 원장님 2026-11-04): 모집구분(4년제 · 전문대 · 고등학교)과 지역(권역 7개)을 고르면
 // 보컬 실기가 있는 학과만 학교별로 보여줘요. 자료는 data/schools.json (tools/import_schools.py가 구글시트에서 만듦).
 // 다 늘어놓지 않고, 고른 것만 보여줘요. 고른 값은 주소 끝(#univ/seoul)에 남아서 링크로 보내도 같은 화면이 열려요.
+// 원장님 2026-11-04 (입시 정보 사이트 캡처 참고): 학교 · 학과 · 지역 검색 + 학과마다 일정 칸(원서접수 · 실기 · 합격 발표,
+// 오늘과 견줘 종료 · 접수 중 · D-n) + 다가오는 일정순 정렬.
 (function () {
   var app = document.getElementById("schoolApp");
   if (!app) return;
-  var data = null, pick = { cat: "", region: "", kind: "" };
+  var data = null, pick = { cat: "", region: "", kind: "" }, query = "", sortBy = "rec", body = null;
+  var DAY = 864e5, WEEK = "일월화수목금토";
   var KINDS = ["실용음악·보컬", "K-POP", "뮤지컬", "공연예술", "교회실용음악"];
 
   function el(tag, cls, text) {
@@ -31,6 +34,32 @@
   function inRegion(x) { return !pick.region || x.region === pick.region; }
   function inKind(x) { return !pick.kind || (pick.kind === "기타" ? KINDS.indexOf(x.kind) === -1 : x.kind === pick.kind); }
 
+  function today() { var d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function utc(s) { var p = s.split("-"); return Date.UTC(+p[0], p[1] - 1, +p[2]); }
+  function md(s) { var t = new Date(utc(s)), p = s.split("-"); return p[1] + "." + p[2] + "(" + WEEK[t.getUTCDay()] + ")"; }
+  // 기간(a~b) 또는 하루(a)의 상태: 종료 · 접수 중 · 오늘 · D-n
+  function badge(a, b) {
+    var t = today(), s = utc(a), e = utc(b || a);
+    if (t > e) return { text: "종료", cls: "is-done" };
+    if (t >= s) return b && b !== a ? { text: "접수 중", cls: "is-now" } : { text: "오늘", cls: "is-now" };
+    return { text: "D-" + Math.round((s - t) / DAY), cls: "is-soon" };
+  }
+  // 학교의 다음 일정 (아직 안 끝난 것 중 가장 가까운 날, 없으면 아주 큰 수)
+  function nextOf(majors) {
+    var t = today(), best = Infinity;
+    majors.forEach(function (x) {
+      (x.rounds || []).forEach(function (r) { if (utc(r.b) >= t) best = Math.min(best, Math.max(t, utc(r.a))); });
+      [x.exam, x.result].forEach(function (d) { if (d && utc(d) >= t) best = Math.min(best, utc(d)); });
+    });
+    return best;
+  }
+  function norm(v) { return String(v || "").replace(/\s+/g, "").toLowerCase(); }
+  function inQuery(x) {
+    if (!query) return true;
+    var q = norm(query);
+    return [x.school, x.college, x.major, x.kind, x.sido, x.sigungu, x.sub].some(function (v) { return norm(v).indexOf(q) !== -1; });
+  }
+
   function save() {
     var h = [pick.cat, pick.region, pick.kind].filter(Boolean).length ? "#" + [pick.cat, pick.region || "all", pick.kind ? encodeURIComponent(pick.kind) : ""].join("/").replace(/\/$/, "") : "";
     try { history.replaceState(null, "", location.pathname + location.search + h); } catch (e) { /* file:// */ }
@@ -42,7 +71,22 @@
     if (p[2]) pick.kind = decodeURIComponent(p[2]);
   }
 
+  function shell() {
+    app.textContent = "";
+    var box = el("div", "sch-search");
+    var input = el("input", "sch-search__input");
+    input.type = "search";
+    input.placeholder = "학교 · 학과 · 지역 검색";
+    input.setAttribute("aria-label", "학교 · 학과 · 지역 검색");
+    input.addEventListener("input", function () { query = input.value.trim(); render(); });
+    box.appendChild(input);
+    app.appendChild(box);
+    body = el("div");
+    app.appendChild(body);
+  }
+
   function render() {
+    var app = body;
     app.textContent = "";
     // 1) 모집구분
     var s1 = el("section", "sch-step");
@@ -59,6 +103,7 @@
     s1.appendChild(row1);
     app.appendChild(s1);
     if (!pick.cat) {
+      if (query) { results(app, data.items.filter(inQuery), "전체"); return; }
       app.appendChild(el("p", "sch-hint", "모집구분을 고르면 지역을 고를 수 있습니다. 보컬 실기가 있는 학과만 모았습니다."));
       return;
     }
@@ -94,20 +139,41 @@
       s3.appendChild(row3);
       app.appendChild(s3);
     }
-    list = list.filter(inKind);
+    list = list.filter(inKind).filter(inQuery);
 
-    // 결과: 학교별 카드 (학과 여러 개면 한 카드 안에)
-    var res = el("section", "sch-result");
     var catName = data.cats.filter(function (c) { return c.key === pick.cat; })[0].name;
     var regName = pick.region ? data.regions.filter(function (r) { return r.key === pick.region; })[0].name : "전체 지역";
-    res.appendChild(el("p", "sch-count", regName + " · " + catName + (pick.kind ? " · " + pick.kind : "") + " — 학교 " + schoolsOf(list) + "곳 · 학과 " + list.length + "개"));
+    results(app, list, regName + " · " + catName + (pick.kind ? " · " + pick.kind : ""));
+  }
+
+  // 결과: 학교별 카드 (학과 여러 개면 한 카드 안에)
+  function results(app, list, title) {
+    // 모집구분 없이 검색하면 학점은행제(4년제 · 전문대학 두 칸)가 두 번 나오지 않게
+    var seen = {};
+    list = list.filter(function (x) { var k = x.school + "|" + x.college + "|" + x.major; if (seen[k]) return false; seen[k] = 1; return true; });
+    var res = el("section", "sch-result");
+    var head = el("div", "sch-result__head");
+    head.appendChild(el("p", "sch-count", title + (query ? " · '" + query + "'" : "") + " — 학교 " + schoolsOf(list) + "곳 · 학과 " + list.length + "개"));
+    var sort = el("div", "sch-sort");
+    [["rec", "추천순"], ["date", "다가오는 일정순"]].forEach(function (o) {
+      var b = el("button", "sch-sort__btn", o[1]);
+      b.type = "button";
+      b.setAttribute("aria-pressed", sortBy === o[0] ? "true" : "false");
+      b.addEventListener("click", function () { sortBy = o[0]; render(); });
+      sort.appendChild(b);
+    });
+    if (list.length > 1) head.appendChild(sort);
+    res.appendChild(head);
     if (!list.length) {
-      res.appendChild(el("p", "sch-hint", "이 지역에는 보컬 실기가 확인된 학과가 아직 없습니다. 다른 지역이나 '전체'를 골라 보세요."));
+      res.appendChild(el("p", "sch-hint", query ? "찾는 학교가 없습니다. 다른 이름이나 지역으로 검색해 보세요." : "이 지역에는 보컬 실기가 확인된 학과가 아직 없습니다. 다른 지역이나 '전체'를 골라 보세요."));
     }
     var by = {}, order = [];
     list.forEach(function (x) { if (!by[x.school]) { by[x.school] = []; order.push(x.school); } by[x.school].push(x); });
-    // 학원 합격 이력이 있는 학교 먼저, 그다음 지역 · 이름 순
+    var next = {};
+    order.forEach(function (n) { next[n] = nextOf(by[n]); });
+    // 추천순: 학원 합격 이력이 있는 학교 먼저, 그다음 지역 · 이름 순 / 다가오는 일정순: 아직 안 끝난 가장 가까운 일정
     order.sort(function (a, b) {
+      if (sortBy === "date" && next[a] !== next[b]) return next[a] < next[b] ? -1 : 1;
       var pa = by[a].some(function (x) { return x.pass; }), pb = by[b].some(function (x) { return x.pass; });
       if (pa !== pb) return pa ? -1 : 1;
       var ra = by[a][0].sido + by[a][0].sigungu, rb = by[b][0].sido + by[b][0].sigungu;
@@ -127,6 +193,7 @@
     top.appendChild(el("h3", "sch-card__name", name));
     if (first.found) top.appendChild(el("span", "sch-tag", first.found));
     if (first.sub) top.appendChild(el("span", "sch-tag sch-tag--sub", first.sub));
+    else if (!pick.cat) top.appendChild(el("span", "sch-tag sch-tag--sub", data.cats.filter(function (c) { return c.key === majors[0].cat; })[0].name));
     li.appendChild(top);
     li.appendChild(el("p", "sch-card__where", [first.sido, first.sigungu].filter(Boolean).join(" ")));
     var pass = majors.filter(function (x) { return x.pass; });
@@ -142,7 +209,9 @@
       h.appendChild(el("b", null, (x.college ? x.college + " " : "") + x.major));
       h.appendChild(el("span", "sch-kind", x.kind));
       m.appendChild(h);
-      if (x.apply) m.appendChild(line("원서", x.apply));
+      var sched = schedule(x);
+      if (sched) m.appendChild(sched);
+      else if (x.apply) m.appendChild(line("원서", x.apply));
       if (x.audition) m.appendChild(line("실기", x.audition));
       if (x.check) m.appendChild(el("p", "sch-note", "2027 모집 여부는 학교 입학처에서 꼭 확인하세요."));
       if (x.home) {
@@ -155,6 +224,32 @@
       li.appendChild(m);
     });
     return li;
+  }
+  // 일정 칸: 원서접수(전형마다 한 줄) · 실기 · 합격 발표 — 날짜가 하나라도 적힌 학과만
+  function schedule(x) {
+    var rs = x.rounds || [];
+    if (!rs.length && !x.exam && !x.result) return null;
+    var g = el("div", "sch-sched");
+    function box(title, rows) {
+      var b = el("div", "sch-sched__box");
+      b.appendChild(el("p", "sch-sched__k", title));
+      rows.forEach(function (r) {
+        var p = el("p", "sch-sched__row");
+        if (r.label) p.appendChild(el("span", "sch-sched__t", r.label));
+        p.appendChild(el("span", "sch-sched__d", r.text));
+        if (r.badge) p.appendChild(el("span", "sch-badge " + r.badge.cls, r.badge.text));
+        b.appendChild(p);
+        if (r.note) b.appendChild(el("p", "sch-sched__n", r.note));
+      });
+      g.appendChild(b);
+    }
+    var none = [{ text: "학교 모집요강 확인" }];
+    box("원서접수", rs.length ? rs.map(function (r) {
+      return { label: r.t, text: md(r.a) + " ~ " + md(r.b), badge: badge(r.a, r.b), note: r.n };
+    }) : none);
+    box("실기", x.exam ? [{ text: md(x.exam), badge: badge(x.exam) }] : none);
+    if (x.result) box("합격 발표", [{ text: md(x.result), badge: badge(x.result) }]);
+    return g;
   }
   function line(label, text) {
     var p = el("p", "sch-line");
@@ -169,6 +264,7 @@
     var note = document.getElementById("schoolUpdated");
     if (note) note.textContent = d.year + " 입시 · " + d.updated.replace(/-/g, ".") + " 기준";
     load();
+    shell();
     render();
   }).catch(function () {
     app.textContent = "";

@@ -44,6 +44,36 @@ HIGH = {"예술고": "예술고", "특성화고": "특성화고", "대안학교"
 FIX = {"수뉥": "수능"}  # 시트의 글자 오타
 
 
+DAY = r"(\d{4})-(\d{1,2})-(\d{1,2})"
+YEAR = "2026"  # 실기 · 발표 날짜에 연도가 없으면 (10/24, 11-04) 2027학년도 입시라 2026년
+
+
+def ymd(y, m, d):
+    return "%s-%02d-%02d" % (y, int(m), int(d))
+
+
+def rounds_of(text):
+    """원서 기간 글 → [{t: 수시1차, a: 시작, b: 끝, n: 덧붙인 말}] (한 줄에 ' / '로 여러 전형)."""
+    out = []
+    for part in [x.strip() for x in (text or "").split(" / ") if x.strip()]:
+        m = re.search(DAY + r"\s*~\s*(?:(\d{4})-)?(\d{1,2})-(\d{1,2})", part)
+        if not m:
+            continue
+        y, mo, d, y2, mo2, d2 = m.groups()
+        out.append({"t": part[:m.start()].strip(), "a": ymd(y, mo, d), "b": ymd(y2 or y, mo2, d2),
+                    "n": part[m.end():].strip()})
+    return out
+
+
+def date_after(text, words):
+    """'실기 2026-10-18' · '실기 10/24' · '합격 발표 11-04' 같은 날짜 하나."""
+    m = re.search("(?:" + words + r")\s*(?:" + DAY + r"|(\d{1,2})[/-](\d{1,2}))(?![\d~])", text or "")
+    if not m:
+        return ""
+    y, mo, d, mo2, d2 = m.groups()
+    return ymd(y, mo, d) if y else ymd(YEAR, mo2, d2)
+
+
 def load(name):
     with open(os.path.join(SRC, name), encoding="utf-8") as f:
         return json.load(f)
@@ -94,6 +124,10 @@ for i, r in enumerate(rows):
         "cat": one, "sub": sub, "region": region or "", "sido": clean(sido), "sigungu": clean(sigungu),
         "school": school, "found": clean(found), "college": clean(college), "major": major, "kind": mkind,
         "apply": clean(cell(qr, i, 0)), "audition": clean(cell(qr, i, 1)), "home": cell(o, i),
+        # 일정 칸 (원서접수 · 실기 · 합격 발표): 날짜가 적힌 것만, 화면이 오늘과 견줘 종료 · 접수 중 · D-n을 붙임
+        "rounds": rounds_of(clean(cell(qr, i, 0))),
+        "exam": date_after(clean(cell(qr, i, 1)), r"실기고사|실기·면접|실기"),
+        "result": date_after(clean(cell(qr, i, 1)), r"합격\s*발표"),
         # 학원 합격 이력: 학과·캠퍼스가 확실한 것만 (시트에 "확인 필요"가 붙은 건 안 보여줌)
         "pass": "" if "확인 필요" in pas else pas,
         "check": state == "확인 필요",
@@ -112,4 +146,5 @@ with open(os.path.join(REPO, "data", "schools.json"), "w", encoding="utf-8") as 
 from collections import Counter
 print("학과", len(out), "· 뺀 줄", skipped, "· 확인 전이라 안 보임:", held)
 print(Counter((x["cat"]) for x in out))
+print("원서 일정", sum(1 for x in out if x["rounds"]), "· 실기 날짜", sum(1 for x in out if x["exam"]), "· 발표", sum(1 for x in out if x["result"]))
 print(Counter((x["cat"], x["region"]) for x in out))
