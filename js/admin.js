@@ -2414,8 +2414,37 @@
     api("rpc/admin_telegram_off", { method: "POST", body: {} }).then(loadTelegram);
   });
 
+  /* 홈페이지 백업: 원장님 구글 계정의 Apps Script(tools/backup.gs)가 매일 새벽 3시 드라이브에 zip으로 */
+  var backupOn = false;
+  function loadBackup() {
+    var st = $("#backupState");
+    api("rpc/admin_backup_status", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { msg(st, d.error || friendly(res, "불러오지 못했습니다."), "error"); return; }
+      var when = function (t) { return t ? new Date(t).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""; };
+      var l = d.last || {};
+      if (!d.connected) {
+        msg(st, d.openUntil && new Date(d.openUntil) > new Date() ? "연결을 기다리는 중 (" + when(d.openUntil) + "까지). 구글 스크립트에서 \"처음_한번_설정\"을 실행해주세요." : "아직 연결 전이에요.", "");
+      } else if (!d.lastAt) msg(st, "연결됨 · 아직 백업 전이에요.", "");
+      else if (l.ok === false) msg(st, "마지막 백업 실패 (" + when(d.lastAt) + "): " + (l.error || ""), "error");
+      else msg(st, "켜짐 · 마지막 백업 " + when(d.lastAt) + " · " + (l.file || "") + " · " + Math.round((l.bytes || 0) / 1024) + "KB" + (l.warnings && l.warnings.length ? " · " + l.warnings.join(", ") : ""), "ok");
+      backupOn = !!d.connected;
+      $("#backupOpen").textContent = d.connected ? "다시 연결하기 (30분)" : "백업 연결 열기 (30분)";
+    });
+  }
+  $("#backupOpen").addEventListener("click", function () {
+    if (backupOn && !confirm("새로 연결하면 지금 연결된 백업 스크립트는 멈춰요. 30분 안에 구글 스크립트에서 \"처음_한번_설정\"을 다시 실행해야 해요. 열까요?")) return;
+    api("rpc/admin_backup_open", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      msg($("#backupMsg"), res.ok && d.ok ? "30분 동안 열었어요. 이제 구글 스크립트에서 \"처음_한번_설정\"을 실행해주세요." : d.error || friendly(res), res.ok && d.ok ? "ok" : "error");
+      loadBackup();
+    });
+  });
+  $("#backupReload").addEventListener("click", loadBackup);
+
   function renderSettings() {
     loadTelegram();
+    loadBackup();
     loadBase().then(function () {
       renderRooms();
       var s = state.settings, f = $("#rulesForm");

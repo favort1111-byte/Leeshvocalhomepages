@@ -3727,3 +3727,110 @@ begin
   end if;
   return jsonb_build_object('ok', true, 'added', added, 'updated', updated, 'kept', kept, 'skipped', skipped, 'sheets', sh, 'bad', bad, 'blocked', blocked);
 end $$;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_backup (2026-11-04)
+-- 홈페이지 데이터 백업 (원장님 2026-11-04 "데이터가 날아갈 위험", 1번 = 무료 · 원장님 구글 드라이브):
+--   원장님 구글 계정의 Apps Script(tools/backup.gs)가 하루 한 번 표마다 나눠 받아서 드라이브 "홈페이지백업파일" 폴더에 zip으로 저장.
+--   열쇠는 관리자 → 설정 → "백업 연결 열기" 뒤 30분 안에 스크립트가 스스로 등록 (채팅·저장소에 안 남음).
+--   받는 것 = public 표 전부 + 건의함(암호화된 그대로) + 지운 일지 목록. 토큰 · 열쇠 · 비밀번호 해시는 안 보냄.
+create table if not exists private.backup_sync (
+  id            int primary key check (id = 1),
+  key_hash      bytea,
+  registered_at timestamptz,
+  open_until    timestamptz,
+  last_at       timestamptz,
+  last_result   jsonb
+);
+insert into private.backup_sync (id) values (1) on conflict (id) do nothing;
+
+create or replace function private.backup_list() returns text[]
+language sql stable security definer set search_path = '' as $$
+  select array_agg(t order by t) from (
+    select 'public.' || c.relname t from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind in ('r', 'p')
+    union all select 'private.suggestions' union all select 'private.lesson_skip'
+  ) x;
+$$;
+
+create or replace function private.backup_key_ok(p_key text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select key_hash = extensions.digest(coalesce(p_key, ''), 'sha256') from private.backup_sync where id = 1), false);
+$$;
+
+create or replace function public.backup_register(p_key text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare s private.backup_sync;
+begin
+  if char_length(coalesce(p_key, '')) < 40 then return private.fail('열쇠가 너무 짧아요.'); end if;
+  select * into s from private.backup_sync where id = 1 for update;
+  if s.key_hash = extensions.digest(p_key, 'sha256') then return jsonb_build_object('ok', true); end if;
+  if s.open_until is null or s.open_until < now() then
+    return private.fail('관리자 화면 → 설정 → "백업 연결 열기"를 먼저 누른 뒤 30분 안에 해주세요.');
+  end if;
+  update private.backup_sync set key_hash = extensions.digest(p_key, 'sha256'), registered_at = now(), open_until = null where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 표 목록과 줄 수
+create or replace function public.backup_tables(p_key text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare t text; n bigint; out jsonb := '[]';
+begin
+  if not private.backup_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  foreach t in array private.backup_list() loop
+    execute format('select count(*) from %s', (select format('%I.%I', split_part(t, '.', 1), split_part(t, '.', 2)))) into n;
+    out := out || jsonb_build_object('table', t, 'rows', n);
+  end loop;
+  return jsonb_build_object('ok', true, 'at', now(), 'tables', out);
+end $$;
+
+-- 표 하나의 줄들 (기본 키 순서로 p_offset부터 p_limit줄). 비밀번호 해시 칸은 뺌
+create or replace function public.backup_rows(p_key text, p_table text, p_offset int default 0, p_limit int default 200) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare sch text; tbl text; ord text; rows jsonb;
+begin
+  if not private.backup_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  if not (p_table = any (private.backup_list())) then return private.fail('백업하는 표가 아니에요.'); end if;
+  sch := split_part(p_table, '.', 1); tbl := split_part(p_table, '.', 2);
+  select string_agg(format('%I', a.attname), ', ' order by k.ord) into ord
+  from pg_index i join pg_class c on c.oid = i.indrelid join pg_namespace n on n.oid = c.relnamespace
+  cross join lateral unnest(i.indkey) with ordinality k(attnum, ord)
+  join pg_attribute a on a.attrelid = c.oid and a.attnum = k.attnum
+  where i.indisprimary and n.nspname = sch and c.relname = tbl;
+  execute format('select coalesce(jsonb_agg(to_jsonb(x) - ''pin_hash''), ''[]''::jsonb) from (select * from %I.%I order by %s limit %s offset %s) x',
+    sch, tbl, coalesce(ord, 'ctid'), greatest(1, least(coalesce(p_limit, 200), 1000)), greatest(0, coalesce(p_offset, 0))) into rows;
+  return jsonb_build_object('ok', true, 'rows', rows);
+end $$;
+
+create or replace function public.backup_done(p_key text, p_result jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not private.backup_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  update private.backup_sync set last_at = now(),
+    last_result = case when jsonb_typeof(p_result) = 'object' and octet_length(p_result::text) < 20000 then p_result end where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.admin_backup_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s private.backup_sync;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into s from private.backup_sync where id = 1;
+  return jsonb_build_object('ok', true, 'connected', s.key_hash is not null, 'registeredAt', s.registered_at,
+    'openUntil', s.open_until, 'lastAt', s.last_at, 'last', s.last_result);
+end $$;
+
+create or replace function public.admin_backup_open() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.backup_sync set key_hash = null, registered_at = null, open_until = now() + interval '30 minutes' where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function private.backup_list(), private.backup_key_ok(text) from public, anon, authenticated;
+revoke all on function public.backup_register(text), public.backup_tables(text), public.backup_rows(text, text, int, int),
+  public.backup_done(text, jsonb), public.admin_backup_status(), public.admin_backup_open() from public;
+grant execute on function public.backup_register(text), public.backup_tables(text), public.backup_rows(text, text, int, int),
+  public.backup_done(text, jsonb) to anon, authenticated;
+grant execute on function public.admin_backup_status(), public.admin_backup_open() to authenticated;

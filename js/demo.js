@@ -614,6 +614,8 @@
     admin_suggest_mark: function (a) { (db.suggestions || []).forEach(function (s) { if (s.id === a.p_id) s.read = !!a.p_read; }); save(); return { ok: true }; },
     admin_suggest_delete: function (a) { db.suggestions = (db.suggestions || []).filter(function (s) { return s.id !== a.p_id; }); save(); return { ok: true }; },
     // 텔레그램 알림 (관리자 → 설정): 체험 모드는 실제로 보내지 않고 연결된 척만
+    admin_backup_status: function () { return { ok: true, connected: true, lastAt: new Date().toISOString(), last: { ok: true, file: "홈페이지백업_예시.zip", bytes: 1843200, warnings: [] } }; },
+    admin_backup_open: function () { return { ok: true }; },
     admin_telegram_status: function () { return { ok: true, hasBot: !!demoTg.bot, bot: demoTg.bot, chats: demoTg.chats, groups: demoTg.chats ? 1 : 0, bookings: demoTg.bookings }; },
     admin_telegram_set: function (a) {
       if (!/^[0-9]{5,15}:[A-Za-z0-9_-]{30,50}$/.test(String(a.p_token || "").trim())) return fail("토큰 모양이 달라요. BotFather가 준 \"숫자:글자\" 전체를 붙여넣어 주세요.");
