@@ -230,17 +230,13 @@ function tabDate_(title, today) {
   if (y < 2020 || y > 2035 || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
   var dt = new Date(Date.UTC(y, mo - 1, d));
   if (dt.getUTCMonth() !== mo - 1) return null;
-  // 요일이 적혀 있는데 안 맞으면 앞뒤 해에서 맞는 해로 ("2027-7-21 화"는 2026-07-21 화요일의 연도 오타, 2026-11-04)
+  // 연도 오타: 적힌 날이 오늘보다 60일 넘게 뒤(아직 안 온 날)이고 요일도 안 맞을 때만, 한 해 앞이 그 요일이면 한 해 앞으로
+  // ("2027-7-21 화" → 2026-07-21 화요일). 지난 날짜는 요일만 틀린 것으로 보고 그대로 둠 ("2026-9-23 목"은 2026-09-23, 2026-11-04)
   var wd = /(?:^|[^가-힣])([일월화수목금토])(?:요일)?(?![가-힣])/.exec(s.slice(m.index + m[0].length));
-  if (wd) {
-    var want = "일월화수목금토".indexOf(wd[1]);
-    if (dt.getUTCDay() !== want) {
-      [-1, 1].some(function (k) {
-        var t2 = new Date(Date.UTC(y + k, mo - 1, d));
-        if (t2.getUTCMonth() === mo - 1 && t2.getUTCDay() === want) { y += k; return true; }
-        return false;
-      });
-    }
+  var tnow = Date.UTC(+String(today).slice(0, 4), +String(today).slice(5, 7) - 1, +String(today).slice(8, 10));
+  if (wd && dt.getTime() - tnow > 60 * 86400000) {
+    var want = "일월화수목금토".indexOf(wd[1]), t2 = new Date(Date.UTC(y - 1, mo - 1, d));
+    if (dt.getUTCDay() !== want && t2.getUTCMonth() === mo - 1 && t2.getUTCDay() === want) y -= 1;
   }
   return y + "-" + (mo < 10 ? "0" : "") + mo + "-" + (d < 10 ? "0" : "") + d;
 }
