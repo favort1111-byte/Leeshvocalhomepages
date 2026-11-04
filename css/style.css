@@ -1076,6 +1076,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 
 /* 합격자 인터뷰 (interview.html) */
 .iv-list{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:16px;}
+.iv-list[hidden],.ivv[hidden]{display:none;}
 .ivv{margin:18px 0 8px;}
 .ivv__h{margin:0;font-size:19px;font-weight:700;color:var(--ink);}
 .ivv__note{margin:4px 0 12px;font-size:14px;color:var(--ink-body);}
