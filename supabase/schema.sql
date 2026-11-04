@@ -3834,3 +3834,65 @@ revoke all on function public.backup_register(text), public.backup_tables(text),
 grant execute on function public.backup_register(text), public.backup_tables(text), public.backup_rows(text, text, int, int),
   public.backup_done(text, jsonb) to anon, authenticated;
 grant execute on function public.admin_backup_status(), public.admin_backup_open() to authenticated;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_backup_files (2026-11-04)
+-- 파일 백업 (원장님 2026-11-04 "하는 김에 다", 1번 = 백업 전용 계정): 원장님이 대시보드에서 만든 백업용 계정(이메일 로그인) 하나만
+-- 비공개 보관함(평가지 사진 · 노래 녹음 · 댄스 음원) 파일을 **읽기만** 할 수 있음. 그 계정이 누구인지는 백업 스크립트가
+-- 열쇠(backup_sync.key_hash)를 가지고 처음 부를 때 정해짐. 관리자 → 설정 → "다시 연결하기"를 누르면 같이 풀림.
+alter table private.backup_sync add column if not exists file_uid uuid;
+
+create or replace function public.backup_file_reader() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select auth.uid() is not null and auth.uid() = (select file_uid from private.backup_sync where id = 1);
+$$;
+revoke all on function public.backup_file_reader() from public, anon;
+grant execute on function public.backup_file_reader() to authenticated;
+
+drop policy if exists backup_file_read on storage.objects;
+create policy backup_file_read on storage.objects for select to authenticated
+  using (bucket_id in ('eval-reports', 'song-recordings', 'visit-music') and public.backup_file_reader());
+
+-- 백업 스크립트(백업용 계정으로 로그인 + 열쇠): 보관함의 파일 목록. 처음 부른 계정이 백업용 계정으로 정해짐
+create or replace function public.backup_files(p_key text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare s private.backup_sync;
+begin
+  if not private.backup_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  if auth.uid() is null then return private.fail('백업용 계정으로 로그인해서 불러야 해요.'); end if;
+  select * into s from private.backup_sync where id = 1 for update;
+  if s.file_uid is null then
+    if public.is_admin() or exists (select 1 from public.members m where m.kakao_user = auth.uid()) then
+      return private.fail('관리자 · 학생 계정은 백업용으로 쓸 수 없어요. 백업용 계정을 따로 만들어주세요.');
+    end if;
+    update private.backup_sync set file_uid = auth.uid() where id = 1;
+  elsif s.file_uid <> auth.uid() then
+    return private.fail('이미 다른 백업용 계정이 연결돼 있어요. 관리자 → 설정 → "다시 연결하기" 뒤에 해주세요.');
+  end if;
+  return jsonb_build_object('ok', true, 'files', coalesce((
+    select jsonb_agg(jsonb_build_object('bucket', o.bucket_id, 'name', o.name, 'size', (o.metadata ->> 'size')::bigint,
+      'updated', coalesce(o.updated_at, o.created_at), 'public', b.public,
+      'who', (select m.id || ' ' || m.name from public.members m where m.id = split_part(o.name, '/', 1)))
+      order by o.bucket_id, o.name)
+    from storage.objects o join storage.buckets b on b.id = o.bucket_id
+    where o.bucket_id in ('eval-reports', 'song-recordings', 'visit-music', 'audition-news')), '[]'::jsonb));
+end $$;
+revoke all on function public.backup_files(text) from public, anon;
+grant execute on function public.backup_files(text) to authenticated;
+
+-- 다시 연결하기 = 열쇠와 백업용 계정 연결을 같이 풂
+create or replace function public.admin_backup_open() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.backup_sync set key_hash = null, registered_at = null, file_uid = null, open_until = now() + interval '30 minutes' where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.admin_backup_status() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s private.backup_sync;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into s from private.backup_sync where id = 1;
+  return jsonb_build_object('ok', true, 'connected', s.key_hash is not null, 'registeredAt', s.registered_at,
+    'openUntil', s.open_until, 'lastAt', s.last_at, 'last', s.last_result, 'files', s.file_uid is not null);
+end $$;

@@ -2427,7 +2427,10 @@
         msg(st, d.openUntil && new Date(d.openUntil) > new Date() ? "연결을 기다리는 중 (" + when(d.openUntil) + "까지). 구글 스크립트에서 \"처음_한번_설정\"을 실행해주세요." : "아직 연결 전이에요.", "");
       } else if (!d.lastAt) msg(st, "연결됨 · 아직 백업 전이에요.", "");
       else if (l.ok === false) msg(st, "마지막 백업 실패 (" + when(d.lastAt) + "): " + (l.error || ""), "error");
-      else msg(st, "켜짐 · 마지막 백업 " + when(d.lastAt) + " · " + (l.file || "") + " · " + Math.round((l.bytes || 0) / 1024) + "KB" + (l.warnings && l.warnings.length ? " · " + l.warnings.join(", ") : ""), "ok");
+      else {
+        var fl = l.files || {}, ftxt = fl.ok ? " · 파일 " + fl.total + "개 (이번에 " + fl.copied + "개 복사" + (fl.left ? ", 남은 " + fl.left + "개는 다음 날" : "") + (fl.failed ? ", 못 받은 " + fl.failed + "개" : "") + ")" : (fl.note ? " · 파일: " + fl.note : "");
+        msg(st, "켜짐 · 마지막 백업 " + when(d.lastAt) + " · " + (l.file || "") + " · " + Math.round((l.bytes || 0) / 1024) + "KB" + ftxt + (l.warnings && l.warnings.length ? " · " + l.warnings.join(", ") : ""), fl.ok === false ? "" : "ok");
+      }
       backupOn = !!d.connected;
       $("#backupOpen").textContent = d.connected ? "다시 연결하기 (30분)" : "백업 연결 열기 (30분)";
     });
