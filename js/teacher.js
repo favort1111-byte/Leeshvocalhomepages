@@ -41,6 +41,7 @@
     k.innerHTML = KAKAO_ICON + "<span>카카오로 로그인</span>";
     k.addEventListener("click", function () { k.disabled = true; LeeshAPI.kakao.start(); });
     app.appendChild(k);
+    app.appendChild(outButton()); // 다른 선생님이 이 기기로 들어갈 때
     var m = el("p", "sys-msg");
     app.appendChild(m);
     if (LeeshAPI.kakao.lastError()) say(m, "카카오 로그인을 마치지 못했어요. 다시 눌러주세요.", "error");
@@ -48,8 +49,9 @@
   }
   function signOut() { LeeshAPI.kakao.signOut(); me = null; signIn(); }
   function outButton() {
-    var b = button("다른 카카오 계정으로 로그인", "sys-link");
-    b.addEventListener("click", signOut);
+    var b = button("다른 카카오 계정으로 로그인", "sys-link signin__other");
+    // 카카오 아이디 · 비밀번호를 다시 물어요 (그냥 로그아웃하면 이 기기의 카카오 계정으로 다시 바로 들어가요)
+    b.addEventListener("click", function () { b.disabled = true; LeeshAPI.kakao.signOut(); me = null; LeeshAPI.kakao.start(true); });
     return b;
   }
 

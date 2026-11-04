@@ -79,9 +79,13 @@
     available: function () { return enabled() && !!base; },
     session: function () { try { return JSON.parse(localStorage.getItem(KAKAO) || "null"); } catch (e) { return null; } },
     save: function (s) { try { if (s) localStorage.setItem(KAKAO, JSON.stringify(s)); else localStorage.removeItem(KAKAO); } catch (e) { /* private mode */ } },
-    start: function () {
+    /**
+     * again = true: "다른 카카오 계정으로 로그인" — 카카오가 아이디 · 비밀번호를 다시 물어요 (prompt=login).
+     * 보통은 이 기기의 카카오 로그인을 그대로 써서 한 번에 들어가요 (원장님 2026-11-04 "지금처럼 + 다른 사람용 칸").
+     */
+    start: function (again) {
       try { sessionStorage.setItem(AFTER, location.hash); } catch (e) { /* ignore */ }
-      location.href = base + "/auth/v1/authorize?provider=kakao&redirect_to=" +
+      location.href = base + "/auth/v1/authorize?provider=kakao" + (again ? "&prompt=login" : "") + "&redirect_to=" +
         encodeURIComponent(location.origin + location.pathname + location.search);
     },
     /** A fresh access token for the Kakao session, or null when signed out. */

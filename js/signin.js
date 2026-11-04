@@ -57,6 +57,7 @@
         k.innerHTML = KAKAO_ICON + "<span>카카오로 로그인</span>";
         k.addEventListener("click", function () { k.disabled = true; LeeshAPI.kakao.start(); });
         box.appendChild(k);
+        box.appendChild(otherAccount()); // 다른 사람이 이 기기로 들어갈 때 (카카오 아이디 · 비밀번호를 다시 물어요)
         box.appendChild(el("p", "sys-note signin__hint", "처음이면 카카오로 로그인한 뒤 이름을 알려주세요. 실장님이 확인하면 바로 쓸 수 있어요."));
         // 카카오는 만 14세 미만 본인 계정의 로그인을 막아요 (2026-11-04, 만 13세 학생이 로그인하지 못하고 돌아감)
         box.appendChild(el("p", "sys-note signin__kid", "만 14세 미만 학생은 카카오 정책 때문에 본인 계정으로 로그인이 안 돼요. 부모님 카카오 계정으로 로그인한 뒤, 학생 이름을 적어주세요."));
@@ -137,7 +138,7 @@
     }
     function otherAccount() {
       var b = button("다른 카카오 계정으로 로그인", "sys-link signin__other");
-      b.addEventListener("click", function () { LeeshAPI.kakao.signOut(); choose(); });
+      b.addEventListener("click", function () { b.disabled = true; LeeshAPI.who.clear(); LeeshAPI.kakao.signOut(); LeeshAPI.kakao.start(true); });
       return b;
     }
     function kakaoCheck() {
