@@ -151,7 +151,7 @@
     if (name === "visits") loadVisits();
     if (name === "journal") loadJournal();
     if (name === "partners") loadPartners();
-    if (name === "teachers") loadTeachers();
+    if (name === "teachers") { loadTeachers(); loadLessonSync(); }
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
     if (name === "suggest") loadSuggest();
@@ -633,11 +633,45 @@
         var top = el("div", "adm__cardtop");
         top.appendChild(el("strong", null, n.lesson_date));
         if (n.teacher) top.appendChild(el("span", "sys-note", n.teacher));
+        if (n.src_file) top.appendChild(el("span", "adm__badge adm__badge--sheet", n.site_edited ? "구글시트 → 홈페이지에서 고침" : "구글시트에서"));
         top.appendChild(deleteButton("lesson_notes", n.id, loadMemberRecords));
         li.appendChild(top);
         li.appendChild(LeeshGrid.summary(n, LFIELDS));
         notes.appendChild(li);
       });
+    });
+    loadLessonSheets(id);
+  }
+
+  /* 곡·자료: 선생님 구글시트의 날짜 아닌 탭 (lesson_sheets, 보기만) */
+  function loadLessonSheets(id) {
+    var box = $("#lessonSheets");
+    box.textContent = "";
+    if (!id) return;
+    api("lesson_sheets?member_id=eq." + encodeURIComponent(id) + "&select=id,title,pos,src_file,synced_at&order=src_file,pos").then(function (res) {
+      if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) { box.appendChild(el("p", "sys-empty", "아직 없어요.")); return; }
+      var chips = el("div", "sys-chips"), view = el("div", "adm__sheetview");
+      res.data.forEach(function (x) {
+        var b = el("button", "sys-chip", x.title);
+        b.type = "button";
+        b.setAttribute("aria-pressed", "false");
+        b.addEventListener("click", function () {
+          chips.querySelectorAll("button").forEach(function (y) { y.setAttribute("aria-pressed", y === b ? "true" : "false"); });
+          view.textContent = "";
+          view.appendChild(el("p", "sys-note", "불러오는 중…"));
+          api("lesson_sheets?id=eq." + x.id + "&select=title,sheet,synced_at").then(function (r2) {
+            view.textContent = "";
+            var row = r2.ok && r2.data[0];
+            if (!row) { view.appendChild(el("p", "sys-msg sys-msg--error", friendly(r2, "불러오지 못했습니다."))); return; }
+            view.appendChild(el("p", "sys-note", row.title + " · 가져온 때 " + stamp(row.synced_at)));
+            view.appendChild(LeeshGrid.view(row.sheet));
+          });
+        });
+        chips.appendChild(b);
+      });
+      box.appendChild(chips);
+      box.appendChild(view);
     });
   }
 
@@ -1820,6 +1854,105 @@
     });
   });
   $("#teacherCopy").addEventListener("click", function () { copyText(new URL("teacher.html", location.href).href, $("#teacherCopy")); });
+
+  /* ---------------- 선생님 구글시트 → 레슨 노트 (tools/lesson_sync.gs, 원장님 2026-11-03) ---------------- */
+  function loadLessonSync() {
+    var ul = $("#lessonSyncList"), st = $("#lessonSyncState");
+    Promise.all([members(), api("rpc/admin_lesson_sync_status", { method: "POST", body: {} })]).then(function (r) {
+      var all = r[0] || [], res = r[1], d = res.data || {};
+      ul.textContent = "";
+      if (!res.ok || !d.ok) { st.textContent = d.error || friendly(res, "불러오지 못했습니다."); return; }
+      var srcs = d.sources || [], pend = srcs.filter(function (x) { return x.status === "pending"; });
+      var okN = srcs.filter(function (x) { return x.status === "ok"; }).length;
+      var last = d.last || {};
+      st.textContent = !d.connected
+        ? (d.openUntil && new Date(d.openUntil) > new Date() ? "연결을 기다리는 중 (" + stamp(d.openUntil) + "까지) — 스크립트에서 처음_한번_설정을 실행해주세요." : "아직 연결 전이에요.")
+        : "연결됨 · 마지막으로 돈 때 " + (d.lastAt ? stamp(d.lastAt) : "아직") +
+          (d.lastAt ? " (파일 " + (last.files || 0) + "개 중 " + (last.fetched || 0) + "개 가져옴" + (last.left ? " · " + last.left + "개는 다음에" : "") +
+            (last.errors && last.errors.length ? " · 안 된 것 " + last.errors.length : "") + ")" : "") +
+          " · 학생 확인됨 " + okN + " · 확인 필요 " + pend.length;
+      setBadge("#lessonSyncBadge", pend.length);
+      if (last.errors && last.errors.length) ul.appendChild(el("li", "sys-msg sys-msg--error", "가져오지 못한 파일: " + last.errors.join(" / ")));
+      var live = all.filter(function (m) { return m.status === "재원" || m.status === "휴원"; })
+        .sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
+      function card(x) {
+        var li = el("li", "adm__card" + (x.status === "ignore" ? " is-hidden" : "")), top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, x.title));
+        top.appendChild(el("span", "sys-note", x.folder || "폴더 밖"));
+        if (x.status === "ok") top.appendChild(el("span", "adm__badge adm__badge--sheet", x.name + " (" + x.member + ")" + (x.by === "admin" ? " · 직접 정함" : "")));
+        li.appendChild(top);
+        if (x.status === "ok") {
+          li.appendChild(el("p", "sys-note", "레슨 노트 " + x.notes + " · 곡·자료 " + x.sheets + (x.kept ? " · 홈페이지에서 고친 것 " + x.kept : "") +
+            (x.gone ? " · 시트에서 없어진 탭 " + x.gone + " (홈페이지엔 남겨둠)" : "") + " · " + (x.syncedAt ? "가져온 때 " + stamp(x.syncedAt) : "아직 안 가져옴")));
+        } else if (x.why) li.appendChild(el("p", "sys-note", x.why));
+        var row = el("div", "adm__cardrow");
+        var sel = el("select");
+        sel.setAttribute("aria-label", "학생 고르기");
+        var nm = (/^\s*([가-힣]{2,4})/.exec(x.title) || [])[1];
+        var o0 = el("option", null, "학생 고르기…");
+        o0.value = "";
+        sel.appendChild(o0);
+        live.filter(function (m) { return !nm || m.name === nm; }).concat(nm ? [{ id: "", name: "──────" }] : []).concat(live.filter(function (m) { return nm && m.name !== nm; }))
+          .forEach(function (m) {
+            var o = el("option", null, m.id ? m.name + " (" + m.id + ") · " + (teacherOf(m) || "담당 없음") + (m.status === "휴원" ? " · 휴원" : "") : m.name);
+            o.value = m.id;
+            if (!m.id) o.disabled = true;
+            if (m.id === x.member) o.selected = true;
+            sel.appendChild(o);
+          });
+        var set = el("button", "sys-btn", x.status === "ok" ? "바꾸기" : "이 학생으로");
+        set.type = "button";
+        set.addEventListener("click", function () {
+          if (!sel.value) { msg($("#lessonSyncMsg"), "학생을 골라주세요.", "error"); return; }
+          src(x, { p_file: x.file, p_member: sel.value }, "정했어요. 다음 가져오기(1시간 안)에 들어와요.");
+        });
+        row.appendChild(sel);
+        row.appendChild(set);
+        if (x.status !== "ignore") {
+          var skip = el("button", "sys-link adm__del", "가져오지 않기");
+          skip.type = "button";
+          skip.addEventListener("click", function () { src(x, { p_file: x.file, p_ignore: true }, "이 파일은 가져오지 않아요."); });
+          row.appendChild(skip);
+        }
+        if (x.by === "admin") {
+          var auto = el("button", "sys-link", "저절로 맞추기로 되돌리기");
+          auto.type = "button";
+          auto.addEventListener("click", function () { src(x, { p_file: x.file }, "되돌렸어요."); });
+          row.appendChild(auto);
+        }
+        li.appendChild(row);
+        return li;
+      }
+      if (!srcs.length) { ul.appendChild(el("li", "sys-empty", d.connected ? "아직 찾은 시트가 없어요." : "연결하면 여기에 선생님 시트 목록이 보여요.")); return; }
+      if (pend.length) { ul.appendChild(el("li", "sys-h adm__subhead", "확인 필요 " + pend.length)); pend.forEach(function (x) { ul.appendChild(card(x)); }); }
+      var rest = srcs.filter(function (x) { return x.status !== "pending"; });
+      if (rest.length) {
+        var det = el("details", "adm__fold"), sum = el("summary", null, "확인된 시트 " + okN + (rest.length > okN ? " · 가져오지 않기 " + (rest.length - okN) : ""));
+        det.appendChild(sum);
+        var inner = el("ul", "adm__cards");
+        rest.forEach(function (x) { inner.appendChild(card(x)); });
+        det.appendChild(inner);
+        var li = el("li");
+        li.appendChild(det);
+        ul.appendChild(li);
+      }
+    });
+  }
+  function src(x, body, ok) {
+    api("rpc/admin_lesson_source_set", { method: "POST", body: body }).then(function (res) {
+      var d = res.data || {};
+      msg($("#lessonSyncMsg"), res.ok && d.ok ? x.title + ": " + ok : d.error || friendly(res), res.ok && d.ok ? "ok" : "error");
+      loadLessonSync();
+    });
+  }
+  $("#lessonSyncOpen").addEventListener("click", function () {
+    api("rpc/admin_lesson_sync_open", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      msg($("#lessonSyncMsg"), res.ok && d.ok ? "30분 동안 열었어요. 이제 구글 스크립트에서 \"처음_한번_설정\"을 실행해주세요." : d.error || friendly(res), res.ok && d.ok ? "ok" : "error");
+      loadLessonSync();
+    });
+  });
+  $("#lessonSyncReload").addEventListener("click", loadLessonSync);
 
   /* ---------------- 제휴 업체 예약 신청 (partner_requests; 학생 내 폴더 → 제휴 업체) ---------------- */
 

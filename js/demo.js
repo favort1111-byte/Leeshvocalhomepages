@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 25; // bump when the demo defaults change
+  var VERSION = 26; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -68,7 +68,28 @@
         { id: 13, member_id: "S001", lesson_date: addDays(t, -16), teacher: "원장님", teacher_id: 504, did: "노래 진단. 중음은 안정적, 고음에서 목이 조임.", practice: "하품하듯 입 벌리고 '아' 길게 5번", created_at: new Date().toISOString() },
         { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "안유정", teacher_id: 501, rich: true, did: "입시곡 2절 감정선 정리<br><span style=\"color: #d62828; font-size: x-large\"><b>끝음 처리 서두르지 않기!</b></span>",
           songs: "입시곡 - 2절 브릿지 <span style=\"background-color: #ffe45c\">호흡 위치</span> 바꾸기", practice: "2절 녹음해서 들어보기",
-          audition: "12월 입시 실기", memo: "부모님이 진도 문의하심 (체험 모드 예시)", created_at: new Date().toISOString() }
+          audition: "12월 입시 실기", memo: "부모님이 진도 문의하심 (체험 모드 예시)", created_at: new Date().toISOString() },
+        // 선생님 구글시트에서 가져온 일지 (체험 모드 예시: 시트처럼 C열에 큰 글씨로)
+        { id: 15, member_id: "S002", lesson_date: addDays(t, -10), teacher: "안유정", teacher_id: 501, rich: true, src_file: "demo-sheet-hanul", src_tab: 101,
+          src_title: addDays(t, -10) + " (2회차)", site_edited: false, created_at: new Date().toISOString(),
+          sheet: { v: 1, n: 100, w: {}, h: {}, c: {
+            "2,2": { t: "*노래 피드백", s: { b: 1, z: 29 } }, "3,2": { t: "전반적으로 호흡 에너지 자체가 좀 작아요!", s: { z: 29 } },
+            "4,2": { t: "벌스 - 호흡 에너지, 강세, 애드립 음정", s: { z: 29 } },
+            "5,2": { t: "코러스 - <span style=\"color:#ff0000;font-weight:bold\">피치가 안맞아요!</span>", s: { z: 29 } },
+            "7,2": { t: "*다음 시간", s: { b: 1, z: 29 } }, "8,2": { t: "프리코러스 박자 메트로놈에 맞춰서 연습해오기!", s: { z: 29, g: "#fff2cc" } } } } }
+      ],
+      lesson_sheets: [
+        { id: 701, member_id: "S002", teacher_id: 501, src_file: "demo-sheet-hanul", src_tab: 201, title: "OT", pos: 0, synced_at: new Date().toISOString(),
+          sheet: { v: 1, n: 100, w: { 0: 140, 1: 260 }, h: {}, c: { "0,0": { t: "목표", s: { b: 1, g: "#d9ead3" } }, "0,1": { t: "실용음악과 입시 (12월)" },
+            "1,0": { t: "좋아하는 가수", s: { b: 1, g: "#d9ead3" } }, "1,1": { t: "태연, 백예린" }, "2,0": { t: "고민", s: { b: 1, g: "#d9ead3" } }, "2,1": { t: "고음에서 목이 조여요" } } } },
+        { id: 702, member_id: "S002", teacher_id: 501, src_file: "demo-sheet-hanul", src_tab: 202, title: "Honeymoon Avenue", pos: 3, synced_at: new Date().toISOString(),
+          sheet: { v: 1, n: 100, w: { 0: 300, 1: 300 }, h: {}, c: { "0,0": { t: "가사", s: { b: 1 } }, "0,1": { t: "곡별 피드백", s: { b: 1 } },
+            "1,0": { t: "(체험용 가사 자리)" }, "1,1": { t: "<span style=\"color:#ff0000\">첫 음 낮게 시작하지 않기</span>" },
+            "2,0": { t: "(체험용 가사 자리)" }, "2,1": { t: "후렴 호흡 미리 채우기", s: { g: "#fff2cc" } } } } }
+      ],
+      lesson_sources: [
+        { file: "demo-sheet-hanul", title: "이하늘 (입시반)", folder: "유정T 레슨시트", member: "S002", name: "이하늘", teacher: "안유정", status: "ok", why: null, by: "auto", notes: 1, sheets: 2, kept: 0, gone: 0, syncedAt: new Date().toISOString() },
+        { file: "demo-sheet-dup", title: "김시우(오디션반)", folder: null, member: null, name: null, teacher: null, status: "pending", why: "선생님 폴더 밖에 있어서 담당 선생님을 확인 못 했어요 (명단: S001 원장님)", by: "auto", notes: 0, sheets: 0, kept: 0, gone: 0, syncedAt: null }
       ],
       // 선생님 (teacher.html): 안유정 선생님이 체험용 카카오로 연결된 상태 + 기다리는 요청 하나
       teachers: ["안유정", "양유경", "오은지", "원장님", "이수빈", "이윤지", "이하섬", "최홍주"].map(function (n, i) {
@@ -628,7 +649,10 @@
         notes: db.lesson_notes.filter(function (n) { return n.member_id === m.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .map(function (n) { return { id: n.id, date: n.lesson_date, teacher: n.teacher, did: n.did, songs: n.songs, practice: n.practice,
-            audition: n.audition, recommend: n.recommend, memo: n.memo, rich: !!n.rich, sheet: n.sheet || null, mine: n.teacher_id === t.id }; }),
+            audition: n.audition, recommend: n.recommend, memo: n.memo, rich: !!n.rich, sheet: n.sheet || null, mine: n.teacher_id === t.id,
+            src: !!n.src_file, srcTitle: n.src_title || null, siteEdited: !!n.site_edited }; }),
+        sheets: (db.lesson_sheets || []).filter(function (x) { return x.member_id === m.id; }).sort(function (x, y) { return x.pos - y.pos; })
+          .map(function (x) { return { id: x.id, title: x.title, teacher: t.name }; }),
         logs: db.practice_logs.filter(function (l) { return l.member_id === m.id; }).map(function (l) { return { day: l.day, minutes: l.minutes, song: l.song, did: l.did }; }),
         repertoire: db.repertoire.filter(function (r) { return r.member_id === m.id; }).map(function (r) { return { title: r.title, artist: r.artist, status: r.status, purpose: r.purpose }; }) };
     },
@@ -645,6 +669,7 @@
       if (a.p_note) {
         n = db.lesson_notes.filter(function (x) { return x.id === a.p_note && x.teacher_id === t.id; })[0];
         if (!n) return fail("내가 쓴 일지만 고칠 수 있어요.");
+        if (n.src_file && JSON.stringify(n.sheet) !== JSON.stringify(v.sheet)) n.site_edited = true;
       } else {
         n = { id: ++db.next, member_id: a.p_member, teacher: t.name, teacher_id: t.id, created_at: new Date().toISOString() };
         db.lesson_notes.push(n);
@@ -652,6 +677,27 @@
       Object.assign(n, v, { lesson_date: a.p_date });
       save();
       return { ok: true, id: n.id };
+    },
+    teacher_lesson_sheet: function (a, uid) {
+      var t = myTeacher(uid), x = (db.lesson_sheets || []).filter(function (y) { return y.id === a.p_id; })[0];
+      if (!t || !x || !teaches(t, x.member_id)) return fail("담당 학생 것만 볼 수 있어요.");
+      return { ok: true, id: x.id, title: x.title, sheet: x.sheet, syncedAt: x.synced_at };
+    },
+    // 선생님 구글시트 → 레슨 노트 (관리자 → 선생님): 체험 모드는 연결된 척
+    admin_lesson_sync_status: function () {
+      return { ok: true, connected: true, lastAt: new Date(Date.now() - 1200000).toISOString(),
+        last: { files: 2, fetched: 1, notes: 1, sheets: 2, errors: [] }, sources: db.lesson_sources || [] };
+    },
+    admin_lesson_sync_open: function () { return { ok: true }; },
+    admin_lesson_source_set: function (a) {
+      var x = (db.lesson_sources || []).filter(function (y) { return y.file === a.p_file; })[0];
+      if (!x) return fail("그 파일을 못 찾았어요.");
+      var m = a.p_member && db.members.filter(function (y) { return y.id === a.p_member; })[0];
+      if (m) Object.assign(x, { status: "ok", member: m.id, name: m.name, by: "admin", why: null });
+      else if (a.p_ignore) Object.assign(x, { status: "ignore", member: null, name: null, by: "admin", why: "가져오지 않기로 함" });
+      else Object.assign(x, { by: "auto" });
+      save();
+      return { ok: true };
     },
     teacher_note_delete: function (a, uid) {
       var t = myTeacher(uid);

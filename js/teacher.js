@@ -199,7 +199,8 @@
 
       var tabs = el("div", "sys-chips tch__tabs");
       var pages = {};
-      [["notes", "지난 일지 " + res.notes.length], ["logs", "연습 일지"], ["songs", "레퍼토리"]].forEach(function (t, i) {
+      var sheets = res.sheets || [];
+      [["notes", "지난 일지 " + res.notes.length], ["sheets", "곡·자료 " + sheets.length], ["logs", "연습 일지"], ["songs", "레퍼토리"]].forEach(function (t, i) {
         var b = button(t[1], "sys-chip");
         b.setAttribute("aria-pressed", i ? "false" : "true");
         b.addEventListener("click", function () {
@@ -214,6 +215,8 @@
 
       if (!res.notes.length) pages.notes.appendChild(el("p", "book__empty", "아직 쓴 일지가 없어요."));
       res.notes.forEach(function (n) { pages.notes.appendChild(noteCard(s, n, res.notes, form)); });
+
+      sheetPage(pages.sheets, sheets);
 
       if (!res.logs.length) pages.logs.appendChild(el("p", "book__empty", "학생이 쓴 연습 일지가 없어요."));
       res.logs.forEach(function (l) {
@@ -254,6 +257,9 @@
     date.value = editing ? editing.date : todayKst();
     dl.appendChild(date);
     f.appendChild(dl);
+    if (editing && editing.src && !editing.siteEdited) {
+      f.appendChild(el("p", "sys-note tch__src", "선생님 구글시트에서 가져온 일지예요. 여기서 고치면 그 뒤로는 시트 내용으로 바뀌지 않아요."));
+    }
     f.appendChild(el("p", "sys-note tch__how", "구글시트처럼: 칸 누르고 바로 쓰기 · 두 번 누르면 고치기 · Enter 아래 칸 · Alt+Enter 줄바꿈 · 오른쪽 클릭 = 행 · 열 넣기 · 저절로 저장 · 아래 탭 = 날짜별 일지"));
     // 아래쪽 시트 탭: 내가 쓴 일지(오래된 것 → 최근) + 지금 쓰는 새 일지
     var mine = notes.filter(function (n) { return n.mine; }).slice(0, 12).reverse();
@@ -416,10 +422,40 @@
     return box;
   }
 
+  /** 곡·자료: 선생님 구글시트의 날짜 아닌 탭 (곡 가사 · 곡별 피드백 · OT · 발성 · 알림장). 보기만, 누르면 열려요. */
+  function sheetPage(page, sheets) {
+    if (!sheets.length) {
+      page.appendChild(el("p", "book__empty", "아직 없어요. 선생님 구글시트의 곡 · OT · 발성 탭이 여기에 저절로 들어와요."));
+      return;
+    }
+    page.appendChild(el("p", "sys-note", "선생님 구글시트에서 저절로 가져와요 (1시간마다). 고칠 때는 구글시트에서 고쳐주세요."));
+    var chips = el("div", "sys-chips tch__sheetchips"), box = el("div", "tch__sheetview"), cache = {};
+    sheets.forEach(function (x) {
+      var b = button(x.title, "sys-chip");
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        chips.querySelectorAll("button").forEach(function (y) { y.setAttribute("aria-pressed", y === b ? "true" : "false"); });
+        box.textContent = "";
+        box.appendChild(el("p", "sys-note", "불러오는 중…"));
+        (cache[x.id] ? Promise.resolve(cache[x.id]) : LeeshAPI.rpc("teacher_lesson_sheet", { p_id: x.id })).then(function (res) {
+          box.textContent = "";
+          if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", res.error)); return; }
+          cache[x.id] = res;
+          box.appendChild(el("h4", "tch__minihead", res.title));
+          box.appendChild(LeeshGrid.view(res.sheet));
+        });
+      });
+      chips.appendChild(b);
+    });
+    page.appendChild(chips);
+    page.appendChild(box);
+  }
+
   function noteCard(s, n, notes, form) {
     var c = el("article", "lnote");
     var head = el("p", "lnote__date", dayLabel(n.date));
     if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
+    if (n.src) head.appendChild(el("span", "lnote__src", n.siteEdited ? "구글시트 → 홈페이지에서 고침" : "구글시트에서"));
     c.appendChild(head);
     c.appendChild(LeeshGrid.summary(n, FIELDS));
     if (n.mine) {

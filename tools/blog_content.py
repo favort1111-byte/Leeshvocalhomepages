@@ -387,6 +387,7 @@ def results_section():
             + f'    <ul class="agencies" id="passShows">{cards(SHOWS)}</ul>\n'
             + '    <h3 class="scrap__sub" id="schools">입시</h3>\n'
             + f'    <article class="card card--paper" id="passSchools"><div class="card__cols">{schools}</div></article>\n'
+            + '    <p class="scrap__note"><a class="pill-btn" href="schools.html">실용음악과 입시 학교 찾기 →</a> 4년제 · 전문대 · 예술고를 지역별로 고르면 보컬 실기 학과와 원서 기간을 볼 수 있습니다.</p>\n'
             + '    <p class="scrap__note">학생 이름은 싣지 않습니다. 날짜별 합격 소식은 <a href="results.html">results</a>에서 확인할 수 있습니다.</p>\n')
 
 
