@@ -1045,6 +1045,14 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .sch-badge.is-done{background:#E6E6E6;color:#666;}
 .sch-badge.is-now{background:var(--sch-green);color:#fff;}
 .sch-badge.is-soon{background:#FFF1C2;color:#7A5600;}
+.sch-guide{margin:2px 0 8px;padding:12px 14px;border-radius:10px;background:#F5F8F8;border:1px solid rgba(29,73,72,.12);}
+.sch-guide__h{margin:0 0 8px;font-size:13px;font-weight:700;color:var(--sch-green);}
+.sch-guide .sch-sched__box{background:#fff;}
+.sch-guide__none{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-body);}
+.sch-guide__src{margin:4px 0 0;font-size:12px;color:var(--ink-body);}
+.sch-btns{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 2px;padding-top:12px;border-top:1px dashed rgba(29,73,72,.2);}
+.sch-btn{display:inline-flex;align-items:center;height:40px;padding:0 16px;border-radius:999px;border:1.5px solid var(--sch-green);color:var(--sch-green);background:#fff;font-size:14px;font-weight:700;text-decoration:none;}
+.sch-btn--main{background:var(--sch-green);color:#fff;}
 .sch-foot{margin:28px 0 12px;font-size:13px;line-height:1.6;color:var(--ink-body);}
 
 /* 합격자 인터뷰 (interview.html) */

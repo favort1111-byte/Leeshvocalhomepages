@@ -4,6 +4,8 @@
 시트 도구로 읽은 그대로를 폴더 하나에 넣고 돌려요:
     a_j.json  = '학교 목록'!A4:J  (구분 · 시도 · 시군구 · 학교명 · 설립 · 단과대 · 학과 · 학과 종류 · 보컬 실기 · 상태)
     m.json    = M4:M (학원 합격 이력)    o.json = O4:O (학교·학과 홈페이지)    qr.json = Q4:R (2027 원서 기간 · 실기 내용)
+    auto.json = '자동 확인'!A4:C (학교명 · 구분 · 입학처 공지·모집요강 주소)   news.json = '새 소식'!A4:E (자동 확인이 찾은 공지)
+    guide.json (있으면) = '모집요강 요약'!A4:L (학교명 · 학과 · 모집인원 · 전형 · 원서 기간 · 실기 일정 · 합격 발표 · 실기 내용 · 반영 비율 · 모집요강 링크 · 확인한 날 · 메모)
     python3 tools/import_schools.py <그 폴더>   → data/schools.json
 
 원장님이 정한 것: 누구나 보는 페이지 · 모집구분 3개(4년제 대학 / 전문대학 / 고등학교, 학점은행은 4년제·2년제 과정으로 나눠
@@ -100,6 +102,31 @@ def clean(v):
 
 
 rows, m, o, qr = load("a_j.json"), load("m.json"), load("o.json"), load("qr.json")
+
+# 입학처 (원장님 2026-11-04 "카드에 바로 입시요강"): '자동 확인' 탭의 학교별 입학처 공지·모집요강 주소 (로컬에서 확인한 공식 주소)
+ADMIT = {r[0].strip(): r[2].strip() for r in load("auto.json") if len(r) > 2 and r[2].strip().startswith("http")}
+# 2027 모집요강 글: '새 소식' 탭에서 제목에 2027(27학년도)과 모집요강이 같이 있는 것 (정오표 · 전년도 빼고), 없으면 "모집요강" 메뉴 주소
+GUIDE = {}
+for r in load("news.json"):
+    if len(r) < 5:
+        continue
+    school, title, link = r[1].strip(), r[3].strip(), r[4].strip()
+    t = title.replace(" ", "")
+    if not link.startswith("http") or "정오" in t or "전년도" in t:
+        continue
+    if ("2027" in t or "27학년도" in t) and "모집요강" in t:
+        GUIDE.setdefault(school, (title, link))
+for r in load("news.json"):
+    if len(r) >= 5 and r[3].strip() == "모집요강" and r[4].startswith("http"):
+        GUIDE.setdefault(r[1].strip(), ("모집요강", r[4].strip()))
+# 모집요강 요약 (학과마다, 로컬 세션이 모집요강을 읽고 채우는 탭) — 아직 없으면 빈 것
+SUMMARY = {}
+if os.path.exists(os.path.join(SRC, "guide.json")):
+    for r in load("guide.json"):
+        r = [x.strip() for x in r] + [""] * 12
+        if r[0] and r[1]:
+            SUMMARY[(r[0], r[1])] = {"seats": r[2], "track": r[3], "apply": r[4], "exam": r[5], "result": r[6],
+                                    "audition": r[7], "ratio": r[8], "link": r[9], "checked": r[10]}
 out, held, skipped = [], [], 0
 for i, r in enumerate(rows):
     kind, sido, sigungu, school, found, college, major, mkind, vocal, state = [x.strip() for x in r]
@@ -140,7 +167,21 @@ for i, r in enumerate(rows):
         # 학원 합격 이력: 학과·캠퍼스가 확실한 것만 (시트에 "확인 필요"가 붙은 건 안 보여줌)
         "pass": "" if "확인 필요" in pas else pas,
         "check": state == "확인 필요",
+        "admit": ADMIT.get(school, ""),
+        "guide": GUIDE.get(school, ("", ""))[1],
+        "guide_title": GUIDE.get(school, ("", ""))[0],
     })
+    sm = SUMMARY.get((school, major))
+    if sm:  # 모집요강 요약이 있으면 그 값을 먼저 (원서 기간 · 실기 일정은 일정 칸으로)
+        it = out[-1] if cat != "both" else None
+        for x in ([it] if it else out[-2:]):
+            x.update({"seats": sm["seats"], "track": sm["track"], "ratio": sm["ratio"], "checked": sm["checked"]})
+            if sm["audition"]: x["audition"] = sm["audition"]
+            if sm["link"]: x["guide"], x["guide_title"] = sm["link"], "2027 모집요강"
+            if sm["apply"]:
+                x["apply"], x["rounds"] = sm["apply"], rounds_of(sm["apply"])
+            if sm["exam"]: x["exam"] = date_after("실기 " + sm["exam"], "실기") or x["exam"]
+            if sm["result"]: x["result"] = date_after("합격 발표 " + sm["result"], r"합격\s*발표") or x["result"]
 
 data = {
     "updated": "2026-11-03",
@@ -155,5 +196,6 @@ with open(os.path.join(REPO, "data", "schools.json"), "w", encoding="utf-8") as 
 from collections import Counter
 print("학과", len(out), "· 뺀 줄", skipped, "· 확인 전이라 안 보임:", held)
 print(Counter((x["cat"]) for x in out))
+print("입학처 링크", sum(1 for x in out if x["admit"]), "· 2027 모집요강 글", sum(1 for x in out if x["guide"]), "· 요약", len(SUMMARY))
 print("원서 일정", sum(1 for x in out if x["rounds"]), "· 실기 날짜", sum(1 for x in out if x["exam"]), "· 발표", sum(1 for x in out if x["result"]))
 print(Counter((x["cat"], x["region"]) for x in out))

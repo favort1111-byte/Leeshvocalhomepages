@@ -221,21 +221,37 @@
       h.appendChild(el("b", null, (x.college ? x.college + " " : "") + x.major));
       h.appendChild(el("span", "sch-kind", x.kind));
       m.appendChild(h);
+      // 2027 입시요강 (원장님 2026-11-04 "카드에 바로 입시요강"): 모집인원 · 전형 · 반영 비율 · 일정 · 실기 내용
+      var box = el("div", "sch-guide");
+      box.appendChild(el("p", "sch-guide__h", "2027 입시요강"));
+      if (x.seats) box.appendChild(line("모집", x.seats));
+      if (x.track) box.appendChild(line("전형", x.track));
+      if (x.ratio) box.appendChild(line("반영", x.ratio));
       var sched = schedule(x);
-      if (sched) m.appendChild(sched);
-      else if (x.apply) m.appendChild(line("원서", x.apply));
-      if (x.audition) m.appendChild(line("실기", x.audition));
-      if (x.check) m.appendChild(el("p", "sch-note", "2027 모집 여부는 학교 입학처에서 꼭 확인하세요."));
-      if (x.home) {
-        var a = el("a", "sch-link", "학교 · 학과 홈페이지 ↗");
-        a.href = x.home;
-        a.target = "_blank";
-        a.rel = "noopener";
-        m.appendChild(a);
-      }
+      if (sched) box.appendChild(sched);
+      else if (x.apply) box.appendChild(line("원서", x.apply));
+      if (x.audition) box.appendChild(line("실기", x.audition));
+      if (box.childNodes.length === 1) box.appendChild(el("p", "sch-guide__none", "요약은 준비 중입니다. 아래 모집요강 · 입학처에서 바로 확인할 수 있습니다."));
+      if (x.check) box.appendChild(el("p", "sch-note", "2027 모집 여부는 학교 입학처에서 꼭 확인하세요."));
+      if (x.checked) box.appendChild(el("p", "sch-guide__src", x.checked + " 모집요강 기준"));
+      m.appendChild(box);
+      if (x.home) m.appendChild(link("sch-link", "학과 홈페이지 ↗", x.home));
       li.appendChild(m);
     });
+    // 학교 공식 모집요강 · 입학처로 바로 (학교마다 하나)
+    var btns = el("div", "sch-btns");
+    var guide = any("guide"), admit = any("admit");
+    if (guide) btns.appendChild(link("sch-btn sch-btn--main", "2027 모집요강 보기 ↗", guide));
+    if (admit && admit !== guide) btns.appendChild(link("sch-btn", guide ? "입학처 공지 ↗" : "입학처 · 모집요강 ↗", admit));
+    if (btns.childNodes.length) li.appendChild(btns);
     return li;
+  }
+  function link(cls, text, href) {
+    var a = el("a", cls, text);
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener";
+    return a;
   }
   // 일정 칸: 원서접수(전형마다 한 줄) · 실기 · 합격 발표 — 날짜가 하나라도 적힌 학과만
   function schedule(x) {
