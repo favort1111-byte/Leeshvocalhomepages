@@ -1046,3 +1046,35 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .sch-badge.is-now{background:var(--sch-green);color:#fff;}
 .sch-badge.is-soon{background:#FFF1C2;color:#7A5600;}
 .sch-foot{margin:28px 0 12px;font-size:13px;line-height:1.6;color:var(--ink-body);}
+
+/* 합격자 인터뷰 (interview.html) */
+.iv-list{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:16px;}
+.iv-card{padding:18px 20px;border-radius:14px;background:#fff;border:1px solid rgba(29,73,72,.18);box-shadow:0 1px 3px rgba(0,0,0,.05);color:var(--ink);}
+.iv-card__img{display:block;width:100%;max-height:420px;object-fit:cover;border-radius:10px;margin:0 0 12px;}
+.iv-card__tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px;}
+.iv-tag{display:inline-block;padding:2px 10px;border-radius:999px;background:#E8F0EF;color:#1D4948;font-size:12.5px;}
+.iv-tag--co{background:#1D4948;color:#fff;}
+.iv-card__title{margin:0;font-size:19px;font-weight:700;}
+.iv-card__date{display:block;margin:2px 0 10px;font-size:12.5px;color:var(--ink-body);}
+.iv-part{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#F5F8F8;}
+.iv-part__k{margin:0 0 4px;font-size:13px;font-weight:700;color:#1D4948;}
+.iv-part__v,.iv-card__body{margin:0;font-size:14.5px;line-height:1.65;white-space:pre-line;color:var(--ink);}
+.iv-card__body{margin:0 0 10px;}
+.iv-card__video{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:10px;margin:6px 0 0;}
+.iv-card__link{display:inline-flex;align-items:center;height:38px;padding:0 16px;border:1px solid var(--ink);border-radius:999px;color:var(--ink);text-decoration:none;font-size:14px;margin-top:4px;}
+
+/* 첫 화면 팝업 (js/popup.js) */
+.pop{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,24,28,.45);animation:pop-in .2s ease both;}
+.pop__box{width:min(400px,100%);padding:28px 26px 18px;border-radius:22px;background:#fff;color:#1F2328;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25);font-family:var(--f-sans);}
+.pop__pics{position:relative;height:96px;margin:0 auto 16px;width:220px;}
+.pop__pic{position:absolute;top:6px;width:84px;height:84px;object-fit:cover;border-radius:12px;box-shadow:0 6px 14px rgba(0,0,0,.2);border:2px solid #fff;}
+.pop__pic--0{left:0;transform:rotate(-8deg);}
+.pop__pic--1{left:68px;top:0;width:88px;height:88px;z-index:1;}
+.pop__pic--2{right:0;transform:rotate(8deg);}
+.pop__title{margin:0 0 10px;font-size:20px;font-weight:700;}
+.pop__text{margin:0 0 20px;font-size:15px;line-height:1.65;color:#4A5058;}
+.pop__btns{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;}
+.pop__btn{display:flex;align-items:center;justify-content:center;height:48px;border:1px solid #D8DCE0;border-radius:12px;background:#fff;color:#1F2328;font:inherit;font-size:15px;font-weight:700;text-decoration:none;cursor:pointer;}
+.pop__btn--go{border-color:#1D4948;background:#1D4948;color:#fff;}
+.pop__never{margin:14px 0 0;padding:4px 8px;border:0;background:none;font:inherit;font-size:13px;color:#6B7178;text-decoration:underline;cursor:pointer;}
+@keyframes pop-in{from{opacity:0}to{opacity:1}}

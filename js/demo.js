@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 26; // bump when the demo defaults change
+  var VERSION = 27; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -123,6 +123,13 @@
         { id: 44, kind: "합격", company: "서울예술대학교", title: "수시 합격 (박OO)", event_date: addDays(t, -20), deadline: null,
           pass_type: "입시", pass_stage: "합격", initials: "박OO", body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date(Date.now() - 20 * 86400000).toISOString(), updated_at: new Date().toISOString() }
+      ],
+      // 합격자 인터뷰 (interview.html + 첫 화면 팝업): a made-up example
+      interviews: [
+        { id: 61, company: "체험 엔터테인먼트", stage: "최종 합격", initials: "김OO", title: "3주 만에 대형 기획사 합격한 비결",
+          songs: "메인곡: 발라드 1곡 (편한 음역)\n서브곡: 댄스곡 · R&B 각 1곡 — 추가곡 요청에 대비", tips: "현장에서 추가곡 · 추가 질문을 자주 받아요.\n롤모델, 나만의 강점, 왜 이 회사인지 답을 미리 생각해 두세요.",
+          styling: "몸선이 보이는 단정한 옷, 머리는 얼굴이 잘 보이게", body: "체험 모드 예시 글이에요.", video: null, image: "assets/img/blog/lesson.webp",
+          posted_on: addDays(t, -2), published: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
       ],
       // more 합격 소식 for the about board: one for a company already on it, one 입시
       // (added below with the same shape as the admin page writes)
@@ -845,7 +852,7 @@
       if (p.table === "rooms" && db.rooms.some(function (r) { return r.name === body.name; })) {
         return { status: 409, data: { message: "duplicate key" } };
       }
-      var row = Object.assign({ id: ++db.next }, p.table === "audition_news" || p.table === "notices" || p.table === "song_recs" ? { created_at: new Date().toISOString(), published: true } : {}, body);
+      var row = Object.assign({ id: ++db.next }, p.table === "audition_news" || p.table === "interviews" || p.table === "notices" || p.table === "song_recs" ? { created_at: new Date().toISOString(), published: true } : {}, body);
       rows.push(row);
       save();
       return { status: 201, data: [row] };

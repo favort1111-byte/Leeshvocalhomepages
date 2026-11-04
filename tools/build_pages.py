@@ -304,7 +304,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
         + wavebed()
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "signin", "richtext", "grid", "evalcard", "mynotes", "newsbadge"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "signin", "richtext", "grid", "evalcard", "mynotes", "newsbadge", "popup"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -724,7 +724,8 @@ def news_list(kind, first):
 CUR = ' aria-current="page"'
 
 def subnav(current):
-    links = [("news", "audition.html", "audition news"), ("results", "results.html", "results")]
+    links = [("news", "audition.html", "audition news"), ("results", "results.html", "results"),
+             ("interview", "interview.html", "interview")]  # 합격자 인터뷰 (원장님 2026-11-04)
     return ('  <nav class="subnav" aria-label="오디션 메뉴">\n'
             + "".join(f'    <a href="{h}"{CUR if k == current else ""}>{t}</a>\n' for k, h, t in links)
             + "  </nav>\n")
@@ -776,12 +777,21 @@ RESULTS_BODY = (
     + news_foot() +
     '  </div>\n')
 
-def audition_like(title, desc, sub, body):
+def audition_like(title, desc, sub, body, script="auditions"):
     return (head(title, desc)
             + '<main class="stage booking">\n'
             + nav("audition", "dark") + "\n"
             + subnav(sub) + body
-            + "</main>\n" + foot("auditions"))
+            + "</main>\n" + foot(script))
+
+# 합격자 인터뷰 (원장님 2026-11-04): 관리자 → 오디션 소식 → 합격자 인터뷰에서 올림 (public.interviews, js/interviews.js)
+INTERVIEW_BODY = (
+    '  <div class="booking__inner news">\n'
+    '    <h1 class="booking__title">interview</h1>\n'
+    '    <p class="booking__note">대형 · 유명 기획사 합격생의 선곡, 오디션 꿀팁, 스타일링입니다. 학생 이름은 이니셜로 표기합니다.</p>\n'
+    '    <ul class="iv-list" id="interviewList" aria-live="polite"><li class="news__empty">불러오는 중…</li></ul>\n'
+    + news_foot() +
+    '  </div>\n')
 
 _seen_yt = set()
 TIP_POSTS = []
@@ -822,6 +832,9 @@ audition_page = audition_like("Audition | 이송희보컬레슨",
                               "이송희보컬레슨 오디션 소식: 매월 학원 내방 오디션 일정, 기획사 공개·온라인 오디션 정보.", "news", NEWS_BODY)
 results_page = audition_like("Results | 이송희보컬레슨",
                              "이송희보컬레슨 합격자 현황: 기획사·오디션 합격 소식.", "results", RESULTS_BODY)
+interview_page = audition_like("Interview | 이송희보컬레슨",
+                               "이송희보컬레슨 합격자 인터뷰: 대형 · 유명 기획사 합격생의 선곡, 오디션 꿀팁, 스타일링.", "interview",
+                               INTERVIEW_BODY, "interviews")
 
 # ---------- PRIVACY (paper theme, like booking) ----------
 privacy_page = (head("개인정보처리방침 | 이송희보컬레슨", "이송희보컬레슨 홈페이지 개인정보처리방침.")
@@ -877,7 +890,7 @@ notfound_page = (head("페이지를 찾을 수 없습니다 | 이송희보컬레
                  '  </div>\n'
                  + "</main>\n" + foot())
 
-out = {"schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"interview.html": interview_page, "schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')
@@ -904,7 +917,7 @@ for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
         f.write(fill(name, stamp(html)))
 # 검색엔진 안내 (2026-10-31): 관리자·선생님 화면은 빼고, 공개 페이지 + 옮겨온 블로그 글
-SITEMAP_PAGES = ["", "about.html", "schools.html", "audition.html", "results.html", "tips.html", "contact.html", "consult.html",
+SITEMAP_PAGES = ["", "about.html", "schools.html", "audition.html", "results.html", "interview.html", "tips.html", "contact.html", "consult.html",
                  "guide.html", "games.html", "booking.html", "privacy.html"]
 with open(os.path.join(target, "robots.txt"), "w") as f:
     f.write("User-agent: *\nDisallow: /admin.html\nDisallow: /teacher.html\nAllow: /\n\nSitemap: " + SITE + "sitemap.xml\n")

@@ -145,7 +145,7 @@
     if (name === "bookings") loadDay(state.day || todayKst());
     if (name === "members") loadMembers();
     if (name === "consults") loadConsults();
-    if (name === "news") { loadNews(); loadIg(); }
+    if (name === "news") { loadNews(); loadIg(); loadIv(); }
     if (name === "notices") loadNotices();
     if (name === "songrecs") loadRecs();
     if (name === "visits") loadVisits();
@@ -1308,6 +1308,89 @@
         row.appendChild(ed);
         row.appendChild(hide);
         row.appendChild(deleteButton("audition_news", p.id, loadNews));
+        li.appendChild(row);
+        ul.appendChild(li);
+      });
+    });
+  }
+
+  /* ---------------- 합격자 인터뷰 (interview.html + 첫 화면 팝업, public.interviews) ---------------- */
+
+  var ivEdit = null;
+  var IV_TEXT = ["company", "stage", "initials", "title", "songs", "tips", "styling", "body", "video"];
+  function ivForm(p) {
+    var f = $("#ivForm");
+    ivEdit = p || null;
+    f.reset();
+    IV_TEXT.forEach(function (k) { field(f, k).value = p ? p[k] || "" : ""; });
+    field(f, "posted_on").value = p ? p.posted_on : todayKst();
+    $("#ivHead").textContent = p ? "인터뷰 고치기" : "합격자 인터뷰 올리기";
+    $("#ivSave").textContent = p ? "고친 내용 저장" : "올리기";
+    $("#ivCancel").hidden = !p;
+    var now = $("#ivPhotoNow");
+    now.hidden = !(p && p.image);
+    now.textContent = p && p.image ? "지금 사진이 있어요. 새 사진을 고르면 바뀌어요." : "";
+    if (p) f.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  $("#ivCancel").addEventListener("click", function () { ivForm(null); msg($("#ivMsg"), ""); });
+  $("#ivForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, btn = $("#ivSave");
+    var body = { updated_at: new Date().toISOString(), posted_on: field(f, "posted_on").value || todayKst() };
+    IV_TEXT.forEach(function (k) { body[k] = field(f, k).value.trim() || null; });
+    if (!body.company || !body.title) { msg($("#ivMsg"), "기획사 이름과 제목을 써주세요.", "error"); return; }
+    if (body.initials && /^[가-힣]{2,4}$/.test(body.initials)) { msg($("#ivMsg"), "학생 이름은 이니셜로 써주세요 (예: 김OO).", "error"); return; }
+    if (body.video && !/^https:\/\//.test(body.video)) { msg($("#ivMsg"), "영상 주소는 https:// 로 시작해야 해요.", "error"); return; }
+    btn.disabled = true;
+    msg($("#ivMsg"), "올리는 중…");
+    var file = field(f, "photo").files[0];
+    var photo = file ? token().then(function (t) {
+      var path = "interviews/" + Date.now().toString(36) + ".webp";
+      return shrink(file).then(function (blob) { return LeeshAPI.storage.uploadNews(path, blob, t); })
+        .then(function (ok) { if (!ok) throw new Error("photo"); body.image = path; });
+    }) : Promise.resolve();
+    photo.then(function () {
+      return ivEdit ? api("interviews?id=eq." + ivEdit.id, { method: "PATCH", body: body })
+        : api("interviews", { method: "POST", body: body });
+    }).then(function (res) {
+      btn.disabled = false;
+      if (!res.ok) { msg($("#ivMsg"), friendly(res), "error"); return; }
+      msg($("#ivMsg"), ivEdit ? "고쳤어요. 홈페이지에 바로 보여요." : "올렸어요. interview 페이지와 첫 화면 팝업에 바로 보여요.", "ok");
+      ivForm(null);
+      loadIv();
+    }, function () {
+      btn.disabled = false;
+      msg($("#ivMsg"), "사진을 올리지 못했어요. 다시 해보거나 사진 없이 올려주세요.", "error");
+    });
+  });
+  function loadIv() {
+    var ul = $("#ivList");
+    ul.textContent = "";
+    if (!$("#ivForm").querySelector("[name=posted_on]").value) field($("#ivForm"), "posted_on").value = todayKst();
+    api("interviews?select=*&order=posted_on.desc,id.desc&limit=100").then(function (res) {
+      if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) { ul.appendChild(el("li", "sys-empty", "아직 올린 인터뷰가 없어요. 하나 올리면 첫 화면 팝업이 떠요.")); return; }
+      res.data.forEach(function (p) {
+        var li = el("li", "adm__card" + (p.published ? "" : " is-hidden")), top = el("div", "adm__cardtop");
+        top.appendChild(el("span", "adm__badge adm__badge--kind", "인터뷰"));
+        top.appendChild(el("strong", null, p.company + " · " + p.title));
+        top.appendChild(el("span", "sys-note", p.posted_on));
+        if (!p.published) top.appendChild(el("span", "sys-note", "숨김"));
+        li.appendChild(top);
+        var t = [p.stage, p.initials].filter(Boolean).join(" · ");
+        if (t) li.appendChild(el("p", "sys-note", t));
+        var row = el("div", "adm__cardrow");
+        var ed = el("button", "sys-link", "고치기");
+        ed.type = "button";
+        ed.addEventListener("click", function () { ivForm(p); });
+        var hide = el("button", "sys-link", p.published ? "숨기기" : "다시 보이기");
+        hide.type = "button";
+        hide.addEventListener("click", function () {
+          api("interviews?id=eq." + p.id, { method: "PATCH", body: { published: !p.published, updated_at: new Date().toISOString() } }).then(loadIv);
+        });
+        row.appendChild(ed);
+        row.appendChild(hide);
+        row.appendChild(deleteButton("interviews", p.id, loadIv));
         li.appendChild(row);
         ul.appendChild(li);
       });

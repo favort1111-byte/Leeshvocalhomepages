@@ -3568,3 +3568,34 @@ begin
   end loop;
   return true;
 end $function$;
+
+-- ===== leesh_interviews (2026-11-04) =====
+-- 합격자 인터뷰 (원장님 2026-11-04): 대형 · 유명 기획사 합격생의 선곡 · 꿀팁 · 스타일링. interview.html이 보여주고,
+-- 첫 화면 팝업 "합격자 인터뷰 보러가기"는 올라간 인터뷰가 있을 때만 뜸. 쓰기는 원장님(관리자)만, 학생 이름은 이니셜.
+create table if not exists public.interviews (
+  id         bigint generated always as identity primary key,
+  company    text not null check (char_length(company) between 1 and 40),
+  stage      text check (char_length(stage) <= 30),
+  initials   text check (char_length(initials) <= 20),
+  title      text not null check (char_length(title) between 1 and 80),
+  songs      text check (char_length(songs) <= 2000),
+  tips       text check (char_length(tips) <= 3000),
+  styling    text check (char_length(styling) <= 2000),
+  body       text check (char_length(body) <= 3000),
+  video      text check (video is null or video ~ '^https://'),
+  image      text check (char_length(image) <= 300),
+  posted_on  date not null default (now() at time zone 'Asia/Seoul')::date,
+  published  boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint interviews_initials_not_name check (initials is null or initials !~ '^[가-힣]{2,4}$')
+);
+alter table public.interviews enable row level security;
+drop policy if exists admin_all on public.interviews;
+create policy admin_all on public.interviews for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists public_read on public.interviews;
+create policy public_read on public.interviews for select to anon, authenticated using (published);
+revoke all on public.interviews from anon;
+grant select on public.interviews to anon;
+grant select, insert, update, delete on public.interviews to authenticated;
+revoke truncate, references, trigger on public.interviews from authenticated, anon;

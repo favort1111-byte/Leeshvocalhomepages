@@ -253,6 +253,35 @@
       </form>
       <h3 class="sys-h">올린 소식</h3>
       <ul class="adm__cards" id="newsList"></ul>
+
+      <!-- 합격자 인터뷰 (interview.html + 첫 화면 팝업, 원장님 2026-11-04) -->
+      <h3 class="sys-h" id="ivHead">합격자 인터뷰 올리기</h3>
+      <p class="sys-note">홈페이지 audition → <b>interview</b>에 바로 보여요. 인터뷰가 하나라도 올라가 있으면 첫 화면에 <b>"합격자 인터뷰 보러가기"</b> 팝업이 떠요 (숨기면 안 떠요). 학생 이름은 이니셜(예: 김OO)로 써주세요.</p>
+      <form id="ivForm" class="adm__drawer">
+        <div class="sys-row">
+          <label class="sys-field"><span>기획사 이름</span><input name="company" maxlength="40" required placeholder="예) SM 엔터테인먼트"></label>
+          <label class="sys-field"><span>단계 (선택)</span><input name="stage" maxlength="30" placeholder="예) 최종 합격"></label>
+          <label class="sys-field"><span>학생 이니셜 (선택)</span><input name="initials" maxlength="20" placeholder="예) 김OO"></label>
+        </div>
+        <label class="sys-field"><span>제목</span><input name="title" maxlength="80" required placeholder="예) 3주 만에 대형 기획사 합격한 비결"></label>
+        <label class="sys-field"><span>선곡 (선택)</span><textarea name="songs" rows="3" maxlength="2000" placeholder="오디션에서 부른 곡, 고른 이유"></textarea></label>
+        <label class="sys-field"><span>오디션 꿀팁 (선택)</span><textarea name="tips" rows="4" maxlength="3000" placeholder="준비 과정, 현장 분위기, 추가 요청 대비"></textarea></label>
+        <label class="sys-field"><span>스타일링 (선택)</span><textarea name="styling" rows="3" maxlength="2000" placeholder="옷, 머리, 메이크업"></textarea></label>
+        <label class="sys-field"><span>그 밖의 내용 (선택)</span><textarea name="body" rows="3" maxlength="3000"></textarea></label>
+        <div class="sys-row">
+          <label class="sys-field"><span>사진 (선택)</span><input name="photo" type="file" accept="image/*"></label>
+          <label class="sys-field"><span>영상 주소 (선택, 유튜브 · 인스타)</span><input name="video" type="url" placeholder="https://"></label>
+          <label class="sys-field"><span>날짜</span><input name="posted_on" type="date"></label>
+        </div>
+        <p class="sys-note" id="ivPhotoNow" hidden></p>
+        <div class="sys-row">
+          <button class="sys-btn" type="submit" id="ivSave">올리기</button>
+          <button class="sys-link" type="button" id="ivCancel" hidden>고치기 그만두기</button>
+        </div>
+        <p class="sys-msg" id="ivMsg" role="status"></p>
+      </form>
+      <h3 class="sys-h">올린 인터뷰</h3>
+      <ul class="adm__cards" id="ivList"></ul>
     </section>
 
     <!-- 일정·공지 (학생 "내 폴더 → 일정·공지") -->
@@ -456,6 +485,6 @@
 <script src="js/richtext.js?v=fa20a0a2"></script>
 <script src="js/grid.js?v=f64a3e04"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
-<script src="js/admin.js?v=f7d6adde"></script>
+<script src="js/admin.js?v=f25d5692"></script>
 </body>
 </html>
