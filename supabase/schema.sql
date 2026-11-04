@@ -3599,3 +3599,131 @@ revoke all on public.interviews from anon;
 grant select on public.interviews to anon;
 grant select, insert, update, delete on public.interviews to authenticated;
 revoke truncate, references, trigger on public.interviews from authenticated, anon;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_lesson_private (2026-11-04)
+-- 원장님 2026-11-04 "상담, 등록일지 내용의 개인신상정보는 갖고오지마":
+--   생년월일 + (사는 곳 · 주소 · 학교)가 같이 적힌 탭(상담/등록 일지 · OT)은 통째로 안 가져옴 (이미 있던 것도 지움),
+--   제목이 상담 · 등록 일지 · 신상 · 개인정보인 탭도. 일지 속 휴대폰 번호는 "(전화번호 뺌)"으로 바꿔서 넣음.
+--   원장님 레슨 노트(폴더 '원장님 레슨 노트', 스크립트가 탭마다 보냄)는 담당 = 원장님으로 맞춤.
+create or replace function private.lesson_private(p jsonb) returns boolean
+language sql immutable set search_path = '' as $$
+  select t ~ '생년월일' and t ~ '사는 ?곳|주소|거주|학교' from (select private.sheet_text(p) t) x;
+$$;
+create or replace function private.mask_phone(p jsonb) returns jsonb
+language sql immutable set search_path = '' as $$
+  select case when jsonb_typeof(p -> 'c') = 'object' then jsonb_set(p, '{c}', coalesce((
+    select jsonb_object_agg(e.key, case when e.value ? 't' then jsonb_set(e.value, '{t}',
+      to_jsonb(regexp_replace(e.value ->> 't', '01[016789][-. ]?[0-9]{3,4}[-. ]?[0-9]{4}', '(전화번호 뺌)', 'g'))) else e.value end)
+    from jsonb_each(p -> 'c') e), '{}'::jsonb)) else p end;
+$$;
+revoke all on function private.lesson_private(jsonb), private.mask_phone(jsonb) from public, anon, authenticated;
+create or replace function private.lesson_match(p_file text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.lesson_sources;
+  v_name text; v_tid bigint; v_tname text; n int; v_mid text; other text;
+begin
+  select * into s from public.lesson_sources where file_id = p_file for update;
+  if s.file_id is null or s.set_by = 'admin' then return; end if;
+  v_name := substring(s.title from '^\s*([가-힣]{2,4})');
+  -- 원장님 레슨 노트 (시트 하나에 학생마다 탭 하나, 2026-11-04): 담당 = 원장님
+  v_tid := case when s.folder = '원장님 레슨 노트' then (select min(id) from public.teachers where name = '원장님' and active)
+               else private.folder_teacher(s.folder) end;
+  select name into v_tname from public.teachers where id = v_tid;
+  if v_name is null then
+    update public.lesson_sources set status = 'pending', member_id = null, teacher_id = v_tid, why = '파일 이름에서 학생 이름을 못 찾았어요' where file_id = p_file;
+    return;
+  end if;
+  if v_tid is null then
+    select string_agg(m.id || ' ' || coalesce(substring(m.memo from '담당\s*([^\s·,]+)'), '담당 없음'), ', ') into other
+    from public.members m where m.name = v_name and m.status in ('재원', '휴원');
+    update public.lesson_sources set status = 'pending', member_id = null, teacher_id = null,
+      why = '선생님 폴더 밖에 있어서 담당 선생님을 확인 못 했어요' || coalesce(' (명단: ' || other || ')', '') where file_id = p_file;
+    return;
+  end if;
+  select count(*), min(m.id) into n, v_mid from public.members m
+  where m.name = v_name and m.status in ('재원', '휴원') and substring(m.memo from '담당\s*([^\s·,]+)') = v_tname;
+  if n = 1 then
+    update public.lesson_sources set status = 'ok', member_id = v_mid, teacher_id = v_tid, why = null where file_id = p_file;
+    return;
+  end if;
+  select string_agg(m.id || ' ' || m.status || ' ' || coalesce(substring(m.memo from '담당\s*([^\s·,]+)'), '담당 없음'), ', ') into other
+  from public.members m where m.name = v_name;
+  update public.lesson_sources set status = 'pending', member_id = null, teacher_id = v_tid,
+    why = case when n > 1 then '이름·담당이 같은 학생이 ' || n || '명이에요'
+               when other is null then '명단에 "' || v_name || '" 학생이 없어요'
+               else '담당 선생님이 달라요 (폴더: ' || v_tname || ' / 명단: ' || other || ')' end
+  where file_id = p_file;
+end $$;
+create or replace function public.lesson_sync_push(p_key text, p_file text, p_notes jsonb default '[]', p_sheets jsonb default '[]',
+  p_done boolean default false, p_modified timestamptz default null, p_ver int default 1, p_tabs jsonb default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  s public.lesson_sources; t public.teachers; r jsonb; v_date date; v_tab bigint; v_sheet jsonb; ex public.lesson_notes;
+  added int := 0; updated int := 0; kept int := 0; skipped int := 0; sh int := 0; bad int := 0; blocked int := 0;
+begin
+  if not private.lesson_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  select * into s from public.lesson_sources where file_id = p_file;
+  if s.file_id is null or s.status <> 'ok' or s.member_id is null then return private.fail('확인된 학생 파일이 아니에요.'); end if;
+  select * into t from public.teachers where id = s.teacher_id;
+  if jsonb_typeof(coalesce(p_notes, '[]')) <> 'array' or jsonb_typeof(coalesce(p_sheets, '[]')) <> 'array' then return private.fail('보낸 내용이 이상해요.'); end if;
+
+  for r in select * from jsonb_array_elements(coalesce(p_notes, '[]')) loop
+    begin
+      v_tab := (r ->> 'tab')::bigint; v_date := (r ->> 'date')::date; v_sheet := r -> 'sheet';
+    exception when others then bad := bad + 1; continue; end;
+    if v_tab is null or v_date is null or v_date < date '2026-01-01' or v_date > private.now_kst()::date + 400 then skipped := skipped + 1; continue; end if;
+    if exists (select 1 from private.lesson_skip k where k.src_file = p_file and k.src_tab = v_tab) then skipped := skipped + 1; continue; end if;
+    if private.lesson_private(v_sheet) then blocked := blocked + 1; continue; end if;
+    v_sheet := private.mask_phone(v_sheet);
+    if not private.sheet_ok(v_sheet) or trim(private.sheet_text(v_sheet)) = '' then bad := bad + 1; continue; end if;
+    select * into ex from public.lesson_notes where src_file = p_file and src_tab = v_tab;
+    if ex.id is null then
+      insert into public.lesson_notes (member_id, lesson_date, teacher, teacher_id, rich, sheet, src_file, src_tab, src_title, synced_at)
+      values (s.member_id, v_date, t.name, s.teacher_id, true, v_sheet, p_file, v_tab, left(r ->> 'title', 120), now());
+      added := added + 1;
+    elsif ex.site_edited then
+      kept := kept + 1;
+    else
+      if ex.sheet is distinct from v_sheet or ex.lesson_date <> v_date or ex.member_id <> s.member_id then
+        update public.lesson_notes set member_id = s.member_id, lesson_date = v_date, sheet = v_sheet, rich = true,
+          teacher = coalesce(t.name, teacher), teacher_id = coalesce(s.teacher_id, teacher_id),
+          src_title = left(r ->> 'title', 120), synced_at = now(), updated_at = now()
+        where id = ex.id;
+        updated := updated + 1;
+      end if;
+    end if;
+  end loop;
+
+  for r in select * from jsonb_array_elements(coalesce(p_sheets, '[]')) loop
+    begin
+      v_tab := (r ->> 'tab')::bigint; v_sheet := r -> 'sheet';
+    exception when others then bad := bad + 1; continue; end;
+    if v_tab is null or coalesce(trim(r ->> 'title'), '') = '' or not private.sheet_ok(v_sheet) or trim(private.sheet_text(v_sheet)) = '' then
+      bad := bad + 1; continue;
+    end if;
+    if private.lesson_private(v_sheet) or trim(r ->> 'title') ~ '상담|등록 ?일지|신상|개인 ?정보' then
+      delete from public.lesson_sheets where src_file = p_file and src_tab = v_tab;
+      blocked := blocked + 1; continue;
+    end if;
+    insert into public.lesson_sheets (member_id, teacher_id, src_file, src_tab, title, pos, sheet, synced_at)
+    values (s.member_id, s.teacher_id, p_file, v_tab, left(trim(r ->> 'title'), 120), coalesce((r ->> 'pos')::int, 0), v_sheet, now())
+    on conflict (src_file, src_tab) do update set member_id = excluded.member_id, teacher_id = excluded.teacher_id, title = excluded.title,
+      pos = excluded.pos, sheet = excluded.sheet, synced_at = now()
+    where public.lesson_sheets.sheet is distinct from excluded.sheet or public.lesson_sheets.title is distinct from excluded.title
+       or public.lesson_sheets.pos is distinct from excluded.pos or public.lesson_sheets.member_id is distinct from excluded.member_id;
+    sh := sh + 1;
+  end loop;
+
+  if p_done then
+    update public.lesson_sources set synced_modified = coalesce(p_modified, modified), synced_ver = p_ver, synced_at = now(),
+      notes = (select count(*) from public.lesson_notes where src_file = p_file),
+      sheets = (select count(*) from public.lesson_sheets where src_file = p_file),
+      kept = (select count(*) from public.lesson_notes where src_file = p_file and site_edited),
+      gone = case when jsonb_typeof(p_tabs) = 'array' then
+        (select count(*) from public.lesson_notes n where n.src_file = p_file and not (p_tabs @> to_jsonb(n.src_tab)))
+        + (select count(*) from public.lesson_sheets x where x.src_file = p_file and not (p_tabs @> to_jsonb(x.src_tab)))
+        else gone end
+    where file_id = p_file;
+  end if;
+  return jsonb_build_object('ok', true, 'added', added, 'updated', updated, 'kept', kept, 'skipped', skipped, 'sheets', sh, 'bad', bad, 'blocked', blocked);
+end $$;

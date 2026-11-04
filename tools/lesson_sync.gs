@@ -12,6 +12,10 @@
  *   2) 이 편집기에서 함수 "처음_한번_설정" 실행 → 권한 허용
  * 찾는 폴더: 이름에 "레슨시트"나 "레슨 시트"가 들어간 폴더 (이수빈 레슨시트 · 유정T 레슨시트 · 이윤지T 학생 레슨 시트지 · 이하섬 레슨시트 …).
  * 새 선생님이 폴더를 공유하면 저절로 찾아요. 폴더 이름의 선생님과 홈페이지 명단 "담당 ○○○"가 같아야 학생이 정해져요.
+ * 원장님 레슨 노트(구글시트 "원장님 · 학생 레슨 노트", 학생 한 명 = 탭 하나, 수업 한 번 = 줄 하나)도 같이 가져와요 (원장님 2026-11-04).
+ *   탭 맨 위 "이름 · 수강ID · 원장님"과 탭 이름이 같은 탭만, 날짜 · 회차 · 수업 내용 … 특이사항(A~G칸)과 곡 노트(L칸부터)만 읽어요.
+ *   학생 카드(I~J칸: 생년월일 · 사는 곳 · 상담 메모)는 읽지도 않아요.
+ * 상담 · 등록 일지처럼 생년월일 · 사는 곳 · 학교가 적힌 탭은 서버가 안 받아요. 일지 속 휴대폰 번호는 "(전화번호 뺌)"으로 바뀌어요.
  */
 
 var API = "https://lsdmokkecmymtxpmiwbm.supabase.co/rest/v1/rpc/";
@@ -19,7 +23,8 @@ var PUBLIC_KEY = "sb_publishable_e65wHiIp1Psl4bNVaeU-cA_Df2VmJ-9"; // 홈페이�
 var VER = 1;                    // 바꾸는 방식이 달라지면 올림 → 모든 파일을 다시 가져옴
 var FROM = "2026-01-01";        // 이 날짜부터의 수업만 (원장님 2026-11-03 "2026년부터")
 var TIME_LIMIT_MS = 4.5 * 60 * 1000;
-var SKIP_TAB = /결제|연락처|수강료|입금|학부모|전화번호|계좌/; // 수업과 상관없는 탭은 안 가져옴
+var SKIP_TAB = /결제|연락처|수강료|입금|학부모|전화번호|계좌|상담|등록 ?일지|신상|개인 ?정보/; // 수업과 상관없는 탭 · 개인정보 탭은 안 가져옴
+var DIRECTOR_FOLDER = "원장님 레슨 노트"; // 원장님 시트의 탭을 보낼 때 쓰는 이름 (서버가 담당 = 원장님으로 맞춤)
 var COLS = 26, MAX_ROWS = 1000, CW = 100, RH = 21, BASE_PX = 13, MAX_JSON = 380000, MAX_CELL = 5000;
 
 /** 처음 한 번만: 홈페이지에 이 스크립트를 등록하고, 1시간마다 저절로 돌게 해요. */
@@ -50,7 +55,7 @@ function run_() {
   try {
     var key = PropertiesService.getScriptProperties().getProperty("LESSON_KEY");
     if (!key) return { ok: false, error: "아직 연결 전이에요. 처음_한번_설정을 먼저 실행해주세요." };
-    var files = listFiles_();
+    var files = listFiles_().concat(directorFiles_());
     result.files = files.length;
     var plan = call_("lesson_sync_plan", { p_key: key, p_files: files, p_ver: VER });
     if (!plan.ok) throw new Error(plan.error);
@@ -60,7 +65,8 @@ function run_() {
     for (var i = 0; i < todo.length; i++) {
       if (Date.now() - started > TIME_LIMIT_MS) { result.left = todo.length - i; break; }
       try {
-        var r = syncFile_(key, byId[todo[i]]);
+        var f = byId[todo[i]];
+        var r = f.director ? syncDirector_(key, f) : syncFile_(key, f);
         result.fetched++;
         result.notes += r.added + r.updated;
         result.sheets += r.sheets;
@@ -212,6 +218,131 @@ function syncFile_(key, file) {
   return total;
 }
 
+/* ---------------- 원장님 레슨 노트 (시트 하나, 학생 한 명 = 탭 하나, 수업 한 번 = 줄 하나) ---------------- */
+
+function directorFiles_() {
+  var out = [];
+  var res = drive_("files", {
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains '원장님' and name contains '레슨 노트'",
+    fields: "files(id,name,modifiedTime)", pageSize: 20, supportsAllDrives: true, includeItemsFromAllDrives: true
+  });
+  (res.files || []).forEach(function (f) {
+    var meta = sheets_(f.id, { fields: "sheets.properties(sheetId,title,hidden,sheetType)" });
+    var tabs = (meta.sheets || []).map(function (x) { return x.properties; }).filter(function (p) {
+      return (!p.sheetType || p.sheetType === "GRID") && !p.hidden && !SKIP_TAB.test(p.title);
+    });
+    if (!tabs.length) return;
+    var heads = sheets_(f.id, { _path: "/values:batchGet", ranges: tabs.map(function (t) { return "'" + String(t.title).replace(/'/g, "''") + "'!A1"; }) });
+    (heads.valueRanges || []).forEach(function (vr, i) {
+      var h = directorHead_(((vr.values || [])[0] || [])[0]);
+      if (!h || h.name !== String(tabs[i].title).trim()) return;   // 탭 이름 = 맨 위 이름인 학생 탭만
+      out.push({ id: f.id + "_" + tabs[i].sheetId, title: h.name + " · 원장님 레슨 노트", folder: DIRECTOR_FOLDER,
+        modified: f.modifiedTime, director: { file: f.id, tab: tabs[i].title } });
+    });
+  });
+  return out;
+}
+
+/** 탭 맨 위 "강혜정  ·  E050  ·  원장님  ·  오디션반" → { name, id } */
+function directorHead_(a1) {
+  var m = /^\s*([가-힣]{2,4})\s*·\s*([A-Z]\d{3,})\s*·\s*원장님/.exec(String(a1 || ""));
+  return m ? { name: m[1], id: m[2] } : null;
+}
+
+function syncDirector_(key, f) {
+  var today = Utilities.formatDate(new Date(), "Asia/Seoul", "yyyy-MM-dd");
+  var q = "'" + String(f.director.tab).replace(/'/g, "''") + "'!";
+  var res = sheets_(f.director.file, { _path: "/values:batchGet", ranges: [q + "A1:G" + MAX_ROWS, q + "L3:DZ" + MAX_ROWS], majorDimension: "ROWS" });
+  var vr = res.valueRanges || [];
+  var x = directorTab_((vr[0] || {}).values || [], (vr[1] || {}).values || [], today);
+  var tabs = x.notes.map(function (n) { return n.tab; }).concat(x.sheets.map(function (n) { return n.tab; }));
+  var r = call_("lesson_sync_push", { p_key: key, p_file: f.id, p_notes: x.notes, p_sheets: x.sheets, p_done: true,
+    p_modified: f.modified, p_ver: VER, p_tabs: tabs });
+  if (!r.ok) throw new Error(r.error || "보내기 실패");
+  return { added: r.added || 0, updated: r.updated || 0, kept: r.kept || 0, sheets: r.sheets || 0, bad: r.bad || 0 };
+}
+
+var DIR_LABELS = ["날짜", "회차", "수업 내용", "곡 연습", "숙제", "다음 수업 계획", "특이사항"];
+var DIR_HEAD = { b: 1, g: "#f1f3f4" };
+function dirClean_(v) { return String(v == null ? "" : v).replace(/[\x00-\x09\x0b-\x1f\x7f]/g, "").trim(); }
+function dirRich_(v) { return dirClean_(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>"); }
+function dirNums_(v) { return (String(v || "").match(/\d+/g) || []).map(Number); }
+function ymd_(t) { return t.getUTCFullYear() + "-" + ("0" + (t.getUTCMonth() + 1)).slice(-2) + "-" + ("0" + t.getUTCDate()).slice(-2); }
+
+/** 원장님 탭 하나 → { notes: [{tab,title,date,sheet}], sheets: [{tab,title,pos,sheet}] }
+ *  rows = A1:G (1~3줄 머리, "날짜" 줄 아래가 수업), songs = L3부터 (곡 노트: 두 칸씩, 첫 줄 곡 이름, 셋째 줄부터 가사 · 메모) */
+function directorTab_(rows, songs, today) {
+  var start = 3, labels = DIR_LABELS.slice();
+  for (var h = 0; h < Math.min(rows.length, 10); h++) {
+    if (dirClean_((rows[h] || [])[0]) === "날짜") {
+      start = h + 1;
+      labels = DIR_LABELS.map(function (l, k) { return dirClean_((rows[h] || [])[k]).replace(/\s*\(.*$/, "") || l; });
+      break;
+    }
+  }
+  var list = [];
+  for (var r = start; r < rows.length; r++) {
+    var row = [];
+    for (var k = 0; k < 7; k++) row.push(dirClean_((rows[r] || [])[k]));
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(row[0]);
+    if (!m) continue;
+    var t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (t.getUTCMonth() !== +m[2] - 1) continue;
+    list.push({ row: row, t: t, label: row[0] });
+  }
+  // 연도 오타 (원장님 2026-11-04): 줄 사이가 1년쯤(350~380일) 벌어졌는데 회차가 이어지면(7 → 8) 그 앞 줄들은 한 해 늦게 적은 것으로 봄
+  //   ("2025-05-26 (월) 7회차" 다음 "2026-05-29 (금) 8회차" → 앞 줄들은 2026년. 요일도 새 날짜로)
+  for (var i = 1; i < list.length; i++) {
+    var gap = (list[i].t - list[i - 1].t) / 86400000, a = dirNums_(list[i - 1].row[1]), b = dirNums_(list[i].row[1]);
+    if (gap < 350 || gap > 380 || !a.length || !b.length || a[a.length - 1] + 1 !== b[0]) continue;
+    var shifted = list.slice(0, i).map(function (x) { var y = new Date(x.t.getTime()); y.setUTCFullYear(y.getUTCFullYear() + 1); return y; });
+    var ok = shifted.every(function (y, j) { return y.getUTCDate() === list[j].t.getUTCDate() && y < list[i].t; });
+    if (!ok) continue;
+    for (var j = 0; j < i; j++) {
+      list[j].t = shifted[j];
+      list[j].label = ymd_(shifted[j]) + " (" + "일월화수목금토".charAt(shifted[j].getUTCDay()) + ")";
+    }
+    break;
+  }
+  var notes = [], seen = {};
+  list.forEach(function (x) {
+    var day = ymd_(x.t);
+    if (day < FROM || day > today && (x.t - Date.parse(today)) > 400 * 86400000) return;
+    var base = +day.replace(/-/g, "") * 10, k2 = seen[base] || 0;
+    seen[base] = k2 + 1;
+    var c = {}, n = 0;
+    [x.label].concat(x.row.slice(1)).forEach(function (text, k3) {
+      text = dirClean_(text);
+      if (!text) return;
+      for (var p = 0; p < text.length; p += 4800) {
+        if (p === 0) c[n + ",0"] = { t: dirRich_(labels[k3]), s: DIR_HEAD };
+        c[n + ",1"] = { t: dirRich_(text.slice(p, p + 4800)), s: { wr: 1 } };
+        n++;
+      }
+    });
+    if (!n) return;
+    notes.push({ tab: base + k2, title: (x.label + (x.row[1] ? " (" + x.row[1] + "회차)" : "")).slice(0, 120), date: day,
+      sheet: { v: 1, n: Math.max(n + 2, 10), w: { 0: 130, 1: 760 }, c: c } });
+  });
+  var out = [], heads = songs[0] || [], body = songs.slice(2);
+  for (var j2 = 0; j2 < heads.length; j2 += 2) {
+    var title = dirClean_(heads[j2]).replace(/^곡 노트 \d+\s*·\s*/, "").trim(), lines = [];
+    body.forEach(function (row) {
+      var a2 = dirClean_((row || [])[j2]), b2 = dirClean_((row || [])[j2 + 1]);
+      if (a2 || b2) lines.push([a2, b2]);
+    });
+    if (!title || !lines.length) continue;
+    var c2 = { "0,0": { t: "가사 (호흡 / 표시)", s: DIR_HEAD }, "0,1": { t: "메모 (리듬·발음·다이내믹)", s: DIR_HEAD } };
+    lines.forEach(function (l, r2) {
+      if (l[0]) c2[(r2 + 1) + ",0"] = { t: dirRich_(l[0].slice(0, 4800)), s: { wr: 1 } };
+      if (l[1]) c2[(r2 + 1) + ",1"] = { t: dirRich_(l[1].slice(0, 4800)), s: { wr: 1 } };
+    });
+    var idx = j2 / 2 + 1;
+    out.push({ tab: idx, title: title.slice(0, 120), pos: idx, sheet: { v: 1, n: Math.max(lines.length + 3, 10), w: { 0: 420, 1: 360 }, c: c2 } });
+  }
+  return { notes: notes, sheets: out };
+}
+
 /* ---------------- 바꾸기 (node로도 시험: tools/test_lesson_sync.js) ---------------- */
 
 /** 탭 이름 → "YYYY-MM-DD" (날짜 탭이 아니면 null). "2026-10-27(1회차)" · "2025-421 월" · "2025 6/2 월" · "2026-1- 5 월" · "10/27" … */
@@ -354,4 +485,4 @@ function call_(fn, args) {
   try { return JSON.parse(res.getContentText()); } catch (e) { return { ok: false, error: "HTTP " + res.getResponseCode() }; }
 }
 
-if (typeof module !== "undefined") module.exports = { tabDate_: tabDate_, toSheet_: toSheet_, cell_: cell_ };
+if (typeof module !== "undefined") module.exports = { tabDate_: tabDate_, toSheet_: toSheet_, cell_: cell_, directorTab_: directorTab_, directorHead_: directorHead_ };
