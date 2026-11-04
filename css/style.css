@@ -995,6 +995,9 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 
 /* ---------- schools.html: 입시 학교 찾기 (js/schools.js, 원장님 2026-11-04) ---------- */
 .sch{--sch-green:#1D4948;--sch-soft:#E8F0EF;--sch-yellow:#F5C518;}
+.sch-h2{margin:28px 0 12px;font-size:22px;font-weight:700;color:var(--ink);}
+.sch-h2 small{margin-left:8px;font-size:13px;font-weight:400;color:var(--ink-body);}
+.sch .card--paper{margin:0 0 8px;}
 .sch-lede{margin:0 0 18px;color:var(--ink-body);font-size:15px;line-height:1.6;}
 .sch-step{margin:0 0 18px;}
 .sch-step__q{margin:0 0 10px;font-size:17px;font-weight:700;color:var(--ink);}

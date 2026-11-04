@@ -2,8 +2,9 @@
 // 소식 the director posts in the admin page (audition_news kind 합격 with 종류 · 단계 · 이니셜). A new 합격 adds
 // its company to that year's chips, a line to the company's card (or a new card), and to the count of
 // companies; 데뷔 also gets a card at the top. Student names are initials only (the database refuses full names).
+// schools.html has only the 입시 card (#passSchools), so there just the 입시 합격 are added.
 (function () {
-  if (!window.LeeshAPI || !LeeshAPI.enabled() || !document.getElementById("passYears")) return;
+  if (!window.LeeshAPI || !LeeshAPI.enabled() || !(document.getElementById("passYears") || document.getElementById("passSchools"))) return;
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -46,6 +47,7 @@
       var type = p.pass_type || "기획사";
       (years[year] = years[year] || []).push(p.company);
 
+      if (type !== "입시" && !document.getElementById("passYears")) return;
       if (stage === "데뷔") {
         var d = el("li", "debut pass-new");
         d.appendChild(el("b", null, p.company));
@@ -83,6 +85,7 @@
 
     // that year's chips: years after 2025 get their own row above (newest first); 2025 adds to the built one
     var box = document.getElementById("passYears");
+    if (!box) return;
     Object.keys(years).sort().forEach(function (y) {
       var block = box.querySelector('[data-year="' + y + '"]');
       if (!block) {

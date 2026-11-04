@@ -366,7 +366,6 @@ def results_section():
     def cards(rows):
         return "".join(f'<li class="agency"><h4>{n}</h4>{_ul(r)}</li>' for n, r in rows)
     first, rest = AGENCIES[:15], AGENCIES[15:]
-    schools = "".join(f'<div class="card__col"><h4>{t}</h4>{_ul(items)}</div>' for t, items in SCHOOLS)
     recent = "".join(f"<li>{r}</li>" for r in RECENT_2025)
     total = len(AGENCIES) + len(SHOWS)
     return (_head("results", "합격 소식", "results")
@@ -386,9 +385,15 @@ def results_section():
             + '    <h3 class="scrap__sub">방송 · 프로그램</h3>\n'
             + f'    <ul class="agencies" id="passShows">{cards(SHOWS)}</ul>\n'
             + '    <h3 class="scrap__sub" id="schools">입시</h3>\n'
-            + f'    <article class="card card--paper" id="passSchools"><div class="card__cols">{schools}</div></article>\n'
-            + '    <p class="scrap__note"><a class="pill-btn" href="schools.html">실용음악과 입시 학교 찾기 →</a> 4년제 · 전문대 · 예술고를 지역별로 고르면 보컬 실기 학과와 원서 기간을 볼 수 있습니다.</p>\n'
+            + school_pass()
+            + '    <p class="scrap__note"><a class="pill-btn" href="schools.html#finder">실용음악과 입시 학교 찾기 →</a> 4년제 · 전문대 · 예술고를 지역별로 고르면 보컬 실기 학과와 원서 기간을 볼 수 있습니다.</p>\n'
             + '    <p class="scrap__note">학생 이름은 싣지 않습니다. 날짜별 합격 소식은 <a href="results.html">results</a>에서 확인할 수 있습니다.</p>\n')
+
+
+def school_pass():
+    """입시 합격 결과 카드 (about 합격 소식 · school 페이지 맨 위가 같이 씀, js/passboard.js가 새 입시 합격을 더함)."""
+    schools = "".join(f'<div class="card__col"><h4>{t}</h4>{_ul(items)}</div>' for t, items in SCHOOLS)
+    return f'    <article class="card card--paper" id="passSchools"><div class="card__cols">{schools}</div></article>\n'
 
 
 def rooms_section():

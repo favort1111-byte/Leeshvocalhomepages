@@ -187,7 +187,7 @@ ICON_LINKS = {
     "audition": ("audition.html", False),
     "voice": ("about.html#why", False),
     "hobby": ("about.html#tips", False),
-    "exam": ("about.html#schools", False),
+    "school": ("schools.html", False),  # 원장님 2026-11-04: exam.jpg 대신 school.jpg → 입시 합격 결과 + 학교 찾기
     "debut": ("about.html#care", False),
     "youtube": (YT, True),
     "map": (MAP, True),
@@ -246,7 +246,7 @@ home_icons = "\n".join([
     thumb(464, 349.5, 83.5, 46.5, 7, "vocal.jpg", scene="voice", ko="우리 학원만의 특징"),
     icon(504.5, 152.5, 48, 48, "map<small>오시는 길</small>", MAP, FINDER, scene="map", ko="오시는 길 (네이버 지도)"),
     thumb(563, 256.5, 61.5, 47.5, 6, "hobby.jpg", scene="hobby", ko="원포인트 레슨"),
-    thumb(637.5, 119.5, 73.5, 43, 9, "exam.jpg", scene="exam", ko="입시 합격 실적"),
+    thumb(637.5, 119.5, 73.5, 43, 9, "school.jpg", scene="school", ko="입시 · 합격 결과 · 학교 찾기"),
     thumb(699, 150, 43.5, 49, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
     icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가"),
     icon(590, 352, 44, 44, "games.exe", "games.html", GAME_ICON, ko="미니게임"),
@@ -840,21 +840,24 @@ guide_page = (head("Guide | 이송희보컬레슨", "이송희보컬레슨 홈�
 # ---------- SCHOOLS: 입시 학교 찾기 (js/schools.js + data/schools.json, 원장님 2026-11-04) ----------
 SCHOOLS_BODY = (
     '  <div class="booking__inner sch">\n'
-    '    <h1 class="booking__title">school finder</h1>\n'
-    '    <p class="booking__note">실용음악 · K-POP · 뮤지컬 입시 학교 찾기 · <span id="schoolUpdated">2027학년도 입시</span></p>\n'
+    '    <h1 class="booking__title">school</h1>\n'
+    '    <p class="booking__note">실용음악 · K-POP · 뮤지컬 입시 · 합격 결과와 학교 찾기</p>\n'
+    '    <h2 class="sch-h2" id="pass">입시 합격 결과</h2>\n'
+    + blog.school_pass() +
+    '    <h2 class="sch-h2" id="finder">입시 학교 찾기 <small id="schoolUpdated">2027학년도 입시</small></h2>\n'
     '    <p class="sch-lede">학교 이름으로 검색하거나, 모집구분과 지역을 고르면 보컬 실기가 있는 학과를 보여줍니다. 원서접수 · 실기 · 합격 발표 일정은 오늘 기준으로 종료 · 접수 중 · D-day를 표시합니다.</p>\n'
     '    <div id="schoolApp" aria-live="polite"></div>\n'
     '    <p class="sch-foot">학교 · 학과 홈페이지, 커리어넷, 입시 경쟁률 사이트, 입시 기사를 모아 정리했습니다. '
     '원서 기간과 실기 내용은 해마다 바뀌므로 지원 전에 반드시 각 학교 모집요강으로 확인하세요.</p>\n'
     '    <p class="news__foot"><a class="pill-btn" href="consult.html">입시 상담 신청</a> '
     f'<a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">카카오톡으로 문의 ↗</a> '
-    '<a class="pill-btn" href="about.html#schools">입시 합격 실적</a></p>\n'
+    '<a class="pill-btn" href="results.html">날짜별 합격 소식</a></p>\n'
     '  </div>\n')
-schools_page = (head("School Finder | 이송희보컬레슨", "실용음악과 · K-POP · 뮤지컬 입시 학교 찾기. 4년제 대학 · 전문대학 · 예술고를 지역별로 고르면 보컬 실기 학과와 원서 기간, 실기 내용을 볼 수 있습니다.")
+schools_page = (head("School · 입시 | 이송희보컬레슨", "이송희보컬레슨 입시 합격 결과와 실용음악과 · K-POP · 뮤지컬 입시 학교 찾기. 4년제 대학 · 전문대학 · 예술고를 지역별로 고르면 보컬 실기 학과와 원서 기간, 실기 내용을 볼 수 있습니다.")
                 + '<main class="stage booking">\n'
                 + nav("about", "dark") + "\n"
                 + SCHOOLS_BODY
-                + "</main>\n" + foot("schools"))
+                + "</main>\n" + foot("schools", "passboard"))
 
 # ---------- 404: 없는 주소 (GitHub Pages가 어느 주소에서나 이 파일을 보여줌 → 링크는 / 로 시작하게 fill에서 바꿈) ----------
 # 예전 홈페이지(qshop) 주소로 들어오면 새 페이지로 보냄: 강사소개 · 온라인 강의 · 문의하기
