@@ -16,10 +16,10 @@
   // 위쪽 그림 = 대형 기획사 4곳 (원장님 2026-11-04 "YG, HYBE, SM, JYP 로고"). 로고 파일(img)을 받으면 assets/img/logos/에 넣고
   // img에 주소를 적으면 그림으로, 비어 있으면 이름 글자 칸으로 보여요.
   var LOGOS = [
-    { name: "YG", img: "" },
-    { name: "HYBE", img: "" },
-    { name: "SM", img: "" },
-    { name: "JYP", img: "" }
+    { name: "YG", img: "assets/img/logos/yg.webp" },
+    { name: "HYBE", img: "assets/img/logos/hybe.webp" },
+    { name: "SM", img: "assets/img/logos/sm.webp" },
+    { name: "JYP", img: "assets/img/logos/jyp.webp" }
   ];
 
   function show() {
