@@ -34,6 +34,11 @@ CREDIT_BANK = {
     "서경대학교 예술교육원": "univ",
     "한양대학교 미래인재교육원": "univ",
     "명지대학교 미래교육원": "univ",
+    # 원장님 2026-11-04 "4군데 모두 학점은행제": 과정 길이는 안 정해서 4년제 · 전문대학 두 칸에 다 보이고 "학교에 확인"으로
+    "서울종합예술실용학교(SAC)": "both",
+    "서울호서예술실용전문학교": "both",
+    "한국방송예술진흥원": "both",
+    "백석예술대학교 평생교육원": "both",
 }
 HIGH = {"예술고": "예술고", "특성화고": "특성화고", "대안학교": "대안학교"}
 FIX = {"수뉥": "수능"}  # 시트의 글자 오타
@@ -74,17 +79,19 @@ for i, r in enumerate(rows):
         if not cat:
             held.append(school)
             continue
-        sub = "학점은행 · 4년제(학사) 과정" if cat == "univ" else "학점은행 · 2년제(전문학사) 과정"
+        sub = {"univ": "학점은행 · 4년제(학사) 과정", "college": "학점은행 · 2년제(전문학사) 과정",
+               "both": "학점은행제 · 2년·4년 과정은 학교에 확인"}[cat]
     else:
         held.append(school)
         continue
     region = REGION_OF.get(sido)
-    if not region:
+    if not region and cat != "both":
         held.append(school)
         continue
     pas = cell(m, i)
-    out.append({
-        "cat": cat, "sub": sub, "region": region, "sido": sido, "sigungu": clean(sigungu),
+    for one in (["univ", "college"] if cat == "both" else [cat]):
+      out.append({
+        "cat": one, "sub": sub, "region": region or "", "sido": clean(sido), "sigungu": clean(sigungu),
         "school": school, "found": clean(found), "college": clean(college), "major": major, "kind": mkind,
         "apply": clean(cell(qr, i, 0)), "audition": clean(cell(qr, i, 1)), "home": cell(o, i),
         # 학원 합격 이력: 학과·캠퍼스가 확실한 것만 (시트에 "확인 필요"가 붙은 건 안 보여줌)
