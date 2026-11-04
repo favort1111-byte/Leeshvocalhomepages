@@ -54,10 +54,22 @@
     return best;
   }
   function norm(v) { return String(v || "").replace(/\s+/g, "").toLowerCase(); }
+  // 줄임말 (원장님 2026-11-04 "서울예대로 검색하면 안 나와요"): 첫 글자가 같고 나머지 글자가 학교 이름에 차례대로 들어 있으면
+  // 서울예대 → 서울예술대학교, 한예종 → 한국예술종합학교, 동아방송대 → 동아방송예술대학교, 한림예고 → 한림연예예술고등학교
+  function short(name, q) {
+    if (q.length < 2 || name.charAt(0) !== q.charAt(0)) return false;
+    for (var i = 1, j = 1; i < q.length; i++) {
+      j = name.indexOf(q.charAt(i), j);
+      if (j === -1) return false;
+      j++;
+    }
+    return true;
+  }
   function inQuery(x) {
     if (!query) return true;
     var q = norm(query);
-    return [x.school, x.college, x.major, x.kind, x.sido, x.sigungu, x.sub].some(function (v) { return norm(v).indexOf(q) !== -1; });
+    return [x.school, x.college, x.major, x.kind, x.sido, x.sigungu, x.sub].some(function (v) { return norm(v).indexOf(q) !== -1; })
+      || short(norm(x.school), q);
   }
 
   function save() {
@@ -76,7 +88,7 @@
     var box = el("div", "sch-search");
     var input = el("input", "sch-search__input");
     input.type = "search";
-    input.placeholder = "학교 · 학과 · 지역 검색";
+    input.placeholder = "학교 · 학과 · 지역 검색 (줄임말도 돼요: 서울예대, 동아방송대)";
     input.setAttribute("aria-label", "학교 · 학과 · 지역 검색");
     input.addEventListener("input", function () { query = input.value.trim(); render(); });
     box.appendChild(input);
