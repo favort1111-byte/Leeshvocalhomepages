@@ -252,7 +252,14 @@
       }
       if (box.childNodes.length === 1) box.appendChild(el("p", "sch-guide__none", "요약은 준비 중입니다. 아래 모집요강 · 입학처에서 바로 확인할 수 있습니다."));
       if (x.check) box.appendChild(el("p", "sch-note", "2027 모집 여부는 학교 입학처에서 꼭 확인하세요."));
-      if (x.checked) box.appendChild(el("p", "sch-guide__src", x.checked.replace(/-/g, ".") + " 모집요강 기준 · 바뀔 수 있으니 지원 전 모집요강을 꼭 확인하세요."));
+      if (x.checked) box.appendChild(el("p", "sch-guide__src", x.checked.replace(/-/g, ".") + " 모집요강 기준"));
+      // 안내 문구 (원장님 2026-11-04, 문구 그대로)
+      var warn = el("p", "sch-guide__warn", "본 입시 정보는 참고용으로 정리한 자료입니다. 모집요강은 매년 변경될 수 있으니, 정확한 내용은 반드시 각 학교 홈페이지 또는 입학처에 직접 확인해 주세요. 궁금한 점은 언제든 ");
+      var ask = el("a", null, "상담");
+      ask.href = "consult.html";
+      warn.appendChild(ask);
+      warn.appendChild(document.createTextNode("으로 도와드릴게요 ☺️"));
+      box.appendChild(warn);
       m.appendChild(box);
       if (x.home) m.appendChild(link("sch-link", "학과 홈페이지 ↗", x.home));
       li.appendChild(m);

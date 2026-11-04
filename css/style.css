@@ -1050,6 +1050,8 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .sch-guide .sch-sched__box{background:#fff;}
 .sch-guide__none{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-body);}
 .sch-guide__src{margin:4px 0 0;font-size:12px;color:var(--ink-body);}
+.sch-guide__warn{margin:8px 0 0;padding:9px 11px;border-radius:8px;background:#FFF8E1;font-size:13px;line-height:1.6;color:var(--ink-body);}
+.sch-guide__warn a{color:var(--sch-green);font-weight:700;text-decoration:underline;}
 .sch-g{display:grid;grid-template-columns:84px 1fr;gap:4px 10px;padding:9px 0;border-top:1px solid rgba(29,73,72,.10);}
 .sch-guide__h + .sch-g,.sch-guide__h + .sch-guide__none + .sch-g{border-top:0;padding-top:2px;}
 .sch-g__k{margin:0;font-size:13.5px;font-weight:700;color:var(--sch-green);line-height:1.6;}
