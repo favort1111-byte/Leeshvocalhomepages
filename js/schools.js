@@ -255,8 +255,11 @@
       if (x.checked) box.appendChild(el("p", "sch-guide__src", x.checked.replace(/-/g, ".") + " 모집요강 기준"));
       // 안내 문구 (원장님 2026-11-04, 문구 그대로)
       var warn = el("p", "sch-guide__warn", "본 입시 정보는 참고용으로 정리한 자료입니다. 모집요강은 매년 변경될 수 있으니, 정확한 내용은 반드시 각 학교 홈페이지 또는 입학처에 직접 확인해 주세요. 궁금한 점은 언제든 ");
+      // "상담" = 카카오톡 상담 채널 1:1 채팅으로 바로 (원장님 2026-11-04)
       var ask = el("a", null, "상담");
-      ask.href = "consult.html";
+      ask.href = ((window.LEESH && window.LEESH.kakao) || "https://pf.kakao.com/_xgNYbK").replace(/\/$/, "") + "/chat";
+      ask.target = "_blank";
+      ask.rel = "noopener";
       warn.appendChild(ask);
       warn.appendChild(document.createTextNode("으로 도와드릴게요 ☺️"));
       box.appendChild(warn);
