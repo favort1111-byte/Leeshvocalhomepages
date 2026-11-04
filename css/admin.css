@@ -126,3 +126,7 @@ video.adm__player{height:auto;max-height:240px;}
 /* 월말평가: 학생에게 보이는 모양 보기 */
 .adm__evalview{margin-top:8px;max-width:460px;} /* 휴대폰 화면 너비쯤, 카드는 js/evalcard.js */
 .adm__drawer.is-drop{outline:3px dashed #6E3B28;outline-offset:-6px;background:#FFF8EE;}
+
+/* 수업 기록: 지난 일지 "표로 보기" — 넓은 표는 카드 안에서 옆으로 밀어 보기 (2026-11-04) */
+.adm__cols > div,#noteList,#noteList > li{min-width:0;max-width:100%;}
+.adm__gridwrap{max-width:100%;max-height:70vh;overflow:auto;margin-top:10px;border-radius:8px;}

@@ -625,10 +625,13 @@
     notes.textContent = "";
     if (!id) { notes.appendChild(el("li", "sys-empty", "수강 ID를 먼저 발급해주세요.")); return; }
     var q = "member_id=eq." + encodeURIComponent(id);
-    api("lesson_notes?" + q + "&order=lesson_date.desc,id.desc&limit=50").then(function (res) {
+    // 지난 일지 전부 (원장님 2026-11-04: 예전엔 최근 50개만 보여서 오래된 수업이 안 보였음), 처음엔 20개 + 더 보기
+    api("lesson_notes?" + q + "&order=lesson_date.desc,id.desc&limit=1000").then(function (res) {
       if (!res.ok) { notes.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
       if (!res.data.length) notes.appendChild(el("li", "sys-empty", "아직 노트가 없어요."));
-      res.data.forEach(function (n) {
+      else notes.appendChild(el("li", "sys-note", "지난 일지 " + res.data.length + "개 (최근 수업부터)"));
+      var more = null;
+      res.data.forEach(function (n, i) {
         var li = el("li", "adm__card");
         var top = el("div", "adm__cardtop");
         top.appendChild(el("strong", null, n.lesson_date));
@@ -637,8 +640,29 @@
         top.appendChild(deleteButton("lesson_notes", n.id, loadMemberRecords));
         li.appendChild(top);
         li.appendChild(LeeshGrid.summary(n, LFIELDS));
+        if (n.sheet) {  // 구글시트처럼 표로도 보기 (선생님 화면과 같은 모양)
+          var grid = null, tg = el("button", "sys-link", "표로 보기");
+          tg.type = "button";
+          tg.addEventListener("click", function () {
+            if (!grid) { grid = el("div", "adm__gridwrap"); grid.appendChild(LeeshGrid.view(n.sheet)); li.appendChild(grid); tg.textContent = "표 닫기"; }
+            else { grid.hidden = !grid.hidden; tg.textContent = grid.hidden ? "표로 보기" : "표 닫기"; }
+          });
+          top.insertBefore(tg, top.lastChild);
+        }
+        if (i >= 20) li.hidden = true;
         notes.appendChild(li);
+        if (i === 20) {
+          more = el("li");
+          var mb = el("button", "sys-btn", "더 보기 (" + (res.data.length - 20) + "개)");
+          mb.type = "button";
+          mb.addEventListener("click", function () {
+            notes.querySelectorAll("li.adm__card[hidden]").forEach(function (x) { x.hidden = false; });
+            more.remove();
+          });
+          more.appendChild(mb);
+        }
       });
+      if (more) notes.appendChild(more);
     });
     loadLessonSheets(id);
   }
