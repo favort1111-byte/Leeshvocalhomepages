@@ -1,13 +1,77 @@
 {
  "note": "합격생 인터뷰 영상 (원장님 2026-11-04, 드라이브 '인터뷰영상모음'). 순서대로 보여요. 제목은 화면에 안 나와요. 새 영상은 drive에 드라이브 파일 ID를 적어 더하면 GitHub Action이 복사해요.",
  "videos": [
-  {"key": "v1", "drive": "1VI8dNeNrgBrzT6uCyC1zzZmvJNs0F0K-"},
-  {"key": "v2", "drive": "1CS-HQAQ4hD9C1fTIW-Htap5AMiNNCV4F"},
-  {"key": "v3", "drive": "1iPUDuCinccdBlAKvUEREiP3Jml5Seaw4"},
-  {"key": "v4", "drive": "1rQaoJPUWZDYrhPOuv_lm28R1TAPzIVcA"},
-  {"key": "v5", "drive": "1qB4PwA-ZfvkQ5swJn0b5tYqLFieh5apb"},
-  {"key": "v6", "drive": "1Zt4uD_KHSmf0WnNHNWyoUVnPm9FcaX0f"},
-  {"key": "v7", "drive": "1WPecqWT37jMvGQCcwNqvcopoYVkE4Wa5"},
-  {"key": "v8", "drive": "1e6SK79UrMeLQShNj28h8dKGuNE4mVtLn"}
+  {
+   "key": "v1",
+   "drive": "1VI8dNeNrgBrzT6uCyC1zzZmvJNs0F0K-",
+   "file": "assets/interviews/v1.mp4",
+   "poster": "assets/interviews/v1.jpg",
+   "w": 720,
+   "h": 1280,
+   "sec": 65
+  },
+  {
+   "key": "v2",
+   "drive": "1CS-HQAQ4hD9C1fTIW-Htap5AMiNNCV4F",
+   "file": "assets/interviews/v2.mp4",
+   "poster": "assets/interviews/v2.jpg",
+   "w": 720,
+   "h": 1280,
+   "sec": 73
+  },
+  {
+   "key": "v3",
+   "drive": "1iPUDuCinccdBlAKvUEREiP3Jml5Seaw4",
+   "file": "assets/interviews/v3.mp4",
+   "poster": "assets/interviews/v3.jpg",
+   "w": 360,
+   "h": 640,
+   "sec": 52
+  },
+  {
+   "key": "v4",
+   "drive": "1rQaoJPUWZDYrhPOuv_lm28R1TAPzIVcA",
+   "file": "assets/interviews/v4.mp4",
+   "poster": "assets/interviews/v4.jpg",
+   "w": 720,
+   "h": 1280,
+   "sec": 45
+  },
+  {
+   "key": "v5",
+   "drive": "1qB4PwA-ZfvkQ5swJn0b5tYqLFieh5apb",
+   "file": "assets/interviews/v5.mp4",
+   "poster": "assets/interviews/v5.jpg",
+   "w": 1280,
+   "h": 720,
+   "sec": 306
+  },
+  {
+   "key": "v6",
+   "drive": "1Zt4uD_KHSmf0WnNHNWyoUVnPm9FcaX0f",
+   "file": "assets/interviews/v6.mp4",
+   "poster": "assets/interviews/v6.jpg",
+   "w": 720,
+   "h": 1280,
+   "sec": 86
+  },
+  {
+   "key": "v7",
+   "drive": "1WPecqWT37jMvGQCcwNqvcopoYVkE4Wa5",
+   "file": "assets/interviews/v7.mp4",
+   "poster": "assets/interviews/v7.jpg",
+   "w": 720,
+   "h": 1280,
+   "sec": 111
+  },
+  {
+   "key": "v8",
+   "drive": "1e6SK79UrMeLQShNj28h8dKGuNE4mVtLn",
+   "file": "assets/interviews/v8.mp4",
+   "poster": "assets/interviews/v8.jpg",
+   "w": 720,
+   "h": 1280,
+   "sec": 70
+  }
  ]
 }
