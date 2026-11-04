@@ -120,7 +120,8 @@ function listFiles_() {
         if (type === "application/vnd.google-apps.shortcut" && f.shortcutDetails) {
           if (f.shortcutDetails.targetMimeType !== "application/vnd.google-apps.spreadsheet") return;
           try {
-            var t = drive_("files/" + f.shortcutDetails.targetFileId, { fields: "id,name,modifiedTime,trashed", supportsAllDrives: true });
+            // Drive API의 이름은 targetId (2026-11-04: targetFileId로 잘못 써서 바로가기만 있는 이수빈 레슨시트가 통째로 빠졌음)
+            var t = drive_("files/" + (f.shortcutDetails.targetId || f.shortcutDetails.targetFileId), { fields: "id,name,modifiedTime,trashed", supportsAllDrives: true });
             if (t.trashed) return;
             id = t.id; name = t.name; mod = t.modifiedTime; type = "application/vnd.google-apps.spreadsheet";
           } catch (e) { return; }
@@ -229,6 +230,18 @@ function tabDate_(title, today) {
   if (y < 2020 || y > 2035 || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
   var dt = new Date(Date.UTC(y, mo - 1, d));
   if (dt.getUTCMonth() !== mo - 1) return null;
+  // 요일이 적혀 있는데 안 맞으면 앞뒤 해에서 맞는 해로 ("2027-7-21 화"는 2026-07-21 화요일의 연도 오타, 2026-11-04)
+  var wd = /(?:^|[^가-힣])([일월화수목금토])(?:요일)?(?![가-힣])/.exec(s.slice(m.index + m[0].length));
+  if (wd) {
+    var want = "일월화수목금토".indexOf(wd[1]);
+    if (dt.getUTCDay() !== want) {
+      [-1, 1].some(function (k) {
+        var t2 = new Date(Date.UTC(y + k, mo - 1, d));
+        if (t2.getUTCMonth() === mo - 1 && t2.getUTCDay() === want) { y += k; return true; }
+        return false;
+      });
+    }
+  }
   return y + "-" + (mo < 10 ? "0" : "") + mo + "-" + (d < 10 ? "0" : "") + d;
 }
 
