@@ -13,7 +13,14 @@
     if (text != null) n.textContent = text;
     return n;
   }
-  var PICS = ["assets/img/blog/lesson.webp", "assets/img/blog/director-2026.webp", "assets/img/blog/room-1.webp"];
+  // 위쪽 그림 = 대형 기획사 4곳 (원장님 2026-11-04 "YG, HYBE, SM, JYP 로고"). 로고 파일(img)을 받으면 assets/img/logos/에 넣고
+  // img에 주소를 적으면 그림으로, 비어 있으면 이름 글자 칸으로 보여요.
+  var LOGOS = [
+    { name: "YG", img: "" },
+    { name: "HYBE", img: "" },
+    { name: "SM", img: "" },
+    { name: "JYP", img: "" }
+  ];
 
   function show() {
     var back = el("div", "pop");
@@ -22,11 +29,16 @@
     box.setAttribute("aria-modal", "true");
     box.setAttribute("aria-labelledby", "popTitle");
     var pics = el("div", "pop__pics");
-    PICS.forEach(function (src, i) {
-      var img = el("img", "pop__pic pop__pic--" + i);
-      img.src = src;
-      img.alt = "";
-      pics.appendChild(img);
+    pics.setAttribute("aria-label", LOGOS.map(function (l) { return l.name; }).join(" · "));
+    LOGOS.forEach(function (l, i) {
+      var tile = el("span", "pop__logo pop__logo--" + i);
+      if (l.img) {
+        var img = el("img");
+        img.src = l.img;
+        img.alt = l.name;
+        tile.appendChild(img);
+      } else tile.textContent = l.name;
+      pics.appendChild(tile);
     });
     box.appendChild(pics);
     var h = el("h2", "pop__title", "📣 합격자 인터뷰 보러가기!");
