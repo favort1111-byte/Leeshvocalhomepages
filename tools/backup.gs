@@ -3,7 +3,8 @@
  *
  * ▶ script.google.com에서 원장님 구글 계정(favort1111@gmail.com)으로 "새 프로젝트"를 만들어요 (레슨 시트 가져오기와 따로).
  * ▶ 하루 한 번 새벽 3시에 홈페이지 데이터를 표마다 받아서 zip 파일 하나로 저장해요 (예: 홈페이지백업_2026-11-05.zip).
- * ▶ 90일이 지난 백업 파일은 휴지통으로 옮겨요 (휴지통에서 30일 동안 되살릴 수 있어요). 이 스크립트가 만든 파일만 건드려요.
+ * ▶ 백업 파일은 지우지 않고 계속 쌓아요 (원장님 2026-11-04 "굳이 휴지통에 보낼 필요가 있어?" · 자동 삭제는 켜지 않는 학원 방침).
+ *   하루 2MB쯤이라 1년에 1GB 안쪽이에요. 오래된 것은 원장님이 필요할 때 직접 지워요.
  * ▶ 담기는 것: 수강생 명단 · 레슨 노트 · 곡·자료 · 연습 일지 · 레퍼토리 · 예약 · 상담 · 신청서 · 월말평가 점수 · 공지 · 건의함(암호화된 그대로) …
  *   담기지 않는 것: 노래 녹음 · 평가지 사진 같은 파일, 비밀번호 · 열쇠 · 토큰.
  * ▶ 개인정보가 들어 있으니 "홈페이지백업파일" 폴더는 다른 사람과 공유하지 마세요.
@@ -17,7 +18,6 @@ var API = "https://lsdmokkecmymtxpmiwbm.supabase.co/rest/v1/rpc/";
 var PUBLIC_KEY = "sb_publishable_e65wHiIp1Psl4bNVaeU-cA_Df2VmJ-9"; // 홈페이지에 공개된 키 (비밀 아님)
 var FOLDER_NAME = "홈페이지백업파일";
 var FILE_PREFIX = "홈페이지백업_";
-var KEEP_DAYS = 90;
 var PAGE = 200;
 
 /** 처음 한 번만: 홈페이지에 이 스크립트를 등록하고, 매일 새벽 3시에 저절로 돌게 해요. */
@@ -72,7 +72,6 @@ function run_() {
     var file = folder.createFile(zip);
     result.file = file.getName();
     result.bytes = file.getSize();
-    result.cleaned = cleanup_(folder);
   } catch (e) {
     result.ok = false;
     result.error = String(e.message || e).slice(0, 300);
@@ -88,19 +87,6 @@ function folder_() {
   var it = DriveApp.getFoldersByName(FOLDER_NAME);
   if (!it.hasNext()) throw new Error('드라이브에 "' + FOLDER_NAME + '" 폴더가 없어요.');
   return it.next();
-}
-
-/** KEEP_DAYS일 지난 백업 zip(이 스크립트가 만든 이름)만 휴지통으로 */
-function cleanup_(folder) {
-  var limit = Date.now() - KEEP_DAYS * 86400000, n = 0, files = folder.getFiles();
-  while (files.hasNext()) {
-    var f = files.next();
-    if (f.getName().indexOf(FILE_PREFIX) === 0 && /\.zip$/.test(f.getName()) && f.getDateCreated().getTime() < limit) {
-      f.setTrashed(true);
-      n++;
-    }
-  }
-  return n;
 }
 
 function call_(fn, args) {
