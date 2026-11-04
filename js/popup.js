@@ -1,11 +1,10 @@
-// 첫 화면 팝업 (원장님 2026-11-04): "합격자 인터뷰 보러가기" — 올라간 인터뷰(public.interviews)가 있을 때만.
+// 첫 화면 팝업 (원장님 2026-11-04): "합격자 인터뷰 보러가기" — 인터뷰 영상(data/interview_videos.json)이나 올라간 인터뷰(public.interviews)가 있을 때만.
 // 닫기 = 이번 방문 동안 안 뜸, 다시 보지 않기 = 이 기기에서 계속 안 뜸. 화면이 켜지는 첫 애니메이션이 끝난 뒤에 떠요.
 (function () {
   var KEY = "leesh_popup_interview", SKEY = "leesh_popup_closed";
   function get(store, k) { try { return window[store].getItem(k); } catch (e) { return null; } }
   function set(store, k, v) { try { window[store].setItem(k, v); } catch (e) { /* 사생활 보호 창 */ } }
   if (get("localStorage", KEY) || get("sessionStorage", SKEY) || location.hash) return;
-  if (!window.LeeshAPI || !LeeshAPI.enabled()) return;
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -88,7 +87,16 @@
     })();
   }
 
-  LeeshAPI.request("/rest/v1/interviews?select=id&published=eq.true&limit=1", { headers: LeeshAPI.headers() }).then(function (res) {
-    if (res.ok && Array.isArray(res.data) && res.data.length) whenReady(show);
-  });
+  // 인터뷰 영상(data/interview_videos.json)이나 올라간 인터뷰 글이 하나라도 있으면
+  var shown = false;
+  function go() { if (!shown) { shown = true; whenReady(show); } }
+  var base = (window.LEESH && window.LEESH.blogBase) || "";
+  fetch(base + "data/interview_videos.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) {
+    if ((d.videos || []).some(function (v) { return v.file; })) go();
+  }).catch(function () { /* 없으면 글만 확인 */ });
+  if (window.LeeshAPI && LeeshAPI.enabled()) {
+    LeeshAPI.request("/rest/v1/interviews?select=id&published=eq.true&limit=1", { headers: LeeshAPI.headers() }).then(function (res) {
+      if (res.ok && Array.isArray(res.data) && res.data.length) go();
+    });
+  }
 })();

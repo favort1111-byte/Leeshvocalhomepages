@@ -1,0 +1,13 @@
+{
+ "note": "합격생 인터뷰 영상 (원장님 2026-11-04, 드라이브 '인터뷰영상모음'). 순서대로 보여요. 제목은 화면에 안 나와요. 새 영상은 drive에 드라이브 파일 ID를 적어 더하면 GitHub Action이 복사해요.",
+ "videos": [
+  {"key": "v1", "drive": "1VI8dNeNrgBrzT6uCyC1zzZmvJNs0F0K-"},
+  {"key": "v2", "drive": "1CS-HQAQ4hD9C1fTIW-Htap5AMiNNCV4F"},
+  {"key": "v3", "drive": "1iPUDuCinccdBlAKvUEREiP3Jml5Seaw4"},
+  {"key": "v4", "drive": "1rQaoJPUWZDYrhPOuv_lm28R1TAPzIVcA"},
+  {"key": "v5", "drive": "1qB4PwA-ZfvkQ5swJn0b5tYqLFieh5apb"},
+  {"key": "v6", "drive": "1Zt4uD_KHSmf0WnNHNWyoUVnPm9FcaX0f"},
+  {"key": "v7", "drive": "1WPecqWT37jMvGQCcwNqvcopoYVkE4Wa5"},
+  {"key": "v8", "drive": "1e6SK79UrMeLQShNj28h8dKGuNE4mVtLn"}
+ ]
+}

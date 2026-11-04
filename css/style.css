@@ -1076,6 +1076,24 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 
 /* 합격자 인터뷰 (interview.html) */
 .iv-list{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:16px;}
+.ivv{margin:18px 0 8px;}
+.ivv__h{margin:0;font-size:19px;font-weight:700;color:var(--ink);}
+.ivv__note{margin:4px 0 12px;font-size:14px;color:var(--ink-body);}
+.ivv__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.ivv__tile{position:relative;display:block;width:100%;aspect-ratio:9/16;padding:0;border:0;border-radius:12px;overflow:hidden;cursor:pointer;background:#1D4948;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+.ivv__tile img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .25s;}
+.ivv__tile:hover img,.ivv__tile:focus-visible img{transform:scale(1.04);}
+.ivv__play{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,255,255,.92);color:#1D4948;font-size:20px;line-height:52px;text-align:center;padding-left:4px;box-shadow:0 2px 10px rgba(0,0,0,.25);}
+.ivv__time{position:absolute;right:8px;bottom:8px;padding:1px 7px;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;}
+.ivv-open{overflow:hidden;}
+.ivv-pop{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,20,20,.86);}
+.ivv-pop__box{display:flex;flex-direction:column;align-items:center;gap:10px;width:min(960px,100%);}
+.ivv-pop__box.is-tall{width:min(420px,100%);}
+.ivv-pop__video{display:block;width:100%;max-height:calc(100vh - 110px);border-radius:12px;background:#000;}
+.ivv-pop__bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
+.ivv-pop__btn{padding:8px 14px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:14px;cursor:pointer;}
+.ivv-pop__btn--x{background:#fff;color:#1D4948;border-color:#fff;}
+.ivv-pop__n{min-width:56px;text-align:center;color:#fff;font-size:14px;}
 .iv-card{padding:18px 20px;border-radius:14px;background:#fff;border:1px solid rgba(29,73,72,.18);box-shadow:0 1px 3px rgba(0,0,0,.05);color:var(--ink);}
 .iv-card__img{display:block;width:100%;max-height:420px;object-fit:cover;border-radius:10px;margin:0 0 12px;}
 .iv-card__tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px;}

@@ -1,0 +1,29 @@
+# 합격생 인터뷰 영상 (드라이브 "인터뷰영상모음" 폴더)을 홈페이지 assets/interviews/로 복사 (tools/interview_videos.py).
+# data/interview_videos.json 에 드라이브 영상을 더해서 main에 올리면 저절로, 또는 Actions → Run workflow.
+name: Interview videos
+on:
+  push:
+    branches: [main]
+    paths: [data/interview_videos.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: interview-videos
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: python3 tools/interview_videos.py
+      - name: Commit videos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/interviews data/interview_videos.json
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "Copy interview videos"
+          git pull --rebase origin main
+          git push

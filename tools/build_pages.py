@@ -789,6 +789,7 @@ INTERVIEW_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">interview</h1>\n'
     '    <p class="booking__note">대형 · 유명 기획사 합격생의 선곡, 오디션 꿀팁, 스타일링입니다. 학생 이름은 이니셜로 표기합니다.</p>\n'
+    '    <section class="ivv" id="ivVideos" aria-label="합격생 인터뷰 영상" hidden></section>\n'
     '    <ul class="iv-list" id="interviewList" aria-live="polite"><li class="news__empty">불러오는 중…</li></ul>\n'
     + news_foot() +
     '  </div>\n')
