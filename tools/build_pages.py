@@ -18,7 +18,7 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
          # 글씨체는 G마켓 산스 (css/system.css @font-face). Noto Sans KR은 못 불러올 때 대신 쓰는 것
          '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">')
 
-PAGES = [("home", "index.html"), ("about", "about.html"), ("audition", "audition.html"), ("contact", "contact.html"),
+PAGES = [("home", "index.html"), ("about", "about.html"), ("audition", "audition.html"), ("school", "schools.html"), ("contact", "contact.html"),
          ("consult", "consult.html"), ("booking", "booking.html")]
 
 def nav(current, theme):
@@ -855,7 +855,7 @@ SCHOOLS_BODY = (
     '  </div>\n')
 schools_page = (head("School · 입시 | 이송희보컬레슨", "이송희보컬레슨 입시 합격 결과와 실용음악과 · K-POP · 뮤지컬 입시 학교 찾기. 4년제 대학 · 전문대학 · 예술고를 지역별로 고르면 보컬 실기 학과와 원서 기간, 실기 내용을 볼 수 있습니다.")
                 + '<main class="stage booking">\n'
-                + nav("about", "dark") + "\n"
+                + nav("school", "dark") + "\n"
                 + SCHOOLS_BODY
                 + "</main>\n" + foot("schools", "passboard"))
 
