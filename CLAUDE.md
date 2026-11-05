@@ -19,7 +19,7 @@
   토큰으로 **못 하는 것**: Auth 설정 변경(`project_admin_write` 필요), 사용자 만들기 → 원장님이 대시보드에서.
 - 지우기·되돌리기 어려운 작업은 원장님께 먼저 묻고, 큰 변경 전에는 백업. 설정을 바꾼 뒤에는 결과를 확인하고 다음 단계로 (2026-10-27, 확인 없이 가입 시험을 보내 시험 계정이 생겼던 일이 있음 → 바로 삭제).
 - **관리자 화면** `admin.html`: 주소는 누구나 열 수 있지만 로그인은 `public.admins`에 있는 이메일 + **이메일·비밀번호 로그인**만 (`is_admin`이 provider = email 확인, 마이그레이션 `leesh_admin_email_only`, 2026-10-28). 데이터는 RLS가 막음.
-  관리자 **2명** (원장님 + 관리자 1명, 2026-10-28 이메일 초대 → `public.admins`에 추가. 다른 사람 이메일은 저장소에 적지 않기). 더하기: 원장님이 Authentication → Users → Add user → Send invitation → 원장님이 이메일을 직접 말하면 admins에 insert. 빼기: admins에서 delete (원장님께 먼저 확인).
+  관리자 **3명** (처음 계정 + 관리자 1명(2026-10-28) + 원장님 본인 이메일(2026-11-05, 초대 → `public.admins`에 추가). 다른 사람 이메일은 저장소에 적지 않기). 원장님은 관리자(이메일 로그인)와 선생님 화면(카카오 로그인, 선생님 "원장님")을 둘 다 씀. 더하기: 원장님이 Authentication → Users → Add user → Send invitation → 원장님이 이메일을 직접 말하면 admins에 insert. 빼기: admins에서 delete (원장님께 먼저 확인).
   **비밀번호 정하기/잊었을 때:** 관리자 로그인 화면 "처음이거나 비밀번호를 모르겠어요" → 이메일로 링크(`/auth/v1/recover`, redirect_to = admin.html) → 돌아오면 "새 비밀번호 정하기" (`js/admin.js` mailLink, PUT `/auth/v1/user`). 대시보드 초대 메일 링크는 site_url(leeshlesson.com, 아직 옛 서버)로 가서 못 씀 → 초대한 뒤 이 버튼으로 비밀번호 정하기.
 - 2026-10-27 완료: 새 가입 막기(원장님), 관리자 favort1111@gmail.com 등록, 방 이름 **B1~B5(연습실) · C hall(춤연습실)**, 마이그레이션 `leesh_first_pin_change`(0000 = 임시 비밀번호, 첫 로그인 때 `member_change_pin`으로 바꿔야 예약·내 폴더 사용).
 - 수강생 명단 원본: 구글시트 "학생관리 통합 관리자"의 **수강ID 관리** 탭 (E001~). **읽기만, 절대 수정 금지** (원장님 지시).
