@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=74b04e47">
-<link rel="stylesheet" href="css/system.css?v=e1ecbd8b">
+<link rel="stylesheet" href="css/system.css?v=7191a150">
 </head>
 <body>
 <main class="stage booking">
@@ -46,6 +46,11 @@
         <p>연습실 예약 시스템을 준비하고 있습니다. 그동안은 카카오톡으로 예약해주세요.</p>
         <a class="sys-btn" href="https://pf.kakao.com/_xgNYbK" target="_blank" rel="noopener">카카오톡으로 예약하기</a>
       </div>
+      <div class="sys-soon" id="bookingSoon" hidden>
+        <p class="sys-soon__tag">준비 중</p>
+        <h2 class="sys-soon__h">연습실 예약은 곧 시작해요</h2>
+        <p>지금은 홈페이지 예약을 잠깐 멈췄어요. 시작하면 학원에서 알려드릴게요.<br>궁금한 점은 <a href="https://pf.kakao.com/_xgNYbK" target="_blank" rel="noopener">카카오톡</a>으로 문의해주세요.</p>
+      </div>
       <div class="sys-board" id="boardWrap">
         <h2 class="sys-h">빈 시간 보기</h2>
         <div class="sys-chips" id="days"></div>
@@ -59,7 +64,7 @@
           <h2 class="sys-h">내 예약</h2>
           <ul class="sys-list" id="myList"></ul>
         </div>
-        <div class="sys-section">
+        <div class="sys-section" id="newBook">
           <h2 class="sys-h">새 예약</h2>
           <p class="sys-note" id="rules"></p>
           <div id="rooms"></div>
@@ -75,10 +80,10 @@
   </div>
 </main>
 <footer class="legal"><a href="privacy.html"><b>개인정보처리방침</b></a><a href="guide.html">홈페이지 사용법</a><span>© 이송희 보컬레슨 학원 · 서울 강남구 테헤란로55길 21 미승(태원)빌딩 2층 <span class="legal__tel">(상담문의 : <a href="tel:01044585448">010-4458-5448</a>)</span></span></footer>
-<script src="js/config.js?v=496155cd"></script>
+<script src="js/config.js?v=c5291d1d"></script>
 <script src="js/api.js?v=9369384d"></script>
 <script src="js/signin.js?v=5d1163d4"></script>
-<script src="js/booking.js?v=eb9a9958"></script>
+<script src="js/booking.js?v=ec22bc19"></script>
 <script src="js/pagenav.js?v=3b47d44f"></script>
 </body>
 </html>

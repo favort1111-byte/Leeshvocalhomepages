@@ -334,3 +334,10 @@
 .evalr__zoom{position:fixed;inset:0;z-index:100;overflow:auto;background:rgba(20,14,10,.92);padding:56px 8px 24px;-webkit-overflow-scrolling:touch;}
 .evalr__zoom img{display:block;width:100%;max-width:900px;height:auto;margin:0 auto;}
 .evalr__close{position:fixed;top:10px;right:10px;z-index:1;min-height:40px;padding:0 14px;border:0;border-radius:999px;background:#FBF3E4;color:#2B2522;font:inherit;font-size:14px;cursor:pointer;}
+
+/* 연습실 예약 잠깐 멈춤 (원장님 2026-11-05) */
+.sys-soon{margin:0 0 20px;padding:22px 20px;border-radius:12px;background:#FFF4C9;color:#2B2522;text-align:center;}
+.sys-soon__tag{display:inline-block;margin:0 0 8px;padding:2px 12px;border-radius:999px;background:#1D4948;color:#fff;font-size:13px;letter-spacing:.06em;}
+.sys-soon__h{margin:0 0 8px;font-size:20px;font-weight:700;}
+.sys-soon p{margin:0;line-height:1.7;}
+.sys-soon a{color:#1D4948;font-weight:700;}

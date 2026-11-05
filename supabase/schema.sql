@@ -4350,3 +4350,100 @@ begin
     'id', new_id, 'room', room.name, 'date', d, 'start', private.hhmm(st), 'end', private.hhmm(en)));
 end $function$
 ;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_booking_pause (2026-11-05)
+-- 연습실 예약 잠깐 멈춤 (원장님 2026-11-05 "학생들 다 가입시켜놓고 한번에 시작"). 화면은 config.js bookingOpen: false → "준비 중".
+-- 다시 열 때는 둘 다: update public.settings set booking_open = true; + config.js bookingOpen: true
+alter table public.settings add column if not exists booking_open boolean not null default true;
+update public.settings set booking_open = false where id = 1;
+CREATE OR REPLACE FUNCTION public.booking_create(p_id text, p_pin text, p_room text, p_date text, p_start text, p_hours integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  s public.settings;
+  t timestamp := private.now_kst();
+  today date := t::date;
+  now_min int := extract(hour from t)::int * 60 + extract(minute from t)::int;
+  d date;
+  room public.rooms;
+  st int := private.to_min(p_start);
+  en int;
+  used int;
+  new_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into s from public.settings where id = 1;
+  -- 연습실 예약 잠깐 멈춤 (원장님 2026-11-05: 학생들 다 가입시킨 뒤 한 번에 시작). 다시 열기: update public.settings set booking_open = true;
+  if not coalesce(s.booking_open, true) then
+    return private.fail('연습실 예약은 준비 중이에요. 시작하면 학원에서 알려드릴게요.');
+  end if;
+
+  begin
+    d := p_date::date;
+  exception when others then
+    return private.fail('날짜 형식이 올바르지 않습니다.');
+  end;
+  if d is null then return private.fail('날짜 형식이 올바르지 않습니다.'); end if;
+  if d < today then return private.fail('지난 날짜는 예약할 수 없습니다.'); end if;
+  if d > today + s.max_days then
+    return private.fail(case when s.max_days = 0 then '예약은 당일만 할 수 있어요. 매일 밤 12시에 그날 예약이 열려요.'
+                             when s.max_days = 1 then '예약은 오늘과 내일만 할 수 있어요. 매일 밤 12시에 다음 날 예약이 열려요.'
+                             else '예약은 오늘부터 ' || s.max_days || '일 뒤까지만 가능합니다.' end);
+  end if;
+
+  select * into room from public.rooms where name = p_room and active;
+  if room.id is null then
+    return private.fail('선택한 연습실을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.');
+  end if;
+
+  if st is null then return private.fail('시작 시간이 올바르지 않습니다.'); end if;
+  if p_hours is null or p_hours < 1 then return private.fail('이용 시간을 선택해주세요.'); end if;
+  if p_hours * 60 > s.max_minutes then
+    return private.fail('한 번에 최대 ' || s.max_minutes / 60 || '시간까지 예약할 수 있습니다.');
+  end if;
+  en := st + p_hours * 60;
+  if (st - s.open_min) % s.unit_min <> 0 then
+    return private.fail('예약은 ' || s.unit_min || '분 단위로만 가능합니다.');
+  end if;
+  if st < s.open_min or en > s.close_min then
+    return private.fail('운영 시간(' || private.hhmm(s.open_min) || '~' || private.hhmm(s.close_min) || ') 안에서만 예약할 수 있습니다.');
+  end if;
+  if d = today and st <= now_min then
+    return private.fail('이미 시작한 시간이에요. 다음 시간부터 예약할 수 있어요.');
+  end if;
+
+  -- 같은 사람의 동시 요청을 한 줄로 세워 하루 최대 시간 검사가 새지 않게 합니다.
+  perform pg_advisory_xact_lock(hashtext('member:' || mid));
+  select coalesce(sum(end_min - start_min), 0) into used
+    from public.bookings where member_id = mid and day = d and status = '확정';
+  if used + (en - st) > s.daily_max_minutes then
+    return private.fail('하루 최대 ' || trim_scale(s.daily_max_minutes / 60.0) || '시간까지 예약할 수 있습니다. (이날 이미 '
+      || trim_scale(used / 60.0) || '시간 예약)');
+  end if;
+
+  -- 같은 방 · 같은 날 예약도 한 줄로 세워요 (2026-11-05 동시 접속 시험: 수십 명이 한꺼번에 같은 시간을 누르면
+  -- 겹침 검사끼리 서로 기다리다 deadlock이 났음 → 순서: 사람 → 방, 방은 하나라서 서로 물고 늘어질 일이 없음)
+  perform pg_advisory_xact_lock(hashtext('room:' || room.id || ':' || d));
+  begin
+    insert into public.bookings (room_id, member_id, day, start_min, end_min)
+    values (room.id, mid, d, st, en) returning id into new_id;
+  exception when exclusion_violation then
+    if sqlerrm like '%bookings_no_member_overlap%' then
+      return private.fail('같은 시간에 이미 다른 연습실을 예약하셨습니다.');
+    end if;
+    return private.fail('방금 다른 예약이 들어왔습니다. 다른 시간을 골라주세요.');
+  when deadlock_detected or lock_not_available then
+    return private.fail('예약하는 사람이 몰렸어요. 한 번 더 눌러주세요.');
+  end;
+
+  perform private.notify('🎤 연습실 예약' || chr(10) || (who ->> 'name') || ' (' || mid || ') · ' || room.name
+    || chr(10) || private.day_label(d) || ' ' || private.hhmm(st) || '~' || private.hhmm(en));
+
+  return jsonb_build_object('ok', true, 'booking', jsonb_build_object(
+    'id', new_id, 'room', room.name, 'date', d, 'start', private.hhmm(st), 'end', private.hhmm(en)));
+end $function$;

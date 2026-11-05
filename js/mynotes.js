@@ -211,6 +211,7 @@
       c.appendChild(el("p", "fold__main", b.room + " · " + b.start + "~" + b.end));
       box.appendChild(c);
     });
+    if ((window.LEESH || {}).bookingOpen === false) { box.appendChild(el("p", "book__empty", "연습실 예약은 준비 중이에요. 시작하면 학원에서 알려드릴게요.")); return; }
     var go = el("a", "sys-btn fold__go", "연습실 예약하러 가기 →");
     go.href = "booking.html";
     box.appendChild(go);

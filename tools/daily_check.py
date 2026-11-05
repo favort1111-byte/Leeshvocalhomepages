@@ -81,7 +81,8 @@ select jsonb_build_object(
      'tomorrow', (select count(*) from public.bookings where status = '확정' and day = (now() at time zone 'Asia/Seoul')::date + 1),
      'has_room_lock', (select pg_get_functiondef('public.booking_create'::regproc) ~ 'room:')),
   'settings', (select jsonb_build_object('max_minutes', max_minutes, 'max_days', max_days, 'cancel_minutes', cancel_minutes,
-            'daily_max_minutes', daily_max_minutes, 'pin_login', pin_login, 'student_notes', student_notes, 'song_recs', song_recs)
+            'daily_max_minutes', daily_max_minutes, 'pin_login', pin_login, 'student_notes', student_notes, 'song_recs', song_recs,
+            'booking_open', booking_open)
             from public.settings where id = 1),
   'people', jsonb_build_object(
      'members_active', (select count(*) from public.members where status = '재원'),
@@ -158,6 +159,18 @@ def main():
     diff = {k: s.get(k) for k, v in expect.items() if s.get(k) != v}
     chk(bool(diff), "예약 · 기능 설정이 정해둔 값과 달라요: %s (원장님이 바꾼 거면 CLAUDE.md도 고치기)" % json.dumps(diff, ensure_ascii=False),
         "예약 규칙 그대로 (한 번에 2시간 · 오늘·내일 · 1시간 전 취소)")
+    # 연습실 예약 멈춤 (원장님 2026-11-05 "준비 중"): 서버 settings.booking_open과 화면 js/config.js bookingOpen이 같아야 함
+    import os, re
+    try:
+        cfg = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "js", "config.js"), encoding="utf-8").read()
+        m = re.search(r"^\s*bookingOpen:\s*(true|false)", cfg, re.M)
+        front = (m.group(1) == "true") if m else True
+    except OSError:
+        front = None
+    server = s.get("booking_open", True)
+    chk(front is not None and front != server,
+        "연습실 예약 켜짐이 서버(%s)와 화면(%s)이 달라요" % ("열림" if server else "멈춤", "열림" if front else "멈춤"),
+        "연습실 예약: " + ("열림" if server else "잠깐 멈춤 (화면 \"준비 중\", 원장님 2026-11-05)"))
     # 3) 자동 작업
     c = d["cron"] or {}
     chk((c.get("failed") or 0) > 0 or (c.get("runs") or 0) == 0,
@@ -172,7 +185,7 @@ def main():
             "인스타그램 열쇠 갱신 %s" % kst(ig.get("refreshed_at")))
     ls = d["lesson_sync"] or {}
     chk(not ls.get("ok") or (age_h(ls.get("last_at")) or 99) > 3 or ls.get("errors"),
-        "선생님 레슨 시트 가져오기 문제: 마지막 %s · ok=%s · 오류 %s개 %s" % (kst(ls.get("last_at")), ls.get("ok"), ls.get("errors"), ls.get("error_sample") or ""),
+        "선생님 레슨 시트 가져오기 문제: 마지막 %s · ok=%s · 오류 %s개 %s" % (kst(ls.get("last_at")), ls.get("ok"), ls.get("errors"), (ls.get("error_sample") or "").split(":", 1)[-1].strip()),
         "레슨 시트 가져오기 마지막 %s · 오류 0" % kst(ls.get("last_at")))
     ss = d["sheet_sync"] or {}
     chk(not ss.get("ok"), "수강ID 시트 → 명단 맞추기 마지막 결과가 실패: %s" % (ss.get("error") or ""),

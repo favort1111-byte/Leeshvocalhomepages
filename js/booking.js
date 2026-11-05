@@ -12,6 +12,9 @@
   var state = { who: null, date: null, rooms: null, room: null, pick: null };
   var boardWrap = app.querySelector("#boardWrap");
   boardWrap.hidden = true;
+  // 잠깐 멈춤 (원장님 2026-11-05): 로그인 · 내 폴더 · 내 예약 보기는 그대로, 빈 시간 · 새 예약만 "준비 중"
+  var paused = cfg.bookingOpen === false;
+  if (paused) app.querySelector("#bookingSoon").hidden = false;
 
   if (!LeeshAPI.enabled()) {
     whoBox.hidden = true;
@@ -42,13 +45,14 @@
   /* ---------- identity ---------- */
   var sign = LeeshSignIn.mount(whoBox, {
     title: "로그인하고 예약하기",
-    lede: "연습실 예약은 수강생 전용이에요. 카카오로 로그인하면 빈 시간을 보고 바로 예약할 수 있어요.",
+    lede: paused ? "카카오로 로그인하면 내 폴더(일정 · 공지 · 월말평가 …)를 볼 수 있어요." : "연습실 예약은 수강생 전용이에요. 카카오로 로그인하면 빈 시간을 보고 바로 예약할 수 있어요.",
     onSignedIn: function (res, who) {
       state.who = who;
       whoBox.hidden = true;
       area.hidden = false;
       $("#hello").textContent = res.name + "님, 안녕하세요.";
       renderMine(res.bookings);
+      if (paused) { $("#newBook").hidden = true; return; }
       boardWrap.hidden = false;
       if (state.rooms) { renderRooms(state.rooms); updatePick(); } else loadDay(state.date);
     }
