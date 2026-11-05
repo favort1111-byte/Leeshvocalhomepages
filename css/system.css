@@ -341,3 +341,5 @@
 .sys-soon__h{margin:0 0 8px;font-size:20px;font-weight:700;}
 .sys-soon p{margin:0;line-height:1.7;}
 .sys-soon a{color:#1D4948;font-weight:700;}
+/* 시트 복사 · 붙여넣기 안내 (2026-11-05) */
+.xs-toast{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);z-index:30;max-width:90%;margin:0;padding:8px 14px;border-radius:8px;background:#2B2522;color:#fff;font-size:13px;line-height:1.4;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;}

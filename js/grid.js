@@ -51,6 +51,8 @@
   function key(r, c) { return r + "," + c; }
   function name(r, c) { return LETTERS[c] + (r + 1); }
   function copy(o) { return JSON.parse(JSON.stringify(o)); }
+  // 마지막으로 복사한 칸 (이 화면 안에서는 시트를 바꿔도 남아요). 오른쪽 클릭 "붙여넣기"가 브라우저 클립보드를 못 읽을 때 씀.
+  var CLIP = null;
   /** Plain text of a cell (줄바꿈은 \n). */
   function textOf(html) {
     var s = String(html || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/div>\s*<div[^>]*>/gi, "\n").replace(/<[^>]*>/g, "");
@@ -291,6 +293,16 @@
     var menuBox = el("div", "rt-menu xs-menu");
     menuBox.hidden = true;
     wrap.appendChild(menuBox);
+    var toast = el("p", "xs-toast");
+    toast.hidden = true;
+    wrap.appendChild(toast);
+    var toastTimer = null;
+    function note(text) {
+      toast.textContent = text;
+      toast.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.hidden = true; }, 3500);
+    }
     var tbl = null;
 
     function changed() { if (opts.onInput) opts.onInput(); }
@@ -567,25 +579,70 @@
       if (mode === "edit") commit();
       pasteGrid(rows);
     }
-    function onCopy(e, cut) {
-      if (mode === "edit" || !e.clipboardData) return;
-      e.preventDefault();
-      var tsv = [], html = ["<table>"];
+    // 고른 칸들 → 표 글(구글시트에 붙여도 되게) + 이 화면 안에서 쓸 칸 그대로
+    function rangeData() {
+      var tsv = [], html = ["<table>"], rows = [];
       for (var r = rng.r1; r <= rng.r2; r++) {
-        var line = [];
+        var line = [], row = [];
         html.push("<tr>");
         for (var c = rng.c1; c <= rng.c2; c++) {
           var x = d.c[key(r, c)] || {}, t = textOf(x.t);
           line.push(/[\t\n"]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t);
           html.push('<td style="' + cellCss(x.s) + '">' + (x.t ? R.clean(x.t) : "") + "</td>");
+          row.push({ t: x.t || "", s: x.s ? copy(x.s) : {} });
         }
         tsv.push(line.join("\t"));
         html.push("</tr>");
+        rows.push(row);
       }
       html.push("</table>");
-      e.clipboardData.setData("text/plain", tsv.join("\n"));
-      e.clipboardData.setData("text/html", html.join(""));
+      return { text: tsv.join("\n"), html: html.join(""), rows: rows };
+    }
+    function onCopy(e, cut) {
+      if (mode === "edit" || !e.clipboardData) return;
+      e.preventDefault();
+      var x = rangeData();
+      CLIP = x;
+      e.clipboardData.setData("text/plain", x.text);
+      e.clipboardData.setData("text/html", x.html);
       if (cut) clearRange();
+    }
+    /* 오른쪽 클릭 메뉴의 복사 · 잘라내기 · 붙여넣기 (원장님 2026-11-05 선생님 의견 "시트 내용 복붙이 안 돼요")
+       브라우저 클립보드에도 넣고(구글시트 · 카톡에 붙일 수 있게), 못 하면 이 화면 안에서만이라도 */
+    function menuCopy(cut) {
+      var x = rangeData();
+      CLIP = x;
+      var cb = navigator.clipboard;
+      var done = cb && window.ClipboardItem
+        ? cb.write([new window.ClipboardItem({ "text/html": new Blob([x.html], { type: "text/html" }), "text/plain": new Blob([x.text], { type: "text/plain" }) })])
+        : cb && cb.writeText ? cb.writeText(x.text) : Promise.reject();
+      done.then(null, function () { if (cb && cb.writeText) return cb.writeText(x.text); }).then(null, function () { /* 이 화면 안에서는 CLIP으로 */ });
+      note((cut ? "잘라냈어요" : "복사했어요") + " · 붙일 칸을 고르고 Ctrl+V (맥은 ⌘+V) 또는 오른쪽 클릭 → 붙여넣기");
+      if (cut) clearRange();
+    }
+    function fakeClip(map) { return { getData: function (t) { return map[t] || ""; } }; }
+    function menuPaste() {
+      var cb = navigator.clipboard;
+      function fromClip() {
+        if (CLIP) { pasteGrid(copy(CLIP.rows)); return; }
+        note("붙여넣기는 키보드로 해 주세요: Ctrl+V (맥은 ⌘+V)");
+      }
+      if (!cb || (!cb.read && !cb.readText)) { fromClip(); return; }
+      var read = cb.read ? cb.read().then(function (items) {
+        var map = {}, jobs = [];
+        items.forEach(function (it) {
+          ["text/html", "text/plain"].forEach(function (t) {
+            if (it.types.indexOf(t) !== -1 && !map[t]) jobs.push(it.getType(t).then(function (b) { return b.text(); }).then(function (s) { map[t] = s; }));
+          });
+        });
+        return Promise.all(jobs).then(function () { return map; });
+      }) : cb.readText().then(function (s) { return { "text/plain": s }; });
+      read.then(function (map) {
+        // 방금 이 화면에서 복사한 것이면 칸 그대로 (서식까지)
+        if (CLIP && (map["text/plain"] || "") === CLIP.text) { pasteGrid(copy(CLIP.rows)); return; }
+        var rows = parseClip(fakeClip(map));
+        if (rows) pasteGrid(rows); else fromClip();
+      }, fromClip);
     }
 
     /* --- 행 · 열 넣기 · 지우기 --- */
@@ -666,7 +723,11 @@
     function showMenu(x, y) {
       menuBox.textContent = "";
       var rows = rng.r2 - rng.r1 + 1, cols = rng.c2 - rng.c1 + 1;
-      menuAt([["위에 행 " + rows + "개 넣기", function () { rowsAt(rng.r1, rows); }],
+      menuAt([["복사 (Ctrl+C)", function () { menuCopy(false); }],
+       ["잘라내기 (Ctrl+X)", function () { menuCopy(true); }],
+       ["붙여넣기 (Ctrl+V)", menuPaste],
+       null,
+       ["위에 행 " + rows + "개 넣기", function () { rowsAt(rng.r1, rows); }],
        ["아래에 행 " + rows + "개 넣기", function () { rowsAt(rng.r2 + 1, rows); }],
        ["행 " + (rng.r1 + 1) + (rows > 1 ? "~" + (rng.r2 + 1) : "") + " 지우기", delRows],
        null,
@@ -1093,6 +1154,19 @@
         if (k === "Enter" && (e.altKey || (mod && !e.shiftKey))) { e.preventDefault(); if (!exec("insertLineBreak")) exec("insertHTML", "<br>"); sync(); return; }
         if (k === "Enter" && !e.shiftKey && !touch) { e.preventDefault(); commit(); move(1, 0); return; }
         if (k === "Tab") { e.preventDefault(); commit(); move(0, e.shiftKey ? -1 : 1); return; }
+        return;
+      }
+      // 맥 사파리는 고른 글자가 없으면 ⌘+C · ⌘+X를 무시해요 → 칸 글자를 잠깐 골라 두면 copy 이벤트가 와서 고른 칸 전체를 복사
+      if (mod && /^[cxCX]$/.test(k) && mode !== "edit") {
+        var cv = cellDiv(act.r, act.c), cs = window.getSelection();
+        if (cv && cs && cs.isCollapsed) {
+          var cr = document.createRange();
+          cr.selectNodeContents(cv);
+          if (!cv.textContent) { cv.appendChild(document.createTextNode("\u200b")); cr.selectNodeContents(cv); setTimeout(function () { if (cv.textContent === "\u200b") cv.textContent = ""; }, 0); }
+          cs.removeAllRanges();
+          cs.addRange(cr);
+          setTimeout(function () { if (mode !== "edit") { var s2 = window.getSelection(); if (s2.rangeCount) s2.collapseToEnd(); } }, 0);
+        }
         return;
       }
       if (mod && /^[zZ]$/.test(k)) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
