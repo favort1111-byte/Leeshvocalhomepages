@@ -147,21 +147,64 @@
     c.appendChild(el("p", "msg__body", m.body));
     return c;
   }
-  function messages(holder) {
+  // 받은 것 + 내가 보낸 것을 시간 순서로 (보낸 것은 오른쪽, 학원이 읽었는지), 맨 아래 "학원에 보내기"
+  function sentCard(m) {
+    var c = el("article", "fold__card msg msg--mine");
+    var h = el("p", "msg__head");
+    h.appendChild(el("b", "msg__from", "나 → 학원"));
+    h.appendChild(el("span", "msg__time", msgTime(m.at)));
+    h.appendChild(el("span", m.read ? "msg__read" : "msg__unread", m.read ? "읽음" : "아직 안 읽음"));
+    c.appendChild(h);
+    c.appendChild(el("p", "msg__body", m.body));
+    return c;
+  }
+  function messages(holder, opened) {
     LeeshAPI.rpc("teacher_messages", {}).then(function (res) {
-      if (!res.ok || !(res.items || []).length) return;
-      var items = res.items;
+      if (!res.ok) return;
+      holder.textContent = "";
+      var items = (res.items || []).map(function (m) { return Object.assign({ dir: "in" }, m); });
+      var sent = (res.sent || []).map(function (m) { return Object.assign({ dir: "out" }, m); });
       var fresh = items.filter(function (m) { return !m.read || msgSeen[m.id]; });
-      var old = items.filter(function (m) { return m.read && !msgSeen[m.id]; });
       var box = el("section", "tch__msgs");
       box.appendChild(el("h3", "tch__msgs-h", fresh.length ? "✉ 새 메시지 " + fresh.length + "개" : "✉ 학원 메시지"));
+      // 새로 받은 것은 위에 펼쳐서
       fresh.forEach(function (m) { box.appendChild(msgCard(m, true)); });
-      if (old.length) {
+      var rest = items.filter(function (m) { return fresh.indexOf(m) === -1; }).concat(sent)
+        .sort(function (x, y) { return x.at < y.at ? 1 : -1; });
+      if (rest.length) {
         var d = el("details", "tch__msgs-old");
-        d.appendChild(el("summary", null, (fresh.length ? "지난 메시지 " : "받은 메시지 ") + old.length + "개"));
-        old.forEach(function (m) { d.appendChild(msgCard(m, false)); });
+        if (opened) d.open = true;
+        d.appendChild(el("summary", null, "주고받은 메시지 " + rest.length + "개"));
+        rest.forEach(function (m) { d.appendChild(m.dir === "out" ? sentCard(m) : msgCard(m, false)); });
         box.appendChild(d);
       }
+      // 학원(원장님 · 실장님)에게 보내기
+      var f = el("form", "tch__send");
+      var ta = el("textarea");
+      ta.rows = 3;
+      ta.maxLength = 2000;
+      ta.placeholder = "원장님 · 실장님께 보낼 말 (예: 다음 주 수요일 레슨 시간을 옮겨도 될까요?)";
+      ta.setAttribute("aria-label", "학원에 보낼 메시지");
+      var row = el("div", "tch__sendrow");
+      var sb = el("button", "sys-btn", "학원에 보내기");
+      sb.type = "submit";
+      var m2 = el("span", "sys-msg");
+      row.appendChild(sb);
+      row.appendChild(m2);
+      f.appendChild(ta);
+      f.appendChild(row);
+      f.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (!ta.value.trim()) { say(m2, "보낼 내용을 적어주세요.", "error"); return; }
+        sb.disabled = true;
+        LeeshAPI.rpc("teacher_send", { p_body: ta.value }).then(function (x) {
+          sb.disabled = false;
+          if (!x.ok) { say(m2, x.error, "error"); return; }
+          messages(holder, true);
+        });
+      });
+      box.appendChild(f);
+      box.appendChild(el("p", "sys-note", "보낸 메시지는 원장님 · 실장님만 봐요. 급한 일은 전화로 연락해 주세요."));
       holder.appendChild(box);
       var ids = items.filter(function (m) { return !m.read; }).map(function (m) { msgSeen[m.id] = 1; return m.id; });
       if (ids.length) LeeshAPI.rpc("teacher_message_read", { p_ids: ids });

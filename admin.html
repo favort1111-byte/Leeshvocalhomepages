@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=7191a150">
-<link rel="stylesheet" href="css/admin.css?v=6735ffa9">
+<link rel="stylesheet" href="css/admin.css?v=f2f76f31">
 </head>
 <body class="sys adm">
 
@@ -53,7 +53,7 @@
       <button type="button" role="tab" data-tab="news" aria-selected="false">오디션 소식 <span class="adm__badge" id="newsBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="visits" aria-selected="false">내방 신청 <span class="adm__badge" id="visitBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="notices" aria-selected="false">일정·공지</button>
-      <button type="button" role="tab" data-tab="messages" aria-selected="false">메시지</button>
+      <button type="button" role="tab" data-tab="messages" aria-selected="false">메시지 <span class="adm__badge" id="msgBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="songrecs" aria-selected="false">노래 추천 <span class="adm__badge" id="recBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="teachers" aria-selected="false">선생님 <span class="adm__badge" id="teacherBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="parents" aria-selected="false">학부모 <span class="adm__badge" id="parentBadge" hidden></span></button>
@@ -419,7 +419,10 @@
 
     <!-- 메시지: 학원 → 학생 · 선생님 (원장님 2026-11-05). 학생은 내 폴더 → 메시지, 선생님은 선생님 화면 맨 위에서 봐요. -->
     <section class="sys-card" data-panel="messages" hidden>
-      <h3 class="sys-h">메시지 보내기</h3>
+      <h3 class="sys-h">선생님이 보낸 메시지</h3>
+      <p class="sys-note">선생님이 선생님 화면에서 원장님 · 실장님께 보낸 메시지예요. 이 탭을 열면 읽음으로 바뀌어요 (선생님 화면에 "읽음" 표시). <b>답장</b>을 누르면 아래 보내기 칸에 그 선생님이 골라져요.</p>
+      <ul class="adm__cards" id="msgInbox"></ul>
+      <h3 class="sys-h" style="margin-top:28px">메시지 보내기</h3>
       <p class="sys-note">고른 사람에게만 보여요. 학생은 홈페이지 <b>내 폴더 → 메시지</b>, 선생님은 <b>선생님 화면</b>, 학부모는 <b>학부모 화면</b> 맨 위에서 봐요 (카카오로 로그인했을 때). 읽으면 아래 목록에 읽은 시각이 나와요. 답장은 없어요 (카카오톡으로).</p>
       <div class="adm__bar msg-to" role="radiogroup" aria-label="받는 사람">
         <label class="msg-to__opt"><input type="radio" name="msgTo" value="member" checked> 학생</label>
@@ -533,6 +536,6 @@
 <script src="js/richtext.js?v=fa20a0a2"></script>
 <script src="js/grid.js?v=9c827e1f"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
-<script src="js/admin.js?v=6d73b2f9"></script>
+<script src="js/admin.js?v=46de07d4"></script>
 </body>
 </html>

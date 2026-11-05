@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 29; // bump when the demo defaults change
+  var VERSION = 30; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -100,6 +100,8 @@
       parent_links: [{ parent_id: 701, member_id: "S001" }, { parent_id: 701, member_id: "S002" }],
       parent_requests: [{ id: 711, user_id: "kakao-wait-p", kakao_name: "다온아빠", name: "정OO (아버지)", children: "정다온", status: "대기", parent_id: null,
         created_at: new Date(Date.now() - 900000).toISOString(), decided_at: null }],
+      // 선생님 → 학원 메시지 (원장님 2026-11-05)
+      admin_inbox: [{ id: 801, teacher_id: 501, body: "원장님, 다음 주 수요일 이하늘 학생 레슨을 목요일로 옮겨도 될까요? (체험 모드 예시)", created_at: new Date(Date.now() - 1500000).toISOString(), read_at: null }],
       // 학원 → 학생 · 선생님 메시지 (원장님 2026-11-05)
       messages: [
         { id: 604, to_member: null, to_teacher: null, to_parent: 701, sender: "원장님", body: "어머님, 시우가 이번 월말평가에서 많이 늘었어요. 평가지 확인해 보세요! (체험 모드 예시)", created_at: new Date(Date.now() - 600000).toISOString(), read_at: null },
@@ -654,7 +656,19 @@
       if (!t) return fail("선생님 연결이 필요해요.");
       return { ok: true, items: db.messages.filter(function (m) { return m.to_teacher === t.id; })
         .sort(function (x, y) { return x.created_at < y.created_at ? 1 : -1; }).slice(0, 50)
-        .map(function (m) { return { id: m.id, sender: m.sender, body: m.body, at: m.created_at, read: !!m.read_at }; }) };
+        .map(function (m) { return { id: m.id, sender: m.sender, body: m.body, at: m.created_at, read: !!m.read_at }; }),
+        sent: db.admin_inbox.filter(function (m) { return m.teacher_id === t.id; })
+        .sort(function (x, y) { return x.created_at < y.created_at ? 1 : -1; }).slice(0, 50)
+        .map(function (m) { return { id: m.id, body: m.body, at: m.created_at, read: !!m.read_at }; }) };
+    },
+    teacher_send: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("선생님 연결이 필요해요.");
+      var v = (a.p_body || "").trim();
+      if (!v) return fail("보낼 내용을 적어주세요.");
+      db.admin_inbox.push({ id: ++db.next, teacher_id: t.id, body: v.slice(0, 2000), created_at: new Date().toISOString(), read_at: null });
+      save();
+      return { ok: true };
     },
     teacher_message_read: function (a, uid) {
       var t = myTeacher(uid);
@@ -954,7 +968,8 @@
         rows = rows.filter(function (r) { return r[k] != null && (eq ? String(r[k]) >= d : String(r[k]) > d); });
         return;
       }
-      if (v.indexOf("is.") === 0) { var want = v.slice(3); rows = rows.filter(function (r) { return String(!!r[k]) === want; }); return; }
+      if (v.indexOf("is.") === 0) { var want = v.slice(3); rows = rows.filter(function (r) { return want === "null" ? r[k] == null : String(!!r[k]) === want; }); return; }
+      if (v.indexOf("in.(") === 0) { var vals = v.slice(4, -1).split(","); rows = rows.filter(function (r) { return vals.indexOf(String(r[k])) !== -1; }); return; }
       if (v.indexOf("eq.") !== 0) return;
       v = v.slice(3);
       rows = rows.filter(function (r) { return String(r[k]) === v; });
@@ -993,6 +1008,10 @@
           c.member = mm ? { name: mm.name } : null;
           c.teacher = tt ? { name: tt.name } : null;
           c.parent = pp ? { name: pp.name } : null;
+        }
+        if (p.table === "admin_inbox") {
+          var it = db.teachers.filter(function (x) { return x.id === r.teacher_id; })[0];
+          c.teachers = it ? { name: it.name } : null;
         }
         if (p.table === "parents") {
           c.parent_links = db.parent_links.filter(function (l) { return l.parent_id === r.id; }).map(function (l) {

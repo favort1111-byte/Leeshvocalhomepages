@@ -1175,3 +1175,10 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .par__child{margin:4px 0 12px;font-size:20px;color:#1D4948;}
 .par__student{margin-top:18px;}
 .signin__parent{margin-top:10px;}
+/* 선생님 → 학원 메시지 (원장님 2026-11-05) */
+.msg--mine{margin-left:12%;background:#EEF6F4;}
+.msg__read{font-size:12px;color:#2E7D4F;}
+.msg__unread{font-size:12px;color:#B5651D;}
+.tch__send{margin-top:12px;}
+.tch__send textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(62,42,30,.25);border-radius:10px;font:inherit;font-size:15px;line-height:1.5;background:#fff;}
+.tch__sendrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;}

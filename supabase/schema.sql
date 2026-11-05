@@ -4722,3 +4722,59 @@ revoke all on function public.parent_me(), public.parent_request(text, text), pu
 grant execute on function public.parent_me(), public.parent_request(text, text), public.parent_child(text),
   public.parent_messages(), public.parent_message_read(bigint[]), public.admin_parent_decide(bigint, text[], boolean) to authenticated;
 revoke all on function private.my_parent() from public, anon;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_teacher_inbox (2026-11-05)
+-- 선생님 → 학원(원장님 · 실장님) 메시지 (원장님 2026-11-05 "선생님이 관리자에게 보낼 수 있도록. 학생은 보내는 거 없음").
+-- 선생님 화면에서 보내고, 관리자 → 메시지 탭 맨 위 "선생님이 보낸 메시지"에서 읽음 · 답장(= 그 선생님에게 messages).
+create table if not exists public.admin_inbox (
+  id         bigint generated always as identity primary key,
+  teacher_id bigint not null references public.teachers (id) on delete cascade,
+  body       text not null check (char_length(trim(body)) between 1 and 2000),
+  created_at timestamptz not null default now(),
+  read_at    timestamptz
+);
+create index if not exists admin_inbox_teacher_idx on public.admin_inbox (teacher_id, created_at desc);
+alter table public.admin_inbox enable row level security;
+drop policy if exists admin_all on public.admin_inbox;
+create policy admin_all on public.admin_inbox for all to authenticated using (public.is_admin()) with check (public.is_admin());
+revoke all on public.admin_inbox from anon;
+grant select, insert, update, delete on public.admin_inbox to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+create or replace function public.teacher_send(p_body text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  v text := trim(coalesce(p_body, ''));
+  n int;
+begin
+  if t.id is null then return private.fail('선생님 연결이 필요해요.'); end if;
+  if char_length(v) < 1 then return private.fail('보낼 내용을 적어주세요.'); end if;
+  if char_length(v) > 2000 then return private.fail('2000자까지 보낼 수 있어요.'); end if;
+  select count(*) into n from public.admin_inbox where teacher_id = t.id and created_at > now() - interval '1 day';
+  if n >= 30 then return private.fail('하루에 30개까지 보낼 수 있어요. 급한 일은 전화로 연락해 주세요.'); end if;
+  insert into public.admin_inbox (teacher_id, body) values (t.id, v);
+  -- 알림에는 내용을 넣지 않아요 (학생 이야기가 들어갈 수 있어서)
+  perform private.notify('✉ ' || t.name || ' 선생님이 메시지를 보냈어요. 관리자 → 메시지에서 확인해 주세요.');
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 선생님: 받은 메시지 + 내가 보낸 메시지 (읽었는지)
+create or replace function public.teacher_messages() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님 연결이 필요해요.'); end if;
+  return jsonb_build_object('ok', true,
+    'items', coalesce((
+      select jsonb_agg(jsonb_build_object('id', m.id, 'sender', m.sender, 'body', m.body, 'at', m.created_at, 'read', m.read_at is not null)
+             order by m.created_at desc)
+      from (select * from public.messages where to_teacher = t.id order by created_at desc limit 50) m), '[]'::jsonb),
+    'sent', coalesce((
+      select jsonb_agg(jsonb_build_object('id', x.id, 'body', x.body, 'at', x.created_at, 'read', x.read_at is not null)
+             order by x.created_at desc)
+      from (select * from public.admin_inbox where teacher_id = t.id order by created_at desc limit 50) x), '[]'::jsonb));
+end $$;
+
+revoke all on function public.teacher_send(text) from public, anon;
+grant execute on function public.teacher_send(text) to authenticated;

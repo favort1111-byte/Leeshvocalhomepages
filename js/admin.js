@@ -207,6 +207,7 @@
     countConsults();
     countTeachers();
     countParents();
+    countInbox();
     countSuggest();
     countNew();
   }
@@ -2526,7 +2527,60 @@
   var msgState = { to: "member", people: { member: [], teacher: [], parent: [] }, picked: {} };
   function msgTeacherOf(m) { var t = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return t ? t[1] : ""; }
   function msgKey(kind, id) { return kind + ":" + id; }
+  /* 선생님 → 학원 (admin_inbox, 원장님 2026-11-05): 탭을 열면 읽음, 답장 = 그 선생님에게 보내기 */
+  function countInbox() {
+    api("admin_inbox?select=id&read_at=is.null").then(function (res) { if (res.ok) setBadge("#msgBadge", res.data.length); });
+  }
+  function loadInbox() {
+    var ul = $("#msgInbox");
+    ul.textContent = "";
+    api("admin_inbox?select=id,teacher_id,body,created_at,read_at,teachers(name)&order=created_at.desc&limit=100").then(function (res) {
+      if (!res.ok) { ul.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      if (!res.data.length) { ul.appendChild(el("li", "sys-empty", "아직 받은 메시지가 없어요.")); return; }
+      var unread = [];
+      var shown = 0;
+      res.data.forEach(function (m) {
+        var li = el("li", "adm__card" + (m.read_at ? "" : " msg-in--new"));
+        if (m.read_at && shown >= 10) { li.hidden = true; li.classList.add("msg-in--more"); }
+        shown++;
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, ((m.teachers && m.teachers.name) || "") + " 선생님"));
+        top.appendChild(el("span", "sys-note", msgWhen(m.created_at)));
+        if (!m.read_at) { top.appendChild(el("span", "adm__kakao", "새 메시지")); unread.push(m.id); }
+        li.appendChild(top);
+        li.appendChild(el("p", "adm__quote msg-sent__body", m.body));
+        var row = el("div", "adm__cardrow");
+        var rep = el("button", "sys-btn", "답장");
+        rep.type = "button";
+        rep.addEventListener("click", function () {
+          var r = document.querySelector('input[name="msgTo"][value="teacher"]');
+          r.checked = true;
+          msgState.to = "teacher";
+          msgState.picked = {};
+          msgState.picked[msgKey("teacher", m.teacher_id)] = true;
+          $("#msgFind").value = "";
+          renderMsgPick();
+          $("#msgBody").focus();
+          $("#msgBody").scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        row.appendChild(rep);
+        row.appendChild(deleteButton("admin_inbox", m.id, loadInbox));
+        li.appendChild(row);
+        ul.appendChild(li);
+      });
+      if (ul.querySelector(".msg-in--more")) {
+        var more = el("button", "sys-link", "지난 메시지 더 보기");
+        more.type = "button";
+        more.addEventListener("click", function () { ul.querySelectorAll(".msg-in--more").forEach(function (x) { x.hidden = false; }); more.remove(); });
+        ul.appendChild(more);
+      }
+      if (unread.length) {
+        api("admin_inbox?id=in.(" + unread.join(",") + ")", { method: "PATCH", body: { read_at: new Date().toISOString() } }).then(function () { setBadge("#msgBadge", 0); });
+      }
+    });
+  }
   function loadMessages() {
+    loadInbox();
     try { $("#msgSender").value = localStorage.getItem("leesh-admin-msg-sender") || "학원"; } catch (e) { /* private mode */ }
     Promise.all([
       api("members?select=id,name,status,memo,kakao_user&status=in.(" + encodeURIComponent("재원") + "," + encodeURIComponent("휴원") + ")&order=name"),
