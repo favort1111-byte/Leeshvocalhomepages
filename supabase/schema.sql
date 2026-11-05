@@ -4778,3 +4778,46 @@ end $$;
 
 revoke all on function public.teacher_send(text) from public, anon;
 grant execute on function public.teacher_send(text) to authenticated;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_visit_notify_once (2026-11-05)
+-- 내방 오디션 신청: 텔레그램 알림은 처음 신청할 때만 (같은 오디션을 고쳐서 다시 보내면 알림 없음)
+CREATE OR REPLACE FUNCTION public.member_visit_apply(p_id text, p_pin text, p_news bigint, p_name text, p_gender text DEFAULT NULL::text, p_birth text DEFAULT NULL::text, p_size text DEFAULT NULL::text, p_field text DEFAULT NULL::text, p_music jsonb DEFAULT NULL::jsonb, p_note text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  is_new boolean;
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  n public.audition_news;
+  today date := private.now_kst()::date;
+  v_name text := trim(coalesce(p_name, ''));
+  app_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into n from public.audition_news where id = p_news and kind = '내방' and published;
+  if n.id is null then return private.fail('신청할 오디션을 찾을 수 없어요.'); end if;
+  if coalesce(n.deadline, n.event_date) is not null and coalesce(n.deadline, n.event_date) < today then
+    return private.fail('신청이 마감됐어요. 학원에 문의해주세요.');
+  end if;
+  if v_name = '' or char_length(v_name) > 30 then return private.fail('이름을 적어주세요.'); end if;
+  if p_gender is not null and p_gender not in ('남', '여') then return private.fail('성별을 골라주세요.'); end if;
+  if p_field is null or p_field not in ('보컬', '랩', '댄스', '라이브퍼포먼스', '연기') then return private.fail('지원분야를 하나 골라주세요.'); end if;
+  if char_length(coalesce(p_birth, '')) > 30 or char_length(coalesce(p_size, '')) > 30 or char_length(coalesce(p_note, '')) > 1000 then
+    return private.fail('글이 너무 길어요.');
+  end if;
+  if p_music is not null and coalesce(p_music ->> 'path', '') not like mid || '/%' then return private.fail('음원을 다시 올려주세요.'); end if;
+  insert into public.visit_applications (news_id, audition, member_id, name, gender, birth, body_size, field, music, note)
+  values (n.id, left(coalesce(n.company || ' ', '') || n.title, 120), mid, v_name, p_gender,
+          nullif(trim(coalesce(p_birth, '')), ''), nullif(trim(coalesce(p_size, '')), ''), p_field, p_music,
+          nullif(trim(coalesce(p_note, '')), ''))
+  on conflict (news_id, member_id) do update set name = excluded.name, gender = excluded.gender, birth = excluded.birth,
+    body_size = excluded.body_size, field = excluded.field, music = coalesce(excluded.music, public.visit_applications.music),
+    note = excluded.note, updated_at = now()
+  returning id, (xmax = 0) into app_id, is_new;
+  -- 알림은 처음 신청할 때만 (원장님 2026-11-05: 한 명이 고쳐서 3번 보내 텔레그램이 3번 옴)
+  if is_new then perform private.notify('🎤 내방 오디션 신청: ' || v_name || ' · ' || p_field || chr(10) || coalesce(n.company || ' ', '') || n.title); end if;
+  return jsonb_build_object('ok', true, 'id', app_id, 'new', is_new);
+end $function$;
