@@ -253,6 +253,10 @@
     var insta = el("a", "rec__more", "새 소식은 인스타그램에 먼저 올라와요 · 최신 소식 보기 →");
     insta.href = "audition.html#news-insta";
     sum.appendChild(insta);
+    // 강의 규정 (원장님 2026-11-05): 보강 · 결석 규칙은 about에 — 보강 신청 전에 확인
+    var rules = el("a", "rec__more", "보강 · 결석 규정 보기 (강의 규정 안내) →");
+    rules.href = "about.html#rules";
+    sum.appendChild(rules);
 
     if (plans.length) {
       var v = el("section", "fold__visits");

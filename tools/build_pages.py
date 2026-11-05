@@ -456,6 +456,7 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
       <li>상담은 1인 1회가 원칙입니다.</li>
       <li>담당 선생님이 직접 상담하므로 레슨 중에는 답장이 늦어질 수 있습니다.</li>
       <li>월 · 일요일과 공휴일은 상담 확정이 늦어질 수 있습니다.</li>
+      <li>보강 · 결석 규정은 <a href="about.html#rules">강의 규정 안내</a>에서 확인할 수 있습니다.</li>
     </ul>
     <small>적어주신 정보는 상담 안내에만 사용합니다. <a href="privacy.html">개인정보처리방침</a></small>
   </form>

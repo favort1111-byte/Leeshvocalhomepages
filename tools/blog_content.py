@@ -327,6 +327,44 @@ def steps_section():
             + '    <p class="scrap__note">매 레슨 후 레슨일지를 작성해 공유합니다. 월말평가 결과는 홈 화면 <a href="index.html#evals">내 폴더</a>에서 확인할 수 있습니다.</p>\n')
 
 
+# 강의 규정 (원장님 2026-11-05 학원 안내 이미지 그대로, 그림 대신 글로 — 휴대폰에서 또렷하게 · 고치기 쉽게)
+# <mark> = 노란 강조, <b class="rules__red"> = 빨간 글씨, <b class="rules__blue"> = 파란 글씨. 아이콘은 원본 이미지에서 잘라 assets/img/rules/
+RULES = [
+    ("보강 신청", [
+        ("r1", "최소 7일 전 사전 알림 후 <mark>담당 선생님과 일정 조율</mark>이 필요합니다.", ""),
+        ("r2", "보강은 월 4회 중 <mark>병결 포함 월 1회</mark>까지만 가능합니다.", "※ 병결 시 당일자 처방전 필수 제출"),
+        ("r3", "보강은 원칙적으로 <mark>차주에 진행</mark>되며 부득이한 경우 <mark>한 달 이내 진행</mark>됩니다.", ""),
+        ("r4", "보강 일정 확정 후 <b class=\"rules__red\">재보강 및 일정 변경은 어렵습니다.</b>", ""),
+    ]),
+    ("스케줄 변경 및 결석", [
+        ("r5", "<mark>재수강 1회차 전</mark>으로 진행되어야 합니다.", ""),
+        ("r6", "보강은 월 4회 중 병결 포함 월 1회까지 가능하며 2회 이상 결석 시 <mark>추가 보강 없이 결석 처리</mark>됩니다.", ""),
+        ("r7", "<b class=\"rules__red\">당일 통보 시 보강은 어렵습니다.</b>", ""),
+    ]),
+]
+RULES_COOP = [
+    "매월 레슨 스케줄이 미리 확정되어 있어",
+    "<b class=\"rules__blue\">갑작스러운 변경은 다른 학생들의 일정에도 영향을 줄 수 있습니다.</b>",
+    "<b class=\"rules__blue\">부득이한 경우를 제외하고 보강 및 일정 변경은 가급적 자제 부탁드립니다.</b>",
+    "원활한 레슨 진행을 위해 협조해 주셔서 감사합니다!",
+]
+
+
+def rules_section():
+    groups = ""
+    for title, items in RULES:
+        rows = "".join(
+            f'<li class="rule"><img class="rule__icon" src="assets/img/rules/{icon}.webp" alt="" width="48" height="48" loading="lazy">'
+            f'<p class="rule__text">{text}{f"<small>{note}</small>" if note else ""}</p></li>'
+            for icon, text, note in items)
+        groups += f'    <h3 class="rules__h">{title}</h3>\n    <ul class="rules">{rows}</ul>\n'
+    coop = "".join(f"<p>{line}</p>" for line in RULES_COOP)
+    return (_head("lesson rules", "이송희보컬레슨 강의 규정 안내", "rules")
+            + groups
+            + '    <h3 class="rules__h">원활한 레슨을 위한 협조</h3>\n'
+            + f'    <div class="rules__coop">{coop}</div>\n')
+
+
 def why_section():
     cards = "".join(f'<li class="why"><span class="why__no">0{i + 1}</span><h3>{t}</h3>{_ul(items)}</li>'
                      for i, (t, items) in enumerate(WHY))
@@ -416,10 +454,10 @@ def tips_section():
 
 
 def about_sections():
-    index = [("teacher", "선생님"), ("steps", "커리큘럼"), ("why", "특징"), ("care", "오디션 케어"),
+    index = [("teacher", "선생님"), ("steps", "커리큘럼"), ("rules", "강의 규정"), ("why", "특징"), ("care", "오디션 케어"),
              ("results", "합격 소식"), ("rooms", "연습실"), ("tips", "원포인트 레슨")]
     chips = "".join(f'<li><a href="#{a}">{t}</a></li>' for a, t in index)
-    blocks = [teacher_section(), steps_section(), why_section(), care_section(), results_section(), rooms_section(), tips_section()]
+    blocks = [teacher_section(), steps_section(), rules_section(), why_section(), care_section(), results_section(), rooms_section(), tips_section()]
     return ('<section class="scrap" aria-label="이송희보컬레슨 자세히 보기">\n'
             f'  <nav class="scrap__index" aria-label="이 페이지 목차"><ul>{chips}</ul></nav>\n'
             + "".join(f'  <div class="scrap__block">\n{b}  </div>\n' for b in blocks)
