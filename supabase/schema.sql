@@ -4821,3 +4821,77 @@ begin
   if is_new then perform private.notify('🎤 내방 오디션 신청: ' || v_name || ' · ' || p_field || chr(10) || coalesce(n.company || ' ', '') || n.title); end if;
   return jsonb_build_object('ok', true, 'id', app_id, 'new', is_new);
 end $function$;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_notify_digest (2026-11-05)
+-- 텔레그램: 연습실 예약 · 취소와 내방 오디션 신청은 바로 보내지 않고 모아서 1시간에 한 번 (원장님 2026-11-05 "매 건 받으면 정신없음").
+-- 카카오 연결 요청 · 선생님 · 학부모 요청 · 상담 · 노래 추천 · 제휴 · 선생님 메시지는 지금처럼 바로.
+create table if not exists private.notify_queue (
+  id         bigint generated always as identity primary key,
+  msg        text not null,
+  created_at timestamptz not null default now()
+);
+revoke all on private.notify_queue from public, anon, authenticated;
+
+-- 실제로 보내기 (예전 private.notify 내용 그대로)
+create or replace function private.notify_send(msg text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare t record; c text;
+begin
+  select bot_token, chat_ids into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' or cardinality(t.chat_ids) = 0 then return; end if;
+  foreach c in array t.chat_ids loop
+    begin
+      perform net.http_post(url := 'https://api.telegram.org/bot' || t.bot_token || '/sendMessage', timeout_milliseconds := 15000,
+        body := jsonb_build_object('chat_id', c, 'text', msg || chr(10) || chr(10) || '👉 https://leeshlesson.com/admin.html',
+                                   'disable_web_page_preview', true));
+    exception when others then
+      null; -- 알림 실패가 신청을 막으면 안 됩니다
+    end;
+  end loop;
+end $$;
+
+create or replace function private.notify(msg text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare t record;
+begin
+  select bot_token, chat_ids, bookings into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' or cardinality(t.chat_ids) = 0 then return; end if;
+  if msg like '🎤 연습실%' or msg like '↩️ 연습실%' then
+    if not t.bookings then return; end if;
+    insert into private.notify_queue (msg) values (msg);   -- 1시간 모아서
+    return;
+  end if;
+  if msg like '🎤 내방 오디션%' then
+    insert into private.notify_queue (msg) values (msg);   -- 1시간 모아서
+    return;
+  end if;
+  perform private.notify_send(msg);
+exception when others then
+  null; -- 알림 때문에 신청이 실패하면 안 됩니다
+end $$;
+
+-- 모아 둔 것 보내기 (매시 정각, pg_cron leesh_notify_digest)
+create or replace function private.notify_digest() returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  ids bigint[];
+  n int;
+  lines text;
+  txt text;
+begin
+  -- 같은 때 두 번 돌지 않게
+  if not pg_try_advisory_xact_lock(hashtext('leesh_notify_digest')) then return; end if;
+  select array_agg(id order by id), count(*) into ids, n from private.notify_queue;
+  if coalesce(n, 0) = 0 then return; end if;
+  select string_agg('• ' || to_char(q.created_at at time zone 'Asia/Seoul', 'HH24:MI') || ' ' || replace(q.msg, chr(10), ' · '), chr(10) order by q.id)
+    into lines
+    from (select * from private.notify_queue where id = any (ids) order by id limit 40) q;
+  txt := '⏰ 지난 1시간 알림 ' || n || '건 (연습실 예약 · 내방 오디션)' || chr(10) || chr(10) || lines
+         || case when n > 40 then chr(10) || '… 외 ' || (n - 40) || '건 (관리자 화면에서 확인)' else '' end;
+  perform private.notify_send(left(txt, 3800));
+  delete from private.notify_queue where id = any (ids);
+end $$;
+
+revoke all on function private.notify_send(text), private.notify_digest() from public, anon, authenticated;
+
+select cron.unschedule('leesh_notify_digest') where exists (select 1 from cron.job where jobname = 'leesh_notify_digest');
+select cron.schedule('leesh_notify_digest', '0 * * * *', 'select private.notify_digest()');
