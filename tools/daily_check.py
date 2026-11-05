@@ -132,6 +132,11 @@ def main():
         print("점검을 못 했어요:", e)
         print(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False))
         return 2
+    # GitHub Actions (저장소가 공개라 로그인 없이 읽힘): 지난 24시간 실패
+    try:
+        runs = curl("https://api.github.com/repos/favort1111-byte/Leeshvocalhomepages/actions/runs?per_page=60").get("workflow_runs", [])
+    except Exception as e:
+        runs = None
     lints = adv.get("lints", []) if isinstance(adv, dict) else []
     sec_err = [l.get("name") for l in lints if l.get("level") == "ERROR"]
     sec_warn = len([l for l in lints if l.get("level") == "WARN"])
@@ -183,6 +188,14 @@ def main():
     ob = d["outbound"] or {}
     chk((ob.get("bad") or 0) > 0, "바깥으로 보낸 요청(텔레그램 · 인스타) 24시간 %s개 중 실패 %s개" % (ob.get("total"), ob.get("bad")),
         "바깥 요청 24시간 %s개 실패 0" % ob.get("total"))
+    if runs is None:
+        bad.append("GitHub Actions 상태를 못 읽었어요 (github.com 연결)")
+    else:
+        day = [r for r in runs if (age_h(r.get("created_at")) or 99) <= 24]
+        fail = [r for r in day if r.get("conclusion") in ("failure", "timed_out", "startup_failure")]
+        names2 = sorted({r.get("name") for r in fail})
+        chk(bool(fail), "GitHub Actions 24시간 %d번 중 실패 %d번: %s (페이지 배포 실패면 새 수정이 홈페이지에 안 보임)" % (len(day), len(fail), ", ".join(names2)),
+            "GitHub Actions 24시간 %d번 실패 0 (페이지 배포 · 인스타 사진 · 인터뷰 영상)" % len(day))
     # 4) 처리 기다리는 것 (하루 넘게 밀린 것만 확인할 것으로)
     names = {"kakao_link": "학생 카카오 연결 요청", "teacher_link": "선생님 연결 요청", "consult": "상담 신청", "partner": "제휴 업체 신청", "song": "노래 추천 신청"}
     for k, label in names.items():
