@@ -7,7 +7,7 @@
 //   LeeshGrid.summary(note, fields)           → 지난 일지를 칸 이름별로 정리해서 (저번 시간 · 지난 일지 · 관리자 · 학생)
 //   LeeshGrid.template(fields) / fromNote(note, fields) → 새 일지 / 예전 일지(칸 5개)를 표로
 // 저장 모양 (lesson_notes.sheet, 서버 private.sheet_ok가 다시 확인):
-//   { v:1, n:행 수, w:{열:너비}, h:{행:높이}, c:{ "행,열": { t:"꾸민 글", s:{ b,i,u,x(취소선), z:글씨px, f:글자색, g:채우기색, wr:칸 안 줄바꿈 } } } }
+//   { v:1, n:행 수, w:{열:너비}, h:{행:높이}, c:{ "행,열": { t:"꾸민 글", s:{ b,i,u,x(취소선), z:글씨px, f:글자색, g:채우기색, wr:칸 안 줄바꿈, a:가로 정렬 c|r, va:세로 정렬 m|b } } } }
 // 긴 글은 구글시트처럼 오른쪽 빈 칸으로 넘쳐 보이고(오른쪽 칸에 글이 있으면 잘림), wr이면 칸 안에서 줄을 바꿔요 (원장님 2026-11-03, 선생님 시트 옮기기).
 (function () {
   var R = window.LeeshRich;
@@ -105,6 +105,9 @@
     if (z >= 8 && z <= 48) css.push("font-size:" + z + "px");
     if (f) css.push("color:" + f);
     if (g) css.push("background-color:" + g);
+    // 정렬 (선생님 의견 2026-11-05 "칸이나 글자를 가운데 정렬, 스프레드시트처럼"): 가로 왼쪽(기본) · 가운데 · 오른쪽, 세로 위(기본) · 가운데 · 아래
+    if (s.a === "c" || s.a === "r") css.push("text-align:" + (s.a === "c" ? "center" : "right"));
+    if (s.va === "m" || s.va === "b") css.push("vertical-align:" + (s.va === "m" ? "middle" : "bottom"));
     return css.join(";");
   }
   /** 구글시트처럼: 오른쪽 칸에 글이 있으면 잘리고(is-clip), 줄바꿈 칸(wr)은 칸 안에서 줄을 바꿔요(is-wrap). */
@@ -112,7 +115,7 @@
     if (!cell) return;
     var x = d.c[key(r, c)], right = d.c[key(r, c + 1)];
     cell.classList.toggle("is-wrap", !!(x && x.s && x.s.wr));
-    cell.classList.toggle("is-clip", !!(right && textOf(right.t).trim()));
+    cell.classList.toggle("is-clip", !!(right && textOf(right.t).trim()) || !!(x && x.s && (x.s.a === "c" || x.s.a === "r")));
     // 넘친 부분만 흰 바탕으로 덮어 옆 칸 줄을 가려요 (구글시트처럼). 칸 자기 자리는 비워 둬서 고른 칸 · 채우기 색이 보이게
     if (cell.firstChild) cell.firstChild.style.setProperty("--w", (Number(d.w[c]) || CW) + "px");
   }
@@ -512,6 +515,10 @@
       if (f && !/^(#000|#000000|rgb\(0,\s*0,\s*0\))$/i.test(f)) s.f = f;
       var g = okColor(st.backgroundColor);
       if (g && !isWhite(g)) s.g = g;
+      var ta = String(st.textAlign || n.getAttribute && n.getAttribute("align") || "").toLowerCase();
+      if (ta === "center") s.a = "c"; else if (ta === "right" || ta === "end") s.a = "r";
+      var va = String(st.verticalAlign || n.getAttribute && n.getAttribute("valign") || "").toLowerCase();
+      if (va === "middle") s.va = "m"; else if (va === "bottom") s.va = "b";
       return s;
     }
     function parseClip(cd) {
@@ -735,6 +742,9 @@
        ["오른쪽에 열 넣기", function () { colsAt(rng.c2 + 1); }],
        ["열 " + LETTERS[rng.c1] + (cols > 1 ? "~" + LETTERS[rng.c2] : "") + " 지우기", delCols],
        null,
+       ["가운데 정렬", function () { setStyle(function (s) { s.a = "c"; }); }],
+       ["왼쪽 정렬", function () { setStyle(function (s) { s.a = null; }); }],
+       null,
        ["내용 지우기 (Delete)", clearRange],
        ["서식 지우기", function () { clearFormat(); }]
       ], x, y, true);
@@ -828,6 +838,13 @@
     btn("rt-btn--strike", "<s>S</s>", "취소선", flag("x", "strikeThrough"));
     btn("rt-btn--wrap", ICON.wrap, "줄바꿈: 긴 글을 칸 안에서 줄 바꾸기 (끄면 오른쪽 빈 칸으로 넘쳐 보여요)", function () { if (mode === "edit") commit(); toggle("wr"); });
     sep();
+    // 가로 정렬 (왼쪽 · 가운데 · 오른쪽) + 세로 정렬 메뉴 — 고른 칸 전체
+    function align(key, v) { return function () { if (mode === "edit") commit(); setStyle(function (s) { s[key] = v; }); }; }
+    btn("rt-btn--al", ICON.alignLeft, "왼쪽 정렬", align("a", null));
+    btn("rt-btn--ac", ICON.alignCenter, "가운데 정렬", align("a", "c"));
+    btn("rt-btn--ar", ICON.alignRight, "오른쪽 정렬", align("a", "r"));
+    var vaBtn = btn("rt-btn--va", ICON.alignMiddle, "세로 정렬 (위 · 가운데 · 아래)", function () { open(vaMenu, vaBtn); }, true);
+    sep();
     var lastText = "#D62828", lastFill = "#FFE45C";
     var colorBtn = btn("rt-btn--color", 'A<i class="rt-swatch" style="background:' + lastText + '"></i>', "글자 색", function () { open(textMenu, colorBtn); }, true);
     var fillBtn = btn("rt-btn--fill", ICON.fill + '<i class="rt-swatch" style="background:' + lastFill + '"></i>', "채우기 색", function () { open(fillMenu, fillBtn); }, true);
@@ -864,6 +881,13 @@
       bar.appendChild(m);
       return m;
     }
+    var vaMenu = menu("rt-menu--va");
+    [["위", null], ["가운데", "m"], ["아래", "b"]].forEach(function (x) {
+      var b = el("button", "rt-menu__size", x[0]);
+      b.type = "button";
+      b.addEventListener("click", function () { if (mode === "edit") commit(); setStyle(function (s) { s.va = x[1]; }); closeMenus(true); });
+      vaMenu.appendChild(b);
+    });
     var sizeMenu = menu("rt-menu--size");
     SIZES.forEach(function (px) {
       var b = el("button", "rt-menu__size", String(px));

@@ -4895,3 +4895,54 @@ revoke all on function private.notify_send(text), private.notify_digest() from p
 
 select cron.unschedule('leesh_notify_digest') where exists (select 1 from cron.job where jobname = 'leesh_notify_digest');
 select cron.schedule('leesh_notify_digest', '0 * * * *', 'select private.notify_digest()');
+-- ---------------------------------------------------------------- 마이그레이션 leesh_grid_align (2026-11-05)
+-- 시트 칸 정렬 (선생님 의견 "가운데 정렬, 스프레드시트처럼"): 서식 키 a(가로 l/c/r) · va(세로 t/m/b) 허락
+CREATE OR REPLACE FUNCTION private.sheet_ok(s jsonb)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ IMMUTABLE
+ SET search_path TO ''
+AS $function$
+declare k text; v jsonb; sk text; sv jsonb;
+begin
+  if s is null then return true; end if;
+  if jsonb_typeof(s) <> 'object' or octet_length(s::text) > 400000 then return false; end if;
+  for k in select jsonb_object_keys(s) loop
+    if k not in ('v', 'n', 'w', 'h', 'c') then return false; end if;
+  end loop;
+  if s ? 'v' and jsonb_typeof(s -> 'v') <> 'number' then return false; end if;
+  if s ? 'n' and (jsonb_typeof(s -> 'n') <> 'number' or (s ->> 'n')::numeric > 1000 or (s ->> 'n')::numeric < 1) then return false; end if;
+  if jsonb_typeof(coalesce(s -> 'w', '{}')) <> 'object' or jsonb_typeof(coalesce(s -> 'h', '{}')) <> 'object'
+     or jsonb_typeof(coalesce(s -> 'c', '{}')) <> 'object' then return false; end if;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'w', '{}')) loop
+    if k !~ '^\d{1,2}$' or k::int > 25 or jsonb_typeof(v) <> 'number' or v::numeric < 20 or v::numeric > 1500 then return false; end if;
+  end loop;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'h', '{}')) loop
+    if k !~ '^\d{1,3}$' or jsonb_typeof(v) <> 'number' or v::numeric < 12 or v::numeric > 1500 then return false; end if;
+  end loop;
+  for k, v in select key, value from jsonb_each(coalesce(s -> 'c', '{}')) loop
+    if k !~ '^\d{1,3},\d{1,2}$' or split_part(k, ',', 2)::int > 25 or jsonb_typeof(v) <> 'object' then return false; end if;
+    for sk in select jsonb_object_keys(v) loop
+      if sk not in ('t', 's') then return false; end if;
+    end loop;
+    if v ? 't' and (jsonb_typeof(v -> 't') <> 'string' or char_length(v ->> 't') > 40000 or not private.rich_ok(v ->> 't')
+                    or char_length(private.rich_text(v ->> 't')) > 5000) then return false; end if;
+    if jsonb_typeof(coalesce(v -> 's', '{}')) <> 'object' then return false; end if;
+    for sk, sv in select key, value from jsonb_each(coalesce(v -> 's', '{}')) loop
+      if sk in ('b', 'i', 'u', 'x', 'wr') then
+        if jsonb_typeof(sv) not in ('number', 'boolean') then return false; end if;
+      elsif sk = 'a' then
+        if jsonb_typeof(sv) <> 'string' or (sv #>> '{}') not in ('l', 'c', 'r') then return false; end if;
+      elsif sk = 'va' then
+        if jsonb_typeof(sv) <> 'string' or (sv #>> '{}') not in ('t', 'm', 'b') then return false; end if;
+      elsif sk = 'z' then
+        if jsonb_typeof(sv) <> 'number' or sv::numeric < 8 or sv::numeric > 48 then return false; end if;
+      elsif sk in ('f', 'g') then
+        if jsonb_typeof(sv) <> 'string' or (sv #>> '{}') !~* '^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[0-9.]+\s*)?\))$' then return false; end if;
+      else
+        return false;
+      end if;
+    end loop;
+  end loop;
+  return true;
+end $function$;

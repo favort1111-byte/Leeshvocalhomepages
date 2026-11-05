@@ -147,6 +147,10 @@
     redo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z" fill="currentColor"/></svg>',
     fill: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 8.9 8.7 1 7.3 2.4l2.4 2.4-5.2 5.2c-.6.6-.6 1.5 0 2.1l5.5 5.5c.3.3.7.4 1.1.4s.8-.1 1.1-.4l5.5-5.5c.5-.6.5-1.6-.1-2.2zM5.9 11 11 5.9l5.1 5.1H5.9zM19 12.5s-2 2.2-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.3-2-3.5-2-3.5z" fill="currentColor"/></svg>',
     clear: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.3 5 2 6.3 9 13.3 6.5 19h3l1.6-3.7 5.6 5.7 1.3-1.3L3.3 5zM6 5v.2L8.8 8h2.4l-.7 1.7 2.1 2.1L14.2 8H20V5H6z" fill="currentColor"/></svg>',
+    alignLeft: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v2H3zm0 4h12v2H3zm0 4h18v2H3zm0 4h12v2H3zm0 4h18v2H3z" fill="currentColor"/></svg>',
+    alignCenter: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v2H3zm3 4h12v2H6zm-3 4h18v2H3zm3 4h12v2H6zm-3 4h18v2H3z" fill="currentColor"/></svg>',
+    alignRight: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v2H3zm6 4h12v2H9zm-6 4h18v2H3zm6 4h12v2H9zm-6 4h18v2H3z" fill="currentColor"/></svg>',
+    alignMiddle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 19h3v4h2v-4h3l-4-4-4 4zm8-14h-3V1h-2v4H8l4 4 4-4zM4 11v2h16v-2H4z" fill="currentColor"/></svg>',
     wrap: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3 3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z" fill="currentColor"/></svg>'
   };
 
