@@ -4447,3 +4447,79 @@ begin
   return jsonb_build_object('ok', true, 'booking', jsonb_build_object(
     'id', new_id, 'room', room.name, 'date', d, 'start', private.hhmm(st), 'end', private.hhmm(en)));
 end $function$;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_messages (2026-11-05)
+-- 관리자 → 학생 · 선생님 메시지 (원장님 2026-11-05 "학생이 로그인하면 볼 수 있는 메시지, 선생님한테도").
+-- 한 사람에게 한 줄 (여러 명에게 보내면 줄이 여러 개). 받는 사람만 읽고, 읽은 시각이 관리자 화면에 보여요. 답장은 없음.
+create table if not exists public.messages (
+  id         bigint generated always as identity primary key,
+  to_member  text references public.members (id) on update cascade on delete cascade,
+  to_teacher bigint references public.teachers (id) on delete cascade,
+  sender     text not null default '학원' check (sender in ('학원', '원장님', '실장님')),
+  body       text not null check (char_length(trim(body)) between 1 and 2000),
+  created_at timestamptz not null default now(),
+  read_at    timestamptz,
+  constraint messages_one_to check ((to_member is null) <> (to_teacher is null))
+);
+create index if not exists messages_member_idx on public.messages (to_member, created_at desc) where to_member is not null;
+create index if not exists messages_teacher_idx on public.messages (to_teacher, created_at desc) where to_teacher is not null;
+
+alter table public.messages enable row level security;
+drop policy if exists admin_all on public.messages;
+create policy admin_all on public.messages for all to authenticated using (public.is_admin()) with check (public.is_admin());
+revoke all on public.messages from anon;
+grant select, insert, update, delete on public.messages to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+-- 학생: 내 메시지 (최근 50개)
+create or replace function public.member_messages(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', m.id, 'sender', m.sender, 'body', m.body, 'at', m.created_at, 'read', m.read_at is not null)
+           order by m.created_at desc)
+    from (select * from public.messages where to_member = who ->> 'id' order by created_at desc limit 50) m), '[]'::jsonb));
+end $$;
+
+-- 학생: 읽음 표시 (자기 메시지만)
+create or replace function public.member_message_read(p_id text, p_pin text, p_ids bigint[]) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  update public.messages set read_at = now()
+   where to_member = who ->> 'id' and id = any (coalesce(p_ids, '{}')) and read_at is null;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 선생님: 내 메시지 (최근 50개)
+create or replace function public.teacher_messages() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님 연결이 필요해요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', m.id, 'sender', m.sender, 'body', m.body, 'at', m.created_at, 'read', m.read_at is not null)
+           order by m.created_at desc)
+    from (select * from public.messages where to_teacher = t.id order by created_at desc limit 50) m), '[]'::jsonb));
+end $$;
+
+create or replace function public.teacher_message_read(p_ids bigint[]) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님 연결이 필요해요.'); end if;
+  update public.messages set read_at = now()
+   where to_teacher = t.id and id = any (coalesce(p_ids, '{}')) and read_at is null;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.member_messages(text, text), public.member_message_read(text, text, bigint[]),
+  public.teacher_messages(), public.teacher_message_read(bigint[]) from public, anon;
+grant execute on function public.member_messages(text, text), public.member_message_read(text, text, bigint[]) to anon, authenticated;
+grant execute on function public.teacher_messages(), public.teacher_message_read(bigint[]) to authenticated;

@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 27; // bump when the demo defaults change
+  var VERSION = 28; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -95,6 +95,12 @@
       teachers: ["안유정", "양유경", "오은지", "원장님", "이수빈", "이윤지", "이하섬", "최홍주"].map(function (n, i) {
         return { id: 501 + i, name: n, kakao_user: n === "안유정" ? "kakao-teacher" : null, active: true, created_at: new Date().toISOString() };
       }),
+      // 학원 → 학생 · 선생님 메시지 (원장님 2026-11-05)
+      messages: [
+        { id: 601, to_member: "S001", to_teacher: null, sender: "실장님", body: "시우님, 이번 주 금요일 레슨은 토요일 오후 2시로 옮겨졌어요.\n못 오시면 카카오톡으로 알려주세요. (체험 모드 예시)", created_at: new Date(Date.now() - 1200000).toISOString(), read_at: null },
+        { id: 602, to_member: "S001", to_teacher: null, sender: "원장님", body: "월말평가 영상 잘 봤어요. 고음 연습 꾸준히 해봐요! (체험 모드 예시)", created_at: new Date(Date.now() - 3 * 86400000).toISOString(), read_at: new Date(Date.now() - 2 * 86400000).toISOString() },
+        { id: 603, to_member: null, to_teacher: 501, sender: "원장님", body: "선생님들, 다음 주 월요일 저녁 7시에 회의가 있어요. (체험 모드 예시)", created_at: new Date(Date.now() - 2400000).toISOString(), read_at: null }
+      ],
       teacher_requests: [
         { id: 521, user_id: "kakao-wait-t", kakao_name: "은지쌤", name: "오은지", status: "대기", teacher_id: null, created_at: new Date(Date.now() - 1800000).toISOString(), decided_at: null }
       ],
@@ -559,6 +565,34 @@
       save();
       return { ok: true, id: row.id };
     },
+    member_messages: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      return { ok: true, items: db.messages.filter(function (m) { return m.to_member === who.id; })
+        .sort(function (x, y) { return x.created_at < y.created_at ? 1 : -1; }).slice(0, 50)
+        .map(function (m) { return { id: m.id, sender: m.sender, body: m.body, at: m.created_at, read: !!m.read_at }; }) };
+    },
+    member_message_read: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      db.messages.forEach(function (m) { if (m.to_member === who.id && (a.p_ids || []).indexOf(m.id) !== -1 && !m.read_at) m.read_at = new Date().toISOString(); });
+      save();
+      return { ok: true };
+    },
+    teacher_messages: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("선생님 연결이 필요해요.");
+      return { ok: true, items: db.messages.filter(function (m) { return m.to_teacher === t.id; })
+        .sort(function (x, y) { return x.created_at < y.created_at ? 1 : -1; }).slice(0, 50)
+        .map(function (m) { return { id: m.id, sender: m.sender, body: m.body, at: m.created_at, read: !!m.read_at }; }) };
+    },
+    teacher_message_read: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("선생님 연결이 필요해요.");
+      db.messages.forEach(function (m) { if (m.to_teacher === t.id && (a.p_ids || []).indexOf(m.id) !== -1 && !m.read_at) m.read_at = new Date().toISOString(); });
+      save();
+      return { ok: true };
+    },
     member_partners: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
@@ -882,6 +916,12 @@
           var m = db.members.filter(function (x) { return x.id === r.member_id; })[0];
           c.members = m ? { name: m.name, phone: m.phone } : null;
         }
+        if (p.table === "messages") {
+          var mm = db.members.filter(function (x) { return x.id === r.to_member; })[0];
+          var tt = db.teachers.filter(function (x) { return x.id === r.to_teacher; })[0];
+          c.member = mm ? { name: mm.name } : null;
+          c.teacher = tt ? { name: tt.name } : null;
+        }
         return c;
       });
       return { status: 200, data: out };
@@ -902,6 +942,13 @@
       var keys = p.params.on_conflict.split(",");
       var same = rows.filter(function (r) { return keys.every(function (k) { return String(r[k]) === String(body[k]); }); })[0];
       if (same) { Object.assign(same, body); save(); return { status: 200, data: [same] }; }
+    }
+    if (method === "POST" && Array.isArray(body)) {
+      // 여러 줄 한 번에 (메시지 여러 명에게): 같은 시각으로
+      var at = new Date().toISOString();
+      var made = body.map(function (b) { var r = Object.assign({ id: ++db.next, created_at: at, read_at: null }, b); rows.push(r); return r; });
+      save();
+      return { status: 201, data: made };
     }
     if (method === "POST") {
       if (p.table === "bookings") {

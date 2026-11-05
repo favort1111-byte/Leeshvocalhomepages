@@ -57,6 +57,7 @@
     scene.querySelectorAll("[data-book-tab]").forEach(function (t) { t.setAttribute("aria-selected", t.getAttribute("data-book-tab") === name ? "true" : "false"); });
     scene.querySelectorAll("[data-book-page]").forEach(function (p) { p.hidden = p.getAttribute("data-book-page") !== name; });
     // phones: the tab row scrolls sideways, so bring the chosen tab into view
+    if (name === "msgs" && !scene.hidden) markMsgsRead();
     var t = scene.querySelector('[data-book-tab="' + name + '"]'), row = t && t.parentNode;
     if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = t.offsetLeft - row.offsetLeft - 12;
   }
@@ -83,8 +84,65 @@
       box.hidden = true;
       open.hidden = false;
       renderSuggest();
+      loadMsgs();
       return LeeshAPI.rpc("member_partners", { p_id: who.id, p_pin: who.key }).then(function (p) { if (p.ok) renderPartners(p); });
     });
+  }
+
+  /* 메시지: 학원(원장님 · 실장님)이 관리자 화면에서 나에게 보낸 것 (원장님 2026-11-05). 답장은 카카오톡으로.
+     새 메시지가 있으면 바탕화면 내 폴더에 ✉ 표시, 폴더를 열면 메시지 탭이 먼저 열리고, 탭을 보면 읽음. */
+  var msgs = [], msgJumped = 0, msgSeen = {};
+  var folderIcons = document.querySelectorAll('.icons a.icon[data-scene="scene-me"]');
+  function msgTime(iso) {
+    var d = new Date(iso), k = new Date(d.getTime() + 9 * 3600000);
+    return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일 (" + WD[k.getUTCDay()] + ") " + k.getUTCHours() + ":" + (k.getUTCMinutes() < 10 ? "0" : "") + k.getUTCMinutes();
+  }
+  function msgBadge() {
+    var n = msgs.filter(function (m) { return !m.read; }).length;
+    var b = scene.querySelector("#myMsgBadge");
+    if (b) { b.hidden = !n; b.textContent = n || ""; }
+    folderIcons.forEach(function (ic) { ic.classList.toggle("icon--new", n > 0); ic.classList.toggle("icon--msg", n > 0); });
+    return n;
+  }
+  function loadMsgs() {
+    return LeeshAPI.rpc("member_messages", { p_id: who.id, p_pin: who.key }).then(function (res) {
+      if (!res.ok) return;
+      msgs = res.items || [];
+      // 방금 읽음으로 보낸 것은 서버 답이 늦어도 다시 "안 읽음"으로 안 보이게
+      msgs.forEach(function (m) { if (msgSeen[m.id]) { m.read = true; m.fresh = true; } });
+      renderMsgs();
+      var n = msgBadge();
+      var top = msgs.filter(function (m) { return !m.read; })[0];
+      // 처음 보는 새 메시지가 있으면 한 번만 메시지 탭으로
+      if (n && top.id !== msgJumped && !open.hidden) { msgJumped = top.id; showTab("msgs"); }
+    });
+  }
+  function renderMsgs() {
+    var box = scene.querySelector("#myMsgs");
+    if (!box) return;
+    box.textContent = "";
+    var sum = el("div", "fold__sum");
+    sum.appendChild(el("p", null, "학원에서 나에게 보낸 메시지예요. 답장이나 궁금한 점은 카카오톡으로 보내주세요."));
+    box.appendChild(sum);
+    if (!msgs.length) { box.appendChild(el("p", "book__empty", "아직 받은 메시지가 없어요.")); return; }
+    msgs.forEach(function (m) {
+      var c = el("article", "fold__card msg" + (m.read && !m.fresh ? "" : " msg--new"));
+      var h = el("p", "msg__head");
+      h.appendChild(el("b", "msg__from", m.sender));
+      h.appendChild(el("span", "msg__time", msgTime(m.at)));
+      if (!m.read || m.fresh) h.appendChild(el("span", "msg__new", "새 메시지"));
+      c.appendChild(h);
+      c.appendChild(el("p", "msg__body", m.body));
+      box.appendChild(c);
+    });
+  }
+  function markMsgsRead() {
+    var ids = msgs.filter(function (m) { return !m.read; }).map(function (m) { return m.id; });
+    if (!ids.length || !who) return;
+    // 이번에 보는 동안은 "새 메시지" 표시를 남겨두고, 숫자만 지워요
+    msgs.forEach(function (m) { if (!m.read) { m.read = true; m.fresh = true; msgSeen[m.id] = 1; } });
+    msgBadge();
+    LeeshAPI.rpc("member_message_read", { p_id: who.id, p_pin: who.key, p_ids: ids });
   }
 
   function renderNotes(notes) {
@@ -861,6 +919,7 @@
   }
 
   scene.querySelector("#myLogout").addEventListener("click", function () {
+    msgs = []; msgSeen = {}; msgJumped = 0; msgBadge();
     sign.signOut();
     showLogin();
   });
@@ -873,6 +932,7 @@
   // A link like index.html#evals opens the folder on that tab (js/scene.js passes it on).
   scene.addEventListener("scene:open", function (e) {
     if (e.detail && e.detail.tab) showTab(HIDDEN.indexOf(e.detail.tab) < 0 ? e.detail.tab : FIRST);
+    else if (msgs.some(function (m) { return !m.read; })) showTab("msgs");
     if (who) load();
   });
 

@@ -155,6 +155,7 @@
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
     if (name === "suggest") loadSuggest();
+    if (name === "messages") loadMessages();
   }
   document.querySelectorAll("[data-tab]").forEach(function (b) {
     b.addEventListener("click", function () { var t = b.getAttribute("data-tab"); showTab(t); markSeen(t); });
@@ -2361,6 +2362,162 @@
     });
   }
   $("#suggestFilter").addEventListener("change", loadSuggest);
+
+  /* ---------------- 메시지 (학원 → 학생 · 선생님, 원장님 2026-11-05) ----------------
+     한 사람에게 한 줄 (messages 표, RLS: 관리자만 쓰고 읽음). 같이 보낸 것은 목록에서 한 카드로 묶어요. */
+  var msgState = { to: "member", people: { member: [], teacher: [] }, picked: {} };
+  function msgTeacherOf(m) { var t = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return t ? t[1] : ""; }
+  function msgKey(kind, id) { return kind + ":" + id; }
+  function loadMessages() {
+    try { $("#msgSender").value = localStorage.getItem("leesh-admin-msg-sender") || "학원"; } catch (e) { /* private mode */ }
+    Promise.all([
+      api("members?select=id,name,status,memo,kakao_user&status=in.(" + encodeURIComponent("재원") + "," + encodeURIComponent("휴원") + ")&order=name"),
+      api("teachers?select=id,name,active,kakao_user&active=is.true&order=name")
+    ]).then(function (r) {
+      msgState.people.member = r[0].ok ? r[0].data : [];
+      msgState.people.teacher = r[1].ok ? r[1].data : [];
+      var sel = $("#msgTeacherFilter"), keep = sel.value;
+      sel.textContent = "";
+      sel.appendChild(el("option", null, "담당 전체")).value = "";
+      var names = {};
+      msgState.people.member.forEach(function (m) { var t = msgTeacherOf(m); if (t) names[t] = 1; });
+      Object.keys(names).sort().forEach(function (t) { var o = el("option", null, "담당 " + t); o.value = t; sel.appendChild(o); });
+      sel.value = keep;
+      renderMsgPick();
+    });
+    loadSentMessages();
+  }
+  function msgVisible() {
+    var q = $("#msgFind").value.trim(), t = $("#msgTeacherFilter").value;
+    return msgState.people[msgState.to].filter(function (p) {
+      if (q && p.name.indexOf(q) === -1) return false;
+      if (msgState.to === "member" && t && msgTeacherOf(p) !== t) return false;
+      return true;
+    });
+  }
+  function msgPickedList() {
+    return Object.keys(msgState.picked).filter(function (k) { return msgState.picked[k]; });
+  }
+  function msgUpdateCount() {
+    var keys = msgPickedList();
+    var st = keys.filter(function (k) { return k.indexOf("member:") === 0; }).length, te = keys.length - st;
+    $("#msgCount").textContent = keys.length ? "받는 사람 " + [st ? "학생 " + st + "명" : "", te ? "선생님 " + te + "명" : ""].filter(Boolean).join(" · ") : "받는 사람을 골라주세요.";
+    var n = $("#msgBody").value.trim().length;
+    $("#msgLen").textContent = $("#msgBody").value.length + " / 2000";
+    $("#msgSend").disabled = !keys.length || !n;
+  }
+  function renderMsgPick() {
+    var ul = $("#msgPick");
+    ul.textContent = "";
+    $("#msgTeacherFilter").hidden = msgState.to !== "member";
+    var list = msgVisible();
+    if (!list.length) ul.appendChild(el("li", "sys-empty", msgState.to === "member" ? "맞는 학생이 없어요." : "맞는 선생님이 없어요."));
+    list.forEach(function (p) {
+      var key = msgKey(msgState.to, p.id);
+      var li = el("li");
+      var lab = el("label", "msg-pick__item");
+      var cb = el("input");
+      cb.type = "checkbox";
+      cb.checked = !!msgState.picked[key];
+      cb.addEventListener("change", function () { msgState.picked[key] = cb.checked; msgUpdateCount(); });
+      lab.appendChild(cb);
+      lab.appendChild(el("b", null, p.name));
+      if (msgState.to === "member") {
+        var t = msgTeacherOf(p);
+        if (t) lab.appendChild(el("span", "msg-pick__sub", t));
+        if (p.status !== "재원") lab.appendChild(el("span", "msg-pick__sub", p.status));
+      }
+      if (!p.kakao_user) lab.appendChild(el("span", "msg-pick__off", "아직 카카오 연결 전"));
+      li.appendChild(lab);
+      ul.appendChild(li);
+    });
+    msgUpdateCount();
+  }
+  document.querySelectorAll('input[name="msgTo"]').forEach(function (r) {
+    r.addEventListener("change", function () { if (r.checked) { msgState.to = r.value; renderMsgPick(); } });
+  });
+  $("#msgTeacherFilter").addEventListener("change", renderMsgPick);
+  $("#msgFind").addEventListener("input", renderMsgPick);
+  $("#msgAll").addEventListener("click", function () { msgVisible().forEach(function (p) { msgState.picked[msgKey(msgState.to, p.id)] = true; }); renderMsgPick(); });
+  $("#msgNone").addEventListener("click", function () { msgState.picked = {}; renderMsgPick(); });
+  $("#msgBody").addEventListener("input", msgUpdateCount);
+  $("#msgSender").addEventListener("change", function () { try { localStorage.setItem("leesh-admin-msg-sender", $("#msgSender").value); } catch (e) { /* private mode */ } });
+  $("#msgSend").addEventListener("click", function () {
+    var keys = msgPickedList(), body = $("#msgBody").value.trim(), sender = $("#msgSender").value;
+    if (!keys.length || !body) return;
+    var btn = $("#msgSend");
+    if (btn.getAttribute("data-armed") !== "1") {
+      btn.setAttribute("data-armed", "1");
+      btn.textContent = keys.length + "명에게 보내기 (한 번 더 누르기)";
+      setTimeout(function () { btn.removeAttribute("data-armed"); btn.textContent = "보내기"; }, 5000);
+      return;
+    }
+    btn.removeAttribute("data-armed");
+    btn.textContent = "보내는 중…";
+    btn.disabled = true;
+    var rows = keys.map(function (k) {
+      var kind = k.split(":")[0], id = k.slice(kind.length + 1);
+      return kind === "member" ? { to_member: id, sender: sender, body: body } : { to_teacher: Number(id), sender: sender, body: body };
+    });
+    api("messages", { method: "POST", body: rows }).then(function (res) {
+      btn.textContent = "보내기";
+      if (!res.ok) { msg($("#msgSendMsg"), friendly(res, "보내지 못했습니다."), "error"); msgUpdateCount(); return; }
+      msg($("#msgSendMsg"), rows.length + "명에게 보냈어요.", "ok");
+      $("#msgBody").value = "";
+      msgState.picked = {};
+      renderMsgPick();
+      loadSentMessages();
+    });
+  });
+  function msgWhen(iso) {
+    var k = new Date(new Date(iso).getTime() + 9 * 3600000);
+    return (k.getUTCMonth() + 1) + "/" + k.getUTCDate() + " " + k.getUTCHours() + ":" + (k.getUTCMinutes() < 10 ? "0" : "") + k.getUTCMinutes();
+  }
+  function loadSentMessages() {
+    var list = $("#msgSent");
+    list.textContent = "";
+    api("messages?select=id,to_member,to_teacher,sender,body,created_at,read_at,member:members(name),teacher:teachers(name)&order=created_at.desc&limit=300").then(function (res) {
+      if (!res.ok) { list.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
+      // 같이 보낸 것 (같은 시각 · 같은 내용) = 카드 하나
+      var groups = [], byKey = {};
+      res.data.forEach(function (m) {
+        var k = m.created_at + "|" + m.sender + "|" + m.body;
+        if (!byKey[k]) { byKey[k] = { at: m.created_at, sender: m.sender, body: m.body, rows: [] }; groups.push(byKey[k]); }
+        byKey[k].rows.push(m);
+      });
+      if (!groups.length) { list.appendChild(el("li", "sys-empty", "아직 보낸 메시지가 없어요.")); return; }
+      groups.forEach(function (g) {
+        var li = el("li", "adm__card");
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, msgWhen(g.at)));
+        top.appendChild(el("span", "adm__badge adm__badge--kind", g.sender));
+        var read = g.rows.filter(function (m) { return m.read_at; }).length;
+        top.appendChild(el("span", "sys-note", g.rows.length + "명 · 읽음 " + read + " / " + g.rows.length));
+        li.appendChild(top);
+        li.appendChild(el("p", "adm__quote msg-sent__body", g.body));
+        var d = el("details", "msg-sent__who");
+        d.appendChild(el("summary", null, "받는 사람 보기"));
+        var ul = el("ul");
+        g.rows.forEach(function (m) {
+          var row = el("li");
+          var who = m.to_member ? ((m.member && m.member.name) || m.to_member) : ((m.teacher && m.teacher.name) || "") + " 선생님";
+          row.appendChild(el("span", null, who));
+          row.appendChild(el("span", m.read_at ? "msg-sent__read" : "msg-sent__unread", m.read_at ? "읽음 " + msgWhen(m.read_at) : "안 읽음"));
+          var del = el("button", "sys-link adm__del", "지우기");
+          del.type = "button";
+          del.addEventListener("click", function () {
+            if (del.getAttribute("data-armed") !== "1") { del.setAttribute("data-armed", "1"); del.textContent = "한 번 더 누르면 지워요"; return; }
+            api("messages?id=eq." + m.id, { method: "DELETE" }).then(loadSentMessages);
+          });
+          row.appendChild(del);
+          ul.appendChild(row);
+        });
+        d.appendChild(ul);
+        li.appendChild(d);
+        list.appendChild(li);
+      });
+    });
+  }
 
   /* ---------------- 설정 ---------------- */
 

@@ -1156,3 +1156,16 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .pop__btn--go{border-color:#1D4948;background:#1D4948;color:#fff;}
 .pop__never{margin:14px 0 0;padding:4px 8px;border:0;background:none;font:inherit;font-size:13px;color:#6B7178;text-decoration:underline;cursor:pointer;}
 @keyframes pop-in{from{opacity:0}to{opacity:1}}
+/* 내 폴더 메시지 (원장님 2026-11-05: 학원 → 학생) */
+.book__badge{display:inline-block;min-width:18px;height:18px;margin-left:6px;padding:0 5px;border-radius:999px;background:#E5372E;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;vertical-align:1px;}
+.msg{margin-bottom:10px;}
+.msg--new{box-shadow:0 0 0 2px #F2C94C,0 2px 6px rgba(60,40,20,.12);}
+.msg__head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 6px;font-size:13px;color:#7A6A60;}
+.msg__from{color:#1D4948;font-size:14px;}
+.msg__new{padding:1px 8px;border-radius:999px;background:#FFF0B8;color:#6B4E00;font-size:12px;font-weight:700;}
+.msg__body{margin:0;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;font-size:15.5px;line-height:1.65;color:#2B2522;}
+.icon--msg .icon__img::after{content:"✉";}
+.tch__msgs{margin:0 0 18px;padding:14px 16px;border-radius:12px;background:#FFF8DD;}
+.tch__msgs-h{margin:0 0 10px;font-size:16px;color:#1D4948;}
+.tch__msgs-old summary{cursor:pointer;font-size:14px;color:#6E625B;margin:4px 0 8px;}
+.book__badge[hidden]{display:none;}

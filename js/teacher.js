@@ -131,9 +131,49 @@
     h.appendChild(out);
     return h;
   }
+  /* 학원 → 선생님 메시지 (원장님 2026-11-05, 관리자 화면에서 보냄). 새 것은 위에 펼쳐 보이고, 보이면 읽음. */
+  var msgSeen = {};
+  function msgTime(iso) {
+    var k = new Date(new Date(iso).getTime() + 9 * 3600000);
+    return (k.getUTCMonth() + 1) + "/" + k.getUTCDate() + " " + k.getUTCHours() + ":" + (k.getUTCMinutes() < 10 ? "0" : "") + k.getUTCMinutes();
+  }
+  function msgCard(m, fresh) {
+    var c = el("article", "fold__card msg" + (fresh ? " msg--new" : ""));
+    var h = el("p", "msg__head");
+    h.appendChild(el("b", "msg__from", m.sender));
+    h.appendChild(el("span", "msg__time", msgTime(m.at)));
+    if (fresh) h.appendChild(el("span", "msg__new", "새 메시지"));
+    c.appendChild(h);
+    c.appendChild(el("p", "msg__body", m.body));
+    return c;
+  }
+  function messages(holder) {
+    LeeshAPI.rpc("teacher_messages", {}).then(function (res) {
+      if (!res.ok || !(res.items || []).length) return;
+      var items = res.items;
+      var fresh = items.filter(function (m) { return !m.read || msgSeen[m.id]; });
+      var old = items.filter(function (m) { return m.read && !msgSeen[m.id]; });
+      var box = el("section", "tch__msgs");
+      box.appendChild(el("h3", "tch__msgs-h", fresh.length ? "✉ 새 메시지 " + fresh.length + "개" : "✉ 학원 메시지"));
+      fresh.forEach(function (m) { box.appendChild(msgCard(m, true)); });
+      if (old.length) {
+        var d = el("details", "tch__msgs-old");
+        d.appendChild(el("summary", null, (fresh.length ? "지난 메시지 " : "받은 메시지 ") + old.length + "개"));
+        old.forEach(function (m) { d.appendChild(msgCard(m, false)); });
+        box.appendChild(d);
+      }
+      holder.appendChild(box);
+      var ids = items.filter(function (m) { return !m.read; }).map(function (m) { msgSeen[m.id] = 1; return m.id; });
+      if (ids.length) LeeshAPI.rpc("teacher_message_read", { p_ids: ids });
+    });
+  }
+
   function list() {
     clear();
     app.appendChild(header("담당 학생 " + students.length + "명 · 학생을 누르면 레슨 일지를 써요."));
+    var msgHolder = el("div");
+    app.appendChild(msgHolder);
+    messages(msgHolder);
     if (!students.length) {
       app.appendChild(el("p", "book__empty", "담당 학생이 아직 없어요. 수강생 메모의 \"담당 " + me + "\"으로 나눠져요. 원장님께 말씀해주세요."));
       return;
