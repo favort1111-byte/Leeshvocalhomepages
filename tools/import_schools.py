@@ -5,6 +5,7 @@
     a_j.json  = '학교 목록'!A4:J  (구분 · 시도 · 시군구 · 학교명 · 설립 · 단과대 · 학과 · 학과 종류 · 보컬 실기 · 상태)
     m.json    = M4:M (학원 합격 이력)    o.json = O4:O (학교·학과 홈페이지)    qr.json = Q4:R (2027 원서 기간 · 실기 내용)
     auto.json = '자동 확인'!A4:C (학교명 · 구분 · 입학처 공지·모집요강 주소)   news.json = '새 소식'!A4:E (자동 확인이 찾은 공지)
+    rates.json (있으면) = '경쟁률'!A4:K (학교명 · 학과 · 학년도 · 전형 · 세부 · 모집 인원 · 지원 인원 · 경쟁률 · 출처 링크 · 확인한 날 · 메모)
     guide.json (있으면) = '모집요강 요약'!A4:L (학교명 · 학과 · 모집인원 · 전형 · 원서 기간 · 실기 일정 · 합격 발표 · 실기 내용 · 반영 비율 · 모집요강 링크 · 확인한 날 · 메모)
     python3 tools/import_schools.py <그 폴더>   → data/schools.json
 
@@ -184,6 +185,31 @@ if os.path.exists(os.path.join(SRC, "guide.json")):
         if r[0] and r[1]:
             SUMMARY[(r[0], r[1])] = {"seats": r[2], "track": r[3], "apply": r[4], "exam": r[5], "result": r[6],
                                     "audition": r[7], "ratio": r[8], "link": r[9], "checked": r[10], "memo": r[11]}
+# 지난 경쟁률 (원장님 2026-11-05 "작년 · 재작년 경쟁률"): 로컬 세션이 학교 입학처 · 어디가 공식 발표에서 찾은 숫자만.
+# 학년도 · 전형마다 보컬 전공 숫자가 있으면 그것만, 없으면 학과 전체 숫자.
+RATES = {}
+if os.path.exists(os.path.join(SRC, "rates.json")):
+    for r in load("rates.json"):
+        r = [str(x).strip() for x in r] + [""] * 11
+        if not (r[0] and r[1] and r[2].isdigit() and re.match(r"^\d+(\.\d+)?$", r[7])):
+            continue
+        RATES.setdefault((r[0], r[1]), []).append({"y": int(r[2]), "track": r[3], "part": r[4] or "학과 전체",
+            "seats": r[5], "apply": r[6], "rate": r[7], "link": r[8] if r[8].startswith("http") else ""})
+def rates_of(school, major):
+    rows, out2 = RATES.get((school, major), []), []
+    for y in sorted({x["y"] for x in rows}, reverse=True):
+        ys = [x for x in rows if x["y"] == y]
+        tracks = []
+        for x in ys:
+            if x["track"] not in tracks: tracks.append(x["track"])
+        lines = []
+        for t in tracks:
+            ts = [x for x in ys if x["track"] == t]
+            vocal = [x for x in ts if x["part"].startswith("보컬")]
+            for x in (vocal or ts):
+                lines.append({k: x[k] for k in ("track", "part", "seats", "apply", "rate", "link")})
+        out2.append({"y": y, "lines": lines})
+    return out2
 out, held, skipped, dropped = [], [], 0, []
 for i, r in enumerate(rows):
     kind, sido, sigungu, school, found, college, major, mkind, vocal, state = [x.strip() for x in r]
@@ -227,6 +253,7 @@ for i, r in enumerate(rows):
         "admit": ADMIT.get(school, ""),
         "guide": GUIDE.get(school, ("", ""))[1],
         "guide_title": GUIDE.get(school, ("", ""))[0],
+        "rates": rates_of(school, major),
     })
     sm = SUMMARY.get((school, major))
     if sm and not sm["audition"] and NO_VOCAL.search(sm["memo"]):
@@ -251,7 +278,7 @@ for i, r in enumerate(rows):
                 x["wait"] = True
 
 data = {
-    "updated": "2026-11-04",
+    "updated": "2026-11-05",
     "year": "2027학년도",
     "cats": [{"key": k, "name": n} for k, n in CATS],
     "regions": [{"key": k, "name": n, "sido": ss} for k, n, ss in REGIONS],
@@ -267,3 +294,4 @@ print(Counter((x["cat"]) for x in out))
 print("입학처 링크", sum(1 for x in out if x["admit"]), "· 2027 모집요강 글", sum(1 for x in out if x["guide"]), "· 요약", len(SUMMARY))
 print("원서 일정", sum(1 for x in out if x["rounds"]), "· 실기 날짜", sum(1 for x in out if x["exam"]), "· 발표", sum(1 for x in out if x["result"]))
 print(Counter((x["cat"], x["region"]) for x in out))
+print("지난 경쟁률 있는 학과", sum(1 for x in out if x.get("rates")), "· 줄", sum(len(l["lines"]) for x in out for l in x.get("rates", [])))

@@ -10,6 +10,9 @@
   var DAY = 864e5, WEEK = "일월화수목금토";
   var KINDS = ["실용음악·보컬", "K-POP", "뮤지컬", "공연예술", "교회실용음악"];
 
+  // 경쟁률 393 → "393", 8.1 → "8.1" (그대로), 지난 입시 학년도 기준: 2026년 11월이면 2027학년도 입시 중 → 작년 입시 = 2026학년도
+  function fmtRate(v) { var n = Number(v); return isNaN(n) ? String(v) : String(Math.round(n * 100) / 100); }
+  function thisYear() { var d = new Date(); return d.getFullYear() + (d.getMonth() >= 2 ? 0 : -1); }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -241,6 +244,39 @@
         box.appendChild(pr);
       } else if (x.track && !x.wait) {
         box.appendChild(el("p", "sch-guide__none", "실기 내용은 모집요강에 자세히 나와 있지 않습니다. 아래 모집요강에서 확인하세요."));
+      }
+      // 지난 경쟁률 (원장님 2026-11-05): 학교 입학처 · 어디가 공식 발표만, 보컬 전공 숫자가 있으면 보컬
+      if (x.rates && x.rates.length) {
+        var rt = el("div", "sch-g sch-g--rate");
+        rt.appendChild(el("p", "sch-g__k", "지난 경쟁률"));
+        var rw = el("div", "sch-rates");
+        x.rates.forEach(function (yr) {
+          var yb = el("div", "sch-rates__y");
+          yb.appendChild(el("p", "sch-rates__yh", yr.y + "학년도" + (yr.y === thisYear() ? " (작년 입시)" : yr.y === thisYear() - 1 ? " (재작년 입시)" : "")));
+          var ul2 = el("ul", "sch-rates__list");
+          yr.lines.forEach(function (l) {
+            var li3 = el("li");
+            li3.appendChild(el("span", "sch-rates__t", l.track + (l.part && l.part !== "학과 전체" ? " · " + l.part : l.part === "학과 전체" ? " · 학과 전체" : "")));
+            li3.appendChild(el("b", "sch-rates__r", fmtRate(l.rate) + " : 1"));
+            var sub = [];
+            if (l.seats) sub.push(Number(l.seats).toLocaleString("ko-KR") + "명 모집");
+            if (l.apply) sub.push(Number(l.apply).toLocaleString("ko-KR") + "명 지원");
+            if (sub.length) li3.appendChild(el("span", "sch-rates__n", sub.join(" · ")));
+            if (l.link) {
+              var src = el("a", "sch-rates__src", "출처");
+              src.href = l.link;
+              src.target = "_blank";
+              src.rel = "noopener";
+              li3.appendChild(src);
+            }
+            ul2.appendChild(li3);
+          });
+          yb.appendChild(ul2);
+          rw.appendChild(yb);
+        });
+        rt.appendChild(rw);
+        rt.appendChild(el("p", "sch-rates__note", "학교 입학처 · 대입정보포털 어디가의 공식 발표 기준입니다. 보컬 전공 숫자가 따로 없는 학교는 학과 전체 경쟁률입니다."));
+        box.appendChild(rt);
       }
       if (x.seats || x.track || x.ratio) {
         var more = el("details", "sch-more");
