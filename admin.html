@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=7191a150">
-<link rel="stylesheet" href="css/admin.css?v=9971d91d">
+<link rel="stylesheet" href="css/admin.css?v=6735ffa9">
 </head>
 <body class="sys adm">
 
@@ -56,6 +56,7 @@
       <button type="button" role="tab" data-tab="messages" aria-selected="false">메시지</button>
       <button type="button" role="tab" data-tab="songrecs" aria-selected="false">노래 추천 <span class="adm__badge" id="recBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="teachers" aria-selected="false">선생님 <span class="adm__badge" id="teacherBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="parents" aria-selected="false">학부모 <span class="adm__badge" id="parentBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="journal" aria-selected="false">연습 일지 <span class="adm__badge" id="journalBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
@@ -406,13 +407,24 @@
       </details>
     </section>
 
+    <!-- 학부모 (원장님 2026-11-05): 부모님 카카오로 parent.html → 연결 요청 → 여기서 자녀를 골라 승인 → 월말평가 · 일정·공지 · 메시지 보기만 -->
+    <section class="sys-card" data-panel="parents" hidden>
+      <h3 class="sys-h">학부모 연결 요청</h3>
+      <p class="sys-note">부모님이 <b>학부모 화면</b>(parent.html)에서 본인 카카오로 로그인해 보낸 요청이에요. 적힌 자녀 이름과 같은 학생을 먼저 골라 뒀어요. 맞는지 확인하고 승인해 주세요. 승인하면 부모님은 그 자녀의 <b>월말평가 · 일정·공지 · 학원 메시지</b>만 볼 수 있어요 (예약 · 글쓰기는 안 됨, 학생 화면에는 표시 안 됨).
+        <button class="sys-link" type="button" id="parentCopy">학부모 화면 주소 복사</button> <span class="sys-msg" id="parentCopyMsg"></span></p>
+      <ul class="adm__cards" id="parentReqs"></ul>
+      <h3 class="sys-h" style="margin-top:28px">연결된 학부모</h3>
+      <ul class="adm__cards" id="parentList"></ul>
+    </section>
+
     <!-- 메시지: 학원 → 학생 · 선생님 (원장님 2026-11-05). 학생은 내 폴더 → 메시지, 선생님은 선생님 화면 맨 위에서 봐요. -->
     <section class="sys-card" data-panel="messages" hidden>
       <h3 class="sys-h">메시지 보내기</h3>
-      <p class="sys-note">고른 사람에게만 보여요. 학생은 홈페이지 <b>내 폴더 → 메시지</b>, 선생님은 <b>선생님 화면</b> 맨 위에서 봐요 (카카오로 로그인했을 때). 읽으면 아래 목록에 읽은 시각이 나와요. 답장은 없어요 (카카오톡으로).</p>
+      <p class="sys-note">고른 사람에게만 보여요. 학생은 홈페이지 <b>내 폴더 → 메시지</b>, 선생님은 <b>선생님 화면</b>, 학부모는 <b>학부모 화면</b> 맨 위에서 봐요 (카카오로 로그인했을 때). 읽으면 아래 목록에 읽은 시각이 나와요. 답장은 없어요 (카카오톡으로).</p>
       <div class="adm__bar msg-to" role="radiogroup" aria-label="받는 사람">
         <label class="msg-to__opt"><input type="radio" name="msgTo" value="member" checked> 학생</label>
         <label class="msg-to__opt"><input type="radio" name="msgTo" value="teacher"> 선생님</label>
+        <label class="msg-to__opt"><input type="radio" name="msgTo" value="parent"> 학부모</label>
       </div>
       <div class="adm__bar">
         <select id="msgTeacherFilter" aria-label="담당 선생님"><option value="">담당 전체</option></select>
@@ -521,6 +533,6 @@
 <script src="js/richtext.js?v=fa20a0a2"></script>
 <script src="js/grid.js?v=9c827e1f"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
-<script src="js/admin.js?v=0814be1a"></script>
+<script src="js/admin.js?v=6d73b2f9"></script>
 </body>
 </html>

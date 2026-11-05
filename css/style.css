@@ -1169,3 +1169,9 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .tch__msgs-h{margin:0 0 10px;font-size:16px;color:#1D4948;}
 .tch__msgs-old summary{cursor:pointer;font-size:14px;color:#6E625B;margin:4px 0 8px;}
 .book__badge[hidden]{display:none;}
+/* 학부모 화면 (parent.html, 원장님 2026-11-05) */
+.par__kids{margin:4px 0 6px;}
+.par__tabs{margin-top:6px;}
+.par__child{margin:4px 0 12px;font-size:20px;color:#1D4948;}
+.par__student{margin-top:18px;}
+.signin__parent{margin-top:10px;}

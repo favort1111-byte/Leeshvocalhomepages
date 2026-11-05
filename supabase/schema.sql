@@ -4523,3 +4523,202 @@ revoke all on function public.member_messages(text, text), public.member_message
   public.teacher_messages(), public.teacher_message_read(bigint[]) from public, anon;
 grant execute on function public.member_messages(text, text), public.member_message_read(text, text, bigint[]) to anon, authenticated;
 grant execute on function public.teacher_messages(), public.teacher_message_read(bigint[]) to authenticated;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_parents (2026-11-05)
+-- 학부모 계정 (원장님 2026-11-05 "미성년자가 많다 보니 학부모가 보고 싶어함"): 부모님 본인 카카오로 parent.html →
+-- 성함 + 자녀 이름 보내기(parent_requests) → 관리자 → 학부모 탭에서 자녀(수강 ID)를 골라 승인 → 보기만:
+-- 월말평가 · 일정·공지 · 학원 메시지 (원장님이 고름). 예약 · 글쓰기 · 건의함 · 연습 일지 · 레퍼토리 · 레슨 노트는 안 보임.
+-- 학생 화면에는 부모님 연결을 표시하지 않음 (원장님 2026-11-05). 자녀 여러 명 OK (형제).
+create table if not exists public.parents (
+  id         bigint generated always as identity primary key,
+  kakao_user uuid not null unique,
+  name       text not null check (char_length(trim(name)) between 1 and 30),   -- 부모님 성함 (예: 김OO 어머님)
+  kakao_name text check (char_length(kakao_name) <= 60),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.parent_links (
+  parent_id  bigint not null references public.parents (id) on delete cascade,
+  member_id  text not null references public.members (id) on update cascade on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (parent_id, member_id)
+);
+create index if not exists parent_links_member_idx on public.parent_links (member_id);
+create table if not exists public.parent_requests (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null unique,
+  kakao_name text check (char_length(kakao_name) <= 60),
+  name       text not null check (char_length(trim(name)) between 1 and 30),
+  children   text not null check (char_length(trim(children)) between 1 and 200),  -- 부모님이 적은 자녀 이름 (그대로)
+  status     text not null default '대기' check (status in ('대기', '승인', '거절')),
+  parent_id  bigint references public.parents (id) on delete set null,
+  created_at timestamptz not null default now(),
+  decided_at timestamptz
+);
+
+alter table public.parents enable row level security;
+alter table public.parent_links enable row level security;
+alter table public.parent_requests enable row level security;
+drop policy if exists admin_all on public.parents;
+create policy admin_all on public.parents for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists admin_all on public.parent_links;
+create policy admin_all on public.parent_links for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists admin_all on public.parent_requests;
+create policy admin_all on public.parent_requests for all to authenticated using (public.is_admin()) with check (public.is_admin());
+revoke all on public.parents, public.parent_links, public.parent_requests from anon;
+grant select, insert, update, delete on public.parents, public.parent_links, public.parent_requests to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
+-- 메시지 받는 사람에 학부모 더하기
+alter table public.messages add column if not exists to_parent bigint references public.parents (id) on delete cascade;
+alter table public.messages drop constraint if exists messages_one_to;
+alter table public.messages add constraint messages_one_to check (num_nonnulls(to_member, to_teacher, to_parent) = 1);
+create index if not exists messages_parent_idx on public.messages (to_parent, created_at desc) where to_parent is not null;
+
+-- 로그인한 학부모 / 그 학부모가 볼 수 있는 자녀 (종료된 학생은 안 보임)
+create or replace function private.my_parent() returns public.parents
+language sql stable security definer set search_path = '' as $$
+  select p from public.parents p where p.kakao_user = auth.uid() and auth.uid() is not null;
+$$;
+create or replace function private.parent_children() returns setof text
+language sql stable security definer set search_path = '' as $$
+  select l.member_id from public.parents p
+    join public.parent_links l on l.parent_id = p.id
+    join public.members m on m.id = l.member_id
+   where p.kakao_user = auth.uid() and auth.uid() is not null and m.status <> '종료';
+$$;
+grant execute on function private.parent_children() to authenticated;
+
+-- 평가지 사진: 학부모는 자기 자녀 폴더만 읽기
+drop policy if exists eval_reports_parent on storage.objects;
+create policy eval_reports_parent on storage.objects for select to authenticated
+  using (bucket_id = 'eval-reports' and (storage.foldername(name))[1] in (select private.parent_children()));
+
+create or replace function public.parent_me() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  p public.parents := private.my_parent();
+  r public.parent_requests;
+begin
+  if auth.uid() is null then return private.fail('카카오 로그인이 필요해요.'); end if;
+  if p.id is null then
+    select * into r from public.parent_requests where user_id = auth.uid();
+    return jsonb_build_object('ok', true, 'linked', false,
+      'request', case when r.id is null then null else jsonb_build_object('name', r.name, 'children', r.children, 'status', r.status) end);
+  end if;
+  return jsonb_build_object('ok', true, 'linked', true, 'name', p.name,
+    'children', coalesce((select jsonb_agg(jsonb_build_object('id', m.id, 'name', m.name, 'status', m.status) order by m.name)
+      from public.parent_links l join public.members m on m.id = l.member_id
+      where l.parent_id = p.id and m.status <> '종료'), '[]'::jsonb),
+    'unread', (select count(*) from public.messages where to_parent = p.id and read_at is null));
+end $$;
+
+create or replace function public.parent_request(p_name text, p_children text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  meta jsonb := coalesce(auth.jwt() -> 'user_metadata', '{}'::jsonb);
+  v_name text := trim(coalesce(p_name, ''));
+  v_kids text := trim(coalesce(p_children, ''));
+begin
+  if uid is null then return private.fail('카카오 로그인이 필요해요.'); end if;
+  if exists (select 1 from public.parents where kakao_user = uid) then return private.fail('이미 연결된 학부모 계정이에요.'); end if;
+  if char_length(v_name) < 1 or char_length(v_name) > 30 then return private.fail('보호자 성함을 적어주세요.'); end if;
+  if char_length(v_kids) < 1 or char_length(v_kids) > 200 then return private.fail('자녀 이름을 적어주세요.'); end if;
+  insert into public.parent_requests (user_id, kakao_name, name, children)
+  values (uid, nullif(coalesce(meta ->> 'full_name', meta ->> 'name', meta ->> 'nickname', meta ->> 'preferred_username'), ''), v_name, v_kids)
+  on conflict (user_id) do update
+    set name = excluded.name, children = excluded.children, kakao_name = excluded.kakao_name,
+        status = '대기', parent_id = null, created_at = now(), decided_at = null;
+  perform private.notify('👪 학부모 연결 요청: ' || v_name || ' · 자녀 ' || v_kids);
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 자녀 한 명: 월말평가 + 일정·공지 (+ 다가오는 학원 내방 오디션) — 학생 내 폴더와 같은 모양
+create or replace function public.parent_child(p_member text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  p public.parents := private.my_parent();
+  m public.members;
+  today date := private.now_kst()::date;
+begin
+  if p.id is null then return private.fail('학부모 연결이 필요해요.'); end if;
+  select mb.* into m from public.members mb join public.parent_links l on l.member_id = mb.id
+   where l.parent_id = p.id and mb.id = p_member and mb.status <> '종료';
+  if m.id is null then return private.fail('연결된 자녀가 아니에요.'); end if;
+  return jsonb_build_object('ok', true, 'id', m.id, 'name', m.name, 'status', m.status,
+    'reports', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(r.month, 'YYYY-MM'), 'pages', r.pages, 'song', r.song, 'teacher', r.teacher,
+        'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
+        'total', r.total, 'stage', r.stage
+      ) order by r.month desc)
+      from (select * from public.eval_reports where member_id = m.id order by month desc limit 12) r
+    ), '[]'::jsonb),
+    'notices', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'title', n.title, 'body', n.body, 'start', n.start_date,
+               'end', n.end_date, 'pinned', n.pinned, 'at', n.created_at) order by n.pinned desc, coalesce(n.start_date, n.created_at::date) desc)
+      from (select * from public.notices where published and (end_date is null or end_date >= today)
+            order by pinned desc, created_at desc limit 20) n
+    ), '[]'::jsonb),
+    'visits', coalesce((
+      select jsonb_agg(jsonb_build_object('title', a.title, 'company', a.company, 'date', a.event_date, 'deadline', a.deadline)
+               order by a.event_date)
+      from (select * from public.audition_news where published and kind = '내방' and event_date >= today
+            order by event_date limit 6) a
+    ), '[]'::jsonb));
+end $$;
+
+create or replace function public.parent_messages() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  p public.parents := private.my_parent();
+begin
+  if p.id is null then return private.fail('학부모 연결이 필요해요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', x.id, 'sender', x.sender, 'body', x.body, 'at', x.created_at, 'read', x.read_at is not null)
+           order by x.created_at desc)
+    from (select * from public.messages where to_parent = p.id order by created_at desc limit 50) x), '[]'::jsonb));
+end $$;
+
+create or replace function public.parent_message_read(p_ids bigint[]) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  p public.parents := private.my_parent();
+begin
+  if p.id is null then return private.fail('학부모 연결이 필요해요.'); end if;
+  update public.messages set read_at = now()
+   where to_parent = p.id and id = any (coalesce(p_ids, '{}')) and read_at is null;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 관리자: 요청 승인(자녀 수강 ID 고르기) · 거절
+create or replace function public.admin_parent_decide(p_req bigint, p_members text[], p_ok boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  r public.parent_requests;
+  pid bigint;
+  n int;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  select * into r from public.parent_requests where id = p_req;
+  if r.id is null then return private.fail('요청을 찾을 수 없어요.'); end if;
+  if not coalesce(p_ok, false) then
+    update public.parent_requests set status = '거절', decided_at = now() where id = r.id;
+    return jsonb_build_object('ok', true);
+  end if;
+  select count(*) into n from public.members where id = any (coalesce(p_members, '{}'));
+  if n = 0 then return private.fail('자녀(수강 ID)를 한 명 이상 골라주세요.'); end if;
+  insert into public.parents (kakao_user, name, kakao_name) values (r.user_id, r.name, r.kakao_name)
+  on conflict (kakao_user) do update set name = excluded.name, kakao_name = excluded.kakao_name
+  returning id into pid;
+  insert into public.parent_links (parent_id, member_id)
+  select pid, id from public.members where id = any (p_members)
+  on conflict do nothing;
+  update public.parent_requests set status = '승인', parent_id = pid, decided_at = now() where id = r.id;
+  return jsonb_build_object('ok', true, 'parent', pid, 'children', n);
+end $$;
+
+revoke all on function public.parent_me(), public.parent_request(text, text), public.parent_child(text),
+  public.parent_messages(), public.parent_message_read(bigint[]), public.admin_parent_decide(bigint, text[], boolean) from public, anon;
+grant execute on function public.parent_me(), public.parent_request(text, text), public.parent_child(text),
+  public.parent_messages(), public.parent_message_read(bigint[]), public.admin_parent_decide(bigint, text[], boolean) to authenticated;
+revoke all on function private.my_parent() from public, anon;

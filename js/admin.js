@@ -156,6 +156,7 @@
     if (name === "settings") renderSettings();
     if (name === "suggest") loadSuggest();
     if (name === "messages") loadMessages();
+    if (name === "parents") loadParents();
   }
   document.querySelectorAll("[data-tab]").forEach(function (b) {
     b.addEventListener("click", function () { var t = b.getAttribute("data-tab"); showTab(t); markSeen(t); });
@@ -205,6 +206,7 @@
     countPartners();
     countConsults();
     countTeachers();
+    countParents();
     countSuggest();
     countNew();
   }
@@ -2363,19 +2365,182 @@
   }
   $("#suggestFilter").addEventListener("change", loadSuggest);
 
+  /* ---------------- 학부모 (원장님 2026-11-05) ----------------
+     요청(parent_requests) → 자녀(수강 ID) 골라 승인(admin_parent_decide) → parents + parent_links.
+     연결된 학부모: 자녀 더하기 · 빼기(parent_links), 연결 끊기(parents 삭제 → 그 학부모 메시지도 같이 지워짐). */
+  function countParents() {
+    api("parent_requests?select=id&status=eq." + encodeURIComponent("대기")).then(function (res) { if (res.ok) setBadge("#parentBadge", res.data.length); });
+  }
+  var parentMembers = [];
+  function memberChooser(picked, onChange) {
+    // 이름으로 찾아 고르기 (재원 · 휴원 · 외부)
+    var wrap = el("div", "par-pick");
+    var chips = el("div", "par-pick__chips");
+    var find = el("input");
+    find.type = "search";
+    find.placeholder = "학생 이름으로 찾아 더하기";
+    var hits = el("ul", "par-pick__hits");
+    function draw() {
+      chips.textContent = "";
+      if (!picked.length) chips.appendChild(el("span", "sys-note", "고른 자녀가 없어요."));
+      picked.forEach(function (id) {
+        var m = parentMembers.filter(function (x) { return x.id === id; })[0];
+        var c = el("span", "par-pick__chip", (m ? m.name : id) + (m && /담당\s*(\S+)/.test(m.memo || "") ? " · " + /담당\s*([^\s·,]+)/.exec(m.memo)[1] : ""));
+        var x = el("button", "sys-link", "빼기");
+        x.type = "button";
+        x.addEventListener("click", function () { picked.splice(picked.indexOf(id), 1); draw(); onChange && onChange(); });
+        c.appendChild(x);
+        chips.appendChild(c);
+      });
+    }
+    find.addEventListener("input", function () {
+      hits.textContent = "";
+      var q = find.value.trim();
+      if (!q) return;
+      parentMembers.filter(function (m) { return m.name.indexOf(q) !== -1 && picked.indexOf(m.id) === -1; }).slice(0, 8).forEach(function (m) {
+        var li = el("li");
+        var b = el("button", "sys-link", m.name + (m.memo ? " · " + m.memo : "") + (m.status !== "재원" ? " · " + m.status : ""));
+        b.type = "button";
+        b.addEventListener("click", function () { picked.push(m.id); find.value = ""; hits.textContent = ""; draw(); onChange && onChange(); });
+        li.appendChild(b);
+        hits.appendChild(li);
+      });
+    });
+    wrap.appendChild(chips);
+    wrap.appendChild(find);
+    wrap.appendChild(hits);
+    draw();
+    return wrap;
+  }
+  function loadParents() {
+    var reqs = $("#parentReqs"), list = $("#parentList");
+    reqs.textContent = "";
+    list.textContent = "";
+    Promise.all([
+      api("members?select=id,name,status,memo&status=neq." + encodeURIComponent("종료") + "&order=name"),
+      api("parent_requests?select=*&status=eq." + encodeURIComponent("대기") + "&order=created_at"),
+      api("parents?select=id,name,kakao_name,created_at,parent_links(member_id,members(name,status,memo))&order=name")
+    ]).then(function (r) {
+      parentMembers = r[0].ok ? r[0].data : [];
+      var waiting = r[1].ok ? r[1].data : [];
+      setBadge("#parentBadge", waiting.length);
+      if (!waiting.length) reqs.appendChild(el("li", "sys-empty", "기다리는 요청이 없어요."));
+      waiting.forEach(function (q) {
+        var li = el("li", "adm__card");
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, q.name));
+        if (q.kakao_name) top.appendChild(el("span", "sys-note", "카카오 " + q.kakao_name));
+        top.appendChild(el("span", "sys-note", msgWhen(q.created_at)));
+        li.appendChild(top);
+        li.appendChild(el("p", "adm__quote", "적은 자녀: " + q.children));
+        // 적힌 이름과 글자까지 같은 학생을 먼저 골라 둠 (같은 이름이 둘이면 둘 다 → 원장님이 하나 빼기)
+        var names = q.children.split(/[,，、·\/\s]+/).map(function (x) { return x.replace(/(학생|님)$/, "").trim(); }).filter(Boolean);
+        var picked = parentMembers.filter(function (m) { return names.indexOf(m.name) !== -1; }).map(function (m) { return m.id; });
+        var same = {};
+        picked.forEach(function (id) { var n = parentMembers.filter(function (m) { return m.id === id; })[0].name; same[n] = (same[n] || 0) + 1; });
+        li.appendChild(memberChooser(picked));
+        if (Object.keys(same).some(function (n) { return same[n] > 1; })) li.appendChild(el("p", "sys-msg sys-msg--error", "같은 이름 학생이 둘 이상이에요. 담당 선생님을 보고 아닌 학생은 빼주세요."));
+        var row = el("div", "adm__cardrow");
+        var ok = el("button", "sys-btn", "승인");
+        ok.type = "button";
+        var no = el("button", "sys-link adm__del", "거절");
+        no.type = "button";
+        var note = el("span", "sys-msg");
+        ok.addEventListener("click", function () {
+          if (!picked.length) { msg(note, "자녀(학생)를 한 명 이상 골라주세요.", "error"); return; }
+          ok.disabled = true;
+          api("rpc/admin_parent_decide", { method: "POST", body: { p_req: q.id, p_members: picked, p_ok: true } }).then(function (res) {
+            var d = res.data || {};
+            if (!res.ok || !d.ok) { ok.disabled = false; msg(note, d.error || friendly(res, "승인하지 못했습니다."), "error"); return; }
+            loadParents();
+          });
+        });
+        no.addEventListener("click", function () {
+          if (no.getAttribute("data-armed") !== "1") { no.setAttribute("data-armed", "1"); no.textContent = "한 번 더 누르면 거절"; return; }
+          api("rpc/admin_parent_decide", { method: "POST", body: { p_req: q.id, p_members: [], p_ok: false } }).then(loadParents);
+        });
+        row.appendChild(ok);
+        row.appendChild(no);
+        row.appendChild(note);
+        li.appendChild(row);
+        reqs.appendChild(li);
+      });
+      var parents = r[2].ok ? r[2].data : [];
+      if (!parents.length) list.appendChild(el("li", "sys-empty", "아직 연결된 학부모가 없어요."));
+      parents.forEach(function (p) {
+        var li = el("li", "adm__card");
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, p.name));
+        if (p.kakao_name) top.appendChild(el("span", "sys-note", "카카오 " + p.kakao_name));
+        li.appendChild(top);
+        var before = (p.parent_links || []).map(function (l) { return l.member_id; });
+        var picked = before.slice();
+        var save = el("button", "sys-btn", "자녀 바꾼 것 저장");
+        save.type = "button";
+        save.hidden = true;
+        li.appendChild(memberChooser(picked, function () { save.hidden = false; }));
+        var row = el("div", "adm__cardrow");
+        var note = el("span", "sys-msg");
+        save.addEventListener("click", function () {
+          save.disabled = true;
+          var add = picked.filter(function (id) { return before.indexOf(id) === -1; });
+          var gone = before.filter(function (id) { return picked.indexOf(id) === -1; });
+          var jobs = [];
+          if (add.length) jobs.push(api("parent_links", { method: "POST", body: add.map(function (id) { return { parent_id: p.id, member_id: id }; }) }));
+          gone.forEach(function (id) { jobs.push(api("parent_links?parent_id=eq." + p.id + "&member_id=eq." + encodeURIComponent(id), { method: "DELETE" })); });
+          Promise.all(jobs).then(function (rs) {
+            save.disabled = false;
+            if (rs.some(function (x) { return !x.ok; })) { msg(note, "저장하지 못한 것이 있어요. 다시 해주세요.", "error"); return; }
+            loadParents();
+          });
+        });
+        var cut = el("button", "sys-link adm__del", "연결 끊기");
+        cut.type = "button";
+        cut.addEventListener("click", function () {
+          if (cut.getAttribute("data-armed") !== "1") { cut.setAttribute("data-armed", "1"); cut.textContent = "한 번 더 누르면 끊어요 (이 학부모에게 보낸 메시지도 지워져요)"; return; }
+          // 요청 기록을 먼저 지우고(다시 요청할 수 있게) 학부모 연결을 지워요
+          api("parent_requests?parent_id=eq." + p.id, { method: "DELETE" }).then(function () {
+            return api("parents?id=eq." + p.id, { method: "DELETE" });
+          }).then(function (res) {
+            if (!res.ok) { msg(note, friendly(res, "끊지 못했습니다."), "error"); return; }
+            loadParents();
+          });
+        });
+        row.appendChild(save);
+        row.appendChild(cut);
+        row.appendChild(note);
+        li.appendChild(row);
+        list.appendChild(li);
+      });
+    });
+  }
+  $("#parentCopy").addEventListener("click", function () {
+    var url = location.origin + location.pathname.replace(/admin\.html$/, "") + "parent.html";
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () {
+      msg($("#parentCopyMsg"), "복사했어요: " + url, "ok");
+    }, function () { msg($("#parentCopyMsg"), url, "ok"); });
+  });
+
   /* ---------------- 메시지 (학원 → 학생 · 선생님, 원장님 2026-11-05) ----------------
      한 사람에게 한 줄 (messages 표, RLS: 관리자만 쓰고 읽음). 같이 보낸 것은 목록에서 한 카드로 묶어요. */
-  var msgState = { to: "member", people: { member: [], teacher: [] }, picked: {} };
+  var msgState = { to: "member", people: { member: [], teacher: [], parent: [] }, picked: {} };
   function msgTeacherOf(m) { var t = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return t ? t[1] : ""; }
   function msgKey(kind, id) { return kind + ":" + id; }
   function loadMessages() {
     try { $("#msgSender").value = localStorage.getItem("leesh-admin-msg-sender") || "학원"; } catch (e) { /* private mode */ }
     Promise.all([
       api("members?select=id,name,status,memo,kakao_user&status=in.(" + encodeURIComponent("재원") + "," + encodeURIComponent("휴원") + ")&order=name"),
-      api("teachers?select=id,name,active,kakao_user&active=is.true&order=name")
+      api("teachers?select=id,name,active,kakao_user&active=is.true&order=name"),
+      api("parents?select=id,name,kakao_user,parent_links(member_id,members(name,memo))&order=name")
     ]).then(function (r) {
       msgState.people.member = r[0].ok ? r[0].data : [];
       msgState.people.teacher = r[1].ok ? r[1].data : [];
+      // 학부모: 이름 옆에 자녀 이름, 담당 거르기는 자녀의 담당으로
+      msgState.people.parent = (r[2].ok ? r[2].data : []).map(function (p) {
+        var kids = (p.parent_links || []).map(function (l) { return l.members || {}; });
+        return { id: p.id, name: p.name, kakao_user: p.kakao_user, kids: kids.map(function (k) { return k.name; }).filter(Boolean),
+          memo: kids.map(function (k) { return k.memo || ""; }).join(" · ") };
+      });
       var sel = $("#msgTeacherFilter"), keep = sel.value;
       sel.textContent = "";
       sel.appendChild(el("option", null, "담당 전체")).value = "";
@@ -2390,7 +2555,8 @@
   function msgVisible() {
     var q = $("#msgFind").value.trim(), t = $("#msgTeacherFilter").value;
     return msgState.people[msgState.to].filter(function (p) {
-      if (q && p.name.indexOf(q) === -1) return false;
+      if (q && p.name.indexOf(q) === -1 && !(p.kids || []).some(function (k) { return k.indexOf(q) !== -1; })) return false;
+      if (msgState.to === "parent" && t && (p.memo || "").indexOf("담당 " + t) === -1) return false;
       if (msgState.to === "member" && t && msgTeacherOf(p) !== t) return false;
       return true;
     });
@@ -2400,8 +2566,9 @@
   }
   function msgUpdateCount() {
     var keys = msgPickedList();
-    var st = keys.filter(function (k) { return k.indexOf("member:") === 0; }).length, te = keys.length - st;
-    $("#msgCount").textContent = keys.length ? "받는 사람 " + [st ? "학생 " + st + "명" : "", te ? "선생님 " + te + "명" : ""].filter(Boolean).join(" · ") : "받는 사람을 골라주세요.";
+    function cnt(pre) { return keys.filter(function (k) { return k.indexOf(pre + ":") === 0; }).length; }
+    var st = cnt("member"), te = cnt("teacher"), pa = cnt("parent");
+    $("#msgCount").textContent = keys.length ? "받는 사람 " + [st ? "학생 " + st + "명" : "", te ? "선생님 " + te + "명" : "", pa ? "학부모 " + pa + "명" : ""].filter(Boolean).join(" · ") : "받는 사람을 골라주세요.";
     var n = $("#msgBody").value.trim().length;
     $("#msgLen").textContent = $("#msgBody").value.length + " / 2000";
     $("#msgSend").disabled = !keys.length || !n;
@@ -2409,9 +2576,9 @@
   function renderMsgPick() {
     var ul = $("#msgPick");
     ul.textContent = "";
-    $("#msgTeacherFilter").hidden = msgState.to !== "member";
+    $("#msgTeacherFilter").hidden = msgState.to === "teacher";
     var list = msgVisible();
-    if (!list.length) ul.appendChild(el("li", "sys-empty", msgState.to === "member" ? "맞는 학생이 없어요." : "맞는 선생님이 없어요."));
+    if (!list.length) ul.appendChild(el("li", "sys-empty", msgState.to === "member" ? "맞는 학생이 없어요." : msgState.to === "parent" ? "연결된 학부모가 없어요. 학부모 탭에서 승인하면 여기에 보여요." : "맞는 선생님이 없어요."));
     list.forEach(function (p) {
       var key = msgKey(msgState.to, p.id);
       var li = el("li");
@@ -2427,6 +2594,7 @@
         if (t) lab.appendChild(el("span", "msg-pick__sub", t));
         if (p.status !== "재원") lab.appendChild(el("span", "msg-pick__sub", p.status));
       }
+      if (msgState.to === "parent" && p.kids.length) lab.appendChild(el("span", "msg-pick__sub", "자녀 " + p.kids.join(", ")));
       if (!p.kakao_user) lab.appendChild(el("span", "msg-pick__off", "아직 카카오 연결 전"));
       li.appendChild(lab);
       ul.appendChild(li);
@@ -2457,7 +2625,8 @@
     btn.disabled = true;
     var rows = keys.map(function (k) {
       var kind = k.split(":")[0], id = k.slice(kind.length + 1);
-      return kind === "member" ? { to_member: id, sender: sender, body: body } : { to_teacher: Number(id), sender: sender, body: body };
+      return kind === "member" ? { to_member: id, sender: sender, body: body }
+        : kind === "parent" ? { to_parent: Number(id), sender: sender, body: body } : { to_teacher: Number(id), sender: sender, body: body };
     });
     api("messages", { method: "POST", body: rows }).then(function (res) {
       btn.textContent = "보내기";
@@ -2476,7 +2645,7 @@
   function loadSentMessages() {
     var list = $("#msgSent");
     list.textContent = "";
-    api("messages?select=id,to_member,to_teacher,sender,body,created_at,read_at,member:members(name),teacher:teachers(name)&order=created_at.desc&limit=300").then(function (res) {
+    api("messages?select=id,to_member,to_teacher,to_parent,sender,body,created_at,read_at,member:members(name),teacher:teachers(name),parent:parents(name)&order=created_at.desc&limit=300").then(function (res) {
       if (!res.ok) { list.appendChild(el("li", "sys-msg sys-msg--error", friendly(res, "불러오지 못했습니다."))); return; }
       // 같이 보낸 것 (같은 시각 · 같은 내용) = 카드 하나
       var groups = [], byKey = {};
@@ -2500,7 +2669,8 @@
         var ul = el("ul");
         g.rows.forEach(function (m) {
           var row = el("li");
-          var who = m.to_member ? ((m.member && m.member.name) || m.to_member) : ((m.teacher && m.teacher.name) || "") + " 선생님";
+          var who = m.to_member ? ((m.member && m.member.name) || m.to_member)
+            : m.to_parent ? ((m.parent && m.parent.name) || "") + " (학부모)" : ((m.teacher && m.teacher.name) || "") + " 선생님";
           row.appendChild(el("span", null, who));
           row.appendChild(el("span", m.read_at ? "msg-sent__read" : "msg-sent__unread", m.read_at ? "읽음 " + msgWhen(m.read_at) : "안 읽음"));
           var del = el("button", "sys-link adm__del", "지우기");

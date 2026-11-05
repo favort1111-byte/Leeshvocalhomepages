@@ -567,6 +567,20 @@ teacher_page = (head("선생님 | 이송희보컬레슨", "이송희보컬레슨
                 + TEACHER_APP
                 + "</main>\n" + foot("richtext", "grid", "teacher"))
 
+# ---------- PARENT: 학부모 화면 (js/parent.js; 원장님 2026-11-05, 부모님 카카오 → 학원 승인 → 자녀 월말평가 · 일정·공지 · 메시지 보기만) ----------
+PARENT_APP = """  <div class="booking__inner">
+    <h1 class="booking__title">parents</h1>
+    <p class="booking__note">학부모 화면 · 자녀의 월말평가 · 학원 일정 · 공지 · 학원 메시지</p>
+    <section class="sys sys-card" id="parentApp" aria-live="polite"></section>
+  </div>
+"""
+parent_page = (head("학부모 | 이송희보컬레슨", "이송희보컬레슨 학부모 화면. 자녀의 월말평가 · 학원 일정 · 공지를 확인합니다.").replace(
+                    '<meta name="description"', '<meta name="robots" content="noindex">\n<meta name="description"', 1)
+               + '<main class="stage booking">\n'
+               + nav("parent", "dark") + "\n"
+               + PARENT_APP
+               + "</main>\n" + foot("evalcard", "parent"))
+
 # ---------- GAMES: 보컬 오락실 (js/games.js) ----------
 # (id, emoji, name, what, skill, group). fly·pitch·rhythm·breath live in js/games.js, the rest in js/games2.js
 # (원장님 2026-10-28: docs/menu-ideas.md 미니게임 아이디어 1~14 전부, 2026-10-29 동요가 들어간 4번·10번은 뺌).
@@ -899,7 +913,7 @@ notfound_page = (head("페이지를 찾을 수 없습니다 | 이송희보컬레
                  '  </div>\n'
                  + "</main>\n" + foot())
 
-out = {"interview.html": interview_page, "schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"interview.html": interview_page, "schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "parent.html": parent_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')
@@ -929,7 +943,7 @@ for name, html in out.items():
 SITEMAP_PAGES = ["", "about.html", "schools.html", "audition.html", "results.html", "interview.html", "tips.html", "contact.html", "consult.html",
                  "guide.html", "games.html", "booking.html", "privacy.html"]
 with open(os.path.join(target, "robots.txt"), "w") as f:
-    f.write("User-agent: *\nDisallow: /admin.html\nDisallow: /teacher.html\nAllow: /\n\nSitemap: " + SITE + "sitemap.xml\n")
+    f.write("User-agent: *\nDisallow: /admin.html\nDisallow: /teacher.html\nDisallow: /parent.html\nAllow: /\n\nSitemap: " + SITE + "sitemap.xml\n")
 with open(os.path.join(target, "sitemap.xml"), "w") as f:
     f.write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n')
     for pth in SITEMAP_PAGES:

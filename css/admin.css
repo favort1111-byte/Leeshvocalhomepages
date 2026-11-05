@@ -146,3 +146,9 @@ video.adm__player{height:auto;max-height:240px;}
 .msg-sent__who li{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px;}
 .msg-sent__read{font-size:12px;color:#2E7D4F;}
 .msg-sent__unread{font-size:12px;color:#B5651D;}
+/* 학부모 (원장님 2026-11-05) */
+.par-pick{margin:8px 0;}
+.par-pick__chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.par-pick__chip{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;background:#E7F1EF;color:#1D4948;font-size:14px;}
+.par-pick input{max-width:320px;}
+.par-pick__hits{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:2px;}

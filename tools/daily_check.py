@@ -61,6 +61,7 @@ select jsonb_build_object(
   'waiting', jsonb_build_object(
      'kakao_link', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.link_requests where status = '대기'),
      'teacher_link', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.teacher_requests where status = '대기'),
+     'parent_link', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.parent_requests where status = '대기'),
      'consult', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.consults where status = '접수'),
      'partner', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.partner_requests where status = '접수'),
      'song', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.song_requests where status = '접수')),
@@ -95,6 +96,8 @@ select jsonb_build_object(
             and not exists (select 1 from public.teachers t where t.kakao_user = u.id)
             and not exists (select 1 from public.link_requests r where r.user_id = u.id)
             and not exists (select 1 from public.teacher_requests r where r.user_id = u.id)
+            and not exists (select 1 from public.parents p where p.kakao_user = u.id)
+            and not exists (select 1 from public.parent_requests r where r.user_id = u.id)
             and u.created_at > now() - interval '14 days')),
   'data', jsonb_build_object(
      'bad_note_sheets', (select count(*) from public.lesson_notes where sheet is not null and not private.sheet_ok(sheet)),
@@ -210,7 +213,7 @@ def main():
         chk(bool(fail), "GitHub Actions 24시간 %d번 중 실패 %d번: %s (페이지 배포 실패면 새 수정이 홈페이지에 안 보임)" % (len(day), len(fail), ", ".join(names2)),
             "GitHub Actions 24시간 %d번 실패 0 (페이지 배포 · 인스타 사진 · 인터뷰 영상)" % len(day))
     # 4) 처리 기다리는 것 (하루 넘게 밀린 것만 확인할 것으로)
-    names = {"kakao_link": "학생 카카오 연결 요청", "teacher_link": "선생님 연결 요청", "consult": "상담 신청", "partner": "제휴 업체 신청", "song": "노래 추천 신청"}
+    names = {"kakao_link": "학생 카카오 연결 요청", "teacher_link": "선생님 연결 요청", "parent_link": "학부모 연결 요청", "consult": "상담 신청", "partner": "제휴 업체 신청", "song": "노래 추천 신청"}
     for k, label in names.items():
         w = d["waiting"][k] or {}
         n, h = w.get("n") or 0, age_h(w.get("oldest"))

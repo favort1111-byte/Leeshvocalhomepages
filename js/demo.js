@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 28; // bump when the demo defaults change
+  var VERSION = 29; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -95,8 +95,14 @@
       teachers: ["안유정", "양유경", "오은지", "원장님", "이수빈", "이윤지", "이하섬", "최홍주"].map(function (n, i) {
         return { id: 501 + i, name: n, kakao_user: n === "안유정" ? "kakao-teacher" : null, active: true, created_at: new Date().toISOString() };
       }),
+      // 학부모 (원장님 2026-11-05): 체험 학부모 = 김시우 · 이하늘 (형제처럼 두 명) + 기다리는 요청 하나
+      parents: [{ id: 701, kakao_user: "kakao-parent", name: "체험 어머님", kakao_name: "시우맘", created_at: new Date(Date.now() - 86400000).toISOString() }],
+      parent_links: [{ parent_id: 701, member_id: "S001" }, { parent_id: 701, member_id: "S002" }],
+      parent_requests: [{ id: 711, user_id: "kakao-wait-p", kakao_name: "다온아빠", name: "정OO (아버지)", children: "정다온", status: "대기", parent_id: null,
+        created_at: new Date(Date.now() - 900000).toISOString(), decided_at: null }],
       // 학원 → 학생 · 선생님 메시지 (원장님 2026-11-05)
       messages: [
+        { id: 604, to_member: null, to_teacher: null, to_parent: 701, sender: "원장님", body: "어머님, 시우가 이번 월말평가에서 많이 늘었어요. 평가지 확인해 보세요! (체험 모드 예시)", created_at: new Date(Date.now() - 600000).toISOString(), read_at: null },
         { id: 601, to_member: "S001", to_teacher: null, sender: "실장님", body: "시우님, 이번 주 금요일 레슨은 토요일 오후 2시로 옮겨졌어요.\n못 오시면 카카오톡으로 알려주세요. (체험 모드 예시)", created_at: new Date(Date.now() - 1200000).toISOString(), read_at: null },
         { id: 602, to_member: "S001", to_teacher: null, sender: "원장님", body: "월말평가 영상 잘 봤어요. 고음 연습 꾸준히 해봐요! (체험 모드 예시)", created_at: new Date(Date.now() - 3 * 86400000).toISOString(), read_at: new Date(Date.now() - 2 * 86400000).toISOString() },
         { id: 603, to_member: null, to_teacher: 501, sender: "원장님", body: "선생님들, 다음 주 월요일 저녁 7시에 회의가 있어요. (체험 모드 예시)", created_at: new Date(Date.now() - 2400000).toISOString(), read_at: null }
@@ -579,6 +585,70 @@
       save();
       return { ok: true };
     },
+    parent_me: function (a, uid) {
+      if (!uid) return fail("카카오 로그인이 필요해요.");
+      var p = db.parents.filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!p) {
+        var r = db.parent_requests.filter(function (x) { return x.user_id === uid; })[0];
+        return { ok: true, linked: false, request: r ? { name: r.name, children: r.children, status: r.status } : null };
+      }
+      return { ok: true, linked: true, name: p.name,
+        children: db.parent_links.filter(function (l) { return l.parent_id === p.id; }).map(function (l) { return db.members.filter(function (m) { return m.id === l.member_id; })[0]; })
+          .filter(function (m) { return m && m.status !== "종료"; }).map(function (m) { return { id: m.id, name: m.name, status: m.status }; })
+          .sort(function (x, y) { return x.name < y.name ? -1 : 1; }),
+        unread: db.messages.filter(function (m) { return m.to_parent === p.id && !m.read_at; }).length };
+    },
+    parent_request: function (a, uid) {
+      if (!uid) return fail("카카오 로그인이 필요해요.");
+      if (db.parents.some(function (x) { return x.kakao_user === uid; })) return fail("이미 연결된 학부모 계정이에요.");
+      if (!(a.p_name || "").trim()) return fail("보호자 성함을 적어주세요.");
+      if (!(a.p_children || "").trim()) return fail("자녀 이름을 적어주세요.");
+      var r = db.parent_requests.filter(function (x) { return x.user_id === uid; })[0];
+      if (!r) { r = { id: ++db.next, user_id: uid, kakao_name: "체험 카카오" }; db.parent_requests.push(r); }
+      Object.assign(r, { name: a.p_name.trim(), children: a.p_children.trim(), status: "대기", parent_id: null, created_at: new Date().toISOString(), decided_at: null });
+      save();
+      return { ok: true };
+    },
+    parent_child: function (a, uid) {
+      var p = db.parents.filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!p) return fail("학부모 연결이 필요해요.");
+      var linked = db.parent_links.some(function (l) { return l.parent_id === p.id && l.member_id === a.p_member; });
+      var m = db.members.filter(function (x) { return x.id === a.p_member; })[0];
+      if (!linked || !m || m.status === "종료") return fail("연결된 자녀가 아니에요.");
+      var nb = fns.member_notebook({}, "kakao-sample"); // 공지 · 내방 일정은 모두에게 같아요
+      var reports = db.eval_reports.filter(function (r) { return r.member_id === m.id; }).sort(function (x, y) { return x.month < y.month ? 1 : -1; })
+        .map(function (r) { return { month: r.month.slice(0, 7), pages: r.pages, song: r.song, teacher: r.teacher, basic: r.basic, technique: r.technique, acting: r.acting, styling: r.styling, total: r.total, stage: r.stage }; });
+      return { ok: true, id: m.id, name: m.name, status: m.status, reports: reports,
+        notices: nb && nb.ok ? nb.notices : [], visits: nb && nb.ok ? nb.visits : [] };
+    },
+    parent_messages: function (a, uid) {
+      var p = db.parents.filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!p) return fail("학부모 연결이 필요해요.");
+      return { ok: true, items: db.messages.filter(function (m) { return m.to_parent === p.id; })
+        .sort(function (x, y) { return x.created_at < y.created_at ? 1 : -1; }).slice(0, 50)
+        .map(function (m) { return { id: m.id, sender: m.sender, body: m.body, at: m.created_at, read: !!m.read_at }; }) };
+    },
+    parent_message_read: function (a, uid) {
+      var p = db.parents.filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!p) return fail("학부모 연결이 필요해요.");
+      db.messages.forEach(function (m) { if (m.to_parent === p.id && (a.p_ids || []).indexOf(m.id) !== -1 && !m.read_at) m.read_at = new Date().toISOString(); });
+      save();
+      return { ok: true };
+    },
+    admin_parent_decide: function (a) {
+      var r = db.parent_requests.filter(function (x) { return x.id === a.p_req; })[0];
+      if (!r) return fail("요청을 찾을 수 없어요.");
+      if (!a.p_ok) { r.status = "거절"; r.decided_at = new Date().toISOString(); save(); return { ok: true }; }
+      var ids = (a.p_members || []).filter(function (id) { return db.members.some(function (m) { return m.id === id; }); });
+      if (!ids.length) return fail("자녀(수강 ID)를 한 명 이상 골라주세요.");
+      var p = db.parents.filter(function (x) { return x.kakao_user === r.user_id; })[0];
+      if (!p) { p = { id: ++db.next, kakao_user: r.user_id, created_at: new Date().toISOString() }; db.parents.push(p); }
+      p.name = r.name; p.kakao_name = r.kakao_name;
+      ids.forEach(function (id) { if (!db.parent_links.some(function (l) { return l.parent_id === p.id && l.member_id === id; })) db.parent_links.push({ parent_id: p.id, member_id: id }); });
+      r.status = "승인"; r.parent_id = p.id; r.decided_at = new Date().toISOString();
+      save();
+      return { ok: true, parent: p.id, children: ids.length };
+    },
     teacher_messages: function (a, uid) {
       var t = myTeacher(uid);
       if (!t) return fail("선생님 연결이 필요해요.");
@@ -919,8 +989,16 @@
         if (p.table === "messages") {
           var mm = db.members.filter(function (x) { return x.id === r.to_member; })[0];
           var tt = db.teachers.filter(function (x) { return x.id === r.to_teacher; })[0];
+          var pp = db.parents.filter(function (x) { return x.id === r.to_parent; })[0];
           c.member = mm ? { name: mm.name } : null;
           c.teacher = tt ? { name: tt.name } : null;
+          c.parent = pp ? { name: pp.name } : null;
+        }
+        if (p.table === "parents") {
+          c.parent_links = db.parent_links.filter(function (l) { return l.parent_id === r.id; }).map(function (l) {
+            var m = db.members.filter(function (x) { return x.id === l.member_id; })[0];
+            return { member_id: l.member_id, members: m ? { name: m.name, status: m.status, memo: m.memo } : null };
+          });
         }
         return c;
       });
@@ -1013,7 +1091,7 @@
     var bar = document.createElement("div");
     bar.className = "demo-bar";
     bar.innerHTML = "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 카카오 버튼은 새 가짜 계정 (처음 연결 요청 체험) · 관리자는 아무 이메일</span>" +
-      "<button type=\"button\" class=\"demo-student\">학생(김시우)으로 보기</button><button type=\"button\" class=\"demo-teacher\">선생님(안유정)으로 보기</button><a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
+      "<button type=\"button\" class=\"demo-student\">학생(김시우)으로 보기</button><button type=\"button\" class=\"demo-teacher\">선생님(안유정)으로 보기</button><button type=\"button\" class=\"demo-parent\">학부모로 보기</button><a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
       "<button type=\"button\" class=\"demo-min\" aria-label=\"안내 접기\">접기</button>";
     bar.querySelector(".demo-intro").addEventListener("click", function () {
       try { localStorage.removeItem("leesh_intro"); } catch (e) { /* ignore */ }
@@ -1027,6 +1105,10 @@
     bar.querySelector(".demo-teacher").addEventListener("click", function () {
       window.LeeshAPI.kakao.save({ access: FAKE + "kakao-teacher", refresh: "demo", expires: Math.floor(Date.now() / 1000) + 3650 * 86400 });
       if (/teacher\.html$/.test(location.pathname)) location.reload(); else location.href = "teacher.html";
+    });
+    bar.querySelector(".demo-parent").addEventListener("click", function () {
+      window.LeeshAPI.kakao.save({ access: FAKE + "kakao-parent", refresh: "demo", expires: Math.floor(Date.now() / 1000) + 3650 * 86400 });
+      if (/parent\.html$/.test(location.pathname)) location.reload(); else location.href = "parent.html";
     });
     bar.querySelector(".demo-reset").addEventListener("click", function () {
       db = seed();
