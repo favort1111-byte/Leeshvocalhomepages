@@ -351,18 +351,20 @@ RULES_COOP = [
 
 
 def rules_section():
-    groups = ""
-    for title, items in RULES:
+    cards = ""
+    for i, (title, items) in enumerate(RULES):
         rows = "".join(
             f'<li class="rule"><img class="rule__icon" src="assets/img/rules/{icon}.webp" alt="" width="48" height="48" loading="lazy">'
             f'<p class="rule__text">{text}{f"<small>{note}</small>" if note else ""}</p></li>'
             for icon, text, note in items)
-        groups += f'    <h3 class="rules__h">{title}</h3>\n    <ul class="rules">{rows}</ul>\n'
+        cards += (f'      <li class="step rules__card"><span class="step__no">RULE 0{i + 1}</span>'
+                  f'<h3>{title}</h3><ul class="rules">{rows}</ul></li>\n')
     coop = "".join(f"<p>{line}</p>" for line in RULES_COOP)
     return (_head("lesson rules", "이송희보컬레슨 강의 규정 안내", "rules")
-            + groups
-            + '    <h3 class="rules__h">원활한 레슨을 위한 협조</h3>\n'
-            + f'    <div class="rules__coop">{coop}</div>\n')
+            + '    <ol class="steps rules__cards">\n' + cards + '    </ol>\n'
+            + '    <div class="faq rules__coop">\n'
+            + '      <p class="faq__q">원활한 레슨을 위한 협조</p>\n'
+            + f'      <div class="rules__coop-body">{coop}</div>\n    </div>\n')
 
 
 def why_section():

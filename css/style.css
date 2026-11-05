@@ -605,20 +605,22 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .classes__new{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#E0352B;color:#fff;font-family:var(--f-sans);font-size:11px;font-weight:600;letter-spacing:.04em;vertical-align:3px;}
 .steps--plus{margin-top:6px;}
 /* 강의 규정 (원장님 2026-11-05 안내 이미지 모양: 아이콘 칸 + 글 칸, 노란 강조 · 빨간 · 파란 글씨) */
-.rules__h{display:inline-block;margin:26px 0 10px;padding:4px 12px;border-radius:6px;background:#FFF4C9;font-family:var(--f-sans);font-weight:700;font-size:17px;color:#2B2522;}
-.rules__h::before{content:"";display:inline-block;width:8px;height:8px;margin:0 8px 2px 0;border-radius:50%;background:#E5484D;}
-.rules{display:grid;gap:0;margin:0;padding:0;list-style:none;}
-.rule{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px dashed rgba(255,244,201,.22);}
+.rules__cards{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
+.rules__card{background-image:none;}
+.rules{display:grid;gap:0;margin:4px 0 0;padding:0;list-style:none;}
+.step .rules{padding-left:0;}
+.rule{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px dashed rgba(110,59,40,.22);}
 .rule:last-child{border-bottom:0;}
-.rule__icon{flex:none;width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));}
-.rule__text{flex:1;min-width:0;margin:0;word-break:keep-all;font-size:16.5px;line-height:1.65;color:#FFF8EC;}
-.rule__text mark{background:#FFE45C;color:#2B2522;font-weight:700;padding:0 4px;border-radius:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
-.rule__text small{display:block;margin-top:2px;font-size:13px;color:rgba(255,248,236,.72);}
-.rules__red{color:#FF9C8F;}
-.rules__blue{color:#B9CCFF;}
-.rules__coop{margin-top:4px;word-break:keep-all;padding:16px 18px;border-radius:12px;border:1px solid rgba(255,244,201,.35);color:#FFF8EC;text-align:center;line-height:1.75;font-size:15.5px;}
-.rules__coop p{margin:0;}
-@media (max-width:520px){.rule__icon{width:46px;height:46px;}.rule__text{font-size:15px;}.rules__coop{font-size:14.5px;padding:14px 12px;}}
+.rule__icon{flex:none;width:52px;height:52px;object-fit:contain;}
+.rule__text{flex:1;min-width:0;margin:0;font-size:17px;line-height:1.65;color:var(--ink);word-break:keep-all;}
+.rule__text mark{background:linear-gradient(transparent 52%,#FFE45C 52%);color:inherit;font-weight:700;padding:0 2px;}
+.rule__text small{display:block;margin-top:3px;font-size:14px;color:#7A6A60;}
+.rules__red{color:#C8312B;}
+.rules__blue{color:#2F4BC8;}
+.rules__coop{transform:rotate(.4deg);}
+.rules__coop-body{font-size:17px;line-height:1.8;word-break:keep-all;}
+.rules__coop-body p{margin:0;}
+@media (max-width:520px){.rules__cards{grid-template-columns:1fr;}.rule__icon{width:44px;height:44px;}.rule__text,.rules__coop-body{font-size:16px;}.rules__coop .faq__q{font-size:24px;}}
 .step--plus h3{margin-top:0;}
 .step__no{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--brown);color:var(--cream);font-size:12px;letter-spacing:.12em;}
 .step h3{margin:8px 0 8px;font-family:var(--f-sans);font-weight:400;font-size:24px;}
