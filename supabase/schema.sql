@@ -5106,3 +5106,28 @@ end $$;
 revoke execute on function public.parent_wifi() from public, anon;
 grant execute on function public.parent_wifi() to authenticated;
 
+-- ---------------------------------------------------------------- 마이그레이션 leesh_visit_last (2026-11-06)
+-- 내방 오디션 신청서: 지난번에 쓴 내용(이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야)을 다음 신청서에 미리 채움
+-- (원장님 2026-11-06 "매번 같은 내용으로 접수하니 적혀 있으면 좋겠다"). 특이사항 · 음원은 오디션마다 달라서 안 채움.
+create or replace function public.member_visit_open(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return jsonb_build_object('ok', true, 'name', who ->> 'name',
+    'last', (select jsonb_build_object('name', a.name, 'gender', a.gender, 'birth', a.birth, 'body_size', a.body_size, 'field', a.field)
+             from public.visit_applications a where a.member_id = mid order by a.updated_at desc nulls last, a.id desc limit 1),
+    'auditions', coalesce((
+    select jsonb_agg(jsonb_build_object('id', n.id, 'company', n.company, 'title', n.title, 'date', n.event_date,
+             'deadline', coalesce(n.deadline, n.event_date - 1), 'body', n.body, 'image', n.image,
+             'mine', (select to_jsonb(a) - 'member_id' from public.visit_applications a where a.news_id = n.id and a.member_id = mid))
+             order by n.event_date nulls last, n.id)
+    from public.audition_news n
+    where n.kind = '내방' and n.published and coalesce(n.deadline, n.event_date - 1, today) >= today
+  ), '[]'::jsonb));
+end $$;
+

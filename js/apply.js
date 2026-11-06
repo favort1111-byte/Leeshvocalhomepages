@@ -88,12 +88,12 @@
         });
         area.appendChild(chips);
       }
-      area.appendChild(form(open, res.name || name));
+      area.appendChild(form(open, res.name || name, res.last));
     });
   }
 
   /* One audition: what the director wrote (일시 · 장소 · 지원자격 · 지원분야 …) and the questions under it. */
-  function form(a, name) {
+  function form(a, name, last) {
     var mine = a.mine;
     var wrap = el("article", "apply");
     var head = el("header", "apply__head");
@@ -110,24 +110,26 @@
     if (facts.firstChild) head.appendChild(facts);
     if (a.body) head.appendChild(el("p", "apply__body", a.body));
     if (mine) head.appendChild(el("p", "sys-msg sys-msg--ok", "신청했어요. 고칠 게 있으면 아래에서 고쳐서 다시 보내주세요."));
+    // 지난번 신청 내용을 미리 채움 (원장님 2026-11-06): 이름 · 성별 · 출생년도 · 키/몸무게 · 지원분야
+    else if (last) head.appendChild(el("p", "sys-note apply__last", "지난번에 쓴 내용(이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야)을 미리 채워 뒀어요. 바뀐 게 있으면 고쳐서 보내주세요."));
     wrap.appendChild(head);
     if (window.LeeshVisitRules) wrap.appendChild(LeeshVisitRules.box(true));
 
     var f = el("form", "sys apply__form");
-    var nm = el("input"); nm.name = "name"; nm.maxLength = 30; nm.required = true; nm.value = mine ? mine.name : name || "";
+    var nm = el("input"); nm.name = "name"; nm.maxLength = 30; nm.required = true; nm.value = mine ? mine.name : (last && last.name) || name || "";
     f.appendChild(field("이름", nm));
     var g = el("fieldset", "apply__set");
     g.appendChild(el("legend", null, "성별"));
-    g.appendChild(radios("gender", ["남", "여"], mine && mine.gender));
+    g.appendChild(radios("gender", ["남", "여"], (mine || last || {}).gender));
     f.appendChild(g);
-    var birth = el("input"); birth.name = "birth"; birth.maxLength = 30; birth.placeholder = "예) 10년/17살"; birth.value = mine && mine.birth || "";
+    var birth = el("input"); birth.name = "birth"; birth.maxLength = 30; birth.placeholder = "예) 10년/17살"; birth.value = (mine || last || {}).birth || "";
     f.appendChild(field("출생년도/나이", birth, "ex) 10년/17살"));
-    var size = el("input"); size.name = "size"; size.maxLength = 30; size.placeholder = "예) 168/48"; size.value = mine && mine.body_size || "";
+    var size = el("input"); size.name = "size"; size.maxLength = 30; size.placeholder = "예) 168/48"; size.value = (mine || last || {}).body_size || "";
     f.appendChild(field("키/몸무게", size, "ex) 168/48"));
     var fs = el("fieldset", "apply__set");
     fs.appendChild(el("legend", null, "지원분야"));
     fs.appendChild(el("small", "apply__help", "*보컬, 랩, 댄스, 라이브 퍼포먼스, 연기 중 택 1만 가능"));
-    fs.appendChild(radios("field", FIELDS, mine && mine.field));
+    fs.appendChild(radios("field", FIELDS, (mine || last || {}).field));
     f.appendChild(fs);
 
     // 특이사항 before 댄스음원 (원장님 2026-10-28: 이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야 · 특이사항 · 댄스음원)

@@ -630,6 +630,11 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 /* why us */
 .br-m{display:none;}
 @media (max-width:600px){.br-m{display:inline;}}
+.news__month{border:2px solid #FFE45C;border-radius:10px;padding:16px;background:rgba(255,228,92,.08);}
+.news__consult{margin:34px 0 10px;text-align:center;}
+.news__consultbtn{display:inline-block;padding:16px 28px;border-radius:999px;background:#FEE500;color:#191600;font-weight:700;font-size:18px;text-decoration:none;box-shadow:0 3px 0 rgba(0,0,0,.25);}
+.news__consultbtn:hover{filter:brightness(.97);}
+.news__consult p{margin:8px 0 0;font-size:13px;opacity:.8;}
 .cowall{margin:26px 0 0;padding:18px;border-radius:8px;background:rgba(0,0,0,.08);border:1px solid rgba(246,235,221,.35);}
 .cowall__title{margin:0 0 12px;font-weight:700;font-size:17px;}
 .cowall__list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;}

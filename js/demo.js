@@ -557,7 +557,11 @@
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       var today = nowKst().today;
-      return { ok: true, name: who.name, auditions: db.audition_news.filter(function (n) {
+      var lastApp = db.visit_applications.filter(function (x) { return x.member_id === who.id; })
+        .sort(function (x, y) { return (y.updated_at || "") < (x.updated_at || "") ? -1 : 1; })[0];
+      return { ok: true, name: who.name,
+        last: lastApp ? { name: lastApp.name, gender: lastApp.gender, birth: lastApp.birth, body_size: lastApp.body_size, field: lastApp.field } : null,
+        auditions: db.audition_news.filter(function (n) {
         return n.kind === "내방" && n.published && (n.deadline || (n.event_date ? addDays(n.event_date, -1) : today)) >= today; // 마감일 없으면 하루 전까지
       }).map(function (n) {
         var mine = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0] || null;

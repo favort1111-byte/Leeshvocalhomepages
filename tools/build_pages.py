@@ -753,30 +753,39 @@ def subnav(current):
             + "  </nav>\n")
 
 def news_foot():
-    return ('    <p class="news__foot">'
-            f'<a class="pill-btn" href="{KAKAO}" target="_blank" rel="noopener">카카오톡으로 문의 ↗</a> '
-            '<a class="pill-btn" href="consult.html">오디션 준비 상담하기</a></p>\n')
+    # 맨 아래 "오디션 준비 상담하기" = 카카오톡 채널 1:1 채팅으로 바로 (원장님 2026-11-06)
+    return ('    <div class="news__consult">\n'
+            f'      <a class="news__consultbtn" href="{KAKAO}/chat" target="_blank" rel="noopener">💬 오디션 준비 상담하기</a>\n'
+            '      <p>누르면 학원 카카오톡 채널 1:1 채팅으로 바로 연결됩니다.</p>\n'
+            '    </div>\n')
 
+# audition news 순서 (원장님 2026-11-06): 이번 달 오디션만 맨 위 → 바로 밑 기획사 오디션 정보 전체 → 학원 내방 오디션 지난 소식 · 인스타그램
 NEWS_BODY = (
     '  <div class="booking__inner news">\n'
     '    <h1 class="booking__title">audition news</h1>\n'
     '    <p class="booking__note">학원 내방 오디션 일정과 기획사 오디션 소식입니다. (2020년~)</p>\n'
-    # 최신 소식은 인스타그램에 먼저 올라와요: 오디션반 계정의 최근 글을 그대로 보여줌 (원장님 2026-10-28)
-    '    <section class="news__sec news__insta" aria-labelledby="news-insta">\n'
-    '      <h2 id="news-insta">인스타그램 최신 소식</h2>\n'
-    '      <p class="news__lede">내방 오디션 · 월말평가 일정은 인스타그램에 가장 먼저 올라옵니다.</p>\n'
-    f'      <iframe class="news__instaframe" src="{blog.INSTA_AUDITION}embed/" title="이송희보컬레슨 오디션반 인스타그램 최근 글" loading="lazy"></iframe>\n'
-    f'      <p class="news__foot"><a class="pill-btn" href="{blog.INSTA_AUDITION}" target="_blank" rel="noopener">인스타그램에서 전체 보기 ↗</a></p>\n'
+    # 이번 달 오디션: js/auditions.js가 audition_news에서 이번 달(한국 시간) 일정 · 마감인 것만 채움
+    '    <section class="news__sec news__month" id="news-month" aria-labelledby="news-month-h">\n'
+    '      <h2 id="news-month-h">이번 달 오디션</h2>\n'
+    '      <p class="news__lede">이번 달 학원 내방 오디션과 기획사 오디션 일정입니다.</p>\n'
+    '      <p class="news__empty">이번 달 오디션 일정은 정해지는 대로 올라옵니다.</p>\n'
+    '    </section>\n'
+    '    <section class="news__sec" data-news="오디션" aria-labelledby="news-open">\n'
+    '      <h2 id="news-open">기획사 오디션 정보</h2>\n'
+    '      <p class="news__lede">기획사 공개 · 온라인 오디션 소식입니다. 지원 전에 마감일을 꼭 확인하세요.</p>\n'
+    + news_list("오디션", 8) +
     '    </section>\n'
     '    <section class="news__sec" data-news="내방" aria-labelledby="news-visit">\n'
     '      <h2 id="news-visit">학원 내방 오디션</h2>\n'
     '      <p class="news__lede">매월 기획사 신인개발팀 담당자가 학원에서 직접 심사합니다. 일정은 수업 시간과 카카오톡으로도 안내합니다.</p>\n'
     + news_list("내방", 6) +
     '    </section>\n'
-    '    <section class="news__sec" data-news="오디션" aria-labelledby="news-open">\n'
-    '      <h2 id="news-open">기획사 오디션 정보</h2>\n'
-    '      <p class="news__lede">기획사 공개 · 온라인 오디션 소식입니다. 지원 전에 마감일을 꼭 확인하세요.</p>\n'
-    + news_list("오디션", 8) +
+    # 최신 소식은 인스타그램에 먼저 올라와요: 오디션반 계정의 최근 글을 그대로 보여줌 (원장님 2026-10-28)
+    '    <section class="news__sec news__insta" aria-labelledby="news-insta">\n'
+    '      <h2 id="news-insta">인스타그램 최신 소식</h2>\n'
+    '      <p class="news__lede">내방 오디션 · 월말평가 일정은 인스타그램에 가장 먼저 올라옵니다.</p>\n'
+    f'      <iframe class="news__instaframe" src="{blog.INSTA_AUDITION}embed/" title="이송희보컬레슨 오디션반 인스타그램 최근 글" loading="lazy"></iframe>\n'
+    f'      <p class="news__foot"><a class="pill-btn" href="{blog.INSTA_AUDITION}" target="_blank" rel="noopener">인스타그램에서 전체 보기 ↗</a></p>\n'
     '    </section>\n'
     # 인스타그램에서 가져온 글 중 오디션·합격이 아닌 것 (js/auditions.js가 채우고 보여줌)
     '    <section class="news__sec" data-news="소식" aria-labelledby="news-school-h" id="news-school" hidden>\n'

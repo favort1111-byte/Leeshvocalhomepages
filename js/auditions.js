@@ -32,6 +32,7 @@
     if (p.created_at && days(p.created_at.slice(0, 10), today) <= 7) return "NEW";
     return "";
   }
+  function dayBefore(d) { if (!d) return null; var t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - 1); return t.toISOString().slice(0, 10); }
   function isPast(p, today) {
     if (p.deadline) return p.deadline < today;
     return p.kind !== "합격" && !!p.event_date && p.event_date < today;
@@ -58,7 +59,7 @@
       img.loading = "lazy";
       body.appendChild(img);
     }
-    if (p.kind === "내방" && !isPast(p, today)) {
+    if (p.kind === "내방" && (p.deadline || dayBefore(p.event_date) || today) >= today) { // 신청서는 마감일, 없으면 오디션 하루 전까지
       var ap = el("a", "pill-btn news__applybtn", "이 오디션 신청하기");
       ap.href = "apply.html?news=" + p.id;
       body.appendChild(ap);
@@ -154,6 +155,21 @@
   }).then(function (res) {
     if (!res.ok || !Array.isArray(res.data) || !res.data.length) return;
     var today = todayKst();
+    // 이번 달 오디션 (원장님 2026-11-06): 내방 · 기획사 오디션 중 일정이나 마감이 이번 달인 것, 날짜 빠른 순
+    var monthSec = document.getElementById("news-month");
+    if (monthSec) {
+      var ym = today.slice(0, 7);
+      var month = res.data.filter(function (p) {
+        return (p.kind === "내방" || p.kind === "오디션") && ((p.event_date || "").slice(0, 7) === ym || (p.deadline || "").slice(0, 7) === ym);
+      }).sort(function (x, y) { return (x.event_date || x.deadline || "") < (y.event_date || y.deadline || "") ? -1 : 1; });
+      if (month.length) {
+        var mEmpty = monthSec.querySelector(".news__empty");
+        if (mEmpty) mEmpty.hidden = true;
+        var mul = el("ul", "news__list news__list--own");
+        month.forEach(function (p) { mul.appendChild(card(p, today)); });
+        monthSec.appendChild(mul);
+      }
+    }
     document.querySelectorAll("[data-news]").forEach(function (sec) {
       var kind = sec.getAttribute("data-news");
       var mine = res.data.filter(function (p) { return p.kind === kind; });
