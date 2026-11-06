@@ -5078,3 +5078,17 @@ end $$;
 revoke execute on function public.admin_room_door(), public.admin_room_door_set(text) from public, anon;
 grant execute on function public.admin_room_door(), public.admin_room_door_set(text) to authenticated;
 
+-- ---------------------------------------------------------------- 마이그레이션 leesh_room_door_remove (2026-11-06)
+-- 원장님 2026-11-06: 연습실 비밀번호는 따로 칸 없이 그냥 일정·공지 글로 (비밀번호 바꿀 때 공지도 고침) → leesh_room_door 되돌림.
+create or replace function public.member_wifi(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  return jsonb_build_object('ok', true, 'wifi', coalesce((
+    select jsonb_agg(jsonb_build_object('name', w.name, 'pass', w.pass) order by w.sort) from private.room_wifi w), '[]'::jsonb));
+end $$;
+drop function if exists public.admin_room_door();
+drop function if exists public.admin_room_door_set(text);
+drop table if exists private.room_door;
+

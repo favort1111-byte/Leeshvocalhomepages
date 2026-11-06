@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 33; // bump when the demo defaults change
+  var VERSION = 34; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -151,6 +151,7 @@
       notices: [
         { id: 51, title: "12월 월말평가 안내", body: "12월 셋째 주에 월말평가가 있어요. 곡은 담당 선생님과 정해주세요.\n체험 모드 예시 공지예요.", start_date: addDays(t, 40), end_date: addDays(t, 45), pinned: true, published: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 53, title: "휴원 안내", body: "이 날은 학원이 쉬어요. 연습실 예약도 닫혀요.\n체험 모드 예시 공지예요.", start_date: addDays(t, 9), end_date: addDays(t, 9), pinned: false, published: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 53, title: "📍 매월 연습실 비밀번호 변경 공지", body: "매월 초 (1~5일) 비밀번호를 변경합니다.\n2026년 11월 변경된 비밀번호는 0000* 입니다. (체험 모드 예시)", start_date: null, end_date: null, pinned: false, published: true, created_at: new Date(Date.now() - 86400000 * 3).toISOString(), updated_at: new Date().toISOString() },
         { id: 52, title: "연습실 청소 시간", body: "매주 월요일 오전 10~11시는 연습실 청소 시간이에요.", start_date: null, end_date: null, pinned: false, published: true, created_at: new Date(Date.now() - 86400000 * 5).toISOString(), updated_at: new Date().toISOString() }
       ],
       repertoire: [
@@ -192,7 +193,6 @@
         ["성형외과", "플래너 성형외과", "시술 · 수술, 모든 수술 및 시술 10% 할인"], ["치과", "티유 치과", "치료 · 미용, 모든 시술 50~10% 할인"],
         ["촬영 스튜디오", "소솜 스튜디오", "사진 촬영, 모든 촬영 30% 할인"], ["심리상담센터"]]
         .map(function (c, i) { return { id: 301 + i, category: c[0], name: c[1] || null, info: c[2] || null, sort: i * 10, active: true }; }),
-      room_door: { pass: "0000*", changed_on: addDays(t, -3) }, // 체험 모드 예시 (실제 비밀번호 아님)
       partner_requests: [
         { id: 351, partner_id: 301, partner: "헤어 메이크업", member_id: "S002", wish: "다음 주 토요일 오전", memo: "오디션 프로필 촬영용이에요 (체험 모드 예시)", status: "접수", reply: null,
           created_at: new Date(Date.now() - 5400000).toISOString(), updated_at: new Date(Date.now() - 5400000).toISOString() }
@@ -684,8 +684,7 @@
     member_wifi: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
-      return { ok: true, wifi: [{ name: "체험_wifi1", pass: "체험 모드 예시" }, { name: "체험_wifi c_hall", pass: "체험 모드 예시" }],
-               door: db.room_door || null };
+      return { ok: true, wifi: [{ name: "체험_wifi1", pass: "체험 모드 예시" }, { name: "체험_wifi c_hall", pass: "체험 모드 예시" }] };
     },
     member_partners: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
@@ -742,8 +741,6 @@
     admin_suggest_mark: function (a) { (db.suggestions || []).forEach(function (s) { if (s.id === a.p_id) s.read = !!a.p_read; }); save(); return { ok: true }; },
     admin_suggest_delete: function (a) { db.suggestions = (db.suggestions || []).filter(function (s) { return s.id !== a.p_id; }); save(); return { ok: true }; },
     // 텔레그램 알림 (관리자 → 설정): 체험 모드는 실제로 보내지 않고 연결된 척만
-    admin_room_door: function () { return { ok: true, door: db.room_door || null }; },
-    admin_room_door_set: function (a) { db.room_door = { pass: String(a.p_pass || "").trim(), changed_on: nowKst().today }; save(); return { ok: true }; },
     admin_backup_status: function () { return { ok: true, connected: true, lastAt: new Date().toISOString(), last: { ok: true, file: "홈페이지백업_예시.zip", bytes: 1843200, warnings: [] } }; },
     admin_backup_open: function () { return { ok: true }; },
     admin_telegram_status: function () { return { ok: true, hasBot: !!demoTg.bot, bot: demoTg.bot, chats: demoTg.chats, groups: demoTg.chats ? 1 : 0, bookings: demoTg.bookings }; },
