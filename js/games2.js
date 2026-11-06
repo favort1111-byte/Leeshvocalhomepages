@@ -1,5 +1,5 @@
 // 보컬 오락실 2 (games.html): the rest of docs/menu-ideas.md "미니게임 아이디어" (원장님 2026-10-28 "게임을 다 넣어줘").
-//   귀 게임:     simon 멜로디 따라치기 · solfa 계이름 맞히기 · mood 밝은 소리/슬픈 소리 · meter 몇 박자?
+//   귀 게임:     simon 멜로디 따라치기 · solfa 계이름 맞히기 · mood 밝은 소리/슬픈 소리 · meter 몇 박자? (5단계)
 //   목소리 게임: target 음 맞추기 과녁 · stairs 음계 계단 오르기 · siren 사이렌 따라 그리기 · cresc 작게→크게
 //   리듬 게임:   echo 리듬 메아리 · lanes 4줄 리듬 게임
 //   퀴즈·이야기: ox 보컬 OX 퀴즈 · sim 오디션 시뮬레이터
@@ -236,53 +236,151 @@
     };
   })());
 
-  /* ================================================================ 5. 몇 박자? (3박 · 4박) */
+  /* ================================================================ 5. 몇 박자? — 5단계 (원장님 2026-11-06 "3박 4박 둘뿐이라 재미없음")
+     레벨 1 3박 · 4박 / 2 6/8박 / 3 셔플 · 스윙 / 4 엇박 / 5 변박(보스). 소리는 여기서 만든 비트뿐 (노래 없음, 예시곡은 글로만). */
   A.register("meter", (function () {
-    var f = frame("meter", "반주를 듣고 3박(쿵짝짝 · 왈츠)인지 4박(쿵짝짝짝 · 행진곡)인지 맞혀요. 8문제!");
-    var r1 = row(), three = btn("3박 쿵짝짝"), four = btn("4박 쿵짝짝짝"), r2 = row(), go = btn("시작"), again = btn("🔁 다시 듣기", "game__btn--ghost");
-    r1.appendChild(three); r1.appendChild(four);
+    var f = frame("meter", "레벨을 고르고 반주를 들어 보세요. 레벨마다 8문제!");
+    function bass(t, v) { A.tone(45, t, 0.35, v || 0.45); }
+    function chord(root, t, d, v) { A.tone(root + 4, t, d, v || 0.1); A.tone(root + 7, t, d, v || 0.1); }
+    // 레벨마다: 고를 답(k · 버튼 글) + 소리 (play(k, t0, q) → 길이 초) + 안내
+    var LEVELS = [
+      { name: "레벨 1 · 3박 · 4박", opts: [["3", "3박 쿵짝짝"], ["4", "4박 쿵짝짝짝"]],
+        tips: [["세는 법", "쿵이 몇 번마다 오나 세어 보세요. 3박은 왈츠, 4박은 행진곡 느낌"]],
+        play: function (k, t, q) {
+          var m = Number(k), beat = 60 / q.bpm, n = m * 3;
+          for (var i = 0; i < n; i++) { if (i % m === 0) bass(t + i * beat); else chord(q.root, t + i * beat, beat * 0.4, 0.12); }
+          return n * beat;
+        } },
+      { name: "레벨 2 · 6/8박", opts: [["3", "3박 쿵짝짝"], ["68", "6/8박 쿵따따 쿵따따"]],
+        tips: [["세는 법", "\"하나둘셋 넷다섯여섯\" (1이랑 4를 세게)"], ["박수", "6개를 다 치되, 1과 4만 크게"],
+               ["느낌", "\"쿵따따 쿵따따\" → 크게 2박으로 흔들리는 느낌"],
+               ["예시곡", "Ed Sheeran 「Perfect」, Alicia Keys 「Fallin'」, The Weeknd 「Earned It」, Queen 「We Are the Champions」"],
+               ["포인트", "3박(쿵짝짝)이랑 헷갈리지 않게 — 아래 \"비교해서 들어 보기\"로 둘을 번갈아 들어 보세요"]],
+        play: function (k, t, q) {
+          var bar = 1.9 + Math.random() * 0.3, i;
+          if (k === "3") { var b3 = bar / 3; for (i = 0; i < 9; i++) { if (i % 3 === 0) bass(t + i * b3); else chord(q.root, t + i * b3, b3 * 0.45, 0.12); } }
+          else { var e = bar / 6; for (i = 0; i < 18; i++) { var p = i % 6; if (p === 0) { bass(t + i * e); A.click(t + i * e, true); } else if (p === 3) { A.tone(52, t + i * e, 0.25, 0.3); A.click(t + i * e, true); } else A.click(t + i * e, false); } }
+          return bar * 3;
+        } },
+      { name: "레벨 3 · 셔플 · 스윙", opts: [["s", "정박 똑-똑-똑-똑"], ["w", "스윙 따-안따 따-안따"]],
+        tips: [["느낌", "4박인데 리듬이 튀는 박자"], ["박수", "\"따-안따 따-안따\"처럼 길게-짧게"],
+               ["포인트", "똑같은 4박을 정박으로 한 번, 스윙으로 한 번 — 아래에서 비교해서 들어 보고, 내 노래도 두 가지로 불러 보세요"]],
+        play: function (k, t, q) {
+          var beat = 60 / q.bpm, off = k === "w" ? beat * 2 / 3 : beat / 2;
+          for (var i = 0; i < 12; i++) {
+            var at = t + i * beat;
+            if (i % 2 === 0) bass(at, 0.4); else A.click(at, true);
+            A.tone(q.root + 19, at, 0.08, 0.05);
+            A.tone(q.root + 19, at + off, 0.06, k === "w" ? 0.07 : 0.05);
+          }
+          return 12 * beat;
+        } },
+      { name: "레벨 4 · 엇박 (당김음)", opts: [["on", "정박 (하나 · 둘 · 셋 · 넷)"], ["off", "엇박 (앤에서만)"]],
+        tips: [["세는 법", "\"하나 앤 둘 앤 셋 앤 넷 앤\" → '앤'에서만 치기"], ["박수", "4박 노래에서 정박이 아니라 박 사이(앤)에만 박수"],
+               ["예시곡", "요즘 K-pop 아이돌 곡 (엇박 가사가 많은 곡)"],
+               ["포인트", "오디션곡에서 제일 많이 틀리는 부분이라 제일 중요해요! 낮은 쿵이 박, 짝(박수)이 어디 오나 들어 보세요"]],
+        play: function (k, t, q) {
+          var beat = 60 / q.bpm;
+          for (var i = 0; i < 12; i++) {
+            var at = t + i * beat;
+            bass(at, i % 4 === 0 ? 0.4 : 0.25);
+            A.click(k === "off" ? at + beat / 2 : at, true);
+          }
+          return 12 * beat;
+        } },
+      { name: "레벨 5 · 변박 (보스 스테이지)", opts: [["4", "4박"], ["5", "5박"], ["7", "7박"]],
+        tips: [["5박", "「Take Five」, 「미션 임파서블」 테마 / \"하나둘셋 하나둘\"로 쪼개서 세기"],
+               ["7박", "\"하나둘 하나둘 하나둘셋\"으로 쪼개서 세기"], ["포인트", "재미용 · 집중력용! 큰 쿵(마디 처음)부터 다음 큰 쿵까지 세어 보세요"]],
+        play: function (k, t, q) {
+          var m = Number(k), beat = 60 / q.bpm, groups = { 4: [0, 2], 5: [0, 3], 7: [0, 2, 4] }[m], n = m * 3;
+          for (var i = 0; i < n; i++) {
+            var p = i % m, at = t + i * beat;
+            if (p === 0) { bass(at, 0.5); A.click(at, true); }
+            else if (groups.indexOf(p) >= 0) { A.tone(52, at, 0.25, 0.28); A.click(at, false); }
+            else chord(q.root, at, beat * 0.4, 0.1);
+          }
+          return n * beat;
+        } }
+    ];
+    var lvRow = row(), tipBox = el("div", "g2__tips"), cmpRow = row(), ansRow = row(), r2 = row();
+    var go = btn("시작"), again = btn("🔁 다시 듣기", "game__btn--ghost");
     r2.appendChild(go); r2.appendChild(again);
-    f.box.appendChild(r1); f.box.appendChild(r2);
-    three.disabled = four.disabled = true;
-    var st = null, q = null, timers = [];
+    [lvRow, tipBox, cmpRow, ansRow, r2].forEach(function (x) { f.box.appendChild(x); });
+    lvRow.classList.add("g2__levels");
+    var lv = 0, st = null, q = null, timers = [], ansBtns = [], lvBtns = [];
+    LEVELS.forEach(function (L, i) {
+      var b = btn(L.name, "game__btn--ghost g2__lv");
+      b.addEventListener("click", function () { if (st && q && !q.done) stopAll(); choose(i); });
+      lvRow.appendChild(b);
+      lvBtns.push(b);
+    });
+    function mkQ(k) { return { k: k, bpm: 92 + Math.floor(Math.random() * 36), root: 57 + Math.floor(Math.random() * 6), lock: true }; }
+    function choose(i) {
+      lv = i;
+      var L = LEVELS[i];
+      lvBtns.forEach(function (b, j) { b.classList.toggle("is-on", j === i); var best = A.best("meter_l" + (j + 1)); b.title = best ? "최고 " + best + "/8" : ""; });
+      tipBox.textContent = "";
+      L.tips.forEach(function (t) { var p = el("p"); p.appendChild(el("b", null, t[0] + " ")); p.appendChild(document.createTextNode(t[1])); tipBox.appendChild(p); });
+      cmpRow.textContent = "";
+      cmpRow.appendChild(el("span", "g2__cmp", "비교해서 들어 보기:"));
+      L.opts.forEach(function (o) {
+        var b = btn("▶ " + o[1], "game__btn--ghost");
+        b.addEventListener("click", function () { A.audio(); if (st && q && !q.lock) return; L.play(o[0], now() + 0.15, mkQ(o[0])); });
+        cmpRow.appendChild(b);
+      });
+      ansRow.textContent = "";
+      ansBtns = L.opts.map(function (o) {
+        var b = btn(o[1]);
+        b.disabled = true;
+        b.addEventListener("click", function () { answer(o[0], b); });
+        ansRow.appendChild(b);
+        return b;
+      });
+      f.status.textContent = L.name + " · \"시작\"을 누르면 8문제가 나와요. 먼저 위에서 비교해서 들어 봐도 좋아요.";
+      go.hidden = false;
+      st = null; q = null;
+    }
     function play() {
-      var beat = 60 / q.bpm, t = now() + 0.2, n = q.m * 3;
-      for (var i = 0; i < n; i++) {
-        if (i % q.m === 0) A.tone(q.root - 12, t + i * beat, beat * 0.9, 0.4);
-        else { A.tone(q.root + 4, t + i * beat, beat * 0.4, 0.12); A.tone(q.root + 7, t + i * beat, beat * 0.4, 0.12); }
-      }
-      three.disabled = four.disabled = true;
-      timers.push(setTimeout(function () { q.lock = false; three.disabled = four.disabled = false; f.status.textContent = "몇 박자였나요? (쿵이 몇 번마다 오나 세어 보세요)"; }, (0.2 + beat * Math.min(n, 6)) * 1000));
+      var L = LEVELS[lv], len = L.play(q.k, now() + 0.2, q);
+      ansBtns.forEach(function (b) { b.disabled = true; });
+      timers.push(setTimeout(function () { q.lock = false; ansBtns.forEach(function (b) { b.disabled = false; }); f.status.textContent = st.n + " / 8 · 어느 박자였나요?"; }, Math.min(len, 4) * 1000 + 300));
     }
     function ask() {
       st.n++;
-      q = { m: Math.random() < 0.5 ? 3 : 4, bpm: 96 + Math.floor(Math.random() * 40), root: 57 + Math.floor(Math.random() * 6), lock: true };
-      [three, four].forEach(function (b) { b.classList.remove("is-right", "is-wrong"); });
+      var L = LEVELS[lv];
+      q = mkQ(pick(L.opts)[0]);
+      ansBtns.forEach(function (b) { b.classList.remove("is-right", "is-wrong"); });
       f.status.textContent = st.n + " / 8 · 잘 들어 보세요";
       play();
     }
-    function answer(m, b) {
+    function answer(k, b) {
       if (!q || q.lock) return;
       q.lock = true;
-      three.disabled = four.disabled = true;
-      (q.m === 3 ? three : four).classList.add("is-right");
-      if (m !== q.m) b.classList.add("is-wrong"); else st.score++;
-      f.status.textContent = (m === q.m ? "정답! " : "아쉬워요. ") + q.m + "박이었어요.";
-      timers.push(setTimeout(st.n >= 8 ? end : ask, 1300));
+      var L = LEVELS[lv];
+      ansBtns.forEach(function (x) { x.disabled = true; });
+      L.opts.forEach(function (o, i) { if (o[0] === q.k) ansBtns[i].classList.add("is-right"); });
+      var right = L.opts.filter(function (o) { return o[0] === q.k; })[0][1];
+      if (k !== q.k) b.classList.add("is-wrong"); else st.score++;
+      f.status.textContent = (k === q.k ? "정답! " : "아쉬워요. ") + "정답은 " + right;
+      timers.push(setTimeout(st.n >= 8 ? end : ask, 1400));
     }
     function end() {
       timers.forEach(clearTimeout);
-      var nb = record("meter", st.score);
+      q.done = true;
+      var nbL = record("meter_l" + (lv + 1), st.score);
+      record("meter", st.score);
       go.hidden = false;
-      A.result(f.panel, ["8문제 중 " + st.score + "개" + (nb && st.score ? " · 새 기록!" : ""), "박자를 느끼면 노래가 반주에 딱 붙어요."], "몇 박자? " + st.score + "/8!");
+      var next = st.score >= 6 && lv < LEVELS.length - 1 ? "다음 레벨 도전! → " + LEVELS[lv + 1].name : st.score < 6 ? "6개 넘게 맞히면 다음 레벨로 가 보세요." : "보스 스테이지 클리어! 🎉";
+      A.result(f.panel, [LEVELS[lv].name + " · 8문제 중 " + st.score + "개" + (nbL && st.score ? " · 새 기록!" : ""), next], "몇 박자? " + LEVELS[lv].name + " " + st.score + "/8!");
+      choose(lv);
     }
-    three.addEventListener("click", function () { answer(3, three); });
-    four.addEventListener("click", function () { answer(4, four); });
+    function stopAll() { timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; }
     go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); st = { n: 0, score: 0 }; ask(); });
     again.addEventListener("click", function () { if (q && !q.lock) { q.lock = true; play(); } });
+    choose(0);
     return {
       bestText: function (v) { return v + "/8"; },
-      stop: function () { timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; go.hidden = false; }
+      stop: function () { stopAll(); go.hidden = false; }
     };
   })());
 

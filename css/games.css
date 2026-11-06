@@ -169,3 +169,8 @@
 .arcade__who{margin:8px 0 0 !important;font-size:14px;}
 .arcade__who .sys-link{color:#E8C27A;}
 [data-members][hidden]{display:none;}
+.g2__levels{gap:6px;}
+.g2__levels .game__btn{font-size:13px;padding:8px 12px;}
+.g2__tips{margin:12px auto 0;max-width:560px;padding:10px 14px;border-radius:10px;background:#FFF6D6;color:#3A2F25;font-size:14px;line-height:1.6;word-break:keep-all;text-align:left;}
+.g2__tips p{margin:2px 0;}
+.g2__cmp{align-self:center;font-size:13px;opacity:.8;}
