@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 30; // bump when the demo defaults change
+  var VERSION = 31; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -186,9 +186,12 @@
           body_size: "163/47", field: "보컬", music: null, note: "학교가 늦게 끝나서 뒷순서로 부탁드려요 (체험 모드 예시)",
           created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: new Date(Date.now() - 3600000).toISOString() }
       ],
-      // 제휴 업체 (종류만, 업체 이름은 원장님이 관리자에서 적음) + 예시 신청 하나
-      partners: ["헤어 메이크업", "붙임머리", "스타일링 컨설팅", "경락", "헬스장", "피부과", "성형외과", "치과", "촬영 스튜디오", "심리상담센터"]
-        .map(function (c, i) { return { id: 301 + i, category: c, name: null, info: c === "촬영 스튜디오" ? "프로필 사진 촬영 · 학원생 할인 (체험 모드 예시)" : null, sort: i * 10, active: true }; }),
+      // 제휴 업체 (블로그 [제휴업체 안내] 2023 그대로, 실제 서버와 같게) + 예시 신청 하나
+      partners: [["헤어 메이크업", "알루 본점", "헤어 · 메이크업 75% 할인"], ["붙임머리"], ["스타일링 컨설팅", "이미지 케렌시아", "모든 컨설팅 이벤트가 할인 + 제휴 10% 추가 할인"],
+        ["경락", "지앤스파", "얼굴 경락 관리 40% 할인"], ["헬스장", "제이드 짐", "그룹 PT 25% 할인 · 개인 PT 37% 할인"], ["피부과", "더이뻠풀 의원", "피부 · 필러, 모든 시술 10% 할인"],
+        ["성형외과", "플래너 성형외과", "시술 · 수술, 모든 수술 및 시술 10% 할인"], ["치과", "티유 치과", "치료 · 미용, 모든 시술 50~10% 할인"],
+        ["촬영 스튜디오", "소솜 스튜디오", "사진 촬영, 모든 촬영 30% 할인"], ["심리상담센터"]]
+        .map(function (c, i) { return { id: 301 + i, category: c[0], name: c[1] || null, info: c[2] || null, sort: i * 10, active: true }; }),
       partner_requests: [
         { id: 351, partner_id: 301, partner: "헤어 메이크업", member_id: "S002", wish: "다음 주 토요일 오전", memo: "오디션 프로필 촬영용이에요 (체험 모드 예시)", status: "접수", reply: null,
           created_at: new Date(Date.now() - 5400000).toISOString(), updated_at: new Date(Date.now() - 5400000).toISOString() }
