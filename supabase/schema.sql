@@ -5036,3 +5036,45 @@ end $$;
 revoke execute on function public.member_wifi(text, text) from public;
 grant execute on function public.member_wifi(text, text) to anon, authenticated;
 
+-- ---------------------------------------------------------------- 마이그레이션 leesh_room_door (2026-11-06)
+-- 연습실 비밀번호 (블로그 서로이웃 공지 "매월 연습실 비밀번호 변경 공지": 매월 초 1~5일에 바꿈). 저장소가 공개라 값은 DB에만.
+-- 관리자 → 설정 → "연습실 비밀번호"에서 바꾸고, 로그인한 수강생만 내 폴더 → 일정·공지에서 봄 (member_wifi의 door).
+create table if not exists private.room_door (
+  id         int primary key default 1 check (id = 1),
+  pass       text not null check (char_length(pass) between 1 and 40),
+  changed_on date not null,
+  updated_at timestamptz not null default now()
+);
+revoke all on private.room_door from public, anon, authenticated;
+
+create or replace function public.member_wifi(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  return jsonb_build_object('ok', true,
+    'wifi', coalesce((select jsonb_agg(jsonb_build_object('name', w.name, 'pass', w.pass) order by w.sort) from private.room_wifi w), '[]'::jsonb),
+    'door', (select jsonb_build_object('pass', d.pass, 'changed_on', d.changed_on) from private.room_door d where d.id = 1));
+end $$;
+
+create or replace function public.admin_room_door() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true,
+    'door', (select jsonb_build_object('pass', d.pass, 'changed_on', d.changed_on) from private.room_door d where d.id = 1));
+end $$;
+
+create or replace function public.admin_room_door_set(p_pass text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v text := btrim(coalesce(p_pass, ''));
+begin
+  if not public.is_admin() then return private.fail('관리자만 바꿀 수 있어요.'); end if;
+  if v = '' or char_length(v) > 40 then return private.fail('비밀번호를 적어주세요.'); end if;
+  insert into private.room_door (id, pass, changed_on, updated_at) values (1, v, private.now_kst()::date, now())
+  on conflict (id) do update set pass = excluded.pass, changed_on = excluded.changed_on, updated_at = now();
+  return jsonb_build_object('ok', true);
+end $$;
+revoke execute on function public.admin_room_door(), public.admin_room_door_set(text) from public, anon;
+grant execute on function public.admin_room_door(), public.admin_room_door_set(text) to authenticated;
+

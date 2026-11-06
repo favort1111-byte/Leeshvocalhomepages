@@ -2827,7 +2827,30 @@
   });
   $("#backupReload").addEventListener("click", loadBackup);
 
+  /* 연습실 비밀번호: 바꾼 날(오늘)과 함께 저장 → 학생 내 폴더 일정·공지 (member_wifi의 door) */
+  function loadDoor() {
+    var st = $("#doorState");
+    api("rpc/admin_room_door", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { msg(st, d.error || friendly(res, "불러오지 못했습니다."), "error"); return; }
+      var x = d.door;
+      msg(st, x ? "지금 비밀번호: " + x.pass + " (" + x.changed_on + " 바꿈)" : "아직 적은 비밀번호가 없어요. 학생 화면엔 \"학원에 물어봐 주세요\"로 보여요.", x ? "ok" : "");
+    });
+  }
+  $("#doorForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, v = f.pass.value.trim();
+    if (!v) return;
+    api("rpc/admin_room_door_set", { method: "POST", body: { p_pass: v } }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { msg($("#doorState"), d.error || friendly(res), "error"); return; }
+      f.reset();
+      loadDoor();
+    });
+  });
+
   function renderSettings() {
+    loadDoor();
     loadTelegram();
     loadBackup();
     loadBase().then(function () {

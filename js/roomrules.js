@@ -96,5 +96,29 @@
     });
     return d;
   }
-  window.LeeshRoomRules = { box: box };
+  /* 매월 연습실 비밀번호 변경 공지 (블로그 공지 2021.1.7): 매월 초(1~5일)에 바꿈. 비밀번호는 관리자 → 설정에서 적고,
+     펼칠 때 서버(member_wifi의 door)에서 받아 옴. loadDoor()는 {pass, changed_on} 또는 null Promise. */
+  function door(loadDoor) {
+    var d = el("details", "apply__rules room__rules");
+    d.appendChild(el("summary", "apply__rules-title", "📍 매월 연습실 비밀번호 변경 공지"));
+    d.appendChild(el("p", "room__p", "매월 초 (1~5일) 비밀번호를 변경합니다."));
+    var line = el("p", "room__p", "펼치면 불러와요.");
+    d.appendChild(line);
+    var done = false;
+    d.addEventListener("toggle", function () {
+      if (!d.open || done || !loadDoor) return;
+      done = true;
+      line.textContent = "불러오는 중…";
+      loadDoor().then(function (x) {
+        line.textContent = "";
+        if (!x || !x.pass) { line.textContent = "이번 달 비밀번호는 학원에 물어봐 주세요."; return; }
+        var m = /^(\d{4})-(\d{2})/.exec(x.changed_on || "");
+        line.appendChild(document.createTextNode((m ? m[1] + "년 " + Number(m[2]) + "월 " : "") + "변경된 비밀번호는 "));
+        line.appendChild(el("b", "apply__red room__door", x.pass));
+        line.appendChild(document.createTextNode(" 입니다."));
+      }, function () { done = false; line.textContent = "불러오지 못했어요. 다시 접었다 펼쳐 주세요."; });
+    });
+    return d;
+  }
+  window.LeeshRoomRules = { box: box, door: door };
 })();

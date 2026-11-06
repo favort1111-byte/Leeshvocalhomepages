@@ -966,6 +966,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .room__h{margin:10px 0 0;font-weight:700;font-size:14.5px;}
 .room__list{margin:6px 0 0;padding-left:20px;display:grid;gap:5px;font-size:14.5px;line-height:1.6;word-break:keep-all;}
 .room__list small{display:block;font-size:13px;color:#7A6656;}
+.room__door{font-size:17px;letter-spacing:.04em;user-select:all;}
 .room__wifitable{margin-top:6px;border-collapse:collapse;font-size:14.5px;}
 .room__wifitable th,.room__wifitable td{padding:4px 12px 4px 0;text-align:left;border-bottom:1px solid rgba(90,60,40,.12);}
 .room__wifitable th{font-weight:600;}

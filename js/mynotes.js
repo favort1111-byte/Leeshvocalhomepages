@@ -357,11 +357,20 @@
     if (!plain.length && (window.LeeshVisitRules || window.LeeshRoomRules)) box.appendChild(el("h3", "rec__title", "공지"));
     // 연습실 예약 및 이용 안내 + 와이파이 (원장님 2026-11-06) — js/roomrules.js, 와이파이는 펼칠 때 서버에서
     if (window.LeeshRoomRules) {
-      var rr = LeeshRoomRules.box(function () {
-        return LeeshAPI.rpc("member_wifi", { p_id: who.id, p_pin: who.key }).then(function (r) { if (!r.ok) throw new Error(r.error); return r.wifi; });
-      });
+      var roomInfo = null; // member_wifi 한 번만 (와이파이 + 이번 달 연습실 비밀번호)
+      var getRoom = function () {
+        if (!roomInfo) roomInfo = LeeshAPI.rpc("member_wifi", { p_id: who.id, p_pin: who.key }).then(function (r) {
+          if (!r.ok) { roomInfo = null; throw new Error(r.error); }
+          return r;
+        });
+        return roomInfo;
+      };
+      var rr = LeeshRoomRules.box(function () { return getRoom().then(function (r) { return r.wifi; }); });
       rr.classList.add("fold__visitrules");
       box.appendChild(rr);
+      var rd = LeeshRoomRules.door(function () { return getRoom().then(function (r) { return r.door; }); });
+      rd.classList.add("fold__visitrules");
+      box.appendChild(rd);
     }
     // 내방 오디션 참여 방법 (원장님 2026-11-06: 공지 밑에) — js/visitrules.js, 신청서 위와 같은 상자
     if (window.LeeshVisitRules) {
