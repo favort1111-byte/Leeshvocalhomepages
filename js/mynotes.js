@@ -365,6 +365,10 @@
         });
         return roomInfo;
       };
+      // 보강 및 레슨 공지 · 수강료 환불 규정 (원장님 2026-11-06, 블로그 공지 그대로)
+      var lr = LeeshRoomRules.lesson();
+      lr.classList.add("fold__visitrules");
+      box.appendChild(lr);
       var rr = LeeshRoomRules.box(function () { return getRoom().then(function (r) { return r.wifi; }); });
       rr.classList.add("fold__visitrules");
       box.appendChild(rr);
