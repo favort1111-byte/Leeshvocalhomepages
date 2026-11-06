@@ -958,6 +958,18 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .apply__rules-sub{margin:12px 0 0;font-weight:700;}
 .apply__rules-end{margin:12px 0 0;font-weight:700;font-size:14px;}
 .apply__red{color:#C8312B;}
+.room__rules{background:#FFFDF8;border-color:rgba(90,60,40,.18);}
+.room__soon{display:block;margin-top:8px;padding:6px 10px;border-radius:6px;font-weight:700;font-size:15px;line-height:1.5;color:#C8312B;background:#FFF0A0;word-break:keep-all;}
+.room__soon--in{font-size:16px;margin:10px 0 0;}
+.room__sub{margin:6px 0 0;font-size:13.5px;color:#7A6656;}
+.room__p{margin:10px 0 0;font-size:14.5px;line-height:1.6;word-break:keep-all;}
+.room__h{margin:10px 0 0;font-weight:700;font-size:14.5px;}
+.room__list{margin:6px 0 0;padding-left:20px;display:grid;gap:5px;font-size:14.5px;line-height:1.6;word-break:keep-all;}
+.room__list small{display:block;font-size:13px;color:#7A6656;}
+.room__wifitable{margin-top:6px;border-collapse:collapse;font-size:14.5px;}
+.room__wifitable th,.room__wifitable td{padding:4px 12px 4px 0;text-align:left;border-bottom:1px solid rgba(90,60,40,.12);}
+.room__wifitable th{font-weight:600;}
+.room__wifitable td{font-family:ui-monospace,Menlo,Consolas,monospace;user-select:all;}
 .apply__agree{font-weight:600;}
 .apply__music{padding:10px 12px;border:1px dashed rgba(110,59,40,.35);border-radius:8px;}
 /* 선생님 화면 (teacher.html, js/teacher.js) */

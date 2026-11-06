@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 31; // bump when the demo defaults change
+  var VERSION = 32; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -679,6 +679,11 @@
       db.messages.forEach(function (m) { if (m.to_teacher === t.id && (a.p_ids || []).indexOf(m.id) !== -1 && !m.read_at) m.read_at = new Date().toISOString(); });
       save();
       return { ok: true };
+    },
+    member_wifi: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      return { ok: true, wifi: [{ name: "체험_wifi1", pass: "체험 모드 예시" }, { name: "체험_wifi c_hall", pass: "체험 모드 예시" }] };
     },
     member_partners: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);

@@ -5014,3 +5014,25 @@ begin
   return jsonb_build_object('ok', true, 'id', app_id, 'new', is_new);
 end $function$;
 
+-- ---------------------------------------------------------------- 마이그레이션 leesh_room_wifi (2026-11-06)
+-- 연습실 와이파이 (원장님 2026-11-06, 블로그 서로이웃 공지 "연습실 공지사항 (예약방법/WI-FI)"). 저장소가 공개라
+-- 비밀번호는 DB에만 넣고(이 파일엔 없음), 로그인한 수강생에게만 member_wifi로 보여줌 (내 폴더 → 일정·공지).
+-- 학부모 화면 · 공개 페이지에는 안 나옴. 바꿀 때: update private.room_wifi set pass = '…' where name = '…';
+create table if not exists private.room_wifi (
+  sort int primary key,
+  name text not null check (char_length(name) <= 60),
+  pass text not null check (char_length(pass) <= 100)
+);
+revoke all on private.room_wifi from public, anon, authenticated;
+
+create or replace function public.member_wifi(p_id text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  return jsonb_build_object('ok', true, 'wifi', coalesce((
+    select jsonb_agg(jsonb_build_object('name', w.name, 'pass', w.pass) order by w.sort) from private.room_wifi w), '[]'::jsonb));
+end $$;
+revoke execute on function public.member_wifi(text, text) from public;
+grant execute on function public.member_wifi(text, text) to anon, authenticated;
+
