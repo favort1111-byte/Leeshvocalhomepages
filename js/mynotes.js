@@ -287,12 +287,14 @@
     if (n.body) d.appendChild(el("p", "fold__body", n.body));
     return d;
   }
+  function prevDay(d) { var t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - 1); return t.toISOString().slice(0, 10); }
   function renderNotices(res) {
     var box = scene.querySelector("#myNotices");
     box.textContent = "";
     var today = todayKst(), month = today.slice(0, 7);
     var plans = (res.visits || []).map(function (a) {
-      return { date: a.date, kind: "내방 오디션", title: (a.company ? a.company + " " : "") + a.title, href: "audition.html" };
+      return { date: a.date, kind: "내방 오디션", title: (a.company ? a.company + " " : "") + a.title, href: "audition.html",
+               closed: (a.deadline || prevDay(a.date)) < today };
     }).concat((res.notices || []).filter(function (n) { return n.start; }).map(function (n) {
       return { date: n.start, end: n.end, kind: /월말\s*평가/.test(n.title) ? "월말평가" : /휴원|휴강|쉬는/.test(n.title) ? "휴원" : "학원 일정", notice: n };
     })).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
@@ -334,9 +336,12 @@
           row.appendChild(a);
           if (form && p.kind === "내방 오디션") {
             var line = el("p", "fold__planapply");
-            var ap = el("a", "sys-link", "이 오디션 신청하기 →");
-            ap.href = form;
-            line.appendChild(ap);
+            if (p.closed) line.appendChild(el("span", "sys-note", "신청 마감 (오디션 하루 전까지 받아요)"));
+            else {
+              var ap = el("a", "sys-link", "이 오디션 신청하기 →");
+              ap.href = form;
+              line.appendChild(ap);
+            }
             row.appendChild(line);
           }
         }
@@ -349,6 +354,13 @@
       plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
     }
     if (!plans.length && !plain.length) box.appendChild(el("p", "book__empty", "새 일정이나 공지가 없어요."));
+    // 내방 오디션 참여 방법 (원장님 2026-11-06: 공지 밑에) — js/visitrules.js, 신청서 위와 같은 상자
+    if (window.LeeshVisitRules) {
+      if (!plain.length) box.appendChild(el("h3", "rec__title", "공지"));
+      var vr = LeeshVisitRules.box(false);
+      vr.classList.add("fold__visitrules");
+      box.appendChild(vr);
+    }
   }
 
   /* 제휴 업체: 학생이 업체와 원하는 날짜·시간을 적어 신청 → 관리자 화면 "제휴 신청"에 보이고, 학원이 업체에 전화로

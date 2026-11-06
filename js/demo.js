@@ -557,10 +557,10 @@
       if (!who.ok) return who;
       var today = nowKst().today;
       return { ok: true, name: who.name, auditions: db.audition_news.filter(function (n) {
-        return n.kind === "내방" && n.published && (n.deadline || n.event_date || today) >= today;
+        return n.kind === "내방" && n.published && (n.deadline || (n.event_date ? addDays(n.event_date, -1) : today)) >= today; // 마감일 없으면 하루 전까지
       }).map(function (n) {
         var mine = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0] || null;
-        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline, body: n.body, image: n.image, mine: mine };
+        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), body: n.body, image: n.image, mine: mine };
       }) };
     },
     member_visit_apply: function (a, uid) {
