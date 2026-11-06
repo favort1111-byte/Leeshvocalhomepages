@@ -158,7 +158,7 @@ def main():
         "겹친 예약 0 · 오늘 %s건 · 내일 %s건" % (b["today"], b["tomorrow"]))
     chk(not b["has_room_lock"], "예약 함수에 몰림 대비 잠금이 빠졌어요 (leesh_booking_room_lock 확인)", "예약 몰림 대비 잠금 그대로")
     s = d["settings"] or {}
-    expect = {"max_minutes": 120, "max_days": 1, "cancel_minutes": 60, "daily_max_minutes": 1440, "pin_login": False, "student_notes": False, "song_recs": False}
+    expect = {"max_minutes": 120, "max_days": 1, "cancel_minutes": 60, "daily_max_minutes": 1440, "pin_login": False, "student_notes": True, "song_recs": False}
     diff = {k: s.get(k) for k, v in expect.items() if s.get(k) != v}
     chk(bool(diff), "예약 · 기능 설정이 정해둔 값과 달라요: %s (원장님이 바꾼 거면 CLAUDE.md도 고치기)" % json.dumps(diff, ensure_ascii=False),
         "예약 규칙 그대로 (한 번에 2시간 · 오늘·내일 · 1시간 전 취소)")

@@ -12,8 +12,8 @@ window.LEESH = {
   // 레슨 노트 (선생님이 수업마다 적는 기록, 선생님 화면 teacher.html에서 씀). 원장님 2026-10-28 켬 — false면 내 폴더·관리자 화면에서 숨어요.
   lessonNotes: true,
   // 학생 내 폴더에 레슨 노트 보이기. 원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김 (서버도 settings.student_notes = false라 안 보냄).
-  // 켤 때는 이것과 서버 둘 다: studentNotes: true + update public.settings set student_notes = true;
-  studentNotes: false,
+  // 레슨 노트: 원장님 2026-10-29 숨김 → 2026-11-06 켬. 끄거나 켤 때는 이것과 서버 둘 다 (settings.student_notes).
+  studentNotes: true,
   // 연습실 예약 켜기. 원장님 2026-11-05: 학생들 다 가입시킨 뒤 한 번에 시작 → 잠깐 멈춤 ("준비 중", 서버도 settings.booking_open = false라 booking_create가 막음).
   // 다시 열 때는 둘 다: bookingOpen: true + update public.settings set booking_open = true;
   bookingOpen: false,
