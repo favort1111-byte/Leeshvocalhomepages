@@ -234,11 +234,18 @@
         box.appendChild(row);
       });
     }
-    if (plain.length) {
-      box.appendChild(el("h3", "rec__title", "공지"));
-      plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
+    var rules = window.LeeshRoomRules || window.LeeshVisitRules;
+    if (plain.length || rules) box.appendChild(el("h3", "rec__title", "공지"));
+    plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
+    // 학생 내 폴더와 같은 공지 상자 (원장님 2026-11-06 "공지사항은 모두 학부모도"): 보강 · 레슨 · 환불 규정, 연습실 안내(와이파이), 내방 오디션 참여 방법
+    if (window.LeeshRoomRules) {
+      box.appendChild(LeeshRoomRules.lesson());
+      box.appendChild(LeeshRoomRules.box(function () {
+        return LeeshAPI.rpc("parent_wifi", {}).then(function (r) { if (!r.ok) throw new Error(r.error); return r.wifi; });
+      }));
     }
-    if (!plans.length && !plain.length) box.appendChild(el("p", "book__empty", "새 일정이나 공지가 없어요."));
+    if (window.LeeshVisitRules) box.appendChild(LeeshVisitRules.box(false));
+    if (!plans.length && !plain.length && !rules) box.appendChild(el("p", "book__empty", "새 일정이나 공지가 없어요."));
   }
 
   /* 학원 → 학부모 메시지 (관리자 → 메시지에서 받는 사람 "학부모"). 새 것은 펼쳐 보이고, 보이면 읽음. */

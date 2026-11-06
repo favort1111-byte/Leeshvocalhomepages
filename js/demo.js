@@ -681,6 +681,7 @@
       save();
       return { ok: true };
     },
+    parent_wifi: function () { return { ok: true, wifi: [{ name: "체험_wifi1", pass: "체험 모드 예시" }] }; },
     member_wifi: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;

@@ -579,7 +579,7 @@ parent_page = (head("학부모 | 이송희보컬레슨", "이송희보컬레슨 
                + '<main class="stage booking">\n'
                + nav("parent", "dark") + "\n"
                + PARENT_APP
-               + "</main>\n" + foot("evalcard", "parent"))
+               + "</main>\n" + foot("evalcard", "visitrules", "roomrules", "parent"))
 
 # ---------- GAMES: 보컬 오락실 (js/games.js) ----------
 # (id, emoji, name, what, skill, group). fly·pitch·rhythm·breath live in js/games.js, the rest in js/games2.js

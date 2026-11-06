@@ -5092,3 +5092,17 @@ drop function if exists public.admin_room_door();
 drop function if exists public.admin_room_door_set(text);
 drop table if exists private.room_door;
 
+-- ---------------------------------------------------------------- 마이그레이션 leesh_parent_wifi (2026-11-06)
+-- 원장님 2026-11-06 "공지사항은 모두 학부모도 볼 수 있게": 학부모 화면 일정·공지에도 연습실 안내(와이파이 포함).
+create or replace function public.parent_wifi() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p public.parents := private.my_parent();
+begin
+  if auth.uid() is null then return private.fail('카카오 로그인이 필요해요.'); end if;
+  if p.id is null then return private.fail('학원에서 확인한 뒤에 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'wifi', coalesce((
+    select jsonb_agg(jsonb_build_object('name', w.name, 'pass', w.pass) order by w.sort) from private.room_wifi w), '[]'::jsonb));
+end $$;
+revoke execute on function public.parent_wifi() from public, anon;
+grant execute on function public.parent_wifi() to authenticated;
+
