@@ -250,17 +250,17 @@
   // 선생님들 의견 (2026-11-04): 시트 탭 이름 바꾸기 · 앞뒤로 옮기기 · 신입생은 OT · 양식 탭과 같이 · 곡(가사) 탭도 아래 탭에서 · 저장이 끊겨도 안 날아가게
   function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   function cellOf(text, s) { var c = { t: esc(text) }; if (s) c.s = s; return c; }
-  /** 신입생 OT 탭 (상담 · 등록 일지의 신상 칸 — 생년월일 · 사는 곳 · 학교 · 키 몸무게 — 은 빼고 수업에 필요한 칸만, 원장님 2026-11-04) */
-  function otTemplate() {
-    var d = { v: 1, n: 100, w: { 0: 190, 1: 520 }, h: {}, c: {} };
-    d.c["0,0"] = cellOf("OT (첫 수업)", { b: 1, z: 18 });
-    var rows = ["등록 경로", "보컬 레슨 경험", "댄스 레슨 경험", "악기", null, "희망 클래스", "좋아하는 가수", "좋아하는 노래 · 장르", null,
-      "지망하는 기획사 · 학교", "가수 장르 · 포지션", "오디션 경험", "합격 경험", null, "레슨 목표 · 방향성", "특이사항"];
-    var r = 2;
-    rows.forEach(function (label) {
-      if (label) d.c[r + ",0"] = cellOf(label, /목표|특이/.test(label) ? { b: 1, f: "#ff0000" } : { b: 1 });
-      r++;
-    });
+  /** OT 탭 (원장님 2026-11-06 "원장님 · 공지윤 학생 OT 시트 그대로 기본 세팅"): 원장님이 홈페이지에서 만든 OT 시트와 같은 칸 ·
+      글씨 크기 · 열 너비, 답은 비워 둠 (일자 = 오늘, 이름 = 학생). 신입생 처음 열 때 · 아래 탭 + → "OT"에서 씀. */
+  var OT_ROWS = [[2, "일자"], [5, "이름"], [6, "생년월일 / 학교"], [7, "사는 곳"], [8, "등록경로"], [9, "댄스 레슨 유무"], [10, "레슨유무"],
+    [11, "악기"], [12, "희망 클래스"], [13, "좋아하는 가수"], [14, "좋아하는 노래/장르"], [16, "오디션 유무"], [18, "특이사항"],
+    [20, "지망하는 기획사"], [21, "가수 장르/포지션"], [23, "레슨목표"]];
+  function otTemplate(name) {
+    var d = { v: 1, n: 100, w: { 0: 150, 1: 329, 2: 503 }, h: {}, c: {} };
+    for (var r = 0; r < 40; r++) d.c[r + ",2"] = { s: { z: 20 } }; // 답 칸 (C열) 글씨 20
+    OT_ROWS.forEach(function (x) { d.c[x[0] + ",1"] = cellOf(x[1], { b: 1, z: x[1] === "일자" ? 24 : 27 }); });
+    d.c["2,2"] = cellOf(todayKst(), { z: 20 });
+    if (name) d.c["5,2"] = cellOf(name, { z: 20 });
     return d;
   }
   var DRAFT = "leesh_draft:";
@@ -277,6 +277,7 @@
     } catch (e) { /* private mode */ }
     return out.sort(function (a, b) { return a.at - b.at; });
   }
+  function studentName(id) { var x = students.filter(function (m) { return m.id === id; })[0]; return x ? x.name : ""; }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
   var savers = {}; // 고치는 중인 시트마다 저장기 하나 (같은 시트를 다시 열면 예전 것은 멈춤)
 
@@ -365,7 +366,7 @@
       if (!res.ok) { list(); var m = el("p", "sys-msg sys-msg--error", res.error); app.insertBefore(m, app.children[1] || null); return; }
       // 신입생 (일지 · 곡·자료가 하나도 없음): 첫 수업에 OT · 양식 탭을 같이 만들어요
       if (!made && !res.notes.length && !res.sheets.length) {
-        return LeeshAPI.rpc("teacher_starter", { p_member: id, p_ot: otTemplate(), p_form: LeeshGrid.template(FIELDS) }).then(function (st) {
+        return LeeshAPI.rpc("teacher_starter", { p_member: id, p_ot: otTemplate(studentName(id)), p_form: LeeshGrid.template(FIELDS) }).then(function (st) {
           return open(id, st.ok && st.made ? "신입생이라 OT · 양식 탭을 같이 만들었어요. 아래 탭에서 골라 쓰세요." : note, true);
         });
       }
@@ -488,7 +489,7 @@
         active: cur.kind === e.kind && cur.id === e.id, entry: e, max: isN ? 60 : 100
       };
     });
-    if (cur.kind === "new") items.push({ kind: "n", label: cur.label, name: cur.name || "", title: "오늘의 수업 내용", active: true, entry: null, max: 60 });
+    if (cur.kind === "new") items.unshift({ kind: "n", label: cur.label, name: cur.name || "", title: "오늘의 수업 내용", active: true, entry: null, max: 60 });
     function sendOrder() {
       var ids = items.filter(function (x) { return x.entry; }).map(function (x) { return x.entry.kind + x.entry.id; });
       items.forEach(function (x, i) { if (x.entry) x.entry.obj.tabPos = i; });
@@ -509,7 +510,8 @@
       addTitle: "새 시트 · 새 일지",
       addMenu: [
         ["새 일지 (오늘 수업)", function () { book.go(null); }],
-        ["새 빈 시트 (곡 · 가사 · 자료)", function () { newSheet(book); }]
+        ["새 빈 시트 (곡 · 가사 · 자료)", function () { newSheet(book); }],
+        ["OT (첫 수업 시트)", function () { newSheet(book, "OT", otTemplate(book.s.name)); }]
       ],
       rename: function (i, v) {
         var it = items[i], e = it.entry;
@@ -542,18 +544,32 @@
       }
     };
   }
-  function newSheet(book) {
+  /** 새 시트 (빈 시트 또는 OT): 맨 왼쪽 탭으로 (원장님 2026-11-06 "새로 만든 시트는 맨 오른쪽 말고 맨 왼쪽에") */
+  function newSheet(book, base, data) {
+    base = base || "시트";
+    data = data || { v: 1, n: 100, w: {}, h: {}, c: {} };
     var names = {};
     book.sheets.forEach(function (x) { names[x.title] = 1; });
-    var n = 1;
-    while (names["시트" + n]) n++;
+    var title = base;
+    if (base === "시트") { var n = 1; while (names["시트" + n]) n++; title = "시트" + n; }
+    else { var k = 2; while (names[title]) title = base + " " + k++; }
     var key = uid();
-    LeeshAPI.rpc("teacher_sheet_save", { p_member: book.s.id, p_title: "시트" + n, p_sheet: { v: 1, n: 100, w: {}, h: {}, c: {} }, p_key: key }, undefined, { retry: 2 }).then(function (r) {
+    LeeshAPI.rpc("teacher_sheet_save", { p_member: book.s.id, p_title: title, p_sheet: data, p_key: key }, undefined, { retry: 2 }).then(function (r) {
       if (!r.ok) { if (book.page) say(book.page.msg, r.error, "error"); return; }
-      var x = { id: r.id, title: "시트" + n, src: false, siteEdited: true, pos: 0, tabPos: null, data: { v: 1, n: 100, w: {}, h: {}, c: {} } };
+      var x = { id: r.id, title: title, src: false, siteEdited: true, pos: 0, tabPos: null, data: JSON.parse(JSON.stringify(data)) };
       book.sheets.push(x);
-      book.go({ kind: "s", id: x.id, obj: x }).then(function (p) { if (p) say(p.msg, "새 시트를 만들었어요. 탭을 두 번 누르면 이름을 바꿔요.", "ok"); });
+      toFront(book, "s", x.id);
+      book.go({ kind: "s", id: x.id, obj: x }).then(function (p) { if (p) say(p.msg, (base === "OT" ? "OT 시트" : "새 시트") + "를 맨 왼쪽에 만들었어요. 탭을 두 번 누르면 이름을 바꿔요.", "ok"); });
     });
+  }
+  /** 이 탭을 맨 왼쪽으로: 지금 순서 그대로 두고 앞에 끼워 서버에 순서 저장 */
+  function toFront(book, kind, id) {
+    var list = entries(book).filter(function (e) { return !(e.kind === kind && e.id === id); });
+    var ids = [kind + id].concat(list.map(function (e) { return e.kind + e.id; }));
+    var all = (kind === "n" ? book.notes : book.sheets).filter(function (o) { return o.id === id; })[0];
+    if (all) all.tabPos = 0;
+    list.forEach(function (e, i) { e.obj.tabPos = i + 1; });
+    LeeshAPI.rpc("teacher_tab_order", { p_member: book.s.id, p_order: ids }, undefined, { retry: 2 });
   }
   function delSheet(book, x) {
     if (!window.confirm("\"" + x.title + "\" 시트를 지울까요? 되돌릴 수 없어요.")) return;
@@ -649,6 +665,7 @@
         students.forEach(function (x) { if (x.id === s.id && (!x.last || date.value > x.last)) x.last = date.value; });
         if (wasNew) {
           draftDel(s.id + ":new:" + key);
+          toFront(book, "n", noteId); // 새 일지도 맨 왼쪽 탭으로
           grid.tabs(tabsFor(book, cur()));
           if (book.page && book.page.node !== f) book.page.redrawTabs(); // 뒤에서 늦게 저장된 일지도 지금 탭에
         }
