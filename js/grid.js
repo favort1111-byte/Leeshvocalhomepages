@@ -104,7 +104,7 @@
     var z = Number(s.z), f = okColor(s.f), g = okColor(s.g);
     if (z >= 8 && z <= 48) css.push("font-size:" + z + "px");
     if (f) css.push("color:" + f);
-    if (g) css.push("background-color:" + g);
+    if (g) css.push("background-color:" + g, "--fill:" + g); // 고치는 중에도 채우기 색이 보이게 (css .is-edit)
     // 정렬 (선생님 의견 2026-11-05 "칸이나 글자를 가운데 정렬, 스프레드시트처럼"): 가로 왼쪽(기본) · 가운데 · 오른쪽, 세로 위(기본) · 가운데 · 아래
     if (s.a === "c" || s.a === "r") css.push("text-align:" + (s.a === "c" ? "center" : "right"));
     if (s.va === "m" || s.va === "b") css.push("vertical-align:" + (s.va === "m" ? "middle" : "bottom"));
@@ -754,7 +754,7 @@
       menuBox.textContent = "";
       list.forEach(function (it) {
         if (!it) { menuBox.appendChild(el("hr")); return; }
-        var b = el("button", "xs-menu__item" + (it[2] ? " is-danger" : ""), it[0]);
+        var b = el("button", "xs-menu__item" + (it[2] ? " is-danger" : "") + (it[3] ? " is-on" : ""), it[0]);
         b.type = "button";
         b.addEventListener("click", function () { closeMenus(); it[1](); if (refocus) focusCur(null, true); });
         menuBox.appendChild(b);
@@ -762,7 +762,9 @@
       var box = wrap.getBoundingClientRect();
       menuBox.hidden = false;
       menuBox.style.left = Math.max(4, Math.min(x - box.left, wrap.clientWidth - menuBox.offsetWidth - 4)) + "px";
-      menuBox.style.top = (up ? y - box.top - menuBox.offsetHeight - 6 : y - box.top) + "px";
+      menuBox.style.top = Math.max(4 - box.top, up ? y - box.top - menuBox.offsetHeight - 6 : y - box.top) + "px"; // 화면 위로 안 나가게
+      var on = menuBox.querySelector(".is-on");
+      if (on) menuBox.scrollTop = on.offsetTop - menuBox.clientHeight / 2;
     }
 
     /* --- 도구 줄 --- */
@@ -827,9 +829,49 @@
       else { for (i = SIZES.length - 1; i >= 0 && SIZES[i] >= now; i--); setSize(SIZES[Math.max(i, 0)]); }
     }
     btn("rt-btn--minus", "−", "글씨 작게", function () { step(-1); });
-    var sizeBtn = btn("rt-btn--size", String(BASE), "글씨 크기 고르기", function () { open(sizeMenu, sizeBtn); }, true);
+    // 글씨 크기 칸: 눌러서 목록에서 고르거나, 숫자를 바로 쳐서 Enter (구글시트처럼, 선생님 의견 2026-11-06)
+    var sizeBtn = el("input", "rt-btn rt-btn--size rt-size");
+    sizeBtn.type = "text";
+    sizeBtn.inputMode = "numeric";
+    sizeBtn.maxLength = 2;
+    sizeBtn.value = String(BASE);
+    sizeBtn.title = "글씨 크기: 숫자를 쳐서 Enter, 또는 목록에서 고르기 (8~48)";
+    sizeBtn.setAttribute("aria-label", "글씨 크기");
+    bar.appendChild(sizeBtn);
+    var keepRange = null, sizeDone = false;
+    function keepSel() {
+      var sel = window.getSelection();
+      keepRange = inlineSel() && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    }
+    function restoreSel() {
+      if (!keepRange) return;
+      var v = cellDiv(act.r, act.c);
+      if (v) v.focus({ preventScroll: true });
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(keepRange);
+      keepRange = null;
+    }
+    function typedSize() {
+      if (sizeDone) return;
+      sizeDone = true;
+      var v = parseInt(sizeBtn.value, 10);
+      closeMenus();
+      if (v >= 8 && v <= 48) { restoreSel(); setSize(v); }
+      else showSize();
+      keepRange = null;
+      focusCur(null, true);
+    }
+    sizeBtn.addEventListener("mousedown", function () { if (document.activeElement !== sizeBtn) keepSel(); });
+    sizeBtn.addEventListener("focus", function () { sizeDone = false; sizeBtn.select(); if (opened !== sizeMenu) open(sizeMenu, sizeBtn); });
+    sizeBtn.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); typedSize(); }
+      else if (e.key === "Escape") { e.preventDefault(); sizeDone = true; keepRange = null; closeMenus(); showSize(); focusCur(null, true); }
+    });
+    sizeBtn.addEventListener("blur", function () { if (!sizeDone && sizeBtn.value !== String(curSize())) typedSize(); else { sizeDone = true; } });
     btn("rt-btn--plus", "+", "글씨 크게", function () { step(1); });
-    function showSize() { sizeBtn.textContent = String(curSize()); }
+    function showSize() { if (document.activeElement !== sizeBtn) sizeBtn.value = String(curSize()); }
     sep();
     function flag(f, cmd) { return function () { if (inlineSel()) inline(function () { exec(cmd); }); else toggle(f); }; }
     btn("rt-btn--bold", "<b>B</b>", "굵게 (Ctrl+B)", flag("b", "bold"));
@@ -892,7 +934,7 @@
     SIZES.forEach(function (px) {
       var b = el("button", "rt-menu__size", String(px));
       b.type = "button";
-      b.addEventListener("click", function () { setSize(px); closeMenus(true); });
+      b.addEventListener("click", function () { sizeDone = true; restoreSel(); setSize(px); closeMenus(true); sizeBtn.blur(); showSize(); });
       sizeMenu.appendChild(b);
     });
     // 구글시트와 같은 색 판 (선생님들 의견 2026-11-04 "글씨 색깔 다양하게, 스프레드시트처럼"): 80색 + 맞춤 색
@@ -993,6 +1035,19 @@
         foot.appendChild(plus);
       }
       if (t && t.items && t.items.length) {
+        // 모든 시트 목록 (구글시트 왼쪽 아래 ☰처럼): 긴 수업 기록에서 지난 일지로 바로 가기 (선생님 의견 2026-11-06)
+        var all = el("button", "rs-tabs__all", "☰");
+        all.type = "button";
+        all.title = "모든 시트 (" + t.items.length + "개)";
+        all.setAttribute("aria-label", all.title);
+        all.addEventListener("click", function () {
+          if (mode === "edit") commit();
+          var r = all.getBoundingClientRect();
+          menuAt(t.items.map(function (it, i) {
+            return [(it.active ? "✓ " : "") + it.label, function () { if (!it.active) { commit(); t.pick(i); } }, false, it.active];
+          }), r.left, r.top, false, true);
+        });
+        foot.appendChild(all);
         var tl = el("div", "rs-tabs__list");
         var dragFrom = null, tabClick = null;
         t.items.forEach(function (it, i) {
@@ -1034,6 +1089,21 @@
         });
         foot.appendChild(tl);
         setTimeout(function () { var a = tl.querySelector(".is-active"); if (a) tl.scrollLeft = a.offsetLeft - tl.clientWidth / 2; }, 0);
+        // ◀ ▶ = 앞 · 뒤 시트로 (구글시트 오른쪽 화살표처럼)
+        var cur = -1;
+        t.items.forEach(function (it, i) { if (it.active) cur = i; });
+        var nav = el("span", "rs-tabs__nav");
+        [["◀", -1, "앞 시트 (왼쪽)"], ["▶", 1, "다음 시트 (오른쪽)"]].forEach(function (x) {
+          var b = el("button", "rs-tabs__arrow", x[0]);
+          b.type = "button";
+          b.title = x[2];
+          b.setAttribute("aria-label", x[2]);
+          var to = cur + x[1];
+          if (cur < 0 || to < 0 || to >= t.items.length) b.disabled = true;
+          b.addEventListener("click", function () { if (b.disabled) return; commit(); t.pick(to); });
+          nav.appendChild(b);
+        });
+        foot.appendChild(nav);
       }
       if (d.n < MAX_ROWS) {
         var more = el("button", "xs-more", "+ 행 100개 더");
