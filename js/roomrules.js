@@ -121,7 +121,7 @@
   ];
   function lesson() {
     var d = el("details", "apply__rules room__rules");
-    d.appendChild(el("summary", "apply__rules-title", "📍 보강 및 레슨 공지 · 수강료 환불 규정"));
+    d.appendChild(el("summary", "apply__rules-title", "📍 보강 및 레슨 공지"));
     d.appendChild(el("p", "apply__rules-sub", "📍 보강 공지"));
     d.appendChild(list("ul", MAKEUP));
     d.appendChild(el("p", "room__p", "📌 레슨을 등록하게 되면 각 학생당 한 달의 스케줄이 픽스되는지라 갑작스러운 변경은 모든 학생 스케줄의 영향을 끼치게 됩니다! 재수강 시, 사전에 스케줄을 확인해 주시고, 부득이한 일이 아니면 되도록 사용 자제를 부탁드립니다. 🙏🏻 꼭 꼭 부탁드립니다!🙏🏻🙏🏻"));
@@ -129,6 +129,31 @@
     d.appendChild(el("p", "room__sub", "EX) 18일 (수) 수업 보강 요청 → 19일 ~ 29일 안으로 보강 일정을 조율합니다. 예를 들어 보강 레슨을 27일로 조율하였다면 25일 정상 레슨과 27일 보강 레슨, 총 2회를 진행합니다."));
     d.appendChild(el("p", "apply__rules-sub", "📍 레슨 공지"));
     d.appendChild(list("ul", LESSON));
+    return d;
+  }
+  /* 강의 규정 안내 (원장님 2026-11-06 "보강 및 레슨 공지와 다른 것, 따로 공지에"): about #rules와 같은 2026 안내 이미지
+     (tools/blog_content.py RULES · RULES_COOP — 바꾸면 여기도) + 맨 끝 수강료 환불 규정 · 법 조항 (블로그 공지 2020.11.17). */
+  var RULES = [["보강 신청", [["r1", "최소 7일 전 사전 알림 후 <mark>담당 선생님과 일정 조율</mark>이 필요합니다.", ""], ["r2", "보강은 월 4회 중 <mark>병결 포함 월 1회</mark>까지만 가능합니다.", "※ 병결 시 당일자 처방전 필수 제출"], ["r3", "보강은 원칙적으로 <mark>차주에 진행</mark>되며 부득이한 경우 <mark>한 달 이내 진행</mark>됩니다.", ""], ["r4", "보강 일정 확정 후 <b class=\"rules__red\">재보강 및 일정 변경은 어렵습니다.</b>", ""]]], ["스케줄 변경 및 결석", [["r5", "<mark>재수강 1회차 전</mark>으로 진행되어야 합니다.", ""], ["r6", "보강은 월 4회 중 병결 포함 월 1회까지 가능하며 2회 이상 결석 시 <mark>추가 보강 없이 결석 처리</mark>됩니다.", ""], ["r7", "<b class=\"rules__red\">당일 통보 시 보강은 어렵습니다.</b>", ""]]]];
+  var COOP = ["매월 레슨 스케줄이 미리 확정되어 있어", "<b class=\"rules__blue\">갑작스러운 변경은 다른 학생들의 일정에도 영향을 줄 수 있습니다.</b>", "<b class=\"rules__blue\">부득이한 경우를 제외하고 보강 및 일정 변경은 가급적 자제 부탁드립니다.</b>", "원활한 레슨 진행을 위해 협조해 주셔서 감사합니다!"];
+  function course() {
+    var d = el("details", "apply__rules room__rules");
+    d.appendChild(el("summary", "apply__rules-title", "📍 이송희보컬레슨 강의 규정 안내"));
+    RULES.forEach(function (g) {
+      d.appendChild(el("p", "apply__rules-sub", "🔔 " + g[0]));
+      var ul = el("ul", "rules room__rulelist");
+      g[1].forEach(function (r) {
+        var li = el("li", "rule");
+        var img = el("img", "rule__icon"); img.src = "assets/img/rules/" + r[0] + ".webp"; img.alt = ""; img.width = 40; img.height = 40; img.loading = "lazy";
+        var tx = el("p", "rule__text");
+        tx.innerHTML = r[1] + (r[2] ? "<small>" + r[2] + "</small>" : ""); // 고정 문구 (mark · b만)
+        li.appendChild(img); li.appendChild(tx); ul.appendChild(li);
+      });
+      d.appendChild(ul);
+    });
+    d.appendChild(el("p", "apply__rules-sub", "🔔 원활한 레슨을 위한 협조"));
+    var co = el("div", "room__coop");
+    COOP.forEach(function (t) { var q = el("p"); q.innerHTML = t; co.appendChild(q); });
+    d.appendChild(co);
     d.appendChild(el("p", "apply__rules-sub", "📍 수강료 환불 규정"));
     d.appendChild(el("p", "room__p", "우리 학원의 수업은 월 4회 기준으로 합니다."));
     d.appendChild(list("ol", REFUND));
@@ -139,5 +164,5 @@
     d.appendChild(el("p", "room__sub", "❖ 이송희보컬레슨학원의 수강료 환불 규정은 교육청의 「학원의 설립.운영 및 과외교습에 관한 법률」 제18조제2항 및 「학원의 설립.운영 및 과외교습에 관한 법률 시행령」 제18조제3항을 준수합니다."));
     return d;
   }
-  window.LeeshRoomRules = { box: box, lesson: lesson };
+  window.LeeshRoomRules = { box: box, lesson: lesson, course: course };
 })();

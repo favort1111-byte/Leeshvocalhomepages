@@ -239,6 +239,7 @@
     plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
     // 학생 내 폴더와 같은 공지 상자 (원장님 2026-11-06 "공지사항은 모두 학부모도"): 보강 · 레슨 · 환불 규정, 연습실 안내(와이파이), 내방 오디션 참여 방법
     if (window.LeeshRoomRules) {
+      box.appendChild(LeeshRoomRules.course());
       box.appendChild(LeeshRoomRules.lesson());
       box.appendChild(LeeshRoomRules.box(function () {
         return LeeshAPI.rpc("parent_wifi", {}).then(function (r) { if (!r.ok) throw new Error(r.error); return r.wifi; });
