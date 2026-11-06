@@ -2,7 +2,7 @@
 // 내 폴더 → 일정·공지 → 공지 맨 아래 (접힘). 와이파이 비밀번호는 저장소가 공개라 여기 없음 → 펼칠 때 서버
 // member_wifi(로그인한 수강생만)에서 받아 옴. window.LeeshRoomRules.box(loadWifi) — loadWifi()는 [{name, pass}] Promise.
 (function () {
-  var SOON = "📢 11월 16일 자정부터는 홈페이지에서 예약이 진행됩니다 !";
+  var SOON = "📢 11월 16일 자정부터는 홈페이지에서만 예약이 진행됩니다! (네이버 플레이스 예약❌)";
   var NAVER = "https://m.booking.naver.com/booking/10/bizes/435763";
   // [제목, [줄, …]] — 줄이 배열이면 [글, 작은 설명]
   var HOW = [
