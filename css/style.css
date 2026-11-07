@@ -415,6 +415,12 @@ img{display:block;}
 .lnote__src{display:inline-block;padding:1px 8px;border-radius:999px;background:#E6F4EA;color:#137333;font-size:12px;font-weight:400;}
 .lnote__label{margin-top:4px !important;font-size:12px;letter-spacing:.06em;color:#8A7564;}
 .lnote__did{white-space:pre-wrap;}
+/* 학생 레슨 노트: 선생님이 쓴 시트 모양 그대로 (2026-11-07) */
+.lnote:has(.lnote__sheet){transform:none;}
+.lnote__toggle{margin-left:auto;font-size:13px;font-weight:400;}
+.lnote__sheet{margin-top:8px;min-width:0;max-width:100%;}
+.lnote__sheet .xs-scroll{max-height:70vh;}
+.lnote__hint{margin-top:4px !important;font-size:12px;color:#8A7564;text-align:center;}
 .lnote__practice{
   font-family:var(--f-sans);font-size:24px;color:var(--brown);white-space:pre-wrap;
   background:linear-gradient(transparent 58%, rgba(246,214,110,.55) 58%);display:inline;

@@ -1173,7 +1173,47 @@
       var h = hit(e);
       if (h && h.r != null) pick(h.r, h.c, true);
     });
-    document.addEventListener("mouseup", function () { dragging = false; });
+    /* 끌어서 고를 때 보이는 곳 밖으로 나가면 저절로 내려가기 · 올라가기 (선생님 의견 2026-11-07 "드래그하면 보이는 곳 밑으로 안 내려가요", 구글시트처럼).
+       표 안(.xs-scroll)이 먼저 움직이고, 표 끝이 화면 밖이면 페이지도 같이 움직여요. */
+    var dragPt = null, dragRaf = 0;
+    function dragTick() {
+      dragRaf = 0;
+      if (!dragging || !dragPt) return;
+      var b = sc.getBoundingClientRect(), vh = window.innerHeight || document.documentElement.clientHeight, vw = window.innerWidth || document.documentElement.clientWidth;
+      var head = sc.querySelector("thead"), hh = head ? head.getBoundingClientRect().height : RH;
+      var rowHead = sc.querySelector("th.xs-rh"), rw = rowHead ? rowHead.getBoundingClientRect().width : 46;
+      var top = Math.max(b.top + hh, 0), bottom = Math.min(b.bottom, vh), left = Math.max(b.left + rw, 0), right = Math.min(b.right, vw);
+      var x = dragPt.x, y = dragPt.y, M = 28, dy = 0, dx = 0;
+      if (y > bottom - M) dy = Math.min(40, Math.ceil((y - (bottom - M)) / 3) + 2);
+      else if (y < top + M) dy = -Math.min(40, Math.ceil(((top + M) - y) / 3) + 2);
+      if (x > right - M) dx = Math.min(40, Math.ceil((x - (right - M)) / 3) + 2);
+      else if (x < left + M && sc.scrollLeft > 0) dx = -Math.min(40, Math.ceil(((left + M) - x) / 3) + 2);
+      if (!dy && !dx) return;
+      if (dy) {
+        var maxTop = sc.scrollHeight - sc.clientHeight;
+        // 표 아래 끝이 화면 밖이면 페이지부터, 아니면 표 안을
+        if (dy > 0 && b.bottom > vh && y > vh - M) window.scrollBy(0, dy);
+        else if (dy < 0 && b.top + hh < 0 && y < M) window.scrollBy(0, dy);
+        else if ((dy > 0 && sc.scrollTop < maxTop) || (dy < 0 && sc.scrollTop > 0)) sc.scrollTop += dy;
+        else window.scrollBy(0, dy);
+      }
+      if (dx) sc.scrollLeft += dx;
+      // 화면 가장자리에 걸친 칸까지 고르기
+      b = sc.getBoundingClientRect();
+      var px = Math.max(Math.max(b.left + rw, 0) + 2, Math.min(x, Math.min(b.right, vw) - 3));
+      var py = Math.max(Math.max(b.top + hh, 0) + 2, Math.min(y, Math.min(b.bottom, vh) - 3));
+      var under = document.elementFromPoint(px, py);
+      var h = under ? hit({ target: under }) : null;
+      if (h && h.r != null) pick(h.r, h.c, true);
+      dragRaf = window.requestAnimationFrame(dragTick);
+    }
+    document.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      if (!(e.buttons & 1)) { dragging = false; return; }
+      dragPt = { x: e.clientX, y: e.clientY };
+      if (!dragRaf) dragRaf = window.requestAnimationFrame(dragTick);
+    });
+    document.addEventListener("mouseup", function () { dragging = false; dragPt = null; });
     sc.addEventListener("dblclick", function (e) {
       var h = hit(e);
       if (!h || h.r == null) return;

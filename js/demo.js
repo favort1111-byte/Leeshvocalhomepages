@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 34; // bump when the demo defaults change
+  var VERSION = 35; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -69,6 +69,13 @@
         { id: 14, member_id: "S002", lesson_date: addDays(t, -3), teacher: "안유정", teacher_id: 501, rich: true, did: "입시곡 2절 감정선 정리<br><span style=\"color: #d62828; font-size: x-large\"><b>끝음 처리 서두르지 않기!</b></span>",
           songs: "입시곡 - 2절 브릿지 <span style=\"background-color: #ffe45c\">호흡 위치</span> 바꾸기", practice: "2절 녹음해서 들어보기",
           audition: "12월 입시 실기", memo: "부모님이 진도 문의하심 (체험 모드 예시)", created_at: new Date().toISOString() },
+        // 표로 쓴 일지 (A · B · C 열로 나눠 쓴 예시, 2026-11-07 학생 화면 "시트 모양 그대로" 확인용)
+        { id: 16, member_id: "S001", lesson_date: addDays(t, -1), teacher: "원장님", teacher_id: 504, rich: true, created_at: new Date().toISOString(),
+          sheet: { v: 1, n: 100, w: { 0: 120, 1: 220, 2: 260 }, h: {}, c: {
+            "0,0": { t: "오늘 수업", s: { b: 1, g: "#f3f3f3" } }, "0,1": { t: "곡", s: { b: 1, a: "c", g: "#f3f3f3" } }, "0,2": { t: "피드백", s: { b: 1, a: "c", g: "#f3f3f3" } },
+            "1,0": { t: "발성" }, "1,1": { t: "립트릴 · 허밍" }, "1,2": { t: "턱 힘 빼고 길게 5번" },
+            "2,0": { t: "곡 연습" }, "2,1": { t: "밤편지 - 후렴" }, "2,2": { t: "<span style=\"color:#ff0000\">첫 음 낮게 들어가지 않기</span>", s: { g: "#fff2cc" } },
+            "3,0": { t: "숙제" }, "3,1": { t: "후렴 두 줄 녹음" }, "3,2": { t: "녹음해서 다음 시간에 같이 듣기" } } } },
         // 선생님 구글시트에서 가져온 일지 (체험 모드 예시: 시트처럼 C열에 큰 글씨로)
         { id: 15, member_id: "S002", lesson_date: addDays(t, -10), teacher: "안유정", teacher_id: 501, rich: true, src_file: "demo-sheet-hanul", src_tab: 101,
           src_title: addDays(t, -10) + " (2회차)", site_edited: false, created_at: new Date().toISOString(),

@@ -538,6 +538,7 @@
         if (i > 0) out.push(["← 왼쪽으로 옮기기", function () { move(i, i - 1); }]);
         if (i < items.length - 1) out.push(["오른쪽으로 옮기기 →", function () { move(i, i + 1); }]);
         if (e && e.kind === "n" && e.obj.title) out.push(["이름을 날짜로 되돌리기", function () { tabsFor(book, cur).rename(i, ""); }]);
+        if (e) out.push(["복사본 만들기", function () { dupTab(book, e, it.label); }]);
         if (e && e.kind === "s" && !e.obj.src) out.push(null, ["이 시트 지우기", function () { delSheet(book, e.obj); }, true]);
         if (e && e.kind === "n") out.push(null, ["이 일지 지우기", function () { delNote(book, e.obj); }, true]);
         return out;
@@ -545,7 +546,7 @@
     };
   }
   /** 새 시트 (빈 시트 또는 OT): 맨 왼쪽 탭으로 (원장님 2026-11-06 "새로 만든 시트는 맨 오른쪽 말고 맨 왼쪽에") */
-  function newSheet(book, base, data) {
+  function newSheet(book, base, data, dup) {
     base = base || "시트";
     data = data || { v: 1, n: 100, w: {}, h: {}, c: {} };
     var names = {};
@@ -559,7 +560,28 @@
       var x = { id: r.id, title: title, src: false, siteEdited: true, pos: 0, tabPos: null, data: JSON.parse(JSON.stringify(data)) };
       book.sheets.push(x);
       toFront(book, "s", x.id);
-      book.go({ kind: "s", id: x.id, obj: x }).then(function (p) { if (p) say(p.msg, (base === "OT" ? "OT 시트" : "새 시트") + "를 맨 왼쪽에 만들었어요. 탭을 두 번 누르면 이름을 바꿔요.", "ok"); });
+      book.go({ kind: "s", id: x.id, obj: x }).then(function (p) { if (p) say(p.msg, (dup ? "복사본을" : base === "OT" ? "OT 시트를" : "새 시트를") + " 맨 왼쪽에 만들었어요. 탭을 두 번 누르면 이름을 바꿔요.", "ok"); });
+    });
+  }
+  /** 시트 통째로 복사본 (선생님 의견 2026-11-07 "시트 자체 복사가 안 돼요", 구글시트의 "복사본 만들기"처럼).
+   *  일지 → 오늘 날짜 새 일지 "○○ 사본" (수업 날짜 칸에서 바꾸기) · 곡·자료 → 새 시트 "○○ 사본". 둘 다 맨 왼쪽 탭. */
+  function dupTab(book, e, label) {
+    (book.page ? book.page.leave() : Promise.resolve(true)).then(function (ok) {
+      if (ok === false) return; // 지금 시트가 저장이 안 됐으면 그대로
+      if (e.kind === "s") {
+        var x = e.obj;
+        (x.data ? Promise.resolve({ ok: true, sheet: x.data }) : LeeshAPI.rpc("teacher_lesson_sheet", { p_id: x.id }, undefined, { retry: 2 })).then(function (r) {
+          if (!r.ok) { if (book.page) say(book.page.msg, r.error, "error"); return; }
+          newSheet(book, x.title + " 사본", JSON.parse(JSON.stringify(r.sheet)), true);
+        });
+        return;
+      }
+      var data = JSON.parse(JSON.stringify(LeeshGrid.fromNote(e.obj, FIELDS)));
+      if (!LeeshGrid.text(data)) { if (book.page) say(book.page.msg, "빈 일지라 복사할 내용이 없어요.", "warn"); return; }
+      var title = (label + " 사본").slice(0, 60);
+      book.go({ kind: "new", draft: { a: { p_sheet: data, p_date: todayKst(), p_key: uid() }, title: title } }).then(function (p) {
+        if (p) say(p.msg, "\"" + label + "\" 일지의 복사본을 오늘 날짜로 만들었어요. 수업 날짜 · 탭 이름은 바꿀 수 있어요.", "ok");
+      });
     });
   }
   /** 이 탭을 맨 왼쪽으로: 지금 순서 그대로 두고 앞에 끼워 서버에 순서 저장 */

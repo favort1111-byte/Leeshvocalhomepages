@@ -145,6 +145,14 @@
     LeeshAPI.rpc("member_message_read", { p_id: who.id, p_pin: who.key, p_ids: ids });
   }
 
+  // 레슨 노트 보는 모양: "grid" 시트 그대로(기본) · "sum" 정리해서
+  var noteView = null;
+  function notesMode(v) {
+    if (v) { noteView = v; try { localStorage.setItem("leesh_note_view", v); } catch (e) { /* 이 화면 동안만 */ } }
+    if (!noteView) { try { noteView = localStorage.getItem("leesh_note_view"); } catch (e) { /* ignore */ } }
+    return noteView || "grid";
+  }
+
   function renderNotes(notes) {
     var box = scene.querySelector("#myNotes");
     box.textContent = "";
@@ -155,7 +163,35 @@
       if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
       card.appendChild(head);
       // 표로 쓴 일지 (js/grid.js, 2026-10-30~)
-      if (n.sheet && window.LeeshGrid) { card.appendChild(LeeshGrid.summary(n, (window.LEESH || {}).lessonFields)); box.appendChild(card); return; }
+      // 학생에게는 선생님이 쓴 시트 모양 그대로 (선생님 의견 2026-11-07 "A·B·C 열로 쓴 게 다 붙어서 나와요") + "정리해서 보기"로 바꾸기 (이 기기에 기억)
+      if (n.sheet && window.LeeshGrid) {
+        var slot = el("div", "lnote__sheet");
+        var tg = el("button", "sys-link lnote__toggle");
+        tg.type = "button";
+        var draw = function () {
+          var sum = notesMode() === "sum";
+          slot.textContent = "";
+          slot.appendChild(sum ? LeeshGrid.summary(n, (window.LEESH || {}).lessonFields) : LeeshGrid.view(n.sheet));
+          if (!sum) {
+            // 휴대폰에서 오른쪽 칸이 가려지면 한 줄 안내
+            var hint = el("p", "lnote__hint", "← 표를 옆으로 밀면 오른쪽 칸도 보여요 →");
+            hint.hidden = true;
+            slot.appendChild(hint);
+            requestAnimationFrame(function () { var x = slot.querySelector(".xs-scroll"); if (x && x.scrollWidth > x.clientWidth + 8) hint.hidden = false; });
+          }
+          tg.textContent = sum ? "시트 모양으로 보기" : "정리해서 보기";
+        };
+        tg.addEventListener("click", function () {
+          notesMode(notesMode() === "sum" ? "grid" : "sum");
+          box.querySelectorAll(".lnote__toggle").forEach(function (b) { if (b._draw) b._draw(); });
+        });
+        tg._draw = draw;
+        draw();
+        head.appendChild(tg);
+        card.appendChild(slot);
+        box.appendChild(card);
+        return;
+      }
       // the teachers' sheet columns (js/config.js lessonFields); 선생님 메모 never comes to the student
       ((window.LEESH || {}).lessonFields || []).forEach(function (fd) {
         if (fd[0] === "memo" || !n[fd[0]]) return;
