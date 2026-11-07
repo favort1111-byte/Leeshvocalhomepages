@@ -602,6 +602,82 @@
       open(book.s.id, "\"" + x.title + "\" 시트를 지웠어요.");
     });
   }
+  /* ---------- 레슨 사진 (원장님 2026-11-07 "사진 올리기 가능하게"): 일지 · 곡·자료 아래 사진 줄 (js/photos.js) ---------- */
+  var photoUrls = {};
+  function photoUrl(path) {
+    if (!photoUrls[path]) {
+      photoUrls[path] = LeeshAPI.kakao.token().then(function (t) { return LeeshAPI.storage.photo(path, t); });
+      photoUrls[path].then(function (u) { if (!u) delete photoUrls[path]; });
+    }
+    return photoUrls[path];
+  }
+  function photoList(book) {
+    if (!book.photosP) {
+      book.photosP = LeeshAPI.rpc("teacher_photos", { p_member: book.s.id }, undefined, { retry: 1 }).then(function (r) {
+        book.photos = r.ok ? r.items : [];
+        return book.photos;
+      });
+    }
+    return book.photosP;
+  }
+  /** ref() → { note } | { sheet } | null (아직 저장 안 된 새 일지) · saveFirst() → 새 일지를 먼저 저장 · student = 학생도 보는 사진(레슨 노트) */
+  function photoBox(book, ref, saveFirst, student) {
+    var box = window.LeeshPhotos ? LeeshPhotos.strip({
+      items: [], canEdit: true, load: photoUrl, onAdd: add, onDelete: del,
+      note: "사진은 담당 선생님 · 원장님" + (student ? " · 이 학생" : "") + "만 볼 수 있어요. 휴대폰은 사진 올리기를 누르면 바로 찍을 수도 있어요."
+    }) : null;
+    if (!box) return document.createElement("span");
+    function mine() {
+      var r = ref();
+      if (!r) return [];
+      return (book.photos || []).filter(function (p) { return r.note ? p.note === r.note : p.sheet === r.sheet; });
+    }
+    function redraw() { box.set(mine()); }
+    photoList(book).then(redraw);
+    function add(files) {
+      var r0 = ref();
+      (r0 ? Promise.resolve(r0) : (saveFirst ? saveFirst() : Promise.resolve()).then(function () { return ref(); })).then(function (r) {
+        if (!r) { box.busy("먼저 일지에 내용을 조금 써 주세요. 저장되면 사진을 붙일 수 있어요.", "error"); return; }
+        var left = LeeshPhotos.MAX_FILES - mine().length;
+        if (left <= 0) { box.busy("한 시트에 사진은 " + LeeshPhotos.MAX_FILES + "장까지예요.", "error"); return; }
+        var list = files.slice(0, left), done = 0, failed = 0, why = "";
+        box.busy("사진 올리는 중… 0 / " + list.length);
+        return list.reduce(function (chain, file) {
+          return chain.then(function () {
+            return LeeshPhotos.shrink(file).then(function (sm) {
+              var path = book.s.id + "/" + uid().replace(/[^a-z0-9]/g, "") + "." + sm.ext;
+              return LeeshAPI.kakao.token().then(function (t) { return LeeshAPI.storage.uploadPhoto(path, sm.blob, t); }).then(function (ok) {
+                if (!ok) throw new Error("인터넷 연결을 확인해 주세요.");
+                return LeeshAPI.rpc("teacher_photo_add", { p_member: book.s.id, p_note: r.note || null, p_sheet: r.sheet || null, p_path: path, p_w: sm.w, p_h: sm.h }, undefined, { retry: 2 });
+              }).then(function (res) {
+                if (!res.ok) throw new Error(res.error);
+                photoUrls[path] = Promise.resolve(URL.createObjectURL(sm.blob));
+                (book.photos = book.photos || []).push({ id: res.id, note: r.note || null, sheet: r.sheet || null, path: path, w: sm.w, h: sm.h });
+                done++;
+                redraw();
+                box.busy("사진 올리는 중… " + done + " / " + list.length);
+              });
+            }).catch(function (e) { failed++; why = (e && e.message) || ""; });
+          });
+        }, Promise.resolve()).then(function () {
+          var more = files.length > list.length ? " (한 시트에 " + LeeshPhotos.MAX_FILES + "장까지라 " + (files.length - list.length) + "장은 뺐어요)" : "";
+          if (failed) box.busy(done + "장 올렸어요 · " + failed + "장은 못 올렸어요. " + why + more, "error");
+          else box.busy(done + "장 올렸어요." + more, "ok");
+        });
+      });
+    }
+    function del(it) {
+      LeeshAPI.rpc("teacher_photo_delete", { p_id: it.id }).then(function (res) {
+        if (!res.ok) { box.busy(res.error, "error"); return; }
+        book.photos = (book.photos || []).filter(function (p) { return p.id !== it.id; });
+        redraw();
+        box.busy("사진을 지웠어요.", "ok");
+        LeeshAPI.kakao.token().then(function (t) { LeeshAPI.storage.removePhotos([it.path], t); });
+      });
+    }
+    return box.node;
+  }
+
   function delNote(book, n) {
     if (!window.confirm(noteLabel(n) + " 일지를 지울까요? 되돌릴 수 없어요.")) return;
     LeeshAPI.rpc("teacher_note_delete", { p_note: n.id }).then(function (r) {
@@ -645,6 +721,8 @@
     function cur() { return noteId ? { kind: "n", id: noteId } : { kind: "new", label: name || "새 일지 " + short(date.value || todayKst()), name: name }; }
     var grid = LeeshGrid.editor({ data: data, onInput: function () { sv.later(); }, tabs: tabsFor(book, cur()) });
     f.appendChild(grid.node);
+    // 레슨 사진 (2026-11-07): 새 일지는 먼저 저장한 뒤에 붙여요
+    f.appendChild(photoBox(book, function () { return noteId ? { note: noteId } : null; }, function () { return sv.push(true); }, true));
     var row = el("div", "fold__actions");
     var save = el("button", "sys-btn", editing ? "고친 내용 저장" : "저장하고 닫기");
     save.type = "submit";
@@ -756,6 +834,7 @@
       var kept = draftGet(s.id + ":s:" + x.id);
       grid = LeeshGrid.editor({ data: kept && kept.a ? kept.a.p_sheet : res.sheet, onInput: function () { sv.later(); }, tabs: tabsFor(book, { kind: "s", id: x.id }) });
       box.appendChild(grid.node);
+      box.appendChild(photoBox(book, function () { return { sheet: x.id }; }, null, false));
       sv = saver({
         key: s.id + ":s:" + x.id, msg: msg,
         check: function () { var long = grid.over(); return long ? long + " 칸이 너무 길어요 (한 칸에 5000자까지)." : null; },

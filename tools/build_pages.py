@@ -306,7 +306,7 @@ home = (head("이송희보컬레슨 | 강남 선릉역 1:1 보컬학원",
         + SR.format("이송희보컬레슨 — 강남 선릉역 1:1 보컬학원") + "\n"
         + nav("home", "light") + "\n"
         + wavebed()
-        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "signin", "richtext", "grid", "evalcard", "visitrules", "roomrules", "mynotes", "newsbadge", "popup"))
+        + '  <div class="icons">\n' + home_icons + "\n  </div>\n" + MY_FOLDER + "</main>\n" + foot("scene", "signin", "richtext", "grid", "photos", "evalcard", "visitrules", "roomrules", "mynotes", "newsbadge", "popup"))
 
 # ---------- ABOUT (reference 800x797) ----------
 def ph(left, top, w, h, i, kind, rot, z=1, alt=""):
@@ -522,7 +522,7 @@ consult = (head("Consult | 이송희보컬레슨",
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
            + CONSULT_FORM
            + MY_FOLDER
-           + "</main>\n" + foot("consult", "scene", "signin", "richtext", "grid", "evalcard", "visitrules", "roomrules", "mynotes"))
+           + "</main>\n" + foot("consult", "scene", "signin", "richtext", "grid", "photos", "evalcard", "visitrules", "roomrules", "mynotes"))
 
 # ---------- BOOKING (practice rooms, paper theme) ----------
 booking = (head("Booking | 이송희보컬레슨",
@@ -565,7 +565,7 @@ teacher_page = (head("선생님 | 이송희보컬레슨", "이송희보컬레슨
                 + '<main class="stage booking">\n'
                 + nav("teacher", "dark") + "\n"
                 + TEACHER_APP
-                + "</main>\n" + foot("richtext", "grid", "teacher"))
+                + "</main>\n" + foot("richtext", "grid", "photos", "teacher"))
 
 # ---------- PARENT: 학부모 화면 (js/parent.js; 원장님 2026-11-05, 부모님 카카오 → 학원 승인 → 자녀 월말평가 · 일정·공지 · 메시지 보기만) ----------
 PARENT_APP = """  <div class="booking__inner">

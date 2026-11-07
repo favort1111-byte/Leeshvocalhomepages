@@ -26,7 +26,7 @@ var FILE_PREFIX = "홈페이지백업_";
 var PAGE = 200;
 var FILES_FOLDER = "파일";
 var LIST_FILE = "_백업한 파일 목록.json";
-var BUCKETS = { "song-recordings": "노래 녹음", "visit-music": "댄스 음원 (내방 신청)", "eval-reports": "평가지 사진", "audition-news": "포스터 · 인터뷰 사진" };
+var BUCKETS = { "song-recordings": "노래 녹음", "visit-music": "댄스 음원 (내방 신청)", "eval-reports": "평가지 사진", "audition-news": "포스터 · 인터뷰 사진", "lesson-photos": "레슨 사진" };
 var FILE_TIME_MS = 4.5 * 60 * 1000;
 
 /** 처음 한 번만: 홈페이지에 이 스크립트를 등록하고, 매일 새벽 3시에 저절로 돌게 해요. */

@@ -349,3 +349,26 @@
 .sys-soon a{color:#1D4948;font-weight:700;}
 /* 시트 복사 · 붙여넣기 안내 (2026-11-05) */
 .xs-toast{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);z-index:30;max-width:90%;margin:0;padding:8px 14px;border-radius:8px;background:#2B2522;color:#fff;font-size:13px;line-height:1.4;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;}
+
+/* 레슨 사진 (js/photos.js, 2026-11-07): 시트 아래 사진 줄 + 크게 보기 */
+.lp{margin-top:10px;padding:10px 12px;border:1px solid #E3E6EA;border-radius:8px;background:#FAFAF7;}
+.lp__head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
+.lp__title{font-weight:700;font-size:14px;color:#202124;}
+.lp__count{font-size:13px;color:#5F6368;}
+.lp__add{padding:6px 14px;font-size:14px;}
+.lp__msg{font-size:13px;color:#5F6368;}
+.lp__msg.is-ok{color:#137333;}.lp__msg.is-error{color:#C5221F;}
+.lp__row{display:flex;gap:8px;overflow-x:auto;padding:8px 0 2px;-webkit-overflow-scrolling:touch;}
+.lp__empty{font-size:13px;color:#80868B;}
+.lp__thumb{flex:none;width:96px;height:96px;padding:0;border:1px solid #DADCE0;border-radius:6px;background:#EEE;overflow:hidden;cursor:zoom-in;}
+.lp__thumb img{display:block;width:100%;height:100%;object-fit:cover;}
+.lp__thumb.is-missing{background:repeating-linear-gradient(45deg,#eee,#eee 6px,#f6f6f6 6px,#f6f6f6 12px);}
+.lp__note{margin:4px 0 0 !important;font-size:12px;color:#80868B;}
+.lp-view{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;background:rgba(20,20,20,.88);}
+.lp-view__img{max-width:100%;max-height:calc(100vh - 110px);object-fit:contain;border-radius:4px;background:#222;}
+.lp-view__bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;}
+.lp-view__btn{padding:8px 14px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:none;color:#fff;font:inherit;font-size:14px;cursor:pointer;}
+.lp-view__btn:disabled{opacity:.35;cursor:default;}
+.lp-view__del{border-color:#F28B82;color:#F28B82;}
+.lp-view__count{color:#fff;font-size:14px;min-width:56px;text-align:center;}
+.lnote .lp{background:#fff;}

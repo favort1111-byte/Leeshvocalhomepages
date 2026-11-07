@@ -153,12 +153,36 @@
     return noteView || "grid";
   }
 
+  /* 레슨 사진 (2026-11-07): 선생님이 레슨 노트에 붙인 사진을 그 일지 아래에 (보기만, js/photos.js) */
+  var photoUrls = {};
+  function photoUrl(path) {
+    if (!photoUrls[path]) {
+      photoUrls[path] = LeeshAPI.kakao.token().then(function (t) { return LeeshAPI.storage.photo(path, t); });
+      photoUrls[path].then(function (u) { if (!u) delete photoUrls[path]; });
+    }
+    return photoUrls[path];
+  }
+  function notePhotos(cards) {
+    if (!window.LeeshPhotos || !who || !Object.keys(cards).length) return;
+    LeeshAPI.rpc("member_photos", { p_id: who.id, p_pin: who.key }).then(function (res) {
+      if (!res.ok || !res.items || !res.items.length) return;
+      var by = {};
+      res.items.forEach(function (p) { (by[p.note] = by[p.note] || []).push(p); });
+      Object.keys(by).forEach(function (id) {
+        if (!cards[id]) return;
+        cards[id].appendChild(LeeshPhotos.strip({ items: by[id], canEdit: false, load: photoUrl }).node);
+      });
+    });
+  }
+
   function renderNotes(notes) {
     var box = scene.querySelector("#myNotes");
     box.textContent = "";
+    var cards = {};
     if (!notes.length) { box.appendChild(el("p", "book__empty", "아직 적힌 레슨 노트가 없어요. 수업이 끝나면 선생님이 적어줘요.")); return; }
     notes.forEach(function (n) {
       var card = el("article", "lnote");
+      if (n.id) cards[n.id] = card;
       var head = el("p", "lnote__date", dayLabel(n.date));
       if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
       card.appendChild(head);
@@ -200,6 +224,7 @@
       });
       box.appendChild(card);
     });
+    notePhotos(cards);
   }
 
   /* 월말평가 리포트: 카드 모양은 js/evalcard.js (관리자 화면과 같이 씀) */

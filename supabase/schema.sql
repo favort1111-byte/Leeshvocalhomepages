@@ -5131,3 +5131,241 @@ begin
   ), '[]'::jsonb));
 end $$;
 
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_lesson_photos (2026-11-07)
+-- 레슨 노트 · 곡·자료 시트에 사진 붙이기 (원장님 2026-11-07 "사진 올리기 가능하게", 선생님 의견).
+-- 담당 선생님(원장님 포함)이 올리고 지움. 레슨 노트 사진은 그 학생도 봄 (settings.student_notes가 켜져 있을 때), 곡·자료 사진은 선생님 · 관리자만.
+-- 비공개 보관함 lesson-photos/<수강 ID>/<이름>.webp (화면이 1600px WebP로 줄여서 올림), 한 시트에 30장까지. 자동 삭제 없음.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('lesson-photos', 'lesson-photos', false, 3145728, array['image/webp', 'image/jpeg', 'image/png'])
+on conflict (id) do nothing;
+
+create table if not exists public.lesson_photos (
+  id bigserial primary key,
+  member_id text not null references public.members(id) on delete cascade,
+  note_id bigint references public.lesson_notes(id) on delete cascade,
+  sheet_id bigint references public.lesson_sheets(id) on delete cascade,
+  teacher_id bigint references public.teachers(id) on delete set null,
+  path text not null unique,
+  w int, h int,
+  created_at timestamptz not null default now(),
+  constraint lesson_photos_one_ref check ((note_id is null) <> (sheet_id is null)),
+  constraint lesson_photos_path check (path ~ '^[A-Z0-9_-]{2,20}/[a-z0-9]{8,40}\.(webp|jpg|png)$' and split_part(path, '/', 1) = member_id)
+);
+create index if not exists lesson_photos_member on public.lesson_photos (member_id);
+alter table public.lesson_photos enable row level security;
+drop policy if exists lesson_photos_admin on public.lesson_photos;
+create policy lesson_photos_admin on public.lesson_photos for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- 보관함 권한: 선생님은 담당 학생 폴더 (올리기 · 보기 · 지우기), 학생은 자기 레슨 노트 사진만 보기
+create or replace function private.photo_teacher(p_name text) returns boolean
+language sql stable security definer set search_path = public, private as $$
+  select private.teaches(private.my_teacher(), split_part(p_name, '/', 1));
+$$;
+create or replace function private.photo_student(p_name text) returns boolean
+language sql stable security definer set search_path = public, private as $$
+  select coalesce((select st.student_notes from public.settings st where st.id = 1), false)
+     and exists (select 1 from public.lesson_photos p
+                 where p.path = p_name and p.note_id is not null and p.member_id = private.song_owner());
+$$;
+revoke all on function private.photo_teacher(text) from public;
+revoke all on function private.photo_student(text) from public;
+grant execute on function private.photo_teacher(text) to authenticated;
+grant execute on function private.photo_student(text) to authenticated;
+
+drop policy if exists lesson_photos_admin on storage.objects;
+create policy lesson_photos_admin on storage.objects for all to authenticated
+  using (bucket_id = 'lesson-photos' and public.is_admin()) with check (bucket_id = 'lesson-photos' and public.is_admin());
+drop policy if exists lesson_photos_teacher_add on storage.objects;
+create policy lesson_photos_teacher_add on storage.objects for insert to authenticated
+  with check (bucket_id = 'lesson-photos' and private.photo_teacher(name));
+drop policy if exists lesson_photos_teacher_read on storage.objects;
+create policy lesson_photos_teacher_read on storage.objects for select to authenticated
+  using (bucket_id = 'lesson-photos' and private.photo_teacher(name));
+drop policy if exists lesson_photos_teacher_remove on storage.objects;
+create policy lesson_photos_teacher_remove on storage.objects for delete to authenticated
+  using (bucket_id = 'lesson-photos' and private.photo_teacher(name));
+drop policy if exists lesson_photos_student_read on storage.objects;
+create policy lesson_photos_student_read on storage.objects for select to authenticated
+  using (bucket_id = 'lesson-photos' and private.photo_student(name));
+
+-- 백업 계정도 읽기 (backup.gs가 "레슨 사진" 폴더로)
+drop policy if exists backup_file_read on storage.objects;
+create policy backup_file_read on storage.objects for select to authenticated
+  using (bucket_id = any (array['eval-reports', 'song-recordings', 'visit-music', 'lesson-photos']) and public.backup_file_reader());
+
+-- 사진 붙이기: 올린 파일을 일지 · 곡·자료 한 장에 이어요
+create or replace function public.teacher_photo_add(p_member text, p_note bigint, p_sheet bigint, p_path text, p_w int, p_h int)
+returns jsonb language plpgsql security definer set search_path = public, private as $$
+declare t public.teachers := private.my_teacher(); n int; v_id bigint;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 할 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생에게만 사진을 올릴 수 있어요.'); end if;
+  if (p_note is null) = (p_sheet is null) then return private.fail('사진을 붙일 시트를 골라주세요.'); end if;
+  if p_note is not null and not exists (select 1 from public.lesson_notes where id = p_note and member_id = p_member) then return private.fail('일지를 찾을 수 없어요.'); end if;
+  if p_sheet is not null and not exists (select 1 from public.lesson_sheets where id = p_sheet and member_id = p_member) then return private.fail('시트를 찾을 수 없어요.'); end if;
+  if coalesce(p_path, '') !~ ('^' || p_member || '/[a-z0-9]{8,40}\.(webp|jpg|png)$') then return private.fail('사진 이름이 올바르지 않아요.'); end if;
+  if not exists (select 1 from storage.objects where bucket_id = 'lesson-photos' and name = p_path) then return private.fail('사진이 아직 올라가지 않았어요. 다시 해주세요.'); end if;
+  select count(*) into n from public.lesson_photos where coalesce(note_id, -1) = coalesce(p_note, -1) and coalesce(sheet_id, -1) = coalesce(p_sheet, -1);
+  if n >= 30 then return private.fail('한 시트에 사진은 30장까지예요.'); end if;
+  insert into public.lesson_photos (member_id, note_id, sheet_id, teacher_id, path, w, h)
+  values (p_member, p_note, p_sheet, t.id, p_path, least(greatest(coalesce(p_w, 0), 0), 10000), least(greatest(coalesce(p_h, 0), 0), 10000))
+  on conflict (path) do nothing
+  returning id into v_id;
+  return jsonb_build_object('ok', true, 'id', v_id);
+end $$;
+
+create or replace function public.teacher_photo_delete(p_id bigint)
+returns jsonb language plpgsql security definer set search_path = public, private as $$
+declare t public.teachers := private.my_teacher(); p public.lesson_photos;
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 할 수 있어요.'); end if;
+  select * into p from public.lesson_photos where id = p_id;
+  if p.id is null or not private.teaches(t, p.member_id) then return private.fail('담당 학생 사진만 지울 수 있어요.'); end if;
+  delete from public.lesson_photos where id = p.id;
+  return jsonb_build_object('ok', true, 'path', p.path);
+end $$;
+
+create or replace function public.teacher_photos(p_member text)
+returns jsonb language plpgsql stable security definer set search_path = public, private as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', p.id, 'note', p.note_id, 'sheet', p.sheet_id, 'path', p.path, 'w', p.w, 'h', p.h, 'at', p.created_at,
+             'by', (select x.name from public.teachers x where x.id = p.teacher_id)) order by p.created_at)
+    from public.lesson_photos p where p.member_id = p_member), '[]'::jsonb));
+end $$;
+
+create or replace function public.member_photos(p_id text, p_pin text)
+returns jsonb language plpgsql stable security definer set search_path = public, private as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  if not coalesce((select st.student_notes from public.settings st where st.id = 1), false) then return jsonb_build_object('ok', true, 'items', '[]'::jsonb); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', p.id, 'note', p.note_id, 'path', p.path, 'w', p.w, 'h', p.h) order by p.created_at)
+    from public.lesson_photos p where p.member_id = who ->> 'id' and p.note_id is not null), '[]'::jsonb));
+end $$;
+
+revoke all on function public.teacher_photo_add(text, bigint, bigint, text, int, int) from public, anon;
+revoke all on function public.teacher_photo_delete(bigint) from public, anon;
+revoke all on function public.teacher_photos(text) from public, anon;
+grant execute on function public.teacher_photo_add(text, bigint, bigint, text, int, int) to authenticated;
+grant execute on function public.teacher_photo_delete(bigint) to authenticated;
+grant execute on function public.teacher_photos(text) to authenticated;
+grant execute on function public.member_photos(text, text) to anon, authenticated;
+
+-- 백업 파일 목록에 레슨 사진도
+CREATE OR REPLACE FUNCTION public.backup_files(p_key text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare s private.backup_sync;
+begin
+  if not private.backup_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  if auth.uid() is null then return private.fail('백업용 계정으로 로그인해서 불러야 해요.'); end if;
+  select * into s from private.backup_sync where id = 1 for update;
+  if s.file_uid is null then
+    if public.is_admin() or exists (select 1 from public.members m where m.kakao_user = auth.uid()) then
+      return private.fail('관리자 · 학생 계정은 백업용으로 쓸 수 없어요. 백업용 계정을 따로 만들어주세요.');
+    end if;
+    update private.backup_sync set file_uid = auth.uid() where id = 1;
+  elsif s.file_uid <> auth.uid() then
+    return private.fail('이미 다른 백업용 계정이 연결돼 있어요. 관리자 → 설정 → "다시 연결하기" 뒤에 해주세요.');
+  end if;
+  return jsonb_build_object('ok', true, 'files', coalesce((
+    select jsonb_agg(jsonb_build_object('bucket', o.bucket_id, 'name', o.name, 'size', (o.metadata ->> 'size')::bigint,
+      'updated', coalesce(o.updated_at, o.created_at), 'public', b.public,
+      'who', (select m.id || ' ' || m.name from public.members m where m.id = split_part(o.name, '/', 1)))
+      order by o.bucket_id, o.name)
+    from storage.objects o join storage.buckets b on b.id = o.bucket_id
+    where o.bucket_id in ('eval-reports', 'song-recordings', 'visit-music', 'audition-news', 'lesson-photos')), '[]'::jsonb));
+end $function$;
+
+-- leesh_lesson_photos_grant
+
+grant select, insert, update, delete on public.lesson_photos to authenticated; grant usage, select on sequence public.lesson_photos_id_seq to authenticated;
+-- leesh_notebook_note_id (2026-11-07): 학생 레슨 노트에 일지 번호 (레슨 사진을 그 일지 아래에 붙이려고)
+CREATE OR REPLACE FUNCTION public.member_notebook(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return private.with_token(who, jsonb_build_object(
+    'ok', true,
+    'id', mid,
+    'name', who ->> 'name',
+    -- 레슨 노트는 settings.student_notes가 켜져 있을 때만 학생에게 (원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김)
+    'notes', case when not coalesce((select st.student_notes from public.settings st where st.id = 1), false) then '[]'::jsonb else coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', n.id, 'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'practice', n.practice,
+        'songs', n.songs, 'audition', n.audition, 'recommend', n.recommend, 'rich', n.rich, 'sheet', n.sheet   -- 선생님 메모(memo)는 학생에게 안 보냄
+      ) order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = mid
+            order by lesson_date desc, id desc limit 30) n
+    ), '[]'::jsonb) end,
+    'reports', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(r.month, 'YYYY-MM'), 'pages', r.pages, 'song', r.song, 'teacher', r.teacher,
+        'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
+        'total', r.total, 'stage', r.stage
+      ) order by r.month desc)
+      from (select * from public.eval_reports where member_id = mid order by month desc limit 12) r
+    ), '[]'::jsonb),
+    -- 내 예약: 오늘부터의 예약 + 이번 달 연습실 이용
+    'bookings', coalesce((
+      select jsonb_agg(jsonb_build_object('room', rm.name, 'date', b.day,
+               'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min)) order by b.day, b.start_min)
+      from public.bookings b join public.rooms rm on rm.id = b.room_id
+      where b.member_id = mid and b.status = '확정' and b.day >= today
+    ), '[]'::jsonb),
+    'month', (select jsonb_build_object('count', count(*), 'minutes', coalesce(sum(b.end_min - b.start_min), 0))
+              from public.bookings b
+              where b.member_id = mid and b.status = '확정' and b.day >= date_trunc('month', today)::date and b.day <= today),
+    -- 공지 + 다가오는 학원 내방 오디션
+    'notices', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'title', n.title, 'body', n.body, 'start', n.start_date,
+               'end', n.end_date, 'pinned', n.pinned, 'at', n.created_at) order by n.pinned desc, coalesce(n.start_date, n.created_at::date) desc)
+      from (select * from public.notices where published and (end_date is null or end_date >= today)
+            order by pinned desc, created_at desc limit 20) n
+    ), '[]'::jsonb),
+    'visits', coalesce((
+      select jsonb_agg(jsonb_build_object('title', a.title, 'company', a.company, 'date', a.event_date, 'deadline', a.deadline)
+               order by a.event_date)
+      from (select * from public.audition_news where published and kind = '내방' and event_date >= today
+            order by event_date limit 6) a
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'title', r.title, 'artist', r.artist, 'purpose', r.purpose,
+               'status', r.status, 'memo', r.memo,
+               'minutes', (select coalesce(sum(l.minutes), 0) from public.practice_logs l where l.member_id = mid and l.song = r.title))
+               order by (r.status = '준비 중') desc, r.updated_at desc)
+      from public.repertoire r where r.member_id = mid
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did)
+               order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = mid order by day desc, id desc limit 60) l
+    ), '[]'::jsonb),
+    -- 노래 추천 (원장님이 올린 것) + 아직 답을 못 받은 내 신청
+    'recs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', s.id, 'date', s.made_on, 'summary', s.summary, 'songs', s.songs, 'note', s.note)
+               order by s.made_on desc, s.id desc)
+      from (select * from public.song_recs where member_id = mid and published order by made_on desc, id desc limit 5) s
+    ), '[]'::jsonb),
+    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo, 'files', q.files)
+                from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
+  ));
+end $function$;

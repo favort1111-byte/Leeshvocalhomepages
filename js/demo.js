@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 35; // bump when the demo defaults change
+  var VERSION = 36; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -84,6 +84,11 @@
             "4,2": { t: "벌스 - 호흡 에너지, 강세, 애드립 음정", s: { z: 29 } },
             "5,2": { t: "코러스 - <span style=\"color:#ff0000;font-weight:bold\">피치가 안맞아요!</span>", s: { z: 29 } },
             "7,2": { t: "*다음 시간", s: { b: 1, z: 29 } }, "8,2": { t: "프리코러스 박자 메트로놈에 맞춰서 연습해오기!", s: { z: 29, g: "#fff2cc" } } } } }
+      ],
+      // 레슨 사진 (2026-11-07): 체험용 그림 한 장씩
+      lesson_photos: [
+        { id: 901, member_id: "S001", note_id: 16, sheet_id: null, teacher_id: 504, path: "S001/demophoto001.webp", w: 1200, h: 900, created_at: new Date().toISOString() },
+        { id: 902, member_id: "S002", note_id: 15, sheet_id: null, teacher_id: 501, path: "S002/demophoto002.webp", w: 1200, h: 900, created_at: new Date().toISOString() }
       ],
       lesson_sheets: [
         { id: 701, member_id: "S002", teacher_id: 501, src_file: "demo-sheet-hanul", src_tab: 201, title: "OT", pos: 0, synced_at: new Date().toISOString(),
@@ -402,6 +407,39 @@
       save();
       return { ok: true, id: id, created: created };
     },
+    // 레슨 사진 (js/photos.js): 담당 선생님만 올리고 지우기, 학생은 레슨 노트 사진만
+    teacher_photos: function (a, uid) {
+      var t = (db.teachers || []).filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!t) return { ok: false, error: "선생님으로 연결된 계정만 볼 수 있어요." };
+      return { ok: true, items: (db.lesson_photos || []).filter(function (p) { return p.member_id === a.p_member; }).map(function (p) {
+        return { id: p.id, note: p.note_id, sheet: p.sheet_id, path: p.path, w: p.w, h: p.h, at: p.created_at };
+      }) };
+    },
+    teacher_photo_add: function (a, uid) {
+      var t = (db.teachers || []).filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!t) return { ok: false, error: "선생님으로 연결된 계정만 할 수 있어요." };
+      db.lesson_photos = db.lesson_photos || [];
+      var ref = db.lesson_photos.filter(function (p) { return (a.p_note && p.note_id === a.p_note) || (a.p_sheet && p.sheet_id === a.p_sheet); });
+      if (ref.length >= 30) return { ok: false, error: "한 시트에 사진은 30장까지예요." };
+      var id = db.lesson_photos.reduce(function (m, x) { return Math.max(m, x.id); }, 900) + 1;
+      db.lesson_photos.push({ id: id, member_id: a.p_member, note_id: a.p_note || null, sheet_id: a.p_sheet || null, teacher_id: t.id, path: a.p_path, w: a.p_w, h: a.p_h, created_at: new Date().toISOString() });
+      save();
+      return { ok: true, id: id };
+    },
+    teacher_photo_delete: function (a) {
+      var p = (db.lesson_photos || []).filter(function (x) { return x.id === a.p_id; })[0];
+      if (!p) return { ok: false, error: "담당 학생 사진만 지울 수 있어요." };
+      db.lesson_photos = db.lesson_photos.filter(function (x) { return x.id !== a.p_id; });
+      save();
+      return { ok: true, path: p.path };
+    },
+    member_photos: function (a, uid) {
+      var m = db.members.filter(function (x) { return x.kakao_user === uid; })[0];
+      if (!m) return { ok: false, error: "로그인해 주세요." };
+      return { ok: true, items: (db.lesson_photos || []).filter(function (p) { return p.member_id === m.id && p.note_id; }).map(function (p) {
+        return { id: p.id, note: p.note_id, path: p.path, w: p.w, h: p.h };
+      }) };
+    },
     member_notebook: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
@@ -410,7 +448,7 @@
         notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
-          .map(function (n) { return { date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice, songs: n.songs, audition: n.audition, recommend: n.recommend, rich: !!n.rich, sheet: n.sheet || null }; }),
+          .map(function (n) { return { id: n.id, date: n.lesson_date, teacher: n.teacher, did: n.did, practice: n.practice, songs: n.songs, audition: n.audition, recommend: n.recommend, rich: !!n.rich, sheet: n.sheet || null }; }),
         bookings: live().filter(function (b) { return b.member_id === who.id && b.day >= nowKst().today; })
           .sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); })
           .map(function (b) { return { room: room(b.room_id).name, date: b.day, start: hhmm(b.start_min), end: hhmm(b.end_min) }; }),
@@ -1201,6 +1239,16 @@
     st.uploadVisit = function (path, blob) { pictures["visit/" + path] = URL.createObjectURL(blob); return Promise.resolve(true); };
     st.visitMusic = function (path) { return Promise.resolve(pictures["visit/" + path] || silence()); };
     st.removeVisit = function (paths) { paths.forEach(function (x) { delete pictures["visit/" + x]; }); return Promise.resolve(true); };
+    st.uploadPhoto = function (path, blob) { pictures["photo/" + path] = URL.createObjectURL(blob); return Promise.resolve(true); };
+    st.photo = function (path) { return Promise.resolve(pictures["photo/" + path] || samplePhoto()); };
+    st.removePhotos = function (paths) { paths.forEach(function (x) { delete pictures["photo/" + x]; }); return Promise.resolve(true); };
+  }
+  function samplePhoto() {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="800" height="600" fill="#F6EBDD"/>' +
+      '<rect x="60" y="60" width="680" height="480" fill="#fff" stroke="#C9B49A" stroke-width="3"/>' +
+      '<g stroke="#2B2522" stroke-width="2">' + [0, 1, 2, 3, 4].map(function (i) { return '<line x1="110" x2="690" y1="' + (200 + i * 18) + '" y2="' + (200 + i * 18) + '"/>'; }).join("") + '</g>' +
+      '<text x="400" y="420" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#6E3B28">체험용 레슨 사진 (악보 자리)</text></svg>';
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
   }
   function silence() {
     var rate = 8000, n = rate, buf = new ArrayBuffer(44 + n), v = new DataView(buf);

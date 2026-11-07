@@ -225,6 +225,18 @@
     removeVisit: function (paths, token) {
       return fetch(base + "/storage/v1/object/visit-music", { method: "DELETE", headers: headers(token), body: JSON.stringify({ prefixes: paths }) })
         .then(function (r) { return r.ok; }, function () { return false; });
+    },
+    /* 레슨 사진: private bucket "lesson-photos", <수강 ID>/<file> — 담당 선생님이 올리고, 학생은 자기 레슨 노트 사진만 봐요 (2026-11-07) */
+    uploadPhoto: function (path, blob, token) { return put("lesson-photos", path, blob, token); },
+    photo: function (path, token) {
+      var h = headers(token);
+      delete h["Content-Type"];
+      return fetch(base + "/storage/v1/object/authenticated/lesson-photos/" + path, { headers: h })
+        .then(function (r) { return r.ok ? r.blob().then(function (b) { return URL.createObjectURL(b); }) : null; }, function () { return null; });
+    },
+    removePhotos: function (paths, token) {
+      return fetch(base + "/storage/v1/object/lesson-photos", { method: "DELETE", headers: headers(token), body: JSON.stringify({ prefixes: paths }) })
+        .then(function (r) { return r.ok; }, function () { return false; });
     }
   };
 
