@@ -1,7 +1,10 @@
 """Build a 체험 모드 copy of the site: every page gets js/demo.js, so booking,
 consult and admin work on fake data in the browser with no database.
     python3 tools/build_preview.py OUT_DIR
-Used for private previews before launch; the real pages are never touched."""
+Used for private previews before launch; the real pages are never touched.
+    python3 tools/build_preview.py OUT_DIR --explain
+builds the 설명용 copy (원장님 2026-11-07): same fake data, but the bar only offers
+학생 · 선생님 · 학부모 (no 관리자 link) so it can be shown to students and teachers."""
 import os, re, shutil, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -10,6 +13,7 @@ API = '<script src="js/api.js"></script>\n'
 BLOG_BASE = "https://raw.githubusercontent.com/favort1111-byte/Leeshvocalhomepages/claude/dazzling-bardeen-mw08yt/"
 
 out = sys.argv[1]
+EXPLAIN = "--explain" in sys.argv[2:]
 os.makedirs(out, exist_ok=True)
 for page in PAGES:
     html = open(os.path.join(REPO, page)).read()
@@ -17,9 +21,9 @@ for page in PAGES:
     assert API in html, page
     html = html.replace(API, API + '<script src="js/demo.js"></script>\n')
     # 800 moved blog posts + pictures don't fit in the preview: post.html and 내 폴더 read them from GitHub
-    html = html.replace('<script src="js/config.js"></script>\n', '<script src="js/config.js"></script>\n<script>window.LEESH.blogBase = "' + BLOG_BASE + '";</script>\n')
+    html = html.replace('<script src="js/config.js"></script>\n', '<script src="js/config.js"></script>\n<script>window.LEESH.blogBase = "' + BLOG_BASE + '";' + (' window.LEESH.demoExplain = true;' if EXPLAIN else '') + '</script>\n')
     if page == "index.html":  # names the preview in the artifact gallery
-        html = html.replace("<title>이송희보컬레슨 | 강남 선릉역 1:1 보컬학원</title>", "<title>이송희보컬레슨 작업 현황</title>")
+        html = html.replace("<title>이송희보컬레슨 | 강남 선릉역 1:1 보컬학원</title>", "<title>" + ("이송희보컬레슨 체험 (설명용)" if EXPLAIN else "이송희보컬레슨 작업 현황") + "</title>")
     open(os.path.join(out, page), "w").write(html)
 for folder in ["css", "js", os.path.join("assets", "img"), os.path.join("assets", "fonts")]:  # (assets/blog-posts and data/blog stay on GitHub)
     shutil.copytree(os.path.join(REPO, folder), os.path.join(out, folder), dirs_exist_ok=True)

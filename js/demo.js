@@ -1117,14 +1117,19 @@
       ".demo-bar a,.demo-bar button{color:#F6EBDD;background:none;border:1px solid rgba(246,235,221,.5);border-radius:999px;" +
       "padding:5px 12px;font:inherit;text-decoration:none;cursor:pointer;white-space:nowrap;}" +
       ".demo-bar a:hover,.demo-bar button:hover{background:rgba(246,235,221,.12);}" +
-      ".demo-bar[data-min] span,.demo-bar[data-min] a,.demo-bar[data-min] .demo-reset,.demo-bar[data-min] .demo-student,.demo-bar[data-min] .demo-teacher,.demo-bar[data-min] .demo-intro{display:none;}" +
+      ".demo-bar[data-min] span,.demo-bar[data-min] a,.demo-bar[data-min] .demo-reset,.demo-bar[data-min] .demo-student,.demo-bar[data-min] .demo-teacher,.demo-bar[data-min] .demo-parent,.demo-bar[data-min] .demo-intro{display:none;}" +
       "body{padding-bottom:84px;}" +
       "body:has(.scene:not([hidden])) .demo-bar{display:none;}";
     document.head.appendChild(css);
     var bar = document.createElement("div");
     bar.className = "demo-bar";
-    bar.innerHTML = "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 카카오 버튼은 새 가짜 계정 (처음 연결 요청 체험) · 관리자는 아무 이메일</span>" +
-      "<button type=\"button\" class=\"demo-student\">학생(김시우)으로 보기</button><button type=\"button\" class=\"demo-teacher\">선생님(안유정)으로 보기</button><button type=\"button\" class=\"demo-parent\">학부모로 보기</button><a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>" +
+    // 설명용 (원장님 2026-11-07, build_preview.py --explain): 학생 · 선생님 · 학부모만, 관리자 링크 없음
+    var explain = !!(window.LEESH && window.LEESH.demoExplain);
+    bar.innerHTML = (explain
+      ? "<span><b>설명용 체험 화면</b> · 가짜 계정 · 가짜 데이터라 실제 홈페이지와 연결되지 않아요. 눌러 보고 써 봐도 괜찮아요.</span>" +
+        "<button type=\"button\" class=\"demo-student\">학생으로 보기</button><button type=\"button\" class=\"demo-teacher\">선생님으로 보기</button><button type=\"button\" class=\"demo-parent\">학부모로 보기</button><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">처음 상태로</button>"
+      : "<span><b>체험 모드</b> · 가짜 데이터라 실제로 저장되지 않아요. 카카오 버튼은 새 가짜 계정 (처음 연결 요청 체험) · 관리자는 아무 이메일</span>" +
+        "<button type=\"button\" class=\"demo-student\">학생(김시우)으로 보기</button><button type=\"button\" class=\"demo-teacher\">선생님(안유정)으로 보기</button><button type=\"button\" class=\"demo-parent\">학부모로 보기</button><a href=\"admin.html\">관리자 화면</a><button type=\"button\" class=\"demo-intro\">인트로 다시 보기</button><button type=\"button\" class=\"demo-reset\">데이터 초기화</button>") +
       "<button type=\"button\" class=\"demo-min\" aria-label=\"안내 접기\">접기</button>";
     bar.querySelector(".demo-intro").addEventListener("click", function () {
       try { localStorage.removeItem("leesh_intro"); } catch (e) { /* ignore */ }

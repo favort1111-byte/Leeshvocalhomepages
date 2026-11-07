@@ -10,6 +10,7 @@
   3. Artifact 도구로 `preview/index.html` 게시, `url`은 위 주소, `root`는 preview 폴더, `files`에 나머지 파일 전부
      (다른 html 5개, css/*, js/*, assets/img/*)
 - 예전 레트로 시안 아티팩트(VLT52RjsQ56ofw8tPRwCiA)는 구버전이라 여기엔 쓰지 않습니다.
+- **설명용 체험 화면 (원장님 2026-11-07 "학생 · 선생님에게 설명할 때 쓸 가짜 계정"):** https://claude.ai/artifact/8HA8zEfGVdErkL1inngRpq (비공개, "이송희보컬레슨 체험 (설명용)"). `python3 tools/build_preview.py <스크래치>/explain --explain` → 같은 가짜 데이터(js/demo.js, 학생 김시우 · 선생님 안유정 · 학부모), 아래 막대는 **학생 · 선생님 · 학부모로 보기 + 처음 상태로**만 (관리자 링크 없음, admin 파일은 안 올림). 실제 서버 · 실제 계정과 연결 안 됨. 작업 현황과 달리 매번 올리지 않고, 화면이 크게 바뀌었을 때나 원장님이 말할 때 다시 올림.
 - 올린 뒤 링크를 알려주고 "새로고침하면 보여요"라고 말합니다.
 
 ## Supabase (2026-10-27 연결)
