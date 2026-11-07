@@ -86,8 +86,8 @@ select jsonb_build_object(
             'booking_open', booking_open)
             from public.settings where id = 1),
   'people', jsonb_build_object(
-     'members_active', (select count(*) from public.members where status = '재원'),
-     'kakao_linked', (select count(*) from public.members where kakao_user is not null),
+     'members_active', (select count(*) from public.members where status = '재원' and id <> 'DEMO'),
+     'kakao_linked', (select count(*) from public.members where kakao_user is not null and id <> 'DEMO'),
      'teachers_linked', (select count(*) from public.teachers where kakao_user is not null and active),
      'admins', (select count(*) from public.admins),
      -- 카카오로 로그인만 하고 연결 요청을 안 보낸 계정 (첫 단계에서 막힌 학생 · 만 14세 미만 등)
