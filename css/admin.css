@@ -45,8 +45,11 @@ body.adm{font-family:var(--f-sans);background:#EDE8E0;min-height:100vh;}
 .adm__status--외부{color:#8A5A12;}
 .adm__status--휴원,.adm__status--종료{color:var(--sys-muted);}
 
-.adm__cards{list-style:none;margin:0;padding:0;display:grid;gap:10px;}
-.adm__card{padding:14px;border:1px solid var(--sys-line);border-radius:12px;background:#fff;}
+.adm__cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;}
+.adm__card{min-width:0;padding:14px;border:1px solid var(--sys-line);border-radius:12px;background:#fff;overflow-wrap:anywhere;}
+/* 휴대폰: 긴 이름 목록(수강 ID 고르기 등)이 카드를 화면보다 넓게 만들어 페이지 전체가 줄어 보이던 것 (원장님 2026-11-07 캡처) */
+.adm select{max-width:100%;}
+.adm__card select,.adm__card input,.adm__card textarea{min-width:0;max-width:100%;}
 .adm__card p{margin:6px 0;}
 .adm__cardtop{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;}
 .adm__cardtop a{color:var(--sys-accent);}
