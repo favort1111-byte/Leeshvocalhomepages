@@ -602,6 +602,72 @@
       open(book.s.id, "\"" + x.title + "\" 시트를 지웠어요.");
     });
   }
+  /* ---------- 나란히 보기 (원장님 2026-11-07 "곡·자료는 수업에 꼭 필요한 자료라 레슨 노트랑 같이 보면서"):
+     지금 쓰는 시트 옆(좁은 화면은 아래)에 곡·자료 한 장을 보기만으로 띄워 둬요. 학생 안에서 탭을 바꿔도 그대로, 고치려면 "이 시트 열기". ---------- */
+  function sideBy(book, gridNode, curSheet) {
+    var wrap = el("div", "tch__sidewrap");
+    var bar = el("div", "tch__sidebar");
+    var pick = el("select", "tch__sidepick");
+    pick.setAttribute("aria-label", "옆에 같이 볼 곡·자료");
+    var split = el("div", "tch__split");
+    var main = el("div", "tch__splitmain");
+    main.appendChild(gridNode);
+    split.appendChild(main);
+    var side = el("section", "tch__side2");
+    side.hidden = true;
+    var head = el("div", "tch__side2head");
+    var title = el("b", "tch__side2title");
+    var openIt = button("이 시트 열기", "sys-link");
+    var close = button("닫기 ✕", "sys-link");
+    head.appendChild(title); head.appendChild(openIt); head.appendChild(close);
+    var body = el("div", "tch__side2body");
+    side.appendChild(head); side.appendChild(body);
+    split.appendChild(side);
+    var list = (book.sheets || []).filter(function (x) { return x.id !== curSheet; })
+      .sort(function (a, b) { return (a.tabPos != null ? a.tabPos : 9999) - (b.tabPos != null ? b.tabPos : 9999) || (a.pos || 0) - (b.pos || 0) || a.id - b.id; });
+    var none = el("option", null, list.length ? "📄 곡·자료 옆에 같이 보기…" : "같이 볼 곡·자료가 없어요");
+    none.value = "";
+    pick.appendChild(none);
+    list.forEach(function (x) { var o = el("option", null, x.title); o.value = String(x.id); pick.appendChild(o); });
+    pick.disabled = !list.length;
+    bar.appendChild(pick);
+    wrap.appendChild(bar);
+    wrap.appendChild(split);
+    var showing = null;
+    function show(id) {
+      var x = list.filter(function (y) { return y.id === id; })[0];
+      if (!x) { hide(); return; }
+      showing = x;
+      book.sideId = x.id;
+      pick.value = String(x.id);
+      title.textContent = x.title;
+      side.hidden = false;
+      split.classList.add("is-split");
+      body.textContent = "";
+      body.appendChild(el("p", "sys-note", "불러오는 중…"));
+      (x.data ? Promise.resolve({ ok: true, sheet: x.data }) : LeeshAPI.rpc("teacher_lesson_sheet", { p_id: x.id }, undefined, { retry: 1 })).then(function (r) {
+        if (showing !== x) return;
+        body.textContent = "";
+        if (!r.ok) { body.appendChild(el("p", "sys-msg sys-msg--error", r.error)); return; }
+        x.data = r.sheet;
+        body.appendChild(LeeshGrid.view(r.sheet));
+      });
+    }
+    function hide() {
+      showing = null;
+      book.sideId = null;
+      pick.value = "";
+      side.hidden = true;
+      split.classList.remove("is-split");
+      body.textContent = "";
+    }
+    pick.addEventListener("change", function () { if (pick.value) show(Number(pick.value)); else hide(); });
+    close.addEventListener("click", hide);
+    openIt.addEventListener("click", function () { if (showing) book.go({ kind: "s", id: showing.id, obj: showing }); });
+    if (book.sideId && book.sideId !== curSheet) show(book.sideId);
+    return wrap;
+  }
+
   /* ---------- 레슨 사진 (원장님 2026-11-07 "사진 올리기 가능하게"): 일지 · 곡·자료 아래 사진 줄 (js/photos.js) ---------- */
   var photoUrls = {};
   function photoUrl(path) {
@@ -720,7 +786,7 @@
     if (saved && saved.a) date.value = saved.a.p_date;
     function cur() { return noteId ? { kind: "n", id: noteId } : { kind: "new", label: name || "새 일지 " + short(date.value || todayKst()), name: name }; }
     var grid = LeeshGrid.editor({ data: data, onInput: function () { sv.later(); }, tabs: tabsFor(book, cur()) });
-    f.appendChild(grid.node);
+    f.appendChild(sideBy(book, grid.node, null));
     // 레슨 사진 (2026-11-07): 새 일지는 먼저 저장한 뒤에 붙여요
     f.appendChild(photoBox(book, function () { return noteId ? { note: noteId } : null; }, function () { return sv.push(true); }, true));
     var row = el("div", "fold__actions");
@@ -833,7 +899,7 @@
       if (res.src && !res.siteEdited) box.appendChild(el("p", "sys-note tch__src", "선생님 구글시트에서 가져온 탭이에요. 여기서 고치면 그 뒤로는 구글시트 내용으로 바뀌지 않아요."));
       var kept = draftGet(s.id + ":s:" + x.id);
       grid = LeeshGrid.editor({ data: kept && kept.a ? kept.a.p_sheet : res.sheet, onInput: function () { sv.later(); }, tabs: tabsFor(book, { kind: "s", id: x.id }) });
-      box.appendChild(grid.node);
+      box.appendChild(sideBy(book, grid.node, x.id));
       box.appendChild(photoBox(book, function () { return { sheet: x.id }; }, null, false));
       sv = saver({
         key: s.id + ":s:" + x.id, msg: msg,

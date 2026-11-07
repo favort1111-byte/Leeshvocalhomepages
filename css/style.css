@@ -1228,3 +1228,14 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .tch__send{margin-top:12px;}
 .tch__send textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid rgba(62,42,30,.25);border-radius:10px;font:inherit;font-size:15px;line-height:1.5;background:#fff;}
 .tch__sendrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;}
+/* 선생님 화면 나란히 보기 (2026-11-07): 쓰는 시트 옆에 곡·자료 한 장 */
+.tch__sidebar{display:flex;justify-content:flex-end;margin:0 0 6px;}
+.sys select.tch__sidepick,.tch__sidepick{width:auto;max-width:100%;min-height:0;padding:6px 10px;border:1px solid #C9B49A;border-radius:8px;background:#fff;font:inherit;font-size:14px;}
+.tch__split{display:block;}
+.tch__split.is-split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:12px;align-items:start;}
+.tch__splitmain{min-width:0;}
+.tch__side2{min-width:0;border:2px solid #E6CF9E;border-radius:8px;background:#fff;padding:8px;}
+.tch__side2head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:6px;font-size:14px;}
+.tch__side2title{flex:1 1 auto;}
+.tch__side2body .xs-scroll{max-height:min(72vh,760px);}
+@media (max-width:1100px){ .tch__split.is-split{display:block;} .tch__side2{margin-top:12px;} .tch__side2body .xs-scroll{max-height:60vh;} }
