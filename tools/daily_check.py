@@ -102,7 +102,7 @@ select jsonb_build_object(
   'data', jsonb_build_object(
      'bad_note_sheets', (select count(*) from public.lesson_notes where sheet is not null and not private.sheet_ok(sheet)),
      'bad_lesson_sheets', (select count(*) from public.lesson_sheets where not private.sheet_ok(sheet)),
-     'private_sheets', (select count(*) from public.lesson_sheets where private.lesson_private(sheet))),
+     'private_sheets', (select count(*) from public.lesson_sheets where src_file is not null and private.lesson_private(sheet))),
   'size', jsonb_build_object(
      'db_mb', round(pg_database_size(current_database()) / 1048576.0, 1),
      'storage_mb', (select round(coalesce(sum((metadata ->> 'size')::bigint), 0) / 1048576.0, 1) from storage.objects))
@@ -224,7 +224,7 @@ def main():
     # 5) 데이터 · 크기
     dt = d["data"]
     chk(dt["bad_note_sheets"] or dt["bad_lesson_sheets"], "검사에 안 맞는 표가 있어요 (일지 %s · 곡·자료 %s)" % (dt["bad_note_sheets"], dt["bad_lesson_sheets"]), "일지 · 곡·자료 표 모두 정상")
-    chk(dt["private_sheets"], "곡·자료에 생년월일 + 주소 같은 개인정보로 보이는 탭 %s개" % dt["private_sheets"], "개인정보 탭 0")
+    chk(dt["private_sheets"], "구글시트에서 가져온 곡·자료에 생년월일 + 주소 같은 개인정보로 보이는 탭 %s개" % dt["private_sheets"], "가져온 개인정보 탭 0 (홈페이지에서 쓴 OT는 담당 선생님 · 관리자만 봄)")
     sz = d["size"]
     chk(sz["db_mb"] > 400 or sz["storage_mb"] > 800, "용량 주의: DB %s MB / 500 · 파일 %s MB / 1024" % (sz["db_mb"], sz["storage_mb"]),
         "용량 DB %s MB / 500 · 파일 %s MB / 1024" % (sz["db_mb"], sz["storage_mb"]))
