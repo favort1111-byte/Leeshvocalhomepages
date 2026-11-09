@@ -10,12 +10,12 @@
  * 처음 한 번:
  *   1) 관리자 화면 → 선생님 → "레슨 시트 연결 열기" (30분 동안 열림)
  *   2) 이 편집기에서 함수 "처음_한번_설정" 실행 → 권한 허용
- * 찾는 폴더: 이름에 "레슨시트"나 "레슨 시트"가 들어간 폴더 (이수빈 레슨시트 · 유정T 레슨시트 · 이윤지T 학생 레슨 시트지 · 이하섬 레슨시트 …).
+ * 찾는 폴더: 이름에 "레슨시트" · "레슨 시트" · "시트지"가 들어간 폴더 (이수빈 레슨시트 · 유정T 레슨시트 · 이윤지T 학생 레슨 시트지 · 이하섬 레슨시트 · 홍주쌤 학생 시트지 공유 …).
  * 새 선생님이 폴더를 공유하면 저절로 찾아요. 폴더 이름의 선생님과 홈페이지 명단 "담당 ○○○"가 같아야 학생이 정해져요.
  * 원장님 레슨 노트(구글시트 "원장님 · 학생 레슨 노트", 학생 한 명 = 탭 하나, 수업 한 번 = 줄 하나)도 같이 가져와요 (원장님 2026-11-04).
  *   탭 맨 위 "이름 · 수강ID · 원장님"과 탭 이름이 같은 탭만, 날짜 · 회차 · 수업 내용 … 특이사항(A~G칸)과 곡 노트(L칸부터)만 읽어요.
  *   학생 카드(I~J칸: 생년월일 · 사는 곳 · 상담 메모)는 읽지도 않아요.
- * 상담 · 등록 일지처럼 생년월일 · 사는 곳 · 학교가 적힌 탭은 서버가 안 받아요. 일지 속 휴대폰 번호는 "(전화번호 뺌)"으로 바뀌어요.
+ * 제목이 상담 · 등록 일지인 탭은 안 보내요. OT처럼 생년월일 · 사는 곳이 적힌 탭은 "곡·자료"로만 들어가요(담당 선생님 · 관리자만 봄, 2026-11-09). 휴대폰 번호는 "(전화번호 뺌)".
  */
 
 var API = "https://lsdmokkecmymtxpmiwbm.supabase.co/rest/v1/rpc/";
@@ -101,7 +101,8 @@ function listFiles_() {
   var folders = [], seen = {}, out = [], token = null;
   do {
     var res = drive_("files", {
-      q: "mimeType='application/vnd.google-apps.folder' and trashed=false and (name contains '레슨시트' or name contains '레슨 시트')",
+      // "시트지"도 (2026-11-09: 최홍주 선생님 폴더 이름이 "홍주쌤 학생 시트지 공유"라 못 찾았음)
+      q: "mimeType='application/vnd.google-apps.folder' and trashed=false and (name contains '레슨시트' or name contains '레슨 시트' or name contains '시트지')",
       fields: "nextPageToken,files(id,name)", pageSize: 100, supportsAllDrives: true, includeItemsFromAllDrives: true,
       pageToken: token || ""
     });
@@ -223,7 +224,8 @@ function syncFile_(key, file) {
 function directorFiles_() {
   var out = [];
   var res = drive_("files", {
-    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains '원장님' and name contains '레슨 노트'",
+    // 백업 사본(…_백업_…, …_재빌드전)은 빼기 (2026-11-09: 사본까지 들어와 같은 일지가 3번씩 보였음. 서버도 진짜 파일 하나만 받음)
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains '원장님' and name contains '레슨 노트' and not name contains '백업' and not name contains '재빌드'",
     fields: "files(id,name,modifiedTime)", pageSize: 20, supportsAllDrives: true, includeItemsFromAllDrives: true
   });
   (res.files || []).forEach(function (f) {

@@ -5455,3 +5455,66 @@ begin
 end $function$;
 
 update public.lesson_sources set synced_modified = null where status = 'ok' and folder <> '원장님 레슨 노트';
+-- ---------------------------------------------------------------- 마이그레이션 leesh_lesson_dedupe (2026-11-09)
+-- ① 원장님 레슨 노트 시트의 백업 사본(이름에 "원장님"+"레슨 노트"가 들어가서 스크립트가 같이 찾음)이 따로 들어와
+--    같은 일지 · 곡·자료가 3번씩 보였음 → 진짜 시트 하나(private.lesson_sync.director_file, 값은 DB에만)만 받고 사본은 'ignore'.
+-- ② 선생님 폴더 이름 "○○쌤 …"도 담당 선생님으로 알아봄 (최홍주 선생님 폴더 "홍주쌤 학생 시트지 공유").
+alter table private.lesson_sync add column if not exists director_file text;
+CREATE OR REPLACE FUNCTION private.lesson_match(p_file text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  s public.lesson_sources;
+  v_name text; v_tid bigint; v_tname text; n int; v_mid text; other text;
+begin
+  select * into s from public.lesson_sources where file_id = p_file for update;
+  if s.file_id is null or s.set_by = 'admin' then return; end if;
+  -- 원장님 레슨 노트의 백업 사본("…_백업_…", "…_재빌드전")은 안 가져옴 (2026-11-09: 사본까지 들어와 같은 일지가 3번씩 보였음)
+  if s.folder = '원장님 레슨 노트' and coalesce((select director_file from private.lesson_sync where id = 1), '') <> ''
+     and split_part(p_file, '_', 1) <> (select director_file from private.lesson_sync where id = 1) then
+    update public.lesson_sources set status = 'ignore', member_id = null, why = '원장님 레슨 노트 백업 사본이라 안 가져와요' where file_id = p_file;
+    return;
+  end if;
+  v_name := substring(s.title from '^\s*([가-힣]{2,4})');
+  -- 원장님 레슨 노트 (시트 하나에 학생마다 탭 하나, 2026-11-04): 담당 = 원장님
+  v_tid := case when s.folder = '원장님 레슨 노트' then (select min(id) from public.teachers where name = '원장님' and active)
+               else private.folder_teacher(s.folder) end;
+  select name into v_tname from public.teachers where id = v_tid;
+  if v_name is null then
+    update public.lesson_sources set status = 'pending', member_id = null, teacher_id = v_tid, why = '파일 이름에서 학생 이름을 못 찾았어요' where file_id = p_file;
+    return;
+  end if;
+  if v_tid is null then
+    select string_agg(m.id || ' ' || coalesce(substring(m.memo from '담당\s*([^\s·,]+)'), '담당 없음'), ', ') into other
+    from public.members m where m.name = v_name and m.status in ('재원', '휴원');
+    update public.lesson_sources set status = 'pending', member_id = null, teacher_id = null,
+      why = '선생님 폴더 밖에 있어서 담당 선생님을 확인 못 했어요' || coalesce(' (명단: ' || other || ')', '') where file_id = p_file;
+    return;
+  end if;
+  select count(*), min(m.id) into n, v_mid from public.members m
+  where m.name = v_name and m.status in ('재원', '휴원') and substring(m.memo from '담당\s*([^\s·,]+)') = v_tname;
+  if n = 1 then
+    update public.lesson_sources set status = 'ok', member_id = v_mid, teacher_id = v_tid, why = null where file_id = p_file;
+    return;
+  end if;
+  select string_agg(m.id || ' ' || m.status || ' ' || coalesce(substring(m.memo from '담당\s*([^\s·,]+)'), '담당 없음'), ', ') into other
+  from public.members m where m.name = v_name;
+  update public.lesson_sources set status = 'pending', member_id = null, teacher_id = v_tid,
+    why = case when n > 1 then '이름·담당이 같은 학생이 ' || n || '명이에요'
+               when other is null then '명단에 "' || v_name || '" 학생이 없어요'
+               else '담당 선생님이 달라요 (폴더: ' || v_tname || ' / 명단: ' || other || ')' end
+  where file_id = p_file;
+end $function$;
+
+create or replace function private.folder_teacher(p_folder text)
+ returns bigint language sql stable security definer set search_path to '' as $function$
+  select case when count(*) = 1 then min(t.id) end
+  from public.teachers t
+  where t.active and t.name <> '원장님' and coalesce(p_folder, '') <> ''
+    and (position(t.name in replace(p_folder, ' ', '')) > 0
+         or (char_length(t.name) = 3 and (position(substr(t.name, 2) || 'T' in replace(p_folder, ' ', '')) > 0
+                                       or position(substr(t.name, 2) || '쌤' in replace(p_folder, ' ', '')) > 0)));
+$function$;
