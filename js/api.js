@@ -128,24 +128,32 @@
         else { localStorage.setItem(PUB, "0"); sessionStorage.removeItem(PUB_IDLE); }
       } catch (e) { /* ignore */ }
     },
-    /** 로그인 화면에 넣는 "공용 컴퓨터예요" 칸 (학생 · 선생님 · 학부모 로그인 모두) */
+    /**
+     * 로그인 화면에 넣는 "로그인 상태 유지" 칸 (학생 · 선생님 · 학부모 로그인 모두, 원장님 2026-11-09 "네이버처럼").
+     * 체크 = 이 기기는 개인 (계속 로그인), 빈칸 = 공용. 컴퓨터는 빈칸, 휴대폰 · 태블릿은 체크로 시작.
+     */
     publicBox: function () {
+      var w = document.createElement("div");
+      w.className = "signin__public";
       var l = document.createElement("label");
-      l.className = "sys-keep signin__public";
+      l.className = "sys-keep signin__keep";
       var c = document.createElement("input");
       c.type = "checkbox";
-      c.checked = isPublic();
-      var t = document.createElement("span");
+      c.checked = !isPublic();
+      l.appendChild(c);
+      l.appendChild(document.createTextNode("로그인 상태 유지"));
+      var n = document.createElement("p");
+      n.className = "sys-note signin__publicnote";
       function text() {
-        t.textContent = c.checked
-          ? "🖥 공용 컴퓨터예요 — 로그인할 때마다 카카오 아이디 · 비밀번호를 물어요. 창을 닫거나 30분 동안 아무것도 안 하면 저절로 로그아웃돼요. 브라우저가 비밀번호를 저장할지 물으면 \u201C안 함\u201D을 눌러주세요. 혼자 쓰는 내 컴퓨터라면 체크를 빼세요."
-          : "🖥 공용 컴퓨터예요 (학원 · 학교 · PC방 컴퓨터처럼 여러 사람이 쓰면 체크)";
+        n.textContent = c.checked
+          ? "학원 · 학교 · PC방 컴퓨터에서는 체크하지 마세요."
+          : "학원 · 학교 · PC방 컴퓨터에서는 체크하지 마세요. 체크하지 않으면 창을 닫거나 30분 동안 쓰지 않을 때 로그아웃되고, 로그인할 때마다 카카오 비밀번호를 다시 물어요. 브라우저가 비밀번호를 저장할지 물으면 \u201C안 함\u201D을 눌러주세요.";
       }
       text();
-      c.addEventListener("change", function () { kakao.setPublic(c.checked); text(); });
-      l.appendChild(c);
-      l.appendChild(t);
-      return l;
+      c.addEventListener("change", function () { kakao.setPublic(!c.checked); text(); });
+      w.appendChild(l);
+      w.appendChild(n);
+      return w;
     },
     /**
      * again = true: "다른 카카오 계정으로 로그인" — 카카오가 아이디 · 비밀번호를 다시 물어요 (prompt=login).
@@ -341,7 +349,7 @@
       b.className = "pub-bar";
       b.setAttribute("role", "status");
       var s = document.createElement("span");
-      s.textContent = "🖥 공용 컴퓨터 · 다 쓰면 꼭 로그아웃";
+      s.textContent = "🔒 다 쓰면 꼭 로그아웃";
       var o = document.createElement("button");
       o.type = "button";
       o.textContent = "로그아웃";

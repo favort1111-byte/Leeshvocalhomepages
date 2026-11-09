@@ -150,8 +150,9 @@
 .signin__row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:14px;}
 .signin__other{display:block;margin-top:14px;}
 /* 공용 컴퓨터 (2026-11-09) */
-.signin__public{margin-top:12px;font-size:13px;line-height:1.5;align-items:flex-start;}
-.signin__public input{margin-top:3px;flex:none;}
+.signin__public{margin-top:12px;}
+.signin__keep{margin:0 0 4px;font-size:14px;color:inherit;font-weight:600;}
+.signin__publicnote{margin:0;font-size:12.5px;line-height:1.5;}
 .pub-bar{position:fixed;left:12px;bottom:12px;z-index:9000;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:999px;background:#FFE58A;color:#1D2A2A;border:1px solid #1D4948;box-shadow:0 2px 8px rgba(0,0,0,.18);font:600 12.5px/1.2 var(--f-sans,sans-serif);max-width:calc(100vw - 24px);}
 .pub-bar button{border:0;border-radius:999px;background:#1D4948;color:#fff;padding:6px 12px;font:inherit;cursor:pointer;flex:none;}
 @media print{.pub-bar{display:none;}}
