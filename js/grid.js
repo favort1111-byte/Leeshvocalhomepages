@@ -271,7 +271,7 @@
   function editor(opts) {
     opts = opts || {};
     var d = norm(opts.data || empty());
-    var touch = false;
+    var touch = false, multi = false, multiTaps = 0;
     var act = { r: 0, c: 0 }, rng = { r1: 0, c1: 0, r2: 0, c2: 0 };
     var mode = "sel", editSnap = null, dragging = false;
     var undos = [], redos = [];
@@ -915,6 +915,17 @@
       paintSel();
     }
     btn("rt-btn--clear", ICON.clear, "서식 지우기 (글자는 그대로)", clearFormat);
+    // 여러 칸 한 번에 지우기 (선생님 의견 2026-11-09 "하나씩 눌러서 지우지 않고 드래그해서 한 번에"):
+    // 컴퓨터는 끌어서 고른 뒤 Delete 또는 이 버튼, 휴대폰 · 태블릿은 "여러 칸 고르기"를 켜고 첫 칸 → 끝 칸을 차례로 누른 뒤 이 버튼.
+    btn("rt-btn--erase rt-btn--txt", "🗑 지우기", "고른 칸 내용 지우기 (Delete)", function () { if (mode === "edit") { commit(); } clearRange(); });
+    var multiBtn = btn("rt-btn--multi rt-btn--txt", "▦ 여러 칸 고르기", "휴대폰 · 태블릿: 켜고 첫 칸 → 끝 칸을 누르면 그 사이 칸이 모두 골라져요", function () {
+      multi = !multi; multiTaps = 0;
+      if (mode === "edit") commit();
+      multiBtn.classList.toggle("is-on", multi);
+      multiBtn.setAttribute("aria-pressed", multi ? "true" : "false");
+      note(multi ? "첫 칸 → 끝 칸을 차례로 누르세요. 다 고르면 🗑 지우기 (다시 누르면 새로 고르기)" : "여러 칸 고르기를 껐어요");
+    });
+    multiBtn.setAttribute("aria-pressed", "false");
 
     function menu(cls) {
       var m = el("div", "rt-menu " + cls);
@@ -1163,6 +1174,7 @@
       if (h.col != null) { act = { r: 0, c: h.col }; rng = { r1: 0, c1: h.col, r2: d.n - 1, c2: h.col }; paintSel(); focusCur(null, true); return; }
       if (h.row != null) { act = { r: h.row, c: 0 }; rng = { r1: h.row, c1: 0, r2: h.row, c2: COLS - 1 }; paintSel(); focusCur(null, true); return; }
       if (e.shiftKey) { pick(h.r, h.c, true); focusCur(); return; }
+      if (touch && multi) { pick(h.r, h.c, multiTaps++ % 2 === 1); return; } // 여러 칸 고르기: 첫 칸 → 끝 칸
       pick(h.r, h.c);
       if (touch) { beginEdit("end"); return; } // 휴대폰: 누르면 바로 쓰기 (키보드가 뜨게)
       focusCur();
@@ -1182,7 +1194,9 @@
       var b = sc.getBoundingClientRect(), vh = window.innerHeight || document.documentElement.clientHeight, vw = window.innerWidth || document.documentElement.clientWidth;
       var head = sc.querySelector("thead"), hh = head ? head.getBoundingClientRect().height : RH;
       var rowHead = sc.querySelector("th.xs-rh"), rw = rowHead ? rowHead.getBoundingClientRect().width : 46;
-      var top = Math.max(b.top + hh, 0), bottom = Math.min(b.bottom, vh), left = Math.max(b.left + rw, 0), right = Math.min(b.right, vw);
+      // 위쪽에 붙어 있는 도구 줄(sticky) 밑부터가 보이는 곳
+      var bb = bar.getBoundingClientRect(), vTop = bb.top <= 2 && bb.bottom > 0 ? bb.bottom : 0;
+      var top = Math.max(b.top + hh, vTop), bottom = Math.min(b.bottom, vh), left = Math.max(b.left + rw, 0), right = Math.min(b.right, vw);
       var x = dragPt.x, y = dragPt.y, M = 28, dy = 0, dx = 0;
       if (y > bottom - M) dy = Math.min(40, Math.ceil((y - (bottom - M)) / 3) + 2);
       else if (y < top + M) dy = -Math.min(40, Math.ceil(((top + M) - y) / 3) + 2);
@@ -1192,16 +1206,20 @@
       if (dy) {
         var maxTop = sc.scrollHeight - sc.clientHeight;
         // 표 아래 끝이 화면 밖이면 페이지부터, 아니면 표 안을
-        if (dy > 0 && b.bottom > vh && y > vh - M) window.scrollBy(0, dy);
-        else if (dy < 0 && b.top + hh < 0 && y < M) window.scrollBy(0, dy);
-        else if ((dy > 0 && sc.scrollTop < maxTop) || (dy < 0 && sc.scrollTop > 0)) sc.scrollTop += dy;
-        else window.scrollBy(0, dy);
+        // (2026-11-09 고침: 표 맨 윗줄 근처를 끌면 표가 이미 맨 위인데도 페이지가 계속 올라가 버렸음 → 표 끝이 정말 화면 밖일 때만 페이지를)
+        if (dy > 0) {
+          if (b.bottom > vh && y > vh - M) window.scrollBy(0, dy);
+          else if (sc.scrollTop < maxTop) sc.scrollTop += dy;
+        } else {
+          if (sc.scrollTop > 0) sc.scrollTop += dy;
+          else if (b.top + hh < vTop) window.scrollBy(0, dy);
+        }
       }
       if (dx) sc.scrollLeft += dx;
       // 화면 가장자리에 걸친 칸까지 고르기
       b = sc.getBoundingClientRect();
       var px = Math.max(Math.max(b.left + rw, 0) + 2, Math.min(x, Math.min(b.right, vw) - 3));
-      var py = Math.max(Math.max(b.top + hh, 0) + 2, Math.min(y, Math.min(b.bottom, vh) - 3));
+      var py = Math.max(Math.max(b.top + hh, vTop) + 2, Math.min(y, Math.min(b.bottom, vh) - 3));
       var under = document.elementFromPoint(px, py);
       var h = under ? hit({ target: under }) : null;
       if (h && h.r != null) pick(h.r, h.c, true);

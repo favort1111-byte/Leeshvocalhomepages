@@ -5369,3 +5369,89 @@ begin
                 from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
   ));
 end $function$;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_lesson_import_ot (2026-11-09)
+-- 선생님 구글시트의 OT 탭(생년월일 · 사는 곳 포함)도 "곡·자료"로 가져옴 (원장님 2026-11-08 결정 + 선생님 의견 2026-11-09).
+-- 곡·자료는 담당 선생님 · 관리자만 보고, 휴대폰 번호는 "(전화번호 뺌)". 제목이 상담 · 등록 일지 · 신상 · 개인정보인 탭과
+-- 개인정보가 든 날짜 탭(레슨 노트 = 학생도 봄)은 그대로 안 가져옴. 이미 가져온 파일도 다시 받도록 synced_modified를 비움.
+CREATE OR REPLACE FUNCTION public.lesson_sync_push(p_key text, p_file text, p_notes jsonb DEFAULT '[]'::jsonb, p_sheets jsonb DEFAULT '[]'::jsonb, p_done boolean DEFAULT false, p_modified timestamp with time zone DEFAULT NULL::timestamp with time zone, p_ver integer DEFAULT 1, p_tabs jsonb DEFAULT NULL::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  s public.lesson_sources; t public.teachers; r jsonb; v_date date; v_tab bigint; v_sheet jsonb; ex public.lesson_notes;
+  added int := 0; updated int := 0; kept int := 0; skipped int := 0; sh int := 0; bad int := 0; blocked int := 0;
+begin
+  if not private.lesson_key_ok(p_key) then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  select * into s from public.lesson_sources where file_id = p_file;
+  if s.file_id is null or s.status <> 'ok' or s.member_id is null then return private.fail('확인된 학생 파일이 아니에요.'); end if;
+  select * into t from public.teachers where id = s.teacher_id;
+  if jsonb_typeof(coalesce(p_notes, '[]')) <> 'array' or jsonb_typeof(coalesce(p_sheets, '[]')) <> 'array' then return private.fail('보낸 내용이 이상해요.'); end if;
+
+  for r in select * from jsonb_array_elements(coalesce(p_notes, '[]')) loop
+    begin
+      v_tab := (r ->> 'tab')::bigint; v_date := (r ->> 'date')::date; v_sheet := r -> 'sheet';
+    exception when others then bad := bad + 1; continue; end;
+    if v_tab is null or v_date is null or v_date < date '2026-01-01' or v_date > private.now_kst()::date + 400 then skipped := skipped + 1; continue; end if;
+    if exists (select 1 from private.lesson_skip k where k.src_file = p_file and k.src_tab = v_tab) then skipped := skipped + 1; continue; end if;
+    if private.lesson_private(v_sheet) then blocked := blocked + 1; continue; end if;
+    v_sheet := private.mask_phone(v_sheet);
+    if not private.sheet_ok(v_sheet) or trim(private.sheet_text(v_sheet)) = '' then bad := bad + 1; continue; end if;
+    select * into ex from public.lesson_notes where src_file = p_file and src_tab = v_tab;
+    if ex.id is null then
+      insert into public.lesson_notes (member_id, lesson_date, teacher, teacher_id, rich, sheet, src_file, src_tab, src_title, synced_at)
+      values (s.member_id, v_date, t.name, s.teacher_id, true, v_sheet, p_file, v_tab, left(r ->> 'title', 120), now());
+      added := added + 1;
+    elsif ex.site_edited then
+      kept := kept + 1;
+    else
+      if ex.sheet is distinct from v_sheet or ex.lesson_date <> v_date or ex.member_id <> s.member_id then
+        update public.lesson_notes set member_id = s.member_id, lesson_date = v_date, sheet = v_sheet, rich = true,
+          teacher = coalesce(t.name, teacher), teacher_id = coalesce(s.teacher_id, teacher_id),
+          src_title = left(r ->> 'title', 120), synced_at = now(), updated_at = now()
+        where id = ex.id;
+        updated := updated + 1;
+      end if;
+    end if;
+  end loop;
+
+  for r in select * from jsonb_array_elements(coalesce(p_sheets, '[]')) loop
+    begin
+      v_tab := (r ->> 'tab')::bigint; v_sheet := r -> 'sheet';
+    exception when others then bad := bad + 1; continue; end;
+    if v_tab is null or coalesce(trim(r ->> 'title'), '') = '' or not private.sheet_ok(v_sheet) or trim(private.sheet_text(v_sheet)) = '' then
+      bad := bad + 1; continue;
+    end if;
+    if trim(r ->> 'title') ~ '상담|등록 ?일지|신상|개인 ?정보' then
+      delete from public.lesson_sheets where src_file = p_file and src_tab = v_tab and not site_edited;
+      blocked := blocked + 1; continue;
+    end if;
+    -- OT처럼 생년월일 · 사는 곳이 적힌 탭도 곡·자료로 받음 (원장님 2026-11-08 "선생님이랑 관리자만 보면 됨", 선생님 의견 "OT 시트가 안 보여요").
+    -- 곡·자료는 담당 선생님 · 관리자만 봄. 휴대폰 번호는 가림. 레슨 노트(학생도 봄)는 위에서 그대로 막음.
+    if private.lesson_private(v_sheet) then v_sheet := private.mask_phone(v_sheet); end if;
+    insert into public.lesson_sheets (member_id, teacher_id, src_file, src_tab, title, pos, sheet, synced_at)
+    values (s.member_id, s.teacher_id, p_file, v_tab, left(trim(r ->> 'title'), 120), coalesce((r ->> 'pos')::int, 0), v_sheet, now())
+    on conflict (src_file, src_tab) do update set member_id = excluded.member_id, teacher_id = excluded.teacher_id, title = excluded.title,
+      pos = excluded.pos, sheet = excluded.sheet, synced_at = now()
+    where not public.lesson_sheets.site_edited and (public.lesson_sheets.sheet is distinct from excluded.sheet or public.lesson_sheets.title is distinct from excluded.title
+       or public.lesson_sheets.pos is distinct from excluded.pos or public.lesson_sheets.member_id is distinct from excluded.member_id);
+    sh := sh + 1;
+  end loop;
+
+  if p_done then
+    update public.lesson_sources set synced_modified = coalesce(p_modified, modified), synced_ver = p_ver, synced_at = now(),
+      notes = (select count(*) from public.lesson_notes where src_file = p_file),
+      sheets = (select count(*) from public.lesson_sheets where src_file = p_file),
+      kept = (select count(*) from public.lesson_notes where src_file = p_file and site_edited),
+      gone = case when jsonb_typeof(p_tabs) = 'array' then
+        (select count(*) from public.lesson_notes n where n.src_file = p_file and not (p_tabs @> to_jsonb(n.src_tab)))
+        + (select count(*) from public.lesson_sheets x where x.src_file = p_file and not (p_tabs @> to_jsonb(x.src_tab)))
+        else gone end
+    where file_id = p_file;
+  end if;
+  return jsonb_build_object('ok', true, 'added', added, 'updated', updated, 'kept', kept, 'skipped', skipped, 'sheets', sh, 'bad', bad, 'blocked', blocked);
+end $function$;
+
+update public.lesson_sources set synced_modified = null where status = 'ok' and folder <> '원장님 레슨 노트';
