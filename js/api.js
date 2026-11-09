@@ -81,8 +81,34 @@
     표시는 그 컴퓨터에 남아서 다음 사람도 공용으로 시작해요.
   */
   var PUB = "leesh_public", PUB_IDLE = "leesh_public_active", IDLE_MIN = 30;
-  function isPublic() { try { return localStorage.getItem(PUB) === "1"; } catch (e) { return false; } }
+  /*
+    처음 상태 (원장님 2026-11-09 "컴퓨터는 모두 자동 공용, 핸드폰 · 아이패드는 원래대로"):
+    마우스로 쓰는 기기(PC · 노트북, 터치 화면 노트북 포함) = 공용, 휴대폰 · 태블릿 = 개인.
+    아이패드는 자기를 맥이라고 알려줄 때가 있어서 터치 점 수로 거름. 체크칸으로 바꾸면 그 기기에 "1" / "0"으로 기억.
+  */
+  function isComputer() {
+    try {
+      var ua = navigator.userAgent || "";
+      if (/Android|iPhone|iPad|iPod|Mobi|Tablet|Silk|Kindle/i.test(ua)) return false;
+      if (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) return false; // 아이패드 (데스크톱 모드)
+      return !window.matchMedia || window.matchMedia("(any-pointer: fine)").matches;
+    } catch (e) { return false; }
+  }
+  function isPublic() {
+    var v = null;
+    try { v = localStorage.getItem(PUB); } catch (e) { /* ignore */ }
+    if (v === "1") return true;
+    if (v === "0") return false;
+    return isComputer();
+  }
   function kstore() { return isPublic() ? sessionStorage : localStorage; }
+  // 컴퓨터가 공용이 되기 전부터 로그인해 있던 사람은 갑자기 로그아웃시키지 않음: 이 창으로 옮겨서 창을 닫을 때까지만
+  try {
+    if (isPublic() && !sessionStorage.getItem(KAKAO) && localStorage.getItem(KAKAO)) {
+      sessionStorage.setItem(KAKAO, localStorage.getItem(KAKAO));
+      localStorage.removeItem(KAKAO);
+    }
+  } catch (e) { /* ignore */ }
   var refreshing = null;
   var kakao = {
     available: function () { return enabled() && !!base; },
@@ -99,7 +125,7 @@
     setPublic: function (on) {
       try {
         if (on) { localStorage.setItem(PUB, "1"); localStorage.removeItem(KAKAO); localStorage.removeItem(WHO); }
-        else { localStorage.removeItem(PUB); sessionStorage.removeItem(PUB_IDLE); }
+        else { localStorage.setItem(PUB, "0"); sessionStorage.removeItem(PUB_IDLE); }
       } catch (e) { /* ignore */ }
     },
     /** 로그인 화면에 넣는 "공용 컴퓨터예요" 칸 (학생 · 선생님 · 학부모 로그인 모두) */
@@ -112,7 +138,7 @@
       var t = document.createElement("span");
       function text() {
         t.textContent = c.checked
-          ? "🖥 공용 컴퓨터예요 — 이 컴퓨터는 로그인할 때마다 카카오 아이디 · 비밀번호를 물어요. 창을 닫거나 30분 동안 아무것도 안 하면 저절로 로그아웃돼요. 브라우저가 비밀번호를 저장할지 물으면 \u201C안 함\u201D을 눌러주세요."
+          ? "🖥 공용 컴퓨터예요 — 로그인할 때마다 카카오 아이디 · 비밀번호를 물어요. 창을 닫거나 30분 동안 아무것도 안 하면 저절로 로그아웃돼요. 브라우저가 비밀번호를 저장할지 물으면 \u201C안 함\u201D을 눌러주세요. 혼자 쓰는 내 컴퓨터라면 체크를 빼세요."
           : "🖥 공용 컴퓨터예요 (학원 · 학교 · PC방 컴퓨터처럼 여러 사람이 쓰면 체크)";
       }
       text();
