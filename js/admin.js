@@ -150,6 +150,7 @@
     if (name === "songrecs") loadRecs();
     if (name === "visits") loadVisits();
     if (name === "journal") loadJournal();
+    if (name === "reviews") loadReviews();
     if (name === "partners") loadPartners();
     if (name === "teachers") { loadTeachers(); loadLessonSync(); }
     if (name === "records") loadRecords();
@@ -171,6 +172,7 @@
     bookings: ["#bookBadge", "bookings?select=id&created_at=gt."],
     visits: ["#visitBadge", "visit_applications?select=id&created_at=gt."],
     journal: ["#journalBadge", "practice_logs?select=id&created_at=gt."],
+    reviews: ["#reviewBadge", "audition_reviews?select=id&created_at=gt."],
     news: ["#newsBadge", "ig_posts?select=id&hidden=is.false&posted_at=gt."]
   };
   function seenAll() { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || "{}") || {}; } catch (e) { return {}; } }
@@ -2323,6 +2325,58 @@
     return li;
   }
   $("#consultFilter").addEventListener("change", loadConsults);
+
+  /* ---------------- 오디션 후기 (학생이 내 폴더에서 씀, 원장님 2026-11-09) ---------------- */
+  var RV_TEXT = [["asked", "질문 리스트"], ["tip", "나만의 꿀팁 · 나의 후기"], ["process", "진행 순서 · 상황 설명"], ["note", "특이사항"]];
+  var reviewItems = [];
+  function loadReviews() {
+    var list = $("#reviewList");
+    list.textContent = "";
+    list.appendChild(el("li", "sys-empty", "불러오는 중…"));
+    api("rpc/admin_reviews", { method: "POST", body: {} }).then(function (res) {
+      if (!res.ok || !res.data || !res.data.ok) { list.textContent = ""; list.appendChild(el("li", "sys-empty", "불러오지 못했어요.")); return; }
+      reviewItems = res.data.items || [];
+      var sel = $("#reviewTeacher"), keep = sel.value;
+      sel.length = 1;
+      reviewItems.map(function (r) { return r.teacher; }).filter(function (t, i, a) { return t && a.indexOf(t) === i; }).sort()
+        .forEach(function (t) { var o = el("option", null, t); o.value = t; sel.appendChild(o); });
+      sel.value = keep;
+      drawReviews();
+    });
+  }
+  function drawReviews() {
+    var list = $("#reviewList"), q = $("#reviewFind").value.trim(), t = $("#reviewTeacher").value;
+    var hit = reviewItems.filter(function (r) {
+      if (t && r.teacher !== t) return false;
+      return !q || [r.company, r.name, r.songVocal, r.songDance, r.member].some(function (v) { return v && String(v).indexOf(q) !== -1; });
+    });
+    $("#reviewCount").textContent = "후기 " + reviewItems.length + "개" + (hit.length !== reviewItems.length ? " 중 " + hit.length + "개" : "");
+    list.textContent = "";
+    if (!hit.length) { list.appendChild(el("li", "sys-empty", reviewItems.length ? "찾는 후기가 없어요." : "아직 학생이 쓴 오디션 후기가 없어요.")); return; }
+    hit.forEach(function (r) {
+      var li = el("li", "adm__card rv");
+      var h = el("p", "rv__head");
+      h.appendChild(el("b", null, r.date + " · " + r.company));
+      h.appendChild(el("span", "rv__tag", r.name + " (" + r.member + ")" + (r.teacher ? " · 담당 " + r.teacher : "")));
+      li.appendChild(h);
+      var info = [r.gender, r.birth].filter(Boolean).join(" · ");
+      if (info) li.appendChild(el("p", "rv__info", info));
+      if (r.songVocal || r.songDance) {
+        li.appendChild(el("p", "rv__label", "준비한 곡"));
+        if (r.songVocal) li.appendChild(el("p", "rv__text", "🎤 보컬곡 · " + r.songVocal));
+        if (r.songDance) li.appendChild(el("p", "rv__text", "💃 댄스곡 · " + r.songDance));
+      }
+      RV_TEXT.forEach(function (f) {
+        if (!r[f[0]]) return;
+        li.appendChild(el("p", "rv__label", f[1]));
+        li.appendChild(el("p", "rv__text", r[f[0]]));
+      });
+      li.appendChild(el("p", "sys-note", "보낸 때 " + String(r.at).slice(0, 16).replace("T", " ") + (r.updated && r.updated.slice(0, 16) !== String(r.at).slice(0, 16) ? " · 고친 때 " + r.updated.slice(0, 16).replace("T", " ") : "")));
+      list.appendChild(li);
+    });
+  }
+  $("#reviewFind").addEventListener("input", drawReviews);
+  $("#reviewTeacher").addEventListener("change", drawReviews);
 
   /* ---------------- 건의함 (익명) ---------------- */
   function countSuggest() {

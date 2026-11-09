@@ -244,6 +244,80 @@
       ul.querySelectorAll("li").forEach(function (li) { li.hidden = q && li.getAttribute("data-name").indexOf(q) === -1; });
     });
     app.appendChild(ul);
+    var rvHolder = el("div");
+    app.appendChild(rvHolder);
+    reviewsBox(rvHolder);
+  }
+
+  /* 학생 오디션 후기 (원장님 2026-11-09 "작성은 학생이, 보는 건 선생님들이랑 관리자만" · "선생님 모두"):
+     담당이 아니어도 모든 학생 후기를 봐요 (기획사별로 무엇을 물어봤는지 같이 보려고). 보기만. 서버 teacher_reviews. */
+  var RV_TEXT = [["asked", "질문 리스트"], ["tip", "나만의 꿀팁 · 나의 후기"], ["process", "진행 순서 · 상황 설명"], ["note", "특이사항"]];
+  function reviewCard(r) {
+    var c = el("article", "rv tch__rv");
+    var h = el("p", "rv__head");
+    h.appendChild(el("b", null, dayLabel(r.date) + " · " + r.company));
+    h.appendChild(el("span", "rv__tag", r.name + (r.teacher ? " · 담당 " + r.teacher : "")));
+    c.appendChild(h);
+    var info = [r.gender, r.birth].filter(Boolean).join(" · ");
+    if (info) c.appendChild(el("p", "rv__info", info));
+    if (r.songVocal || r.songDance) {
+      c.appendChild(el("p", "rv__label", "준비한 곡"));
+      if (r.songVocal) c.appendChild(el("p", "rv__text", "🎤 보컬곡 · " + r.songVocal));
+      if (r.songDance) c.appendChild(el("p", "rv__text", "💃 댄스곡 · " + r.songDance));
+    }
+    RV_TEXT.forEach(function (f) {
+      if (!r[f[0]]) return;
+      c.appendChild(el("p", "rv__label", f[1]));
+      c.appendChild(el("p", "rv__text", r[f[0]]));
+    });
+    return c;
+  }
+  function reviewsBox(holder) {
+    LeeshAPI.rpc("teacher_reviews", {}).then(function (res) {
+      if (!res.ok) return;
+      var items = res.items || [];
+      holder.textContent = "";
+      var box = el("details", "tch__rvbox");
+      box.appendChild(el("summary", "tch__rvsum", "📝 학생 오디션 후기 " + items.length + "개"));
+      box.appendChild(el("p", "sys-note", "학생들이 내 폴더에서 쓴 오디션 후기예요. 선생님들과 학원만 보고, 다른 학생 · 학부모에게는 보이지 않아요."));
+      if (!items.length) { box.appendChild(el("p", "book__empty", "아직 학생이 쓴 후기가 없어요.")); holder.appendChild(box); return; }
+      var bar = el("div", "tch__rvbar");
+      var q = el("input", "tch__find");
+      q.type = "search";
+      q.placeholder = "기획사 · 학생 이름 · 곡으로 찾기";
+      q.setAttribute("aria-label", "오디션 후기 찾기");
+      var mineL = el("label", "tch__rvmine");
+      var mine = el("input");
+      mine.type = "checkbox";
+      mineL.appendChild(mine);
+      mineL.appendChild(document.createTextNode(" 내 담당 학생만"));
+      bar.appendChild(q);
+      bar.appendChild(mineL);
+      box.appendChild(bar);
+      var listEl = el("div", "tch__rvlist");
+      box.appendChild(listEl);
+      var more = el("button", "sys-btn sys-btn--ghost", "더 보기");
+      more.type = "button";
+      box.appendChild(more);
+      var shown = 10;
+      function draw() {
+        var w = q.value.trim();
+        var hit = items.filter(function (r) {
+          if (mine.checked && !r.mine) return false;
+          if (!w) return true;
+          return [r.company, r.name, r.songVocal, r.songDance].some(function (v) { return v && String(v).indexOf(w) !== -1; });
+        });
+        listEl.textContent = "";
+        if (!hit.length) listEl.appendChild(el("p", "book__empty", "찾는 후기가 없어요."));
+        hit.slice(0, shown).forEach(function (r) { listEl.appendChild(reviewCard(r)); });
+        more.hidden = hit.length <= shown;
+      }
+      q.addEventListener("input", function () { shown = 10; draw(); });
+      mine.addEventListener("change", function () { shown = 10; draw(); });
+      more.addEventListener("click", function () { shown += 20; draw(); });
+      draw();
+      holder.appendChild(box);
+    });
   }
 
   /* ---------- 학생 한 명: 저번 시간 내용 + 시트(일지 · 곡·자료 탭) + 지난 일지 + 연습 일지 · 레퍼토리 ---------- */

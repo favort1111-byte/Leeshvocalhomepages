@@ -5615,3 +5615,267 @@ begin
   end if;
   return jsonb_build_object('ok', true, 'added', added, 'updated', updated, 'kept', kept, 'skipped', skipped, 'sheets', sh, 'bad', bad, 'blocked', blocked);
 end $function$;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_audition_reviews (2026-11-09)
+-- 오디션 후기 (원장님 2026-11-09 "작성은 학생이 하고 보는 건 선생님들이랑 관리자만"):
+--   학생이 내 폴더 → "오디션 후기"에서 쓰고 · 고치고 · 지움 (본인 것만 보임, 다른 학생 후기는 안 보임).
+--   선생님은 모두(담당이 아니어도) 전체 후기를 봄 (원장님 "선생님 모두"), 관리자는 전부. 학부모 · 공개 페이지에는 안 보임.
+--   텔레그램은 처음 쓸 때만 1시간 모아 보내기 ("📝 오디션 후기 …").
+create table if not exists public.audition_reviews (
+  id bigserial primary key,
+  member_id text not null references public.members(id) on delete cascade,
+  audition_date date not null,
+  company text not null,
+  kind text,          -- 내방 · 공개 · 비공개 · 온라인(영상) · 학교 입시 · 기타
+  part text,          -- 보컬 · 랩 · 댄스 · 연기 · 라이브퍼포먼스 · 기타
+  songs text,         -- 준비한 곡 · 부른 곡
+  process text,       -- 진행 순서 · 분위기 · 심사위원
+  asked text,         -- 받은 질문 · 요청 (다른 곡, 애드리브, 춤 …)
+  feel text,          -- 잘한 점 · 아쉬운 점
+  tip text,           -- 다음에 보는 사람에게 팁
+  result text,        -- 결과 기다리는 중 · 1차 합격 · 최종 합격 · 불합격 · 모름
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint audition_reviews_len check (char_length(company) between 1 and 60
+    and char_length(coalesce(kind, '')) <= 20 and char_length(coalesce(part, '')) <= 20 and char_length(coalesce(result, '')) <= 20
+    and char_length(coalesce(songs, '')) <= 500 and char_length(coalesce(process, '')) <= 2000
+    and char_length(coalesce(asked, '')) <= 2000 and char_length(coalesce(feel, '')) <= 2000 and char_length(coalesce(tip, '')) <= 1000)
+);
+create index if not exists audition_reviews_member on public.audition_reviews (member_id, audition_date desc);
+create index if not exists audition_reviews_date on public.audition_reviews (audition_date desc, id desc);
+alter table public.audition_reviews enable row level security;
+drop policy if exists audition_reviews_admin on public.audition_reviews;
+create policy audition_reviews_admin on public.audition_reviews for all to authenticated using (public.is_admin()) with check (public.is_admin());
+grant select, insert, update, delete on public.audition_reviews to authenticated;
+grant usage, select on sequence public.audition_reviews_id_seq to authenticated;
+
+create or replace function private.review_json(r public.audition_reviews) returns jsonb
+language sql stable set search_path = '' as $$
+  select jsonb_build_object('id', r.id, 'date', r.audition_date, 'company', r.company, 'kind', r.kind, 'part', r.part,
+    'songs', r.songs, 'process', r.process, 'asked', r.asked, 'feel', r.feel, 'tip', r.tip, 'result', r.result,
+    'at', r.created_at, 'updated', r.updated_at);
+$$;
+revoke all on function private.review_json(public.audition_reviews) from public, anon, authenticated;
+
+create or replace function public.member_reviews(p_id text, p_pin text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(private.review_json(r) order by r.audition_date desc, r.id desc)
+    from public.audition_reviews r where r.member_id = who ->> 'id'), '[]'::jsonb));
+end $$;
+
+create or replace function public.member_review_save(p_id text, p_pin text, p_review bigint, p_data jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text; d date; today date := private.now_kst()::date; v_id bigint; v_name text;
+  f_company text; f_kind text; f_part text; f_result text;
+  f_songs text; f_process text; f_asked text; f_feel text; f_tip text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if jsonb_typeof(p_data) <> 'object' then return private.fail('보낸 내용이 이상해요.'); end if;
+  begin d := (p_data ->> 'date')::date; exception when others then return private.fail('오디션 날짜를 골라주세요.'); end;
+  if d is null or d > today or d < today - 730 then return private.fail('오디션 날짜는 오늘부터 2년 전까지로 골라주세요.'); end if;
+  f_company := left(trim(coalesce(p_data ->> 'company', '')), 60);
+  if f_company = '' then return private.fail('기획사(또는 학교) 이름을 적어주세요.'); end if;
+  f_kind := nullif(left(trim(coalesce(p_data ->> 'kind', '')), 20), '');
+  f_part := nullif(left(trim(coalesce(p_data ->> 'part', '')), 20), '');
+  f_result := nullif(left(trim(coalesce(p_data ->> 'result', '')), 20), '');
+  f_songs := nullif(trim(coalesce(p_data ->> 'songs', '')), '');
+  f_process := nullif(trim(coalesce(p_data ->> 'process', '')), '');
+  f_asked := nullif(trim(coalesce(p_data ->> 'asked', '')), '');
+  f_feel := nullif(trim(coalesce(p_data ->> 'feel', '')), '');
+  f_tip := nullif(trim(coalesce(p_data ->> 'tip', '')), '');
+  if char_length(coalesce(f_songs, '')) > 500 or char_length(coalesce(f_process, '')) > 2000 or char_length(coalesce(f_asked, '')) > 2000
+     or char_length(coalesce(f_feel, '')) > 2000 or char_length(coalesce(f_tip, '')) > 1000 then
+    return private.fail('글이 너무 길어요. 조금 줄여주세요.');
+  end if;
+  if coalesce(f_songs, f_process, f_asked, f_feel, f_tip) is null then return private.fail('부른 곡이나 오디션 내용을 하나 이상 적어주세요.'); end if;
+  if p_review is null then
+    if (select count(*) from public.audition_reviews where member_id = mid and created_at > now() - interval '1 day') >= 10 then
+      return private.fail('하루에 10개까지 쓸 수 있어요.');
+    end if;
+    insert into public.audition_reviews (member_id, audition_date, company, kind, part, songs, process, asked, feel, tip, result)
+    values (mid, d, f_company, f_kind, f_part, f_songs, f_process, f_asked, f_feel, f_tip, f_result)
+    returning id into v_id;
+    select name into v_name from public.members where id = mid;
+    perform private.notify('📝 오디션 후기 · ' || coalesce(v_name, mid) || ' · ' || f_company || ' (' || to_char(d, 'MM/DD') || ')');
+    return jsonb_build_object('ok', true, 'id', v_id, 'new', true);
+  end if;
+  update public.audition_reviews set audition_date = d, company = f_company, kind = f_kind, part = f_part, songs = f_songs,
+    process = f_process, asked = f_asked, feel = f_feel, tip = f_tip, result = f_result, updated_at = now()
+  where id = p_review and member_id = mid returning id into v_id;
+  if v_id is null then return private.fail('후기를 찾을 수 없어요.'); end if;
+  return jsonb_build_object('ok', true, 'id', v_id, 'new', false);
+end $$;
+
+create or replace function public.member_review_delete(p_id text, p_pin text, p_review bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  delete from public.audition_reviews where id = p_review and member_id = who ->> 'id';
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 선생님: 모든 학생의 후기 (원장님 "선생님 모두"). 학생 이름 · 담당 선생님도 같이, 최근 오디션 날짜 순 300개.
+create or replace function public.teacher_reviews() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(private.review_json(r) || jsonb_build_object('name', m.name,
+             'teacher', substring(m.memo from '담당\s*([^\s·,]+)'), 'mine', private.teaches(t, m.id))
+           order by r.audition_date desc, r.id desc)
+    from (select * from public.audition_reviews order by audition_date desc, id desc limit 300) r
+    join public.members m on m.id = r.member_id), '[]'::jsonb));
+end $$;
+
+create or replace function public.admin_reviews() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(private.review_json(r) || jsonb_build_object('member', m.id, 'name', m.name,
+             'teacher', substring(m.memo from '담당\s*([^\s·,]+)'))
+           order by r.audition_date desc, r.id desc)
+    from public.audition_reviews r join public.members m on m.id = r.member_id), '[]'::jsonb));
+end $$;
+
+revoke all on function public.member_reviews(text, text), public.member_review_save(text, text, bigint, jsonb),
+  public.member_review_delete(text, text, bigint), public.teacher_reviews(), public.admin_reviews() from public;
+grant execute on function public.member_reviews(text, text), public.member_review_save(text, text, bigint, jsonb),
+  public.member_review_delete(text, text, bigint) to anon, authenticated;
+revoke all on function public.teacher_reviews(), public.admin_reviews() from anon;
+grant execute on function public.teacher_reviews(), public.admin_reviews() to authenticated;
+
+-- 텔레그램: 오디션 후기도 1시간 모아 보내기
+create or replace function private.notify(msg text)
+ returns void language plpgsql security definer set search_path to '' as $function$
+declare t record;
+begin
+  select bot_token, chat_ids, bookings into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' or cardinality(t.chat_ids) = 0 then return; end if;
+  if msg like '🎤 연습실%' or msg like '↩️ 연습실%' then
+    if not t.bookings then return; end if;
+    insert into private.notify_queue (msg) values (msg);   -- 1시간 모아서
+    return;
+  end if;
+  if msg like '🎤 내방 오디션%' or msg like '📝 오디션 후기%' then
+    insert into private.notify_queue (msg) values (msg);   -- 1시간 모아서
+    return;
+  end if;
+  perform private.notify_send(msg);
+exception when others then
+  null; -- 알림 때문에 신청이 실패하면 안 됩니다
+end $function$;
+-- ---------------------------------------------------------------- 마이그레이션 leesh_audition_reviews_form (2026-11-09)
+-- 원장님이 정한 양식 그대로: 이름 · 성별 · 생년월일 · 담당쌤 · 기획사명 · 오디션 일자 · 준비한 곡(보컬곡 / 댄스곡) · 질문 리스트 ·
+-- 나만의 꿀팁 / 나의 후기 · 진행 순서 / 상황 설명 · 특이사항. 이름 · 담당쌤은 명단(수강 ID · 메모 "담당 ○○○")에서 저절로.
+-- 처음 만든 칸(종류 · 분야 · 결과 · 잘한 점)은 아직 쓴 사람 0명이라 빼고 새 칸으로.
+alter table public.audition_reviews drop constraint if exists audition_reviews_len;
+alter table public.audition_reviews drop column if exists kind, drop column if exists part, drop column if exists result,
+  drop column if exists feel, drop column if exists songs;
+alter table public.audition_reviews add column if not exists gender text, add column if not exists birth text,
+  add column if not exists song_vocal text, add column if not exists song_dance text, add column if not exists note text;
+alter table public.audition_reviews add constraint audition_reviews_len check (char_length(company) between 1 and 60
+  and char_length(coalesce(gender, '')) <= 4 and char_length(coalesce(birth, '')) <= 20
+  and char_length(coalesce(song_vocal, '')) <= 300 and char_length(coalesce(song_dance, '')) <= 300
+  and char_length(coalesce(asked, '')) <= 2000 and char_length(coalesce(tip, '')) <= 2000
+  and char_length(coalesce(process, '')) <= 2000 and char_length(coalesce(note, '')) <= 1000);
+
+drop function if exists private.review_json(public.audition_reviews);
+create or replace function private.review_json(r public.audition_reviews) returns jsonb
+language sql stable set search_path = '' as $$
+  select jsonb_build_object('id', r.id, 'date', r.audition_date, 'company', r.company, 'gender', r.gender, 'birth', r.birth,
+    'songVocal', r.song_vocal, 'songDance', r.song_dance, 'asked', r.asked, 'tip', r.tip, 'process', r.process, 'note', r.note,
+    'at', r.created_at, 'updated', r.updated_at);
+$$;
+revoke all on function private.review_json(public.audition_reviews) from public, anon, authenticated;
+
+-- 학생: 내 후기 + 이름 · 담당쌤 (양식 맨 위에 보여줌)
+create or replace function public.member_reviews(p_id text, p_pin text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); m public.members;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  select * into m from public.members where id = who ->> 'id';
+  return jsonb_build_object('ok', true, 'name', m.name, 'teacher', substring(m.memo from '담당\s*([^\s·,]+)'), 'items', coalesce((
+    select jsonb_agg(private.review_json(r) order by r.audition_date desc, r.id desc)
+    from public.audition_reviews r where r.member_id = m.id), '[]'::jsonb));
+end $$;
+
+create or replace function public.member_review_save(p_id text, p_pin text, p_review bigint, p_data jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text; d date; today date := private.now_kst()::date; v_id bigint; v_name text;
+  f_company text; f_gender text; f_birth text; f_vocal text; f_dance text; f_asked text; f_tip text; f_process text; f_note text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if jsonb_typeof(p_data) <> 'object' then return private.fail('보낸 내용이 이상해요.'); end if;
+  f_gender := nullif(trim(coalesce(p_data ->> 'gender', '')), '');
+  if f_gender is null or f_gender not in ('남', '여') then return private.fail('성별을 골라주세요.'); end if;
+  f_birth := left(trim(coalesce(p_data ->> 'birth', '')), 20);
+  if f_birth !~ '\d{2}' then return private.fail('생년월일을 적어주세요. 예) 2009.03.15'); end if;
+  f_company := left(trim(coalesce(p_data ->> 'company', '')), 60);
+  if f_company = '' then return private.fail('기획사 이름을 적어주세요.'); end if;
+  begin d := (p_data ->> 'date')::date; exception when others then return private.fail('오디션 일자를 골라주세요.'); end;
+  if d is null or d > today or d < today - 730 then return private.fail('오디션 일자는 오늘부터 2년 전까지로 골라주세요.'); end if;
+  f_vocal := nullif(left(trim(coalesce(p_data ->> 'songVocal', '')), 300), '');
+  f_dance := nullif(left(trim(coalesce(p_data ->> 'songDance', '')), 300), '');
+  f_asked := nullif(trim(coalesce(p_data ->> 'asked', '')), '');
+  f_tip := nullif(trim(coalesce(p_data ->> 'tip', '')), '');
+  f_process := nullif(trim(coalesce(p_data ->> 'process', '')), '');
+  f_note := nullif(trim(coalesce(p_data ->> 'note', '')), '');
+  if char_length(coalesce(f_asked, '')) > 2000 or char_length(coalesce(f_tip, '')) > 2000
+     or char_length(coalesce(f_process, '')) > 2000 or char_length(coalesce(f_note, '')) > 1000 then
+    return private.fail('글이 너무 길어요. 조금 줄여주세요.');
+  end if;
+  if coalesce(f_vocal, f_dance, f_asked, f_tip, f_process, f_note) is null then return private.fail('준비한 곡이나 후기를 하나 이상 적어주세요.'); end if;
+  if p_review is null then
+    if (select count(*) from public.audition_reviews where member_id = mid and created_at > now() - interval '1 day') >= 10 then
+      return private.fail('하루에 10개까지 쓸 수 있어요.');
+    end if;
+    insert into public.audition_reviews (member_id, audition_date, company, gender, birth, song_vocal, song_dance, asked, tip, process, note)
+    values (mid, d, f_company, f_gender, f_birth, f_vocal, f_dance, f_asked, f_tip, f_process, f_note)
+    returning id into v_id;
+    select name into v_name from public.members where id = mid;
+    perform private.notify('📝 오디션 후기 · ' || coalesce(v_name, mid) || ' · ' || f_company || ' (' || to_char(d, 'MM/DD') || ')');
+    return jsonb_build_object('ok', true, 'id', v_id, 'new', true);
+  end if;
+  update public.audition_reviews set audition_date = d, company = f_company, gender = f_gender, birth = f_birth, song_vocal = f_vocal,
+    song_dance = f_dance, asked = f_asked, tip = f_tip, process = f_process, note = f_note, updated_at = now()
+  where id = p_review and member_id = mid returning id into v_id;
+  if v_id is null then return private.fail('후기를 찾을 수 없어요.'); end if;
+  return jsonb_build_object('ok', true, 'id', v_id, 'new', false);
+end $$;
+
+create or replace function public.teacher_reviews() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(private.review_json(r) || jsonb_build_object('name', m.name,
+             'teacher', substring(m.memo from '담당\s*([^\s·,]+)'), 'mine', private.teaches(t, m.id))
+           order by r.audition_date desc, r.id desc)
+    from (select * from public.audition_reviews order by audition_date desc, id desc limit 300) r
+    join public.members m on m.id = r.member_id), '[]'::jsonb));
+end $$;
+
+create or replace function public.admin_reviews() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(private.review_json(r) || jsonb_build_object('member', m.id, 'name', m.name,
+             'teacher', substring(m.memo from '담당\s*([^\s·,]+)'))
+           order by r.audition_date desc, r.id desc)
+    from public.audition_reviews r join public.members m on m.id = r.member_id), '[]'::jsonb));
+end $$;

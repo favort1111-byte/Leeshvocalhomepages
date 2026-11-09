@@ -375,3 +375,31 @@
 .lp-view__del{border-color:#F28B82;color:#F28B82;}
 .lp-view__count{color:#fff;font-size:14px;min-width:56px;text-align:center;}
 .lnote .lp{background:#fff;}
+
+/* 오디션 후기 (내 폴더 · 선생님 화면 · 관리자, 2026-11-09) */
+.rv__head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 6px;}
+.rv__head b{font-size:15px;margin-right:4px;}
+.rv__tag{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid rgba(110,59,40,.35);font-size:12.5px;color:#6E3B28;background:#fff;}
+.rv__result{background:#FFE45C;border-color:#E3C21C;color:#3a2a00;}
+.lnote__teacher.rv__result{background:#FFE45C;}
+.rv__label{margin:10px 0 2px;font-size:12.5px;font-weight:700;color:#8A6A55;}
+.rv__text{margin:0;white-space:pre-wrap;line-height:1.6;}
+.rv .lnote__did{white-space:pre-wrap;}
+.rv__tools{display:flex;gap:14px;margin:10px 0 0;}
+.rv__item+.rv__item{margin-top:12px;}
+.rv__new{margin:12px 0 16px;}
+.rv__new>summary{list-style:none;display:inline-flex;cursor:pointer;}
+.rv__new>summary::-webkit-details-marker{display:none;}
+.rv__new[open]>summary{margin-bottom:10px;}
+.rv__h{font-size:16px;margin:18px 0 8px;}
+.rv__form .sys-row{flex-wrap:wrap;}
+.rv__form .sys-row>.sys-field{flex:1 1 140px;min-width:0;}
+.rv__btns{gap:8px;}
+.tch__rvbox{margin:22px 0 8px;padding:12px 14px;border-radius:12px;background:#FFFDF6;border:1px solid #EADFC8;}
+.tch__rvsum{cursor:pointer;font-weight:700;font-size:16px;}
+.tch__rvbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;}
+.tch__rvbar .tch__find{flex:1 1 220px;margin:0;}
+.tch__rvmine{white-space:nowrap;font-size:14px;}
+.tch__rv{padding:12px 14px;margin:10px 0;border-radius:10px;background:#fff;border:1px solid #EADFC8;}
+.rv__info{margin:0 0 4px;font-size:13.5px;color:#6E5A4A;}
+.rv__fixed input[readonly]{background:#F3EFE6;color:#5A4A3A;}

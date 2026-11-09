@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 36; // bump when the demo defaults change
+  var VERSION = 37; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -177,6 +177,19 @@
         { id: 72, member_id: "S001", day: addDays(t, -3), minutes: 40, song: "Rain", did: "1절 감정선 녹음해서 들어봄", created_at: new Date().toISOString() },
         { id: 73, member_id: "S002", day: addDays(t, -1), minutes: 50, song: "입시곡 (자유곡)", did: "2절 브릿지 호흡 위치 바꿔서 5번", created_at: new Date().toISOString() },
         { id: 74, member_id: "S002", day: addDays(t, -2), minutes: 30, song: "입시곡 (자유곡)", did: "끝음 처리 녹음해서 들어봄", created_at: new Date().toISOString() }
+      ],
+      // 오디션 후기 (학생이 내 폴더에서 씀, 선생님 모두 · 관리자가 봄)
+      audition_reviews: [
+        { id: 91, member_id: "S001", audition_date: addDays(t, -4), company: "예시 엔터테인먼트", gender: "여", birth: "2009.03.15",
+          song_vocal: "태연 - Rain (1절 + 후렴)", song_dance: null,
+          asked: "자기소개 해보세요 / 다른 곡 한 소절 더 해볼 수 있어요? / 연습생 경험 있어요?",
+          tip: "대기가 40분 넘게 길어요. 물 꼭 챙기기! 첫 음은 잘 잡았는데 긴장해서 후렴 호흡이 모자랐어요.",
+          process: "번호표 → 5명씩 입장 → 자기소개 30초 → 노래 1분. 심사위원 2명, 분위기 편했어요.", note: "다음 주에 2차 연락 준다고 했어요.",
+          created_at: new Date(Date.now() - 86400000 * 4).toISOString(), updated_at: new Date(Date.now() - 86400000 * 4).toISOString() },
+        { id: 92, member_id: "S002", audition_date: addDays(t, -12), company: "예시 뮤직", gender: "남", birth: "2008.11.02",
+          song_vocal: "아이유 - 밤편지", song_dance: "르세라핌 - ANTIFRAGILE", asked: "춤 출 수 있어요? / 고음 부분만 한 번 더",
+          tip: "MR은 USB랑 휴대폰 둘 다 챙기기", process: "3명씩 입장, 무반주 30초 후 MR, 마지막에 춤 20초", note: null,
+          created_at: new Date(Date.now() - 86400000 * 12).toISOString(), updated_at: new Date(Date.now() - 86400000 * 10).toISOString() }
       ],
       // 노래 추천: a made-up analysis in the same shape as the director's sheet
       song_recs: [
@@ -588,6 +601,52 @@
       save();
       return { ok: true };
     },
+    member_reviews: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var me = db.members.filter(function (x) { return x.id === who.id; })[0] || {};
+      return { ok: true, name: me.name, teacher: ((me.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null,
+        items: (db.audition_reviews || []).filter(function (r) { return r.member_id === who.id; }).sort(rvSort).map(rvJson) };
+    },
+    member_review_save: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var d = a.p_data || {}, n = nowKst(), ago = diffDays(d.date, n.today);
+      if (isNaN(ago) || ago < 0 || ago > 730) return fail("오디션 날짜는 오늘부터 2년 전까지로 골라주세요.");
+      if (["남", "여"].indexOf(d.gender) < 0) return fail("성별을 골라주세요.");
+      if (!/\d{2}/.test(d.birth || "")) return fail("생년월일을 적어주세요. 예) 2009.03.15");
+      if (!String(d.company || "").trim()) return fail("기획사 이름을 적어주세요.");
+      if (!["songVocal", "songDance", "asked", "tip", "process", "note"].some(function (k) { return String(d[k] || "").trim(); })) return fail("준비한 곡이나 후기를 하나 이상 적어주세요.");
+      db.audition_reviews = db.audition_reviews || [];
+      var row = a.p_review ? db.audition_reviews.filter(function (r) { return r.id === a.p_review && r.member_id === who.id; })[0] : null;
+      if (a.p_review && !row) return fail("후기를 찾을 수 없어요.");
+      if (!row) { row = { id: ++db.next, member_id: who.id, created_at: new Date().toISOString() }; db.audition_reviews.push(row); }
+      Object.assign(row, { audition_date: d.date, company: String(d.company).trim(), gender: d.gender, birth: d.birth, song_vocal: d.songVocal || null, song_dance: d.songDance || null,
+        asked: d.asked || null, tip: d.tip || null, process: d.process || null, note: d.note || null, updated_at: new Date().toISOString() });
+      save();
+      return { ok: true, id: row.id, "new": !a.p_review };
+    },
+    member_review_delete: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      db.audition_reviews = (db.audition_reviews || []).filter(function (r) { return !(r.id === a.p_review && r.member_id === who.id); });
+      save();
+      return { ok: true };
+    },
+    teacher_reviews: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
+      return { ok: true, items: (db.audition_reviews || []).slice().sort(rvSort).map(function (r) {
+        var m = db.members.filter(function (x) { return x.id === r.member_id; })[0] || {};
+        var o = rvJson(r); o.name = m.name; o.teacher = ((m.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null; o.mine = teaches(t, r.member_id); return o;
+      }) };
+    },
+    admin_reviews: function () {
+      return { ok: true, items: (db.audition_reviews || []).slice().sort(rvSort).map(function (r) {
+        var m = db.members.filter(function (x) { return x.id === r.member_id; })[0] || {};
+        var o = rvJson(r); o.member = r.member_id; o.name = m.name; o.teacher = ((m.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null; return o;
+      }) };
+    },
     member_song_request: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
@@ -981,6 +1040,8 @@
     is_admin: function () { return true; }
   };
 
+  function rvSort(x, y) { return x.audition_date < y.audition_date ? 1 : x.audition_date > y.audition_date ? -1 : y.id - x.id; }
+  function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, gender: r.gender, birth: r.birth, songVocal: r.song_vocal, songDance: r.song_dance, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
   function myTeacher(uid) { return uid ? db.teachers.filter(function (x) { return x.kakao_user === uid && x.active; })[0] || null : null; }
   function teaches(t, mid) {
     var m = db.members.filter(function (x) { return x.id === mid; })[0];

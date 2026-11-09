@@ -41,7 +41,7 @@
 
   var sign = LeeshSignIn.mount(box, {
     title: "내 폴더", titleClass: "book__title",
-    lede: "수강생은 내 예약, 학원 일정, 월말평가, " + ((window.LEESH || {}).songRecs === false ? "영상 추천" : "노래·영상 추천") + ", 레퍼토리, 연습 일지, 제휴 업체 신청을 여기서 해요.", ledeClass: "book__lede",
+    lede: "수강생은 내 예약, 학원 일정, 월말평가, " + ((window.LEESH || {}).songRecs === false ? "영상 추천" : "노래·영상 추천") + ", 레퍼토리, 연습 일지, 오디션 후기, 제휴 업체 신청을 여기서 해요.", ledeClass: "book__lede",
     onSignedIn: function (res, w) { who = w; load(); }
   });
 
@@ -85,6 +85,7 @@
       open.hidden = false;
       renderSuggest();
       loadMsgs();
+      loadReviews();
       return LeeshAPI.rpc("member_partners", { p_id: who.id, p_pin: who.key }).then(function (p) { if (p.ok) renderPartners(p); });
     });
   }
@@ -1009,6 +1010,155 @@
       c.appendChild(del);
       c.appendChild(n2);
       box.appendChild(c);
+    });
+  }
+
+  /* 오디션 후기 (원장님 2026-11-09 "작성은 학생이 하고 보는 건 선생님들이랑 관리자만"): 내가 쓴 것만 보이고 고치기 · 지우기.
+     선생님 모두 · 관리자가 봐요. 다른 학생 후기 · 학부모 화면에는 안 보여요. 서버 member_reviews / member_review_save / member_review_delete. */
+  // 원장님이 정한 양식 순서 (2026-11-09): 이름 · 성별 · 생년월일 · 담당쌤 · 기획사명 · 오디션 일자 · 준비한 곡(보컬곡 / 댄스곡) ·
+  // 질문 리스트 · 나만의 꿀팁 / 나의 후기 · 진행 순서 / 상황 설명 · 특이사항. 이름 · 담당쌤은 명단에서 저절로.
+  var RV_TEXT = [
+    ["asked", "질문 리스트", "예) 자기소개 해보세요 / 다른 곡 한 소절 더 / 춤 출 수 있어요? / 연습생 경험 있어요?", 2000, 4],
+    ["tip", "나만의 꿀팁 · 나의 후기", "예) 대기가 길어서 물 꼭 챙기기. 첫 음은 잘 잡았는데 긴장해서 후렴 호흡이 모자랐어요", 2000, 4],
+    ["process", "진행 순서 · 상황 설명", "예) 번호표 → 5명씩 입장 → 자기소개 30초 → 노래 1분 → 춤. 심사위원 2명, 분위기 편했어요", 2000, 4],
+    ["note", "특이사항", "예) 현장에서 영상 촬영함 / 다음 주에 2차 연락 준다고 함", 1000, 2]
+  ];
+  var rvMeta = {};
+  var reviews = [];
+  function loadReviews() {
+    return LeeshAPI.rpc("member_reviews", { p_id: who.id, p_pin: who.key }).then(function (res) {
+      if (!res.ok) return;
+      reviews = res.items || [];
+      rvMeta = { name: res.name || "", teacher: res.teacher || "" };
+      renderReviews();
+    });
+  }
+  function rvView(r) {
+    var c = el("article", "lnote rv");
+    var head = el("p", "lnote__date", dayLabel(r.date) + " · " + r.company);
+    c.appendChild(head);
+    var info = [r.gender, r.birth].filter(Boolean).join(" · ");
+    if (info) c.appendChild(el("p", "rv__info", info));
+    if (r.songVocal || r.songDance) {
+      c.appendChild(el("p", "rv__label", "준비한 곡"));
+      if (r.songVocal) c.appendChild(el("p", "lnote__did", "🎤 보컬곡 · " + r.songVocal));
+      if (r.songDance) c.appendChild(el("p", "lnote__did", "💃 댄스곡 · " + r.songDance));
+    }
+    RV_TEXT.forEach(function (f) {
+      if (!r[f[0]]) return;
+      c.appendChild(el("p", "rv__label", f[1]));
+      c.appendChild(el("p", "lnote__did", r[f[0]]));
+    });
+    return c;
+  }
+  function rvForm(r, done) {
+    var f = el("form", "fold__form sys rv__form");
+    var today = todayKst(), last = reviews[0] || {};
+    var fixed = el("div", "sys-row rv__fixed");
+    var nm = el("input"); nm.value = rvMeta.name; nm.readOnly = true;
+    var tc = el("input"); tc.value = rvMeta.teacher ? rvMeta.teacher + " 선생님" : "-"; tc.readOnly = true;
+    fixed.appendChild(field2("이름", nm));
+    fixed.appendChild(field2("담당쌤", tc));
+    f.appendChild(fixed);
+    var gender = selectOf("gender", ["여", "남"], r ? r.gender : last.gender, "골라주세요");
+    gender.required = true;
+    var birth = el("input"); birth.maxLength = 20; birth.required = true; birth.placeholder = "예) 2009.03.15"; birth.value = r ? (r.birth || "") : (last.birth || "");
+    var row1 = el("div", "sys-row");
+    row1.appendChild(field2("성별", gender));
+    row1.appendChild(field2("생년월일", birth));
+    f.appendChild(row1);
+    var co = el("input"); co.maxLength = 60; co.required = true; co.placeholder = "예) SM 엔터테인먼트"; co.value = r ? r.company : "";
+    var day = el("input"); day.type = "date"; day.value = r ? r.date : today; day.max = today; day.min = addDays(today, -730); day.required = true;
+    var row2 = el("div", "sys-row");
+    row2.appendChild(field2("기획사명", co));
+    row2.appendChild(field2("오디션 일자", day));
+    f.appendChild(row2);
+    var sv = el("input"); sv.maxLength = 300; sv.placeholder = "예) 아이유 - 밤편지 (1절 + 후렴)"; sv.value = r && r.songVocal || "";
+    var sd = el("input"); sd.maxLength = 300; sd.placeholder = "예) 르세라핌 - ANTIFRAGILE (없으면 비워 두기)"; sd.value = r && r.songDance || "";
+    var row3 = el("div", "sys-row");
+    row3.appendChild(field2("준비한 곡 · 보컬곡", sv));
+    row3.appendChild(field2("준비한 곡 · 댄스곡", sd));
+    f.appendChild(row3);
+    var boxes = {};
+    RV_TEXT.forEach(function (x) {
+      var ta = el("textarea"); ta.rows = x[4]; ta.maxLength = x[3]; ta.placeholder = x[2]; ta.value = r && r[x[0]] || "";
+      boxes[x[0]] = ta;
+      f.appendChild(field2(x[1], ta));
+    });
+    f.appendChild(el("p", "sys-note", "선생님들과 학원만 봐요. 다른 학생에게는 보이지 않아요. 결과가 나오면 다시 열어서 특이사항에 적어주세요."));
+    var btns = el("div", "sys-row rv__btns");
+    var save = el("button", "sys-btn", r ? "고친 내용 저장" : "후기 보내기");
+    save.type = "submit";
+    btns.appendChild(save);
+    if (done) {
+      var cancel = el("button", "sys-btn sys-btn--ghost", "닫기");
+      cancel.type = "button";
+      cancel.addEventListener("click", function () { done(false); });
+      btns.appendChild(cancel);
+    }
+    f.appendChild(btns);
+    var note = el("p", "sys-msg");
+    f.appendChild(note);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var data = { gender: gender.value, birth: birth.value, company: co.value, date: day.value, songVocal: sv.value, songDance: sd.value };
+      RV_TEXT.forEach(function (x) { data[x[0]] = boxes[x[0]].value; });
+      save.disabled = true;
+      note.textContent = "보내는 중…"; note.className = "sys-msg";
+      LeeshAPI.rpc("member_review_save", { p_id: who.id, p_pin: who.key, p_review: r ? r.id : null, p_data: data }).then(function (res) {
+        save.disabled = false;
+        if (!res.ok) { note.textContent = res.error; note.className = "sys-msg sys-msg--error"; return; }
+        loadReviews().then(function () {
+          var m = scene.querySelector("#myReviews .rv__saved");
+          if (m) m.textContent = r ? "고친 내용을 저장했어요." : "후기를 보냈어요. 고마워요!";
+        });
+      });
+    });
+    return f;
+  }
+  function renderReviews() {
+    var box = scene.querySelector("#myReviews");
+    if (!box) return;
+    box.textContent = "";
+    var sum = el("div", "fold__sum");
+    sum.appendChild(el("p", null, "오디션을 보고 오면 기억이 생생할 때 적어주세요. 어떤 곡을 불렀는지, 무엇을 물어봤는지가 다음 수업과 다른 친구들 준비에 큰 도움이 돼요."));
+    sum.appendChild(el("p", "sys-note", "🔒 선생님들과 학원만 봐요. 다른 학생 · 학부모에게는 보이지 않아요."));
+    box.appendChild(sum);
+    box.appendChild(el("p", "sys-msg sys-msg--ok rv__saved"));
+    var newWrap = el("details", "rv__new");
+    newWrap.open = !reviews.length;
+    newWrap.appendChild(el("summary", "sys-btn rv__newbtn", "✏️ 새 오디션 후기 쓰기"));
+    newWrap.appendChild(rvForm(null, null));
+    box.appendChild(newWrap);
+    if (!reviews.length) { box.appendChild(el("p", "book__empty", "아직 쓴 후기가 없어요.")); return; }
+    box.appendChild(el("h3", "rv__h", "내가 쓴 후기 " + reviews.length + "개"));
+    reviews.forEach(function (r) {
+      var wrap = el("div", "rv__item");
+      var card = rvView(r);
+      var tools = el("p", "rv__tools");
+      var edit = el("button", "sys-link", "고치기");
+      edit.type = "button";
+      var del = el("button", "sys-link fold__del", "지우기");
+      del.type = "button";
+      var n2 = el("p", "sys-msg");
+      edit.addEventListener("click", function () {
+        var f = rvForm(r, function () { f.replaceWith(card); tools.hidden = false; });
+        card.replaceWith(f);
+        tools.hidden = true;
+      });
+      del.addEventListener("click", function () {
+        if (del.getAttribute("data-armed") !== "1") { del.setAttribute("data-armed", "1"); del.textContent = "한 번 더 누르면 지워요"; return; }
+        LeeshAPI.rpc("member_review_delete", { p_id: who.id, p_pin: who.key, p_review: r.id }).then(function (res) {
+          if (!res.ok) { n2.textContent = res.error; n2.className = "sys-msg sys-msg--error"; return; }
+          loadReviews();
+        });
+      });
+      tools.appendChild(edit);
+      tools.appendChild(del);
+      card.appendChild(tools);
+      card.appendChild(n2);
+      wrap.appendChild(card);
+      box.appendChild(wrap);
     });
   }
 
