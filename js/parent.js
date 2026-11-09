@@ -51,6 +51,7 @@
     k.addEventListener("click", function () { k.disabled = true; LeeshAPI.kakao.start(); });
     app.appendChild(k);
     app.appendChild(outButton());
+    app.appendChild(LeeshAPI.kakao.publicBox());
     var m = el("p", "sys-msg");
     app.appendChild(m);
     if (LeeshAPI.kakao.lastError()) say(m, "카카오 로그인을 마치지 못했어요. 다시 눌러주세요.", "error");

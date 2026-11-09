@@ -74,18 +74,60 @@
     student the Kakao account is gets decided by the director (link_requests → admin_kakao_decide).
   */
   var KAKAO = "leesh_kakao", AFTER = "leesh_after_kakao", KAKAO_ERR = "leesh_kakao_error";
+  /*
+    공용 컴퓨터 (원장님 2026-11-09 "공용 컴퓨터면 다른 사람이 로그인하면 그 친구가 뜨는 거 아냐?"):
+    이 기기에 표시해 두면 (localStorage leesh_public) — 로그인할 때마다 카카오가 아이디 · 비밀번호를 다시 묻고
+    (prompt=login), 로그인은 이 창에만 (sessionStorage, 브라우저를 닫으면 끝), 30분 동안 아무것도 안 하면 저절로 로그아웃.
+    표시는 그 컴퓨터에 남아서 다음 사람도 공용으로 시작해요.
+  */
+  var PUB = "leesh_public", PUB_IDLE = "leesh_public_active", IDLE_MIN = 30;
+  function isPublic() { try { return localStorage.getItem(PUB) === "1"; } catch (e) { return false; } }
+  function kstore() { return isPublic() ? sessionStorage : localStorage; }
   var refreshing = null;
   var kakao = {
     available: function () { return enabled() && !!base; },
-    session: function () { try { return JSON.parse(localStorage.getItem(KAKAO) || "null"); } catch (e) { return null; } },
-    save: function (s) { try { if (s) localStorage.setItem(KAKAO, JSON.stringify(s)); else localStorage.removeItem(KAKAO); } catch (e) { /* private mode */ } },
+    session: function () { try { return JSON.parse(kstore().getItem(KAKAO) || "null"); } catch (e) { return null; } },
+    save: function (s) {
+      try {
+        var st = kstore(), other = st === localStorage ? sessionStorage : localStorage;
+        other.removeItem(KAKAO);
+        if (s) st.setItem(KAKAO, JSON.stringify(s)); else st.removeItem(KAKAO);
+      } catch (e) { /* private mode */ }
+    },
+    isPublic: isPublic,
+    /** 공용 컴퓨터 표시 켜기 · 끄기. 켜면 이 기기에 남아 있던 로그인은 지워요. */
+    setPublic: function (on) {
+      try {
+        if (on) { localStorage.setItem(PUB, "1"); localStorage.removeItem(KAKAO); localStorage.removeItem(WHO); }
+        else { localStorage.removeItem(PUB); sessionStorage.removeItem(PUB_IDLE); }
+      } catch (e) { /* ignore */ }
+    },
+    /** 로그인 화면에 넣는 "공용 컴퓨터예요" 칸 (학생 · 선생님 · 학부모 로그인 모두) */
+    publicBox: function () {
+      var l = document.createElement("label");
+      l.className = "sys-keep signin__public";
+      var c = document.createElement("input");
+      c.type = "checkbox";
+      c.checked = isPublic();
+      var t = document.createElement("span");
+      function text() {
+        t.textContent = c.checked
+          ? "🖥 공용 컴퓨터예요 — 이 컴퓨터는 로그인할 때마다 카카오 아이디 · 비밀번호를 물어요. 창을 닫거나 30분 동안 아무것도 안 하면 저절로 로그아웃돼요. 브라우저가 비밀번호를 저장할지 물으면 \u201C안 함\u201D을 눌러주세요."
+          : "🖥 공용 컴퓨터예요 (학원 · 학교 · PC방 컴퓨터처럼 여러 사람이 쓰면 체크)";
+      }
+      text();
+      c.addEventListener("change", function () { kakao.setPublic(c.checked); text(); });
+      l.appendChild(c);
+      l.appendChild(t);
+      return l;
+    },
     /**
      * again = true: "다른 카카오 계정으로 로그인" — 카카오가 아이디 · 비밀번호를 다시 물어요 (prompt=login).
      * 보통은 이 기기의 카카오 로그인을 그대로 써서 한 번에 들어가요 (원장님 2026-11-04 "지금처럼 + 다른 사람용 칸").
      */
     start: function (again) {
       try { sessionStorage.setItem(AFTER, location.hash); } catch (e) { /* ignore */ }
-      location.href = base + "/auth/v1/authorize?provider=kakao" + (again ? "&prompt=login" : "") + "&redirect_to=" +
+      location.href = base + "/auth/v1/authorize?provider=kakao" + (again || isPublic() ? "&prompt=login" : "") + "&redirect_to=" +
         encodeURIComponent(location.origin + location.pathname + location.search);
     },
     /** A fresh access token for the Kakao session, or null when signed out. */
@@ -156,7 +198,7 @@
       try {
         localStorage.removeItem(WHO);
         sessionStorage.removeItem(WHO);
-        (keep ? localStorage : sessionStorage).setItem(WHO, JSON.stringify({ id: w.id, key: w.key }));
+        (keep && !isPublic() ? localStorage : sessionStorage).setItem(WHO, JSON.stringify({ id: w.id, key: w.key }));
       } catch (e) { /* private mode: signed in for this page only */ }
     },
     kept: function () { try { return !!localStorage.getItem(WHO); } catch (e) { return false; } },
@@ -240,5 +282,51 @@
     }
   };
 
+  /*
+    공용 컴퓨터에서 로그인한 동안: 아래 작은 띠 "공용 컴퓨터 · 다 쓰면 로그아웃" + 30분 동안 아무것도 안 하면 로그아웃.
+  */
+  function publicGuard() {
+    if (!isPublic()) return;
+    function signedIn() { return !!kakao.session() || !!who.get(); }
+    function outNow() {
+      who.clear();
+      kakao.signOut();
+      try { sessionStorage.removeItem(PUB_IDLE); } catch (e) { /* ignore */ }
+      location.reload();
+    }
+    function touch() { try { sessionStorage.setItem(PUB_IDLE, String(Date.now())); } catch (e) { /* ignore */ } }
+    function idle() {
+      var t = 0;
+      try { t = Number(sessionStorage.getItem(PUB_IDLE)) || 0; } catch (e) { /* ignore */ }
+      if (signedIn() && t && Date.now() - t > IDLE_MIN * 60000) outNow();
+    }
+    var last = 0;
+    ["pointerdown", "keydown", "wheel", "touchstart", "input"].forEach(function (ev) {
+      document.addEventListener(ev, function () { var n = Date.now(); if (n - last > 5000) { last = n; touch(); } }, true);
+    });
+    if (signedIn()) { idle(); touch(); }
+    setInterval(idle, 30000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) idle(); });
+    function bar() {
+      var had = document.querySelector(".pub-bar");
+      if (!signedIn()) { if (had) had.remove(); return; }
+      if (had) return;
+      var b = document.createElement("div");
+      b.className = "pub-bar";
+      b.setAttribute("role", "status");
+      var s = document.createElement("span");
+      s.textContent = "🖥 공용 컴퓨터 · 다 쓰면 꼭 로그아웃";
+      var o = document.createElement("button");
+      o.type = "button";
+      o.textContent = "로그아웃";
+      o.addEventListener("click", function () { o.disabled = true; outNow(); });
+      b.appendChild(s);
+      b.appendChild(o);
+      document.body.appendChild(b);
+    }
+    if (document.body) bar(); else document.addEventListener("DOMContentLoaded", bar);
+    setInterval(bar, 3000); // 로그인한 뒤에도 (카카오에서 돌아온 다음 · 체험 모드)
+  }
   window.LeeshAPI = { enabled: enabled, rpc: rpc, request: request, headers: headers, who: who, kakao: kakao, storage: storage, NETWORK_ERROR: NETWORK_ERROR };
+  try { publicGuard(); } catch (e) { /* never break the page */ }
 })();

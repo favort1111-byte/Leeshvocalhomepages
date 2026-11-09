@@ -42,6 +42,7 @@
     k.addEventListener("click", function () { k.disabled = true; LeeshAPI.kakao.start(); });
     app.appendChild(k);
     app.appendChild(outButton()); // 다른 선생님이 이 기기로 들어갈 때
+    app.appendChild(LeeshAPI.kakao.publicBox()); // 레슨실 · 학원 공용 컴퓨터
     var m = el("p", "sys-msg");
     app.appendChild(m);
     if (LeeshAPI.kakao.lastError()) say(m, "카카오 로그인을 마치지 못했어요. 다시 눌러주세요.", "error");
