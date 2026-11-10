@@ -734,9 +734,12 @@ def post_label(p):
         return f"<b>{esc(head)}</b> {esc(rest)}"
     return esc(t)
 
+# 학원 내방 오디션 글은 제목 앞에 🏫 (원장님 2026-11-10 "글 제일 앞에 이모티콘")
+VISIT_EMOJI = '<span class="news__emoji" aria-hidden="true">🏫</span>'
+
 def news_card(p):
     return (f'        <li><a class="news__card" href="post.html?id={p["id"]}">'
-            f'<time datetime="{p["date"]}">{p["date"].replace("-", ".")}</time><span class="news__what">{post_label(p)}</span>'
+            f'<time datetime="{p["date"]}">{p["date"].replace("-", ".")}</time><span class="news__what">{VISIT_EMOJI if p["kind"] == "visit" else ""}{post_label(p)}</span>'
             f'<span class="news__go" aria-hidden="true">→</span></a></li>\n')
 
 def news_list(kind, first):

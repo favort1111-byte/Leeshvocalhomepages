@@ -38,6 +38,9 @@
     return p.kind !== "합격" && !!p.event_date && p.event_date < today;
   }
 
+  // 학원 내방 오디션은 제목 앞에 🏫 (원장님 2026-11-10)
+  function visitMark() { var m = el("span", "news__emoji", "🏫"); m.setAttribute("aria-hidden", "true"); return m; }
+
   function card(p, today, byDeadline) {
     var li = el("li"), box = el("details", "news__card news__card--own" + (byDeadline && isPast(p, today) ? " news__card--past" : ""));
     var sum = el("summary");
@@ -47,6 +50,7 @@
     if (byDeadline && p.deadline) tm.appendChild(el("small", "news__due", " 마감"));
     sum.appendChild(tm);
     var what = el("span", "news__what");
+    if (p.kind === "내방") what.appendChild(visitMark());
     if (p.company) { what.appendChild(el("b", null, p.company)); what.appendChild(document.createTextNode(" ")); }
     what.appendChild(document.createTextNode(p.title));
     sum.appendChild(what);
@@ -119,7 +123,8 @@
     t.setAttribute("datetime", day);
     a.appendChild(t);
     var what = el("span", "news__what");
-    what.textContent = igTitle(p.title || p.caption);
+    if (p.kind === "내방") what.appendChild(visitMark());
+    what.appendChild(document.createTextNode(igTitle(p.title || p.caption)));
     a.appendChild(what);
     var go = el("span", "news__go", "→");
     go.setAttribute("aria-hidden", "true");

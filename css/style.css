@@ -784,6 +784,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .news__card time{font-size:13px;color:#8A7564;font-variant-numeric:tabular-nums;}
 .news__what{font-size:15px;line-height:1.45;}
 .news__what b{font-weight:500;}
+.news__emoji{margin-right:5px;font-style:normal;}
 .news__apply{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:4px 0 12px;}
 .news__applybtn{display:inline-flex;align-items:center;height:42px;padding:0 20px;border-radius:999px;background:var(--brown);border:1px solid var(--brown);color:#FBF3E4 !important;text-decoration:none;font-size:15px;font-weight:500;}
 .news__applybtn:hover{background:#5A2F20;}
