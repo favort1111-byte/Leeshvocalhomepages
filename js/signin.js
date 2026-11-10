@@ -62,7 +62,7 @@
         box.appendChild(el("p", "sys-note signin__hint", "처음이면 카카오로 로그인한 뒤 이름을 알려주세요. 실장님이 확인하면 바로 쓸 수 있어요."));
         // 카카오는 만 14세 미만 본인 계정의 로그인을 막아요 (2026-11-04, 만 13세 학생이 로그인하지 못하고 돌아감)
         box.appendChild(el("p", "sys-note signin__kid", "만 14세 미만 학생은 카카오 정책 때문에 본인 계정으로 로그인이 안 돼요. 부모님 카카오 계정으로 로그인한 뒤, 학생 이름을 적어주세요."));
-        box.appendChild(parentLink());
+        if (cfg.parentLinks) box.appendChild(parentLink()); // 원장님 2026-11-10: 학부모 화면은 알리지 않기
         var how = el("a", "signin__policy", "홈페이지 사용법 보기");
         how.href = "guide.html";
         box.appendChild(how);
@@ -84,7 +84,7 @@
       box.appendChild(el("p", "sys-note", req && req.status === "거절"
         ? "이름이나 선생님이 맞지 않았을 수 있어요. 다시 보내거나 학원에 문의해주세요."
         : "학생 이름과 담당 선생님을 알려주세요. 실장님이 확인하면 이 카카오 계정으로 바로 쓸 수 있어요."));
-      if (!(req && req.status === "거절")) box.appendChild(parentLink());
+      if (!(req && req.status === "거절") && cfg.parentLinks) box.appendChild(parentLink());
       var f = el("form", "signin__form");
       var row = el("div", "sys-row");
       row.appendChild(input("name", "이름", { autocomplete: "name", maxlength: "30", required: "" }));

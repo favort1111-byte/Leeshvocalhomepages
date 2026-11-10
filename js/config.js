@@ -20,6 +20,9 @@ window.LEESH = {
   // 학생 내 폴더에 노래 추천 보이기. 원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김 (서버도 settings.song_recs = false라 새 신청을 막음).
   // 켤 때는 둘 다: songRecs: true + update public.settings set song_recs = true;
   songRecs: false,
+  // 학생 로그인 화면의 "학부모님이신가요? → 학부모 화면" 링크. 원장님 2026-11-10: 학부모 화면은 그대로 두되 알리지 않기
+  // (부모님이 물어볼 때만 주소 parent.html 알려 주기). 다시 알릴 때는 true + tools/guide.py SHOW_PARENT = True.
+  parentLinks: false,
   // 레슨 일지 칸 (선생님들이 쓰던 구글시트 그대로): [칸, 이름, 안내, 최대 글자, 줄 수].
   lessonFields: [
     ["did", "오늘 수업", "예) 호흡 · 발성 연습, ○○ 1절 디테일", 800, 3],

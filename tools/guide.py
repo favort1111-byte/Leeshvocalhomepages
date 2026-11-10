@@ -61,6 +61,15 @@ FAQ = [
 ]
 
 
+# 학부모 화면 안내 (6번 · 자주 묻는 질문). 원장님 2026-11-10: 학부모 화면은 그대로 두되 알리지 않기 → False.
+# 다시 알릴 때는 True + js/config.js parentLinks: true.
+SHOW_PARENT = False
+if not SHOW_PARENT:
+    STEPS = [s for s in STEPS if s[1] != "학부모님"]
+    STEPS = [(str(i + 1),) + s[1:] for i, s in enumerate(STEPS)]
+    FAQ = [f for f in FAQ if "parent.html" not in f[1]]
+
+
 def body():
     steps = "".join(
         f'''    <section class="guide__step">
