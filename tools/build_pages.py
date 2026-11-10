@@ -675,7 +675,8 @@ GAMES_BODY = {
 def game_cart(gid, emo, name, desc, tag):
     return (f'      <li><button type="button" class="arcade__cart" data-game="{gid}" aria-pressed="false">'
             f'<span class="arcade__emoji" aria-hidden="true">{emo}</span><b>{name}</b><span>{desc}</span>'
-            f'<small class="arcade__tag">{tag}</small><small class="arcade__best" data-best="{gid}"></small></button></li>')
+            f'<small class="arcade__tag">{tag}</small><small class="arcade__best" data-best="{gid}"></small>'
+            f'<small class="arcade__top" data-top="{gid}" hidden></small></button></li>')
 games_menu = "\n".join(
     f'    <h2 class="arcade__group">{grp}</h2>\n    <ul class="arcade__menu">\n'
     + "\n".join(game_cart(*g[:5]) for g in GAME_LIST if g[5] == gi) + "\n    </ul>"
@@ -689,18 +690,20 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + '    <header class="arcade__head">\n'
               + '      <p class="arcade__kicker">mini games</p>\n'
               + '      <h1>보컬 오락실</h1>\n'
-              + '      <p>귀 · 목소리 워밍업 미니게임. 기록은 이 기기에만 남아요.</p>\n'
+              + '      <p>귀 · 목소리 워밍업 미니게임. 최고 기록은 이 기기에 남아요.</p>\n'
               + '      <p class="arcade__who" id="membersWho"></p>\n'
               + '    </header>\n'
               # 수강생 전용 (원장님 2026-10-29): js/gate.js shows the games after a Kakao sign-in
               + '    <section class="sys sys-card arcade__gate" id="membersGate" aria-live="polite"></section>\n'
               + '    <div data-members>\n'
+              # 보컬오락실 이벤트 (원장님 2026-11-10): 기간 · 게임별 1등(이*희) · 내 순위, js/gameevent.js가 채움
+              + '    <section class="arcade__event" id="arcadeEvent" hidden aria-live="polite"></section>\n'
               + games_menu + "\n"
               + "".join(game_window(g[0], g[2], GAMES_BODY.get(g[0], '        <div class="g2" data-g2></div>\n')) for g in GAME_LIST)
               + '    </div>\n'
               + '    <p class="arcade__more">실력은 레슨에서 → <a href="about.html#steps">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
               + "  </div>\n"
-              + "</main>\n" + foot("signin", "gate", "games", "games2"))
+              + "</main>\n" + foot("signin", "gate", "gameevent", "games", "games2"))
 
 # ---------- AUDITION NEWS · RESULTS · TIPS: the old blog's posts, moved into the site ----------
 # tools/import_blog.py → data/blog/index.json (lists) + data/blog/posts/<id>.json (post.html shows one).

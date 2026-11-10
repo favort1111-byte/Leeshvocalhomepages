@@ -249,6 +249,26 @@
     try { db = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { db = null; }
     if (!db || db.version !== VERSION) { db = seed(); save(); } // new defaults replace old demo data
   }
+  // 보컬오락실 이벤트 (체험)
+  function maskName(n) { n = String(n || "").trim(); return n.length <= 1 ? n || "?" : n.length === 2 ? n[0] + "*" : n[0] + "*".repeat(n.length - 2) + n[n.length - 1]; }
+  function demoGameEvent() {
+    var d = function (days) { return new Date(Date.now() + days * 86400000).toISOString(); };
+    return { id: "demo", title: "보컬오락실 이벤트", starts: d(-1), ends: d(13), open: true, games: ["solfa", "simon", "fly"] };
+  }
+  function demoGameRows(g) {
+    var ago = function (h) { return new Date(Date.now() - h * 3600000).toISOString(); };
+    var fake = { solfa: [["이하늘", 14, 3], ["정다온", 11, 9]], simon: [["정다온", 9, 5], ["이하늘", 7, 20]], fly: [["이하늘", 23, 2]] }[g] || [];
+    var rows = fake.map(function (f, i) {
+      var m = db.members.filter(function (x) { return x.name === f[0]; })[0];
+      return { id: m ? m.id : "S9" + i, name: f[0], score: f[1], at: ago(f[2]), plays: 4 + i };
+    });
+    (db.game_scores || []).forEach(function (r) {
+      if (r.game !== g) return;
+      var m = db.members.filter(function (x) { return x.id === r.member_id; })[0];
+      rows.push({ id: r.member_id, name: m ? m.name : r.member_id, score: r.score, at: r.at, plays: r.plays });
+    });
+    return rows.sort(function (x, y) { return y.score - x.score || (x.at < y.at ? -1 : 1); });
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();
 
@@ -666,6 +686,41 @@
       return { ok: true };
     },
     // 관리자 작업 기록 (체험 모드는 예시 몇 줄)
+    // 보컬오락실 이벤트 (체험): 늘 진행 중, 가짜 친구 점수
+    member_game_board: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var ev = demoGameEvent(), board = {};
+      ev.games.forEach(function (g) {
+        var rows = demoGameRows(g), mine = rows.filter(function (r) { return r.id === who.id; })[0];
+        board[g] = { top: rows[0] ? { name: maskName(rows[0].name), score: rows[0].score } : null,
+          mine: mine ? mine.score : null, rank: mine ? rows.indexOf(mine) + 1 : null, players: rows.length };
+      });
+      return { ok: true, event: ev, board: board };
+    },
+    member_game_score: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      db.game_scores = db.game_scores || [];
+      var row = db.game_scores.filter(function (r) { return r.member_id === who.id && r.game === a.p_game; })[0], best = false;
+      if (!row) { row = { member_id: who.id, game: a.p_game, score: a.p_score, at: new Date().toISOString(), plays: 0 }; db.game_scores.push(row); best = true; }
+      else if (a.p_score > row.score) { row.score = a.p_score; row.at = new Date().toISOString(); best = true; }
+      row.plays++;
+      save();
+      return { ok: true, event: true, best: best };
+    },
+    admin_game_board: function () {
+      var ev = demoGameEvent(), board = {}, ids = {};
+      ev.games.forEach(function (g) {
+        board[g] = demoGameRows(g).slice(0, 10).map(function (r) {
+          ids[r.id] = 1;
+          var m = db.members.filter(function (x) { return x.id === r.id; })[0];
+          return { id: r.id, name: r.name, teacher: m && /담당\s*(\S+)/.test(m.memo || "") ? (m.memo.match(/담당\s*(\S+)/) || [])[1] : null, score: r.score, at: r.at, plays: r.plays };
+        });
+      });
+      ev.players = Object.keys(ids).length;
+      return { ok: true, event: ev, board: board };
+    },
     admin_log: function () {
       var ago = function (m) { return new Date(Date.now() - m * 60000).toISOString(); };
       var items = [

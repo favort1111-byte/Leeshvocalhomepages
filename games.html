@@ -26,7 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=e3d49f90">
 <link rel="stylesheet" href="css/system.css?v=91b3edb7">
-<link rel="stylesheet" href="css/games.css?v=50b015f4">
+<link rel="stylesheet" href="css/games.css?v=da39c776">
 </head>
 <body>
 <main class="stage arcade-page">
@@ -43,38 +43,39 @@
     <header class="arcade__head">
       <p class="arcade__kicker">mini games</p>
       <h1>보컬 오락실</h1>
-      <p>귀 · 목소리 워밍업 미니게임. 기록은 이 기기에만 남아요.</p>
+      <p>귀 · 목소리 워밍업 미니게임. 최고 기록은 이 기기에 남아요.</p>
       <p class="arcade__who" id="membersWho"></p>
     </header>
     <section class="sys sys-card arcade__gate" id="membersGate" aria-live="polite"></section>
     <div data-members>
+    <section class="arcade__event" id="arcadeEvent" hidden aria-live="polite"></section>
     <h2 class="arcade__group">귀 게임</h2>
     <ul class="arcade__menu">
-      <li><button type="button" class="arcade__cart" data-game="pitch" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎹</span><b>음정 퀴즈</b><span>두 소리 중 더 높은 쪽은? 맞힐수록 어려워져요.</span><small class="arcade__tag">귀 훈련</small><small class="arcade__best" data-best="pitch"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="simon" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎼</span><b>멜로디 따라치기</b><span>건반이 들려준 멜로디를 순서대로. 맞힐 때마다 한 음씩 길어져요.</span><small class="arcade__tag">기억력 · 음감</small><small class="arcade__best" data-best="simon"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="solfa" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🔤</span><b>계이름 맞히기</b><span>'도'를 듣고, 다음 소리가 무슨 음인지 맞혀요.</span><small class="arcade__tag">상대 음감</small><small class="arcade__best" data-best="solfa"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="mood" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">☀️</span><b>밝은 소리 / 슬픈 소리</b><span>화음이 밝은 장조일까, 슬픈 단조일까?</span><small class="arcade__tag">화성 감각</small><small class="arcade__best" data-best="mood"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="meter" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">💃</span><b>몇 박자?</b><span>3박 · 4박부터 6/8 · 스윙 · 엇박 · 변박까지 5단계!</span><small class="arcade__tag">박자 감각</small><small class="arcade__best" data-best="meter"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="pitch" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎹</span><b>음정 퀴즈</b><span>두 소리 중 더 높은 쪽은? 맞힐수록 어려워져요.</span><small class="arcade__tag">귀 훈련</small><small class="arcade__best" data-best="pitch"></small><small class="arcade__top" data-top="pitch" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="simon" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎼</span><b>멜로디 따라치기</b><span>건반이 들려준 멜로디를 순서대로. 맞힐 때마다 한 음씩 길어져요.</span><small class="arcade__tag">기억력 · 음감</small><small class="arcade__best" data-best="simon"></small><small class="arcade__top" data-top="simon" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="solfa" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🔤</span><b>계이름 맞히기</b><span>'도'를 듣고, 다음 소리가 무슨 음인지 맞혀요.</span><small class="arcade__tag">상대 음감</small><small class="arcade__best" data-best="solfa"></small><small class="arcade__top" data-top="solfa" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="mood" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">☀️</span><b>밝은 소리 / 슬픈 소리</b><span>화음이 밝은 장조일까, 슬픈 단조일까?</span><small class="arcade__tag">화성 감각</small><small class="arcade__best" data-best="mood"></small><small class="arcade__top" data-top="mood" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="meter" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">💃</span><b>몇 박자?</b><span>3박 · 4박부터 6/8 · 스윙 · 엇박 · 변박까지 5단계!</span><small class="arcade__tag">박자 감각</small><small class="arcade__best" data-best="meter"></small><small class="arcade__top" data-top="meter" hidden></small></button></li>
     </ul>
     <h2 class="arcade__group">목소리 게임 🎤</h2>
     <ul class="arcade__menu">
-      <li><button type="button" class="arcade__cart" data-game="fly" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎤</span><b>목소리로 날아라</b><span>높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.</span><small class="arcade__tag">음정 조절</small><small class="arcade__best" data-best="fly"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="breath" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">💨</span><b>숨 참기 챌린지</b><span>한 음으로 '아~' 얼마나 길게 할 수 있을까?</span><small class="arcade__tag">호흡</small><small class="arcade__best" data-best="breath"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="target" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎯</span><b>음 맞추기 과녁</b><span>피아노 음을 따라 불러서 과녁 가운데에 2초!</span><small class="arcade__tag">음정 정확도</small><small class="arcade__best" data-best="target"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="stairs" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🪜</span><b>음계 계단 오르기</b><span>도레미로 한 칸씩. 어디까지 가나 = 내 음역대.</span><small class="arcade__tag">음역대</small><small class="arcade__best" data-best="stairs"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="siren" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">〰️</span><b>사이렌 따라 그리기</b><span>낮게→높게→낮게, 선을 목소리로 따라 그려요.</span><small class="arcade__tag">워밍업</small><small class="arcade__best" data-best="siren"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="cresc" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">📢</span><b>작게→크게</b><span>선을 따라 점점 크게, 다시 점점 작게.</span><small class="arcade__tag">강약 조절</small><small class="arcade__best" data-best="cresc"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="fly" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎤</span><b>목소리로 날아라</b><span>높은 소리는 위로, 낮은 소리는 아래로. 목소리로 새를 날려요.</span><small class="arcade__tag">음정 조절</small><small class="arcade__best" data-best="fly"></small><small class="arcade__top" data-top="fly" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="breath" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">💨</span><b>숨 참기 챌린지</b><span>한 음으로 '아~' 얼마나 길게 할 수 있을까?</span><small class="arcade__tag">호흡</small><small class="arcade__best" data-best="breath"></small><small class="arcade__top" data-top="breath" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="target" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎯</span><b>음 맞추기 과녁</b><span>피아노 음을 따라 불러서 과녁 가운데에 2초!</span><small class="arcade__tag">음정 정확도</small><small class="arcade__best" data-best="target"></small><small class="arcade__top" data-top="target" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="stairs" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🪜</span><b>음계 계단 오르기</b><span>도레미로 한 칸씩. 어디까지 가나 = 내 음역대.</span><small class="arcade__tag">음역대</small><small class="arcade__best" data-best="stairs"></small><small class="arcade__top" data-top="stairs" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="siren" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">〰️</span><b>사이렌 따라 그리기</b><span>낮게→높게→낮게, 선을 목소리로 따라 그려요.</span><small class="arcade__tag">워밍업</small><small class="arcade__best" data-best="siren"></small><small class="arcade__top" data-top="siren" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="cresc" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">📢</span><b>작게→크게</b><span>선을 따라 점점 크게, 다시 점점 작게.</span><small class="arcade__tag">강약 조절</small><small class="arcade__best" data-best="cresc"></small><small class="arcade__top" data-top="cresc" hidden></small></button></li>
     </ul>
     <h2 class="arcade__group">리듬 게임</h2>
     <ul class="arcade__menu">
-      <li><button type="button" class="arcade__cart" data-game="rhythm" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🥁</span><b>리듬 탭</b><span>박자에 맞춰 톡톡. 빠른지 늦은지 알려줘요.</span><small class="arcade__tag">박자감</small><small class="arcade__best" data-best="rhythm"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="echo" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🔁</span><b>리듬 메아리</b><span>들려준 리듬을 똑같이 두드려요. 점점 복잡해져요.</span><small class="arcade__tag">리듬 기억</small><small class="arcade__best" data-best="echo"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="lanes" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎮</span><b>4줄 리듬 게임</b><span>떨어지는 노트를 D·F·J·K로 맞춰 눌러요.</span><small class="arcade__tag">리듬 반응</small><small class="arcade__best" data-best="lanes"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="rhythm" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🥁</span><b>리듬 탭</b><span>박자에 맞춰 톡톡. 빠른지 늦은지 알려줘요.</span><small class="arcade__tag">박자감</small><small class="arcade__best" data-best="rhythm"></small><small class="arcade__top" data-top="rhythm" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="echo" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🔁</span><b>리듬 메아리</b><span>들려준 리듬을 똑같이 두드려요. 점점 복잡해져요.</span><small class="arcade__tag">리듬 기억</small><small class="arcade__best" data-best="echo"></small><small class="arcade__top" data-top="echo" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="lanes" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎮</span><b>4줄 리듬 게임</b><span>떨어지는 노트를 D·F·J·K로 맞춰 눌러요.</span><small class="arcade__tag">리듬 반응</small><small class="arcade__best" data-best="lanes"></small><small class="arcade__top" data-top="lanes" hidden></small></button></li>
     </ul>
     <h2 class="arcade__group">퀴즈 · 이야기</h2>
     <ul class="arcade__menu">
-      <li><button type="button" class="arcade__cart" data-game="ox" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">⭕</span><b>보컬 OX 퀴즈</b><span>고음은 목에 힘을 줘야 한다? 답마다 원포인트 레슨!</span><small class="arcade__tag">보컬 상식</small><small class="arcade__best" data-best="ox"></small></button></li>
-      <li><button type="button" class="arcade__cart" data-game="sim" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎬</span><b>오디션 시뮬레이터</b><span>선곡 · 옷 · 자기소개를 고르면 심사위원이 반응해요.</span><small class="arcade__tag">오디션 연습</small><small class="arcade__best" data-best="sim"></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="ox" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">⭕</span><b>보컬 OX 퀴즈</b><span>고음은 목에 힘을 줘야 한다? 답마다 원포인트 레슨!</span><small class="arcade__tag">보컬 상식</small><small class="arcade__best" data-best="ox"></small><small class="arcade__top" data-top="ox" hidden></small></button></li>
+      <li><button type="button" class="arcade__cart" data-game="sim" aria-pressed="false"><span class="arcade__emoji" aria-hidden="true">🎬</span><b>오디션 시뮬레이터</b><span>선곡 · 옷 · 자기소개를 고르면 심사위원이 반응해요.</span><small class="arcade__tag">오디션 연습</small><small class="arcade__best" data-best="sim"></small><small class="arcade__top" data-top="sim" hidden></small></button></li>
     </ul>
     <section class="game" data-panel="pitch" hidden aria-label="음정 퀴즈">
       <header class="game__bar"><span class="game__dots" aria-hidden="true"><i></i><i></i><i></i></span><h2>음정 퀴즈.exe</h2><button type="button" class="game__close" data-close aria-label="닫기">✕</button></header>
@@ -243,9 +244,10 @@
 <script src="js/config.js?v=ad23a780"></script>
 <script src="js/api.js?v=a1461f01"></script>
 <script src="js/signin.js?v=9cfef861"></script>
-<script src="js/gate.js?v=ab84ebbc"></script>
-<script src="js/games.js?v=c6aacfea"></script>
-<script src="js/games2.js?v=9176c66a"></script>
+<script src="js/gate.js?v=8c041e58"></script>
+<script src="js/gameevent.js?v=f90e7e89"></script>
+<script src="js/games.js?v=dfe9b387"></script>
+<script src="js/games2.js?v=1fb4a8ec"></script>
 <script src="js/pagenav.js?v=3b47d44f"></script>
 </body>
 </html>

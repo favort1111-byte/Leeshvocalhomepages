@@ -9,8 +9,11 @@
   var sign = LeeshSignIn.mount(gate, {
     title: "수강생 전용",
     lede: "보컬 오락실은 이송희보컬레슨 수강생만 할 수 있어요. 카카오로 로그인해주세요.",
-    onSignedIn: function (res) {
+    onSignedIn: function (res, me) {
       gate.hidden = true;
+      // 보컬오락실 이벤트 (js/gameevent.js): 로그인한 학생으로 점수를 보내요
+      window.LeeshMember = me;
+      try { document.dispatchEvent(new CustomEvent("leesh:member", { detail: me })); } catch (e) { /* old browser */ }
       body.hidden = false;
       if (who) {
         who.textContent = "";
@@ -19,7 +22,7 @@
         out.type = "button";
         out.className = "sys-link";
         out.textContent = "로그아웃";
-        out.addEventListener("click", function () { sign.signOut(); body.hidden = true; gate.hidden = false; who.textContent = ""; });
+        out.addEventListener("click", function () { window.LeeshMember = null; try { document.dispatchEvent(new CustomEvent("leesh:member", { detail: null })); } catch (e) { /* old browser */ } sign.signOut(); body.hidden = true; gate.hidden = false; who.textContent = ""; });
         who.appendChild(out);
       }
     }

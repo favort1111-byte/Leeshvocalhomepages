@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=91b3edb7">
-<link rel="stylesheet" href="css/admin.css?v=8347d6bb">
+<link rel="stylesheet" href="css/admin.css?v=95d05b98">
 </head>
 <body class="sys adm">
 
@@ -62,6 +62,7 @@
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="suggest" aria-selected="false">건의함 <span class="adm__badge" id="suggestBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="gameevent" aria-selected="false">오락실 이벤트</button>
       <button type="button" role="tab" data-tab="adminlog" aria-selected="false">작업 기록</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
       <button type="button" class="sys-link adm__logout" id="logout">로그아웃</button>
@@ -478,6 +479,16 @@
       <ul class="adm__cards" id="reviewList"></ul>
     </section>
 
+    <!-- 보컬오락실 이벤트 (원장님 2026-11-10): 게임별 1~10등. 학생 화면엔 1등만 "이*희"처럼 가려서 -->
+    <section class="sys-card" data-panel="gameevent" hidden>
+      <h3 class="sys-h">보컬오락실 이벤트 순위</h3>
+      <p class="sys-note" id="gameEventWhen"></p>
+      <p class="sys-note">로그인한 학생이 기간 안에 게임을 끝내면 학생마다 게임별 최고 점수만 저장돼요. 같은 점수면 먼저 낸 사람이 위예요. 목소리로 날아라는 목소리로 한 판만 들어가요. 학생 화면에는 1등 이름을 "이*희"처럼 가려서 보여줘요.</p>
+      <p class="sys-note">1등은 점수를 받기 전에 학원에서 한 번 더 해 보게 하면 확실해요 (점수는 학생 기기에서 보내는 거라 아주 드물게 조작될 수 있어요).</p>
+      <div class="adm__bar"><button type="button" class="sys-btn sys-btn--ghost" id="gameEventReload">새로 고침</button></div>
+      <div class="adm__gameboard" id="gameEventBoard"></div>
+    </section>
+
     <!-- 관리자 작업 기록 (원장님 2026-11-10): 누가 · 언제 · 무엇을 추가 · 고침 · 지움. 서버가 저절로 남기고, 지울 수 없음 -->
     <section class="sys-card" data-panel="adminlog" hidden>
       <h3 class="sys-h">관리자 작업 기록</h3>
@@ -570,6 +581,6 @@
 <script src="js/richtext.js?v=6d782c73"></script>
 <script src="js/grid.js?v=5cb76b9e"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
-<script src="js/admin.js?v=01817bc0"></script>
+<script src="js/admin.js?v=bbe85df7"></script>
 </body>
 </html>

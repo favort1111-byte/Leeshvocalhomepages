@@ -288,6 +288,8 @@
       result(panel, [sc + "점" + (sc > b ? " · 새 기록!" : ""),
         s.voice ? "목소리 음높이로 날았어요. 기둥 위 글자가 지나갈 음이에요." : "다음엔 🎤 목소리로 도전해 보세요!"],
         "목소리로 날아라 " + sc + "점! 너도 해볼래?");
+      // 보컬오락실 이벤트 (2026-11-10): 목소리로 한 판만 점수에 들어감
+      if (window.LeeshGameEvent) LeeshGameEvent.submit("fly", sc, panel, !s.voice);
     }
 
     function calibrate() {

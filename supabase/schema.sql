@@ -6322,3 +6322,135 @@ revoke all on function private.audition_sheet_sync() from public, anon, authenti
 
 -- 3시간마다 (가져오기만, 지우지 않음)
 select cron.schedule('leesh_audition_sheet', '23 */3 * * *', 'select private.audition_sheet_sync()');
+
+-- ===== leesh_game_event (2026-11-10) =====
+-- 보컬오락실 이벤트 순위표 (원장님 2026-11-10): 계이름 맞히기 · 멜로디 따라치기 · 목소리로 날아라(목소리로 한 판만)
+-- 기간 안에 로그인한 학생이 낸 점수 중 학생마다 게임별 최고 점수만 서버에 저장. 같은 점수면 먼저 낸 사람이 위.
+-- 학생 화면엔 1등을 "이*희"처럼 가려서, 관리자 화면엔 1~10등 이름 그대로. 자동 삭제 없음.
+
+create table if not exists private.game_event (
+  id text primary key,
+  title text not null,
+  starts timestamptz not null,
+  ends timestamptz not null,
+  games text[] not null,
+  max_score jsonb not null default '{}'
+);
+revoke all on private.game_event from public, anon, authenticated;
+insert into private.game_event (id, title, starts, ends, games, max_score)
+values ('2026-11', '보컬오락실 이벤트', '2026-11-15 00:00:00+09', '2026-11-28 23:59:59.999+09',
+        array['solfa', 'simon', 'fly'], '{"solfa": 400, "simon": 60, "fly": 600}')
+on conflict (id) do nothing;
+
+create table if not exists public.game_scores (
+  event text not null,
+  member_id text not null references public.members (id) on delete cascade,
+  game text not null check (game in ('solfa', 'simon', 'fly')),
+  score int not null check (score >= 0),
+  at timestamptz not null default now(),       -- 최고 점수를 낸 시각
+  plays int not null default 1,                -- 이 게임을 끝낸 판 수
+  last_at timestamptz not null default now(),  -- 마지막으로 끝낸 시각
+  primary key (event, member_id, game)
+);
+alter table public.game_scores enable row level security;
+revoke all on public.game_scores from anon, authenticated;
+drop trigger if exists zz_admin_log on public.game_scores;
+create trigger zz_admin_log after insert or update or delete on public.game_scores for each row execute function private.log_change();
+
+-- 이름 가리기: 이송희 → 이*희, 김유 → 김*, 남궁민수 → 남**수
+create or replace function private.mask_name(n text)
+returns text language sql immutable set search_path = '' as $$
+  select case when n is null or length(btrim(n)) = 0 then '?'
+              when length(btrim(n)) = 1 then btrim(n)
+              when length(btrim(n)) = 2 then left(btrim(n), 1) || '*'
+              else left(btrim(n), 1) || repeat('*', length(btrim(n)) - 2) || right(btrim(n), 1) end;
+$$;
+
+create or replace function private.game_now()
+returns private.game_event language sql stable security definer set search_path = '' as $$
+  select * from private.game_event where now() <= ends + interval '7 days' order by starts limit 1;
+$$;
+
+-- 학생: 게임이 끝날 때 점수 보내기 (기간 안 · 이벤트 게임 · 말이 되는 점수만, 최고 점수만 남김)
+create or replace function public.member_game_score(p_id text, p_pin text, p_game text, p_score int)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  ev private.game_event; mid text; old public.game_scores; best boolean := false;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into ev from private.game_event where now() between starts and ends order by starts limit 1;
+  if ev.id is null then return jsonb_build_object('ok', true, 'event', false); end if;
+  if not (p_game = any (ev.games)) then return private.fail('이벤트 게임이 아니에요.'); end if;
+  if p_score is null or p_score < 0 or p_score > coalesce((ev.max_score ->> p_game)::int, 1000) then
+    return private.fail('점수를 확인할 수 없어요.');
+  end if;
+  select * into old from public.game_scores where event = ev.id and member_id = mid and game = p_game for update;
+  if old.member_id is null then
+    insert into public.game_scores (event, member_id, game, score) values (ev.id, mid, p_game, p_score);
+    best := true;
+  else
+    if old.last_at > now() - interval '1 second' then return private.fail('너무 빨라요. 잠시 뒤에 다시 해주세요.'); end if;
+    if old.plays >= 2000 then return private.fail('오늘은 그만! 내일 다시 도전해요.'); end if;
+    best := p_score > old.score;
+    update public.game_scores set plays = plays + 1, last_at = now(),
+      score = greatest(score, p_score), at = case when p_score > score then now() else at end
+    where event = ev.id and member_id = mid and game = p_game;
+  end if;
+  return jsonb_build_object('ok', true, 'event', true, 'best', best);
+end $$;
+
+-- 학생: 이벤트 안내 + 게임별 1등(이름 가림) + 내 최고 점수 · 내 순위
+create or replace function public.member_game_board(p_id text, p_pin text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  ev private.game_event; mid text; out jsonb := '{}'; g text; top record; mine public.game_scores; rk int;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  ev := private.game_now();
+  if ev.id is null then return jsonb_build_object('ok', true, 'event', null); end if;
+  foreach g in array ev.games loop
+    select s.score, s.at, m.name into top from public.game_scores s join public.members m on m.id = s.member_id
+     where s.event = ev.id and s.game = g order by s.score desc, s.at limit 1;
+    select * into mine from public.game_scores where event = ev.id and member_id = mid and game = g;
+    rk := case when mine.member_id is null then null else
+      (select count(*) + 1 from public.game_scores s where s.event = ev.id and s.game = g
+        and (s.score > mine.score or (s.score = mine.score and s.at < mine.at))) end;
+    out := out || jsonb_build_object(g, jsonb_build_object(
+      'top', case when top.score is null then null else jsonb_build_object('name', private.mask_name(top.name), 'score', top.score) end,
+      'mine', mine.score, 'rank', rk,
+      'players', (select count(*) from public.game_scores where event = ev.id and game = g)));
+  end loop;
+  return jsonb_build_object('ok', true, 'event', jsonb_build_object('id', ev.id, 'title', ev.title, 'starts', ev.starts, 'ends', ev.ends,
+    'open', now() between ev.starts and ev.ends, 'games', to_jsonb(ev.games)), 'board', out);
+end $$;
+
+-- 관리자: 게임별 1~10등 (이름 · 수강 ID · 담당 · 점수 · 시각 · 판 수)
+create or replace function public.admin_game_board()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare ev private.game_event; out jsonb := '{}'; g text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into ev from private.game_event order by starts desc limit 1;
+  if ev.id is null then return jsonb_build_object('ok', true, 'event', null); end if;
+  foreach g in array ev.games loop
+    out := out || jsonb_build_object(g, coalesce((select jsonb_agg(jsonb_build_object('id', x.member_id, 'name', x.name,
+        'teacher', substring(coalesce(x.memo, '') from '담당\s*([^\s·,]+)'), 'score', x.score, 'at', x.at, 'plays', x.plays) order by x.score desc, x.at)
+      from (select s.*, m.name, m.memo from public.game_scores s join public.members m on m.id = s.member_id
+            where s.event = ev.id and s.game = g order by s.score desc, s.at limit 10) x), '[]'));
+  end loop;
+  return jsonb_build_object('ok', true, 'event', jsonb_build_object('id', ev.id, 'title', ev.title, 'starts', ev.starts, 'ends', ev.ends,
+    'open', now() between ev.starts and ev.ends, 'games', to_jsonb(ev.games),
+    'players', (select count(distinct member_id) from public.game_scores where event = ev.id)), 'board', out);
+end $$;
+
+revoke all on function public.member_game_score(text, text, text, int) from public;
+revoke all on function public.member_game_board(text, text) from public;
+revoke all on function public.admin_game_board() from public, anon;
+grant execute on function public.member_game_score(text, text, text, int) to anon, authenticated;
+grant execute on function public.member_game_board(text, text) to anon, authenticated;
+grant execute on function public.admin_game_board() to authenticated;
+revoke all on function private.game_now() from public, anon, authenticated;

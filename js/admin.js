@@ -152,6 +152,7 @@
     if (name === "journal") loadJournal();
     if (name === "reviews") loadReviews();
     if (name === "adminlog") loadLog();
+    if (name === "gameevent") loadGameEvent();
     if (name === "partners") loadPartners();
     if (name === "teachers") { loadTeachers(); loadLessonSync(); }
     if (name === "records") loadRecords();
@@ -2481,6 +2482,44 @@
   };
   var LOG_ACT = { insert: "추가", update: "고침", "delete": "지움" };
   var logState = { items: [], loaded: false };
+  // 보컬오락실 이벤트 순위 (원장님 2026-11-10)
+  var GAME_NAMES = { solfa: ["👂 계이름 맞히기", "개"], simon: ["👂 멜로디 따라치기", "음"], fly: ["🎤 목소리로 날아라", "점"] };
+  function kstDay(iso) {
+    var d = new Date(new Date(iso).getTime() + 9 * 3600000), wd = "일월화수목금토";
+    return (d.getUTCMonth() + 1) + "/" + d.getUTCDate() + "(" + wd[d.getUTCDay()] + ")";
+  }
+  function loadGameEvent() {
+    var box = $("#gameEventBoard");
+    box.textContent = "";
+    box.appendChild(el("p", "sys-empty", "불러오는 중…"));
+    api("rpc/admin_game_board", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      box.textContent = "";
+      if (!res.ok || !d.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", d.error || friendly(res, "불러오지 못했어요."))); return; }
+      if (!d.event) { $("#gameEventWhen").textContent = "진행 중인 이벤트가 없어요."; return; }
+      var ev = d.event, now = Date.now();
+      $("#gameEventWhen").textContent = "기간 " + kstDay(ev.starts) + " 0시 ~ " + kstDay(ev.ends) + " 밤 11:59 · "
+        + (now < new Date(ev.starts).getTime() ? "시작 전" : now > new Date(ev.ends).getTime() ? "끝남" : "진행 중") + " · 참여 " + (ev.players || 0) + "명";
+      (ev.games || []).forEach(function (g) {
+        var info = GAME_NAMES[g] || [g, "점"], rows = (d.board || {})[g] || [];
+        var col = el("div", "adm__gamecol");
+        col.appendChild(el("h4", null, info[0]));
+        if (!rows.length) { col.appendChild(el("p", "sys-empty", "아직 기록이 없어요.")); box.appendChild(col); return; }
+        var ol = el("ol", "adm__gamerank");
+        rows.forEach(function (r, i) {
+          var li = el("li", i === 0 ? "is-first" : "");
+          li.appendChild(el("b", null, (i === 0 ? "🏆 " : "") + r.score + info[1]));
+          li.appendChild(el("span", null, " " + r.name + " (" + r.id + ")" + (r.teacher ? " · 담당 " + r.teacher : "")));
+          li.appendChild(el("small", null, " · " + logTime(r.at) + " · " + r.plays + "판"));
+          ol.appendChild(li);
+        });
+        col.appendChild(ol);
+        box.appendChild(col);
+      });
+    });
+  }
+  $("#gameEventReload").addEventListener("click", function () { loadGameEvent(); });
+
   function loadLog(more) {
     var list = $("#logList"), last = logState.items[logState.items.length - 1];
     if (!more) { list.textContent = ""; list.appendChild(el("li", "sys-empty", "불러오는 중…")); logState.items = []; }

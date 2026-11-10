@@ -117,6 +117,7 @@
       go.hidden = false;
       A.result(f.panel, [sc + "음까지 성공" + (nb && sc ? " · 새 기록!" : ""), sc >= 8 ? "기억력과 음감이 대단해요!" : "계이름을 속으로 따라 부르면 더 잘 외워져요."],
         "멜로디 따라치기 " + sc + "음 성공! 너도 해볼래?");
+      if (window.LeeshGameEvent) LeeshGameEvent.submit("simon", sc, f.panel); // 보컬오락실 이벤트 (2026-11-10)
     }
     go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); seq = []; round(); });
     return {
@@ -177,6 +178,7 @@
       f.status.textContent = "끝!";
       A.result(f.panel, [st.score + "개 맞힘" + (nb && st.score ? " · 새 기록!" : ""), "음 " + st.n + "개까지 왔어요. 도에서 몇 칸 떨어졌는지 느껴 보는 게 비결이에요."],
         "계이름 맞히기 " + st.score + "개! 너는 몇 개?");
+      if (window.LeeshGameEvent) LeeshGameEvent.submit("solfa", st.score, f.panel); // 보컬오락실 이벤트 (2026-11-10)
     }
     go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); st = { n: 3, lives: 3, score: 0, streak: 0 }; build(); lives(); ask(); });
     again.addEventListener("click", function () { if (q && !q.lock) { q.lock = true; play(); } });
