@@ -6454,3 +6454,7 @@ grant execute on function public.member_game_score(text, text, text, int) to ano
 grant execute on function public.member_game_board(text, text) to anon, authenticated;
 grant execute on function public.admin_game_board() to authenticated;
 revoke all on function private.game_now() from public, anon, authenticated;
+
+-- ===== leesh_game_event_caps (2026-11-10) =====
+-- 원장님 "만점자가 많이 나오면 애매, 점수 무한정": 세 게임 모두 끝판이 없음. 상한은 사람이 못 내는 점수(조작 거르기)로만.
+update private.game_event set max_score = '{"solfa": 3000, "simon": 200, "fly": 2000}' where id = '2026-11';
