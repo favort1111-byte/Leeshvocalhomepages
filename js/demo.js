@@ -257,7 +257,7 @@
   }
   function demoGameRows(g) {
     var ago = function (h) { return new Date(Date.now() - h * 3600000).toISOString(); };
-    var fake = { solfa: [["이하늘", 14, 3], ["정다온", 11, 9]], simon: [["정다온", 9, 5], ["이하늘", 7, 20]], fly: [["이하늘", 23, 2]] }[g] || [];
+    var fake = { solfa: [["이하늘", 2915, 3], ["정다온", 2208, 9]], simon: [["정다온", 5417, 5], ["이하늘", 3862, 20]], fly: [["이하늘", 2874, 2]] }[g] || [];
     var rows = fake.map(function (f, i) {
       var m = db.members.filter(function (x) { return x.name === f[0]; })[0];
       return { id: m ? m.id : "S9" + i, name: f[0], score: f[1], at: ago(f[2]), plays: 4 + i };

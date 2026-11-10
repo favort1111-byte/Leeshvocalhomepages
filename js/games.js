@@ -263,7 +263,12 @@
       for (var i = 0; i < s.pipes.length; i++) {
         var p = s.pipes[i];
         p.x -= speed * dt;
-        if (!p.passed && p.x + p.w < bx - 14) { p.passed = true; s.score++; }
+        if (!p.passed && p.x + p.w < bx - 14) {
+          p.passed = true; s.score++;
+          // 이벤트 점수 (2026-11-10): 기둥 하나에 100 + 틈 가운데로(정확한 음정으로) 지날수록 최대 50. 평소 화면엔 안 보임
+          var mid = (p.top + p.bot) / 2, half = Math.max(1, (p.bot - p.top) / 2);
+          s.pts += 100 + Math.round(50 * (1 - Math.min(1, Math.abs(s.y - mid) / half)));
+        }
         if (bx + 12 > p.x && bx - 12 < p.x + p.w && (s.y - 12 < p.top || s.y + 12 > p.bot)) return end();
       }
       s.pipes = s.pipes.filter(function (p) { return p.x + p.w > 0; });
@@ -274,7 +279,7 @@
     function play(base, voice) {
       over.hidden = true;
       $(".game__result", panel).hidden = true;
-      s = { base: base, voice: voice, y: H / 2, vy: 0, pipes: [], t: 1.2, next: 2.2, score: 0, hold: false, st: null };
+      s = { base: base, voice: voice, y: H / 2, vy: 0, pipes: [], t: 1.2, next: 2.2, score: 0, pts: 0, hold: false, st: null };
       last = performance.now();
       raf = requestAnimationFrame(step);
     }
@@ -289,7 +294,7 @@
         s.voice ? "목소리 음높이로 날았어요. 기둥 위 글자가 지나갈 음이에요." : "다음엔 🎤 목소리로 도전해 보세요!"],
         "목소리로 날아라 " + sc + "점! 너도 해볼래?");
       // 보컬오락실 이벤트 (2026-11-10): 목소리로 한 판만 점수에 들어감
-      if (window.LeeshGameEvent) LeeshGameEvent.submit("fly", sc, panel, !s.voice);
+      if (window.LeeshGameEvent) LeeshGameEvent.submit("fly", s.pts, panel, !s.voice);
     }
 
     function calibrate() {

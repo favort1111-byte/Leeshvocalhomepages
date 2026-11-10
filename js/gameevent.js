@@ -4,9 +4,10 @@
 // 기간 · 게임은 서버(private.game_event)가 정하고, 서버도 기간 · 점수를 다시 확인해요.
 (function () {
   var GAMES = {
-    solfa: { name: "계이름 맞히기", group: "👂 귀 게임", unit: "개" },
-    simon: { name: "멜로디 따라치기", group: "👂 귀 게임", unit: "음" },
-    fly: { name: "목소리로 날아라", group: "🎤 목소리 게임", unit: "점" }
+    // 이벤트 점수는 단계(맞힌 개수 · 음 수 · 기둥 수)가 아니라 빠르기 · 정확도를 더한 점수 하나로만 보여요 (원장님 2026-11-10 "동점 안 나오게")
+    solfa: { name: "계이름 맞히기", group: "👂 귀 게임" },
+    simon: { name: "멜로디 따라치기", group: "👂 귀 게임" },
+    fly: { name: "목소리로 날아라", group: "🎤 목소리 게임" }
   };
   var PRIZE = "게임별로 기간 안에 가장 높은 점수를 받은 1등 친구 (총 3명)에게 올리브영 기프티콘을 드려요 🎁";
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
@@ -23,7 +24,7 @@
     var d = new Date(new Date(iso).getTime() + 9 * 3600000);
     return (d.getUTCMonth() + 1) + "월 " + d.getUTCDate() + "일(" + WD[d.getUTCDay()] + ")";
   }
-  function score(g, v) { return v + (GAMES[g] ? GAMES[g].unit : "점"); }
+  function score(g, v) { return Number(v || 0).toLocaleString("ko-KR") + "점"; }
 
   function load() {
     if (!who || !window.LeeshAPI) return Promise.resolve();
@@ -102,7 +103,7 @@
       if (!res.event) { note(panel, ""); return; }
       load().then(function () {
         var b = board[game] || {};
-        note(panel, "🎮 이벤트 " + (res.best ? "새 최고 점수 저장! " : "") + "내 최고 " + score(game, b.mine != null ? b.mine : value)
+        note(panel, "🎮 이벤트 점수 " + score(game, value) + (res.best ? " · 새 최고 점수!" : " · 내 최고 " + score(game, b.mine != null ? b.mine : value))
           + (b.rank ? " · 지금 " + b.rank + "위" : "") + (b.rank === 1 ? " 🏆" : ""), res.best ? "is-best" : "");
       });
     });

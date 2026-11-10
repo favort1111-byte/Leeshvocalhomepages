@@ -2483,7 +2483,7 @@
   var LOG_ACT = { insert: "추가", update: "고침", "delete": "지움" };
   var logState = { items: [], loaded: false };
   // 보컬오락실 이벤트 순위 (원장님 2026-11-10)
-  var GAME_NAMES = { solfa: ["👂 계이름 맞히기", "개"], simon: ["👂 멜로디 따라치기", "음"], fly: ["🎤 목소리로 날아라", "점"] };
+  var GAME_NAMES = { solfa: ["👂 계이름 맞히기", "점"], simon: ["👂 멜로디 따라치기", "점"], fly: ["🎤 목소리로 날아라", "점"] };
   function kstDay(iso) {
     var d = new Date(new Date(iso).getTime() + 9 * 3600000), wd = "일월화수목금토";
     return (d.getUTCMonth() + 1) + "/" + d.getUTCDate() + "(" + wd[d.getUTCDay()] + ")";
@@ -2508,7 +2508,7 @@
         var ol = el("ol", "adm__gamerank");
         rows.forEach(function (r, i) {
           var li = el("li", i === 0 ? "is-first" : "");
-          li.appendChild(el("b", null, (i === 0 ? "🏆 " : "") + r.score + info[1]));
+          li.appendChild(el("b", null, (i === 0 ? "🏆 " : "") + Number(r.score).toLocaleString("ko-KR") + info[1]));
           li.appendChild(el("span", null, " " + r.name + " (" + r.id + ")" + (r.teacher ? " · 담당 " + r.teacher : "")));
           li.appendChild(el("small", null, " · " + logTime(r.at) + " · " + r.plays + "판"));
           ol.appendChild(li);

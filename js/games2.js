@@ -77,6 +77,8 @@
     var f = frame("simon", "건반이 들려주는 멜로디를 순서대로 눌러요. 맞힐 때마다 한 음씩 길어져요.");
     var KEYS = [[60, "도"], [62, "레"], [64, "미"], [67, "솔"], [69, "라"]];
     var keys = el("div", "g2__keys"), seq = [], pos = 0, lock = true, timers = [];
+    // 이벤트 점수 (원장님 2026-11-10 "동점 안 나오게"): 맞게 누를 때마다 100 + 빨리 누를수록 최대 50. 평소 화면엔 안 보임
+    var pts = 0, lastT = 0;
     KEYS.forEach(function (k, i) {
       var b = el("button", "g2__key g2__key--" + i, k[1]);
       b.type = "button";
@@ -89,7 +91,7 @@
     r.appendChild(go);
     f.box.appendChild(r);
     function light(i, ms) { var b = keys.children[i]; b.classList.add("is-on"); timers.push(setTimeout(function () { b.classList.remove("is-on"); }, ms)); }
-    function setLock(on) { lock = on; Array.prototype.forEach.call(keys.children, function (b) { b.disabled = on; }); }
+    function setLock(on) { lock = on; if (!on) lastT = performance.now(); Array.prototype.forEach.call(keys.children, function (b) { b.disabled = on; }); }
     function round() {
       seq.push(Math.floor(Math.random() * KEYS.length));
       pos = 0;
@@ -107,6 +109,9 @@
       A.tone(KEYS[i][0], now(), 0.35);
       light(i, 250);
       if (i !== seq[pos]) return end();
+      var t = performance.now();
+      pts += 100 + Math.max(0, 50 - Math.floor((t - lastT) / 20));
+      lastT = t;
       pos++;
       if (pos === seq.length) { setLock(true); f.status.textContent = "정답!"; timers.push(setTimeout(round, 800)); }
     }
@@ -117,9 +122,9 @@
       go.hidden = false;
       A.result(f.panel, [sc + "음까지 성공" + (nb && sc ? " · 새 기록!" : ""), sc >= 8 ? "기억력과 음감이 대단해요!" : "계이름을 속으로 따라 부르면 더 잘 외워져요."],
         "멜로디 따라치기 " + sc + "음 성공! 너도 해볼래?");
-      if (window.LeeshGameEvent) LeeshGameEvent.submit("simon", sc, f.panel); // 보컬오락실 이벤트 (2026-11-10)
+      if (window.LeeshGameEvent) LeeshGameEvent.submit("simon", pts, f.panel); // 보컬오락실 이벤트 (2026-11-10)
     }
-    go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); seq = []; round(); });
+    go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); seq = []; pts = 0; round(); });
     return {
       bestText: function (v) { return v + "음"; },
       stop: function () { timers.forEach(clearTimeout); timers = []; setLock(true); go.hidden = false; }
@@ -157,7 +162,7 @@
       A.tone(q.m, t + 1, 0.8);
       f.status.textContent = "기준 '도' … 그리고 이 소리는?";
       choices.querySelectorAll("button").forEach(function (b) { b.disabled = true; b.classList.remove("is-right", "is-wrong"); });
-      timers.push(setTimeout(function () { q.lock = false; choices.querySelectorAll("button").forEach(function (b) { b.disabled = false; }); }, 1900));
+      timers.push(setTimeout(function () { q.lock = false; if (!q.t) q.t = performance.now(); choices.querySelectorAll("button").forEach(function (b) { b.disabled = false; }); }, 1900));
     }
     function answer(m, b) {
       if (!q || q.lock) return;
@@ -165,6 +170,8 @@
       var ok = m === q.m;
       choices.querySelectorAll("button").forEach(function (x) { x.disabled = true; if (Number(x.getAttribute("data-m")) === q.m) x.classList.add("is-right"); });
       if (!ok) b.classList.add("is-wrong");
+      // 이벤트 점수 (2026-11-10): 맞히면 100 + 음이 많을수록 10씩 + 빨리 답할수록 최대 100 (다시 듣기로 시간이 다시 가지 않음). 평소 화면엔 안 보임
+      if (ok) st.pts += 100 + 10 * (st.n - 3) + Math.max(0, 100 - Math.floor((performance.now() - (q.t || performance.now())) / 30));
       if (ok) { st.score++; st.streak++; } else { st.lives--; st.streak = 0; }
       f.status.textContent = ok ? "정답! " + name(q.m) + "였어요." : "아쉬워요. " + name(q.m) + "였어요.";
       if (ok && st.streak >= 3 && st.n < POOL.length) { st.n++; st.streak = 0; f.status.textContent += " 새 음 '" + POOL[st.n - 1][1] + "'이 늘었어요!"; build(); }
@@ -178,9 +185,9 @@
       f.status.textContent = "끝!";
       A.result(f.panel, [st.score + "개 맞힘" + (nb && st.score ? " · 새 기록!" : ""), "음 " + st.n + "개까지 왔어요. 도에서 몇 칸 떨어졌는지 느껴 보는 게 비결이에요."],
         "계이름 맞히기 " + st.score + "개! 너는 몇 개?");
-      if (window.LeeshGameEvent) LeeshGameEvent.submit("solfa", st.score, f.panel); // 보컬오락실 이벤트 (2026-11-10)
+      if (window.LeeshGameEvent) LeeshGameEvent.submit("solfa", st.pts, f.panel); // 보컬오락실 이벤트 (2026-11-10)
     }
-    go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); st = { n: 3, lives: 3, score: 0, streak: 0 }; build(); lives(); ask(); });
+    go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); st = { n: 3, lives: 3, score: 0, streak: 0, pts: 0 }; build(); lives(); ask(); });
     again.addEventListener("click", function () { if (q && !q.lock) { q.lock = true; play(); } });
     return {
       bestText: function (v) { return v + "개"; },

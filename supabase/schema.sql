@@ -6545,3 +6545,8 @@ begin
     'players', (select count(distinct member_id) from public.game_scores where event = ev.id)), 'board', out);
 end $$;
 
+
+-- ===== leesh_game_event_points (2026-11-10) =====
+-- 원장님 "동점 안 나오게, 다른 사람 단계는 안 보이게 점수로만": 이벤트 점수 = 단계 점수 + 빠르기 · 정확도 보너스 (js/games.js · js/games2.js).
+-- 상한은 사람이 못 내는 점수로만: 따라치기 60음 · 계이름 3000개 · 날아라 2000기둥 수준
+update private.game_event set max_score = '{"solfa": 1000000, "simon": 300000, "fly": 300000}' where id = '2026-11';
