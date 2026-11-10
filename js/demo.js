@@ -734,7 +734,15 @@
     // 관리자 작업 기록 (체험 모드는 예시 몇 줄)
     // 카톡 자동발송 (체험): 솔라피 연결 없이 일정만 넣어 보기
     admin_solapi_status: function () {
-      return { ok: true, connected: false, key_tail: null, sender: null, pf_id: false, templates: {}, send_hour: 18, enabled: false, contacts: 1, last_run_at: null, last_note: null };
+      return { ok: true, connected: false, key_tail: null, sender: null, pf_id: false, templates: {}, texts: db.kk_texts || {}, send_hour: 18, enabled: false, contacts: 1, last_run_at: null, last_note: null };
+    },
+    admin_solapi_texts: function (a) {
+      var t = {};
+      Object.keys(a.p_texts || {}).forEach(function (k) { var v = String(a.p_texts[k] || "").trim(); if (v.length > 1000) t.__bad = k; else if (v) t[k] = v; });
+      if (t.__bad) return fail("\"" + t.__bad + "\" 문구가 1000자를 넘어요 (알림톡은 1000자까지).");
+      db.kk_texts = t;
+      save();
+      return { ok: true, texts: t };
     },
     admin_solapi_set: function () { return fail("체험 모드에서는 솔라피에 연결하지 않아요."); },
     admin_solapi_options: function () { return fail("체험 모드에서는 저장하지 않아요."); },

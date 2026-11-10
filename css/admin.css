@@ -195,3 +195,9 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__kkset{margin-top:20px;padding:12px 14px;border:1px solid #E2D6C8;border-radius:10px;}
 .adm__kkset>summary{cursor:pointer;font-weight:500;}
 .adm__kktpl{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;}
+.adm__kktexts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:8px 0;}
+.adm__kktext{min-width:0;padding:10px 12px;border:1px solid #E2D6C8;border-radius:10px;background:#FFFDF8;}
+.adm__kktexthead{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:6px;}
+.adm__kktexthead strong{min-width:4em;}
+.adm__kktexthead select{flex:1;min-width:0;width:auto;}
+.adm__kktext textarea{width:100%;box-sizing:border-box;padding:10px;border-radius:10px;background:#FEE500;color:#3C1E1E;border:1px solid #E8D200;font:inherit;font-size:14px;line-height:1.5;}

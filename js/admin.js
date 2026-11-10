@@ -2516,9 +2516,10 @@
     var f = $("#kkForm"), kind = field(f, "kind").value, names = Object.keys(kk.picked).map(function (id) { return kk.picked[id]; });
     var who = f.querySelector("[name=who]:checked").value;
     var name = who === "direct" ? ($("#kkName").value.trim() || "○○○") : who === "consult" ? (($("#kkConsultSel").selectedOptions[0] || {}).dataset || {}).name || "○○○" : (names[0] || "○○○");
-    $("#kkPreview").textContent = "[이송희보컬레슨] " + kind + " 안내\n\n안녕하세요, " + name + "님.\n" + KK_LEAD[kind] + "\n\n▶ 일시: " + (kkWhen(field(f, "day").value, field(f, "time").value) || "-")
-      + "\n▶ 장소: " + (field(f, "place").value.trim() || "이송희보컬레슨") + "\n▶ 안내: " + (field(f, "memo").value.trim() || "-")
-      + "\n\n일정 변경이 필요하시면 카카오톡 채널로 미리 말씀해 주세요.\n감사합니다." + (names.length > 1 ? "\n\n(" + names.length + "명에게 이름만 바꿔 한 통씩)" : "");
+    var txt = (kk.texts && kk.texts[kind]) || (typeof KK_STYLES !== "undefined" && KK_STYLES ? KK_STYLES[0][1](kind) : "");
+    $("#kkPreview").textContent = txt.split("#{이름}").join(name).split("#{일시}").join(kkWhen(field(f, "day").value, field(f, "time").value) || "-")
+      .split("#{장소}").join(field(f, "place").value.trim() || "이송희보컬레슨").split("#{안내}").join(field(f, "memo").value.trim() || "-")
+      + (names.length > 1 ? "\n\n(" + names.length + "명에게 이름만 바꿔 한 통씩)" : "");
   }
   function kkPickList() {
     var q = $("#kkFind").value.trim().toLowerCase(), box = $("#kkPick");
@@ -2562,6 +2563,69 @@
     });
     kkPreview();
   }
+  // 알림톡 문구 예시 (원장님 2026-11-10 "바꿀 수 있는 문구 여러 개") — 고른 뒤 고쳐서 저장 · 복사 → 솔라피 검수 신청
+  var KK_WORD = { "상담": "상담 예약", "컨설팅": "오디션 컨설팅", "특강": "특강", "첫 레슨": "첫 레슨", "보강": "보강 레슨" };
+  var KK_STYLES = [
+    ["기본형", function (k) { return "[이송희보컬레슨] " + k + " 안내\n\n안녕하세요, #{이름}님.\n" + KK_LEAD[k] + "\n\n▶ 일시: #{일시}\n▶ 장소: #{장소}\n▶ 안내: #{안내}\n\n일정 변경이 필요하시면 카카오톡 채널로 미리 말씀해 주세요.\n감사합니다."; }],
+    ["짧은 형", function (k) { return "[이송희보컬레슨] #{이름}님, 내일 " + KK_WORD[k] + " 안내입니다.\n\n▶ #{일시}\n▶ #{장소}\n▶ #{안내}\n\n변경은 카카오톡 채널로 연락 주세요."; }],
+    ["친절한 형", function (k) { return "안녕하세요, 이송희보컬레슨입니다.\n\n#{이름}님, 내일은 " + KK_WORD[k] + " 날이에요.\n\n▶ 일시: #{일시}\n▶ 장소: #{장소}\n▶ 안내: #{안내}\n\n편하게 오시면 됩니다. 혹시 일정이 어려우시면 카카오톡 채널로 미리 알려 주세요.\n내일 뵙겠습니다. 감사합니다."; }],
+    ["준비 안내형", function (k) { return "[이송희보컬레슨] " + k + " 안내\n\n#{이름}님, 내일 " + KK_WORD[k] + " 일정을 안내드립니다.\n\n▶ 일시: #{일시}\n▶ 장소: #{장소}\n▶ 준비할 것 · 안내: #{안내}\n\n시작 10분 전까지 도착해 주세요.\n일정 변경은 카카오톡 채널로 미리 말씀해 주세요.\n감사합니다."; }]
+  ];
+  var KK_VARS = ["#{이름}", "#{일시}", "#{장소}", "#{안내}"];
+  kk.texts = {};
+  function kkText(k) { return kk.texts[k] || KK_STYLES[0][1](k); }
+  function kkCheck(v) {
+    var bad = (v.match(/#\{[^}]*\}/g) || []).filter(function (x) { return KK_VARS.indexOf(x) < 0; });
+    var miss = ["#{이름}", "#{일시}"].filter(function (x) { return v.indexOf(x) < 0; });
+    return (bad.length ? "쓸 수 없는 자리: " + bad.join(" ") + " (홈페이지가 채우지 못해요) · " : "") + (miss.length ? "빠진 자리: " + miss.join(" ") + " · " : "") + v.length + " / 1000자";
+  }
+  function kkDrawTexts() {
+    var box = $("#kkTexts");
+    box.textContent = "";
+    KK_KINDS.forEach(function (k) {
+      var card = el("div", "adm__kktext");
+      var head = el("div", "adm__kktexthead");
+      head.appendChild(el("strong", null, k));
+      var pick = el("select");
+      pick.setAttribute("aria-label", k + " 예시 문구");
+      pick.appendChild(el("option", null, "예시 문구 고르기…"));
+      KK_STYLES.forEach(function (st, i) { var o = el("option", null, st[0]); o.value = i; pick.appendChild(o); });
+      head.appendChild(pick);
+      var copy = el("button", "sys-btn sys-btn--ghost", "복사");
+      copy.type = "button";
+      head.appendChild(copy);
+      card.appendChild(head);
+      var ta = el("textarea");
+      ta.rows = 14; ta.maxLength = 1000; ta.value = kkText(k); ta.setAttribute("data-kind", k);
+      card.appendChild(ta);
+      var info = el("p", "sys-note");
+      card.appendChild(info);
+      var upd = function () { info.textContent = kkCheck(ta.value); info.className = /쓸 수 없는|빠진/.test(info.textContent) ? "sys-msg sys-msg--error" : "sys-note"; };
+      ta.addEventListener("input", function () { upd(); kk.texts[k] = ta.value; kkPreview(); });
+      pick.addEventListener("change", function () {
+        if (pick.value === "" || isNaN(Number(pick.value))) return;
+        if (ta.value.trim() && !window.confirm("지금 문구를 '" + KK_STYLES[pick.value][0] + "' 예시로 바꿀까요? (저장 전이면 지금 고친 내용은 사라져요)")) { pick.selectedIndex = 0; return; }
+        ta.value = KK_STYLES[pick.value][1](k); kk.texts[k] = ta.value; upd(); kkPreview(); pick.selectedIndex = 0;
+      });
+      copy.addEventListener("click", function () {
+        var done = function (ok) { copy.textContent = ok ? "복사했어요" : "복사 안 됨 · 직접 고르세요"; setTimeout(function () { copy.textContent = "복사"; }, 2000); };
+        if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(function () { done(true); }, function () { ta.select(); done(document.execCommand && document.execCommand("copy")); });
+        else { ta.select(); done(document.execCommand && document.execCommand("copy")); }
+      });
+      upd();
+      box.appendChild(card);
+    });
+  }
+  $("#kkTextSave").addEventListener("click", function () {
+    var t = {};
+    $("#kkTexts").querySelectorAll("textarea").forEach(function (ta) { t[ta.getAttribute("data-kind")] = ta.value; });
+    api("rpc/admin_solapi_texts", { method: "POST", body: { p_texts: t } }).then(function (r) {
+      var d = r.data || {};
+      if (!r.ok || !d.ok) { msg($("#kkTextMsg"), d.error || friendly(r, "저장하지 못했어요."), "error"); return; }
+      kk.texts = d.texts || {};
+      msg($("#kkTextMsg"), "저장했어요. 이제 '복사'로 솔라피에 붙여넣어 검수 신청하세요.", "ok");
+    });
+  });
   function loadKakao() {
     var f = $("#kkForm");
     if (!field(f, "day").value) field(f, "day").value = addDays(todayKst(), 1);
@@ -2569,6 +2633,9 @@
       var d = r.data || {};
       if (!r.ok || !d.ok) { $("#kkState").textContent = d.error || "불러오지 못했어요."; return; }
       var tpl = d.templates || {}, missing = KK_KINDS.filter(function (k) { return !tpl[k]; });
+      kk.texts = d.texts || {};
+      kkDrawTexts();
+      kkPreview();
       $("#kkState").textContent = (d.connected ? "✅ 솔라피 연결됨 (" + d.key_tail + (d.sender ? " · 발신 " + d.sender : " · 발신번호 없음") + (d.pf_id ? "" : " · 채널 pfId 없음") + ")" : "⚠️ 솔라피 연결 전 — 아래 설정에서 연결해 주세요")
         + " · " + (d.enabled ? "자동 발송 켜짐 (전날 " + d.send_hour + "시)" : "자동 발송 꺼짐") + (missing.length ? " · 템플릿 ID 없음: " + missing.join(", ") : "")
         + " · 시트에서 받은 번호 " + d.contacts + "명" + (d.last_note ? " · 마지막 발송 " + stamp(d.last_run_at) + " " + d.last_note : "");

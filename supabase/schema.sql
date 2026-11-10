@@ -7048,3 +7048,39 @@ revoke all on function private.phone_norm(text) from public, anon, authenticated
 revoke all on function private.phone_mask(text) from public, anon, authenticated;
 revoke all on function private.reminder_when(timestamptz) from public, anon, authenticated;
 revoke all on function private.reminder_phone(public.reminders) from public, anon, authenticated;
+
+-- ===== leesh_kakao_texts (2026-11-10) =====
+-- 카톡 자동발송 문구 (원장님 2026-11-10 "바꿀 수 있는 문구 여러 개, 우리가 수정해서 솔라피에 신청"):
+-- 종류마다 관리자 화면에서 고친 알림톡 문구를 저장 (솔라피 검수 신청용 원본 · 관리자 미리보기). 실제로 나가는 글은 솔라피에 승인된 템플릿.
+alter table private.solapi add column if not exists texts jsonb not null default '{}';
+
+create or replace function public.admin_solapi_texts(p_texts jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare t jsonb := '{}'; k text; v text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  foreach k in array array['상담', '컨설팅', '특강', '첫 레슨', '보강'] loop
+    v := p_texts ->> k;
+    if v is null then continue; end if;
+    v := btrim(replace(v, E'\r', ''));
+    if char_length(v) > 1000 then return private.fail('"' || k || '" 문구가 1000자를 넘어요 (알림톡은 1000자까지).'); end if;
+    if v <> '' then t := t || jsonb_build_object(k, v); end if;
+  end loop;
+  update private.solapi set texts = t where id = 1;
+  return jsonb_build_object('ok', true, 'texts', t);
+end $$;
+revoke all on function public.admin_solapi_texts(jsonb) from public, anon;
+grant execute on function public.admin_solapi_texts(jsonb) to authenticated;
+
+create or replace function public.admin_solapi_status()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare c private.solapi;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into c from private.solapi where id = 1;
+  return jsonb_build_object('ok', true, 'connected', c.api_key is not null and c.api_secret is not null,
+    'key_tail', case when c.api_key is null then null else '…' || right(c.api_key, 4) end,
+    'sender', private.phone_mask(c.sender), 'pf_id', c.pf_id is not null, 'templates', c.templates, 'texts', c.texts,
+    'send_hour', c.send_hour, 'enabled', c.enabled, 'last_run_at', c.last_run_at, 'last_note', c.last_note,
+    'contacts', (select count(*) from private.member_contacts));
+end $$;
