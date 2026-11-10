@@ -1198,7 +1198,6 @@
       boxes[x[0]] = ta;
       f.appendChild(field2(x[1], ta));
     });
-    f.appendChild(el("p", "sys-note", "선생님들과 학원만 봐요. 다른 학생에게는 보이지 않아요. 결과가 나오면 다시 열어서 특이사항에 적어주세요."));
     // 원장님 2026-11-10: 제출 버튼 바로 위에 잘 보이게
     var gift = el("p", "rv__gift");
     gift.appendChild(el("b", null, "📢 후기 작성 후 담당 선생님께 꼭 알려주세요!"));
