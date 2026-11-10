@@ -1239,7 +1239,7 @@
     box.textContent = "";
     var sum = el("div", "fold__sum");
     sum.appendChild(el("p", null, "오디션을 보고 오면 기억이 생생할 때 적어주세요. 어떤 곡을 불렀는지, 무엇을 물어봤는지가 다음 수업과 다른 친구들 준비에 큰 도움이 돼요."));
-    sum.appendChild(el("p", "sys-note", "🔒 선생님들과 학원만 봐요. 다른 학생 · 학부모에게는 보이지 않아요."));
+    sum.appendChild(el("p", "sys-note", "🔒 남겨주신 후기는 모두에게 보이지 않고 담당 선생님만 볼 수 있어요! 😘 부담 없이 솔직하게 적어주세요~"));
     box.appendChild(sum);
     box.appendChild(el("p", "sys-msg sys-msg--ok rv__saved"));
     var newWrap = el("details", "rv__new");
