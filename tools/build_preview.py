@@ -19,6 +19,7 @@ for page in PAGES:
     html = open(os.path.join(REPO, page)).read()
     html = re.sub(r'((?:href|src)="(?:css|js)/[^"?]+)\?v=[0-9a-f]+"', r'\1"', html)  # the preview copy is always fresh
     assert API in html, page
+    html = re.sub(r'<!-- naver analytics -->.*?<!-- /naver analytics -->\n', "", html, flags=re.S)  # 미리보기는 방문자 통계에 안 셈
     html = html.replace(API, API + '<script src="js/demo.js"></script>\n')
     # 800 moved blog posts + pictures don't fit in the preview: post.html and 내 폴더 read them from GitHub
     html = html.replace('<script src="js/config.js"></script>\n', '<script src="js/config.js"></script>\n<script>window.LEESH.blogBase = "' + BLOG_BASE + '";' + (' window.LEESH.demoExplain = true;' if EXPLAIN else '') + '</script>\n')

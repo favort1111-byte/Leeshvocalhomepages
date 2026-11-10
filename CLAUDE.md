@@ -304,6 +304,7 @@
 - `build_pages.py`가 `robots.txt`(admin·teacher 빼기) · `sitemap.xml`(공개 페이지 11개 + 옮긴 블로그 글 전부)을 만듦. 첫 화면·contact에 학원 정보(JSON-LD MusicSchool: 이름·주소·전화·유튜브·인스타, 좌표·영업시간은 확인 안 돼서 뺌).
   canonical·og:url은 `https://leeshlesson.com/<파일>` (post.html은 글마다 주소가 달라서 뺌).
 - `404.html`: 없는 주소 → "찾으시는 페이지가 없습니다" + 첫 화면·오디션 소식·상담 신청 버튼. 어느 깊이의 주소에서도 보이게 링크를 /로 시작. 예전 qshop 홈페이지 주소(/EBH1n 강사소개 · /aKews 온라인 강의 → about, /pTFHc 문의 → consult)는 바로 넘김.
+- **방문자 통계 (원장님 2026-11-10, 네이버 애널리틱스):** 원장님 네이버 계정에 사이트 "이송희보컬레슨"(https://leeshlesson.com/) 등록, 발급 ID `1d7488aff4c28c0`(페이지 소스에 원래 보이는 값). `build_pages.py` `ANALYTICS_PAGES`(누구나 보는 13개: 첫 화면 · about · schools · audition · results · interview · tips · post · contact · consult · guide · privacy · 404)의 `</body>` 앞에 wcslog 스크립트(`<!-- naver analytics -->` 표시). 관리자 · 선생님 · 학부모 · 예약 · 오락실 · 신청서는 안 셈, 미리보기는 `build_preview.py`가 지움. 개인정보처리방침 5번(쿠키 · 방문 숫자만) · 3번 위탁(네이버 주식회사)에 적음. 통계는 원장님만 analytics.naver.com에서 봄.
 - 남은 것: 원장님이 **네이버 서치어드바이저**·**구글 서치 콘솔**에 사이트 등록 → 받은 확인용 meta 태그(비밀 아님)를 `head()`에 넣고 사이트맵 제출.
 
 ## 입시반 학교 목록 시트 · 요강 자동 확인 (2026-11-04)

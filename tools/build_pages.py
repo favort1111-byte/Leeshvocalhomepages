@@ -941,7 +941,17 @@ def stamp(html):
     return ASSET.sub(ver, html)
 
 target = sys.argv[1] if len(sys.argv) > 1 else REPO
+# 방문자 통계 (원장님 2026-11-10): 네이버 애널리틱스, 원장님 네이버 계정에서만 봄. 발급 ID는 페이지 소스에 원래 보이는 값(비밀 아님).
+# 누구나 보는 페이지만 셈 — 관리자 · 선생님 · 학부모 · 예약 · 오락실 · 신청서(학생 · 선생님 도구 화면)는 뺌. 미리보기에서는 build_preview.py가 지움.
+NAVER_WA = "1d7488aff4c28c0"
+ANALYTICS_PAGES = {"index.html", "about.html", "schools.html", "audition.html", "results.html", "interview.html", "tips.html", "post.html",
+                   "contact.html", "consult.html", "guide.html", "privacy.html", "404.html"}
+ANALYTICS = ('<!-- naver analytics -->\n<script src="https://wcs.pstatic.net/wcslog.js"></script>\n'
+             '<script>if (!window.wcs_add) window.wcs_add = {}; wcs_add["wa"] = "' + NAVER_WA + '"; if (window.wcs) wcs_do();</script>\n'
+             '<!-- /naver analytics -->\n')
 def fill(name, html):
+    if name in ANALYTICS_PAGES:
+        html = html.replace("</body>", ANALYTICS + "</body>", 1)
     ld = f'<script type="application/ld+json">{LD}</script>\n' if name in LD_PAGES else ""
     if name in ("post.html", "404.html"):  # post.html?id=… 글마다 주소가 달라서 대표 주소를 적지 않음
         html = re.sub(r'<link rel="canonical"[^>]*>\n|<meta property="og:url"[^>]*>\n', "", html)
