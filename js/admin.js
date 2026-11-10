@@ -554,7 +554,7 @@
     var q = $("#memberSearch").value.trim().toLowerCase();
     var st = $("#memberFilter").value;
     var rows = state.members.filter(function (m) {
-      if (st && m.status !== st) return false;
+      if (st === "!종료" ? m.status === "종료" : st && m.status !== st) return false; // 원장님 2026-11-10: 처음엔 종료 숨김
       return !q || [m.id, m.name, m.phone || ""].join(" ").toLowerCase().indexOf(q) !== -1;
     });
     var t = $("#memberTable");

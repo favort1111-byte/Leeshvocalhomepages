@@ -123,7 +123,7 @@
       <div class="adm__bar">
         <input type="search" id="memberSearch" placeholder="이름·ID·번호 검색" aria-label="검색">
         <select id="memberFilter" aria-label="상태">
-          <option value="">전체</option><option>재원</option><option>외부</option><option>휴원</option><option>종료</option>
+          <option value="!종료" selected>종료 빼고</option><option value="">전체 (종료 포함)</option><option>재원</option><option>외부</option><option>휴원</option><option>종료</option>
         </select>
         <button type="button" class="sys-btn" id="memberAdd">새 수강 ID</button>
       </div>
@@ -570,6 +570,6 @@
 <script src="js/richtext.js?v=6d782c73"></script>
 <script src="js/grid.js?v=5cb76b9e"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
-<script src="js/admin.js?v=0f2be3d7"></script>
+<script src="js/admin.js?v=01817bc0"></script>
 </body>
 </html>
