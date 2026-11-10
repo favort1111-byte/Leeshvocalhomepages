@@ -821,7 +821,7 @@
   /* ---------------- 카카오톡으로 보낼 주소 ---------------- */
 
   // Links straight into a screen (js/scene.js reads the #hash). Saved sign-ins open them without a login.
-  var LINKS = [["레슨 노트", "#notes"], ["내 예약", "#bookings"], ["일정·공지", "#notices"], ["월말평가", "#evals"], ["노래 추천", "#recs"], ["영상 추천", "#videos"], ["연습 일지", "#logs"], ["제휴 업체", "#partners"], ["연습실 예약", "booking.html"], ["홈페이지 사용법", "guide.html"], ["상담 신청", "consult.html"]]
+  var LINKS = [["레슨 노트", "#notes"], ["내 예약", "#bookings"], ["일정", "#plans"], ["공지", "#notices"], ["월말평가", "#evals"], ["노래 추천", "#recs"], ["영상 추천", "#videos"], ["연습 일지", "#logs"], ["제휴 업체", "#partners"], ["연습실 예약", "booking.html"], ["홈페이지 사용법", "guide.html"], ["상담 신청", "consult.html"]]
     .filter(function (l) { return cfg.lessonNotes !== false || l[1] !== "#notes"; });
   function siteLink(to) { return new URL(to.charAt(0) === "#" ? "./" + to : to, location.href).href; }
   function openHref(to) { return to.charAt(0) === "#" ? "index.html" + to : to; }
@@ -1626,7 +1626,7 @@
       .then(function (res) {
         if (!res.ok) { msg($("#noticeMsg"), friendly(res), "error"); return; }
         var wasNew = !noticeEdit;
-        msg($("#noticeMsg"), wasNew ? "올렸어요. 학생 내 폴더 → 일정·공지에 바로 보여요." : "고쳤어요.", "ok");
+        msg($("#noticeMsg"), wasNew ? "올렸어요. 학생 내 폴더 → 일정(날짜가 있으면) · 공지에 바로 보여요." : "고쳤어요.", "ok");
         noticeForm(null); // (reset first: the share box sits inside the form)
         if (wasNew) showShare($("#noticeShare"), "#notices", "새 공지가 올라왔어요: " + body.title);
         loadNotices();
@@ -2323,6 +2323,7 @@
         var lu = el("ul", "adm__cards");
         var my = logs.filter(function (x) { return x.member_id === id; });
         if (!my.length) lu.appendChild(el("li", "sys-empty", "최근 60일 동안 쓴 일지가 없어요."));
+        var logLis = {};
         my.forEach(function (x) {
           var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
           top.appendChild(el("strong", null, dayLabel(x.day)));
@@ -2330,7 +2331,16 @@
           if (x.song) top.appendChild(el("span", "sys-note", "♪ " + x.song));
           li.appendChild(top);
           if (x.did) li.appendChild(el("p", "adm__quote", x.did));
+          logLis[x.id] = li;
           lu.appendChild(li);
+        });
+        // 연습 일지 사진 (원장님 2026-11-10): 학생이 붙인 사진, 보기만
+        if (window.LeeshPhotos && my.length) api("practice_photos?select=*&member_id=eq." + encodeURIComponent(id) + "&order=id").then(function (pr) {
+          if (!pr.ok) return;
+          var by = {};
+          pr.data.forEach(function (p) { (by[p.log_id] = by[p.log_id] || []).push(p); });
+          var load = function (path) { return token().then(function (t) { return LeeshAPI.storage.photo(path, t); }); };
+          Object.keys(by).forEach(function (lid) { if (logLis[lid]) logLis[lid].appendChild(LeeshPhotos.strip({ items: by[lid], canEdit: false, load: load }).node); });
         });
         left.appendChild(lu);
         var right = el("div");

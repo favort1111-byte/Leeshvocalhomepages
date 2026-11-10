@@ -6550,3 +6550,162 @@ end $$;
 -- 원장님 "동점 안 나오게, 다른 사람 단계는 안 보이게 점수로만": 이벤트 점수 = 단계 점수 + 빠르기 · 정확도 보너스 (js/games.js · js/games2.js).
 -- 상한은 사람이 못 내는 점수로만: 따라치기 60음 · 계이름 3000개 · 날아라 2000기둥 수준
 update private.game_event set max_score = '{"solfa": 1000000, "simon": 300000, "fly": 300000}' where id = '2026-11';
+
+-- ===== leesh_student_sheets (2026-11-10) =====
+-- 학생도 내 곡·자료(가사지 · 곡 노트 · 오디션 일정 …)를 보기만 (원장님 2026-11-10 "이전 시트에서 진행했던 가사지가 아직도 안 보인다"):
+-- 예전 구글시트는 학생과 공유해서 가사 탭도 같이 봤는데, 홈페이지는 곡·자료를 선생님 · 관리자만 봤음.
+-- OT · 양식 · 상담 · 등록 · 신상 · 개인정보 · 연락처 · 결제 · 수강료 · 학부모 제목의 시트와, 생년월일 + 사는 곳/주소/학교가 같이 적힌 시트(private.lesson_private)는
+-- 학생에게 절대 안 보임 (원장님 2026-11-08 "OT는 선생님이랑 관리자만"). 휴대폰 번호는 가려서 보냄. 레슨 노트가 켜져 있을 때만(settings.student_notes).
+
+create or replace function private.sheet_for_student(p_title text, p_sheet jsonb)
+returns boolean language sql stable set search_path = '' as $$
+  select coalesce(p_title, '') !~ '(^|[^A-Za-z])(OT|ot|Ot)([^A-Za-z]|$)'
+     and coalesce(p_title, '') !~ '오티|양식|상담|등록|신상|개인정보|연락처|결제|수강료|학부모|주소'
+     and not private.lesson_private(p_sheet)
+     and btrim(private.sheet_text(p_sheet)) <> '';
+$$;
+revoke all on function private.sheet_for_student(text, jsonb) from public, anon, authenticated;
+
+-- 목록 (이름만, 표는 누를 때 따로)
+create or replace function public.member_sheets(p_id text, p_pin text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); on_ boolean;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  select coalesce(student_notes, false) into on_ from public.settings limit 1;
+  if not coalesce(on_, false) then return jsonb_build_object('ok', true, 'items', '[]'::jsonb); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', s.id, 'title', s.title, 'teacher', t.name, 'updated', s.updated_at)
+           order by s.tab_pos nulls last, s.pos nulls last, s.id)
+    from public.lesson_sheets s left join public.teachers t on t.id = s.teacher_id
+    where s.member_id = who ->> 'id' and private.sheet_for_student(s.title, s.sheet)), '[]'::jsonb));
+end $$;
+
+-- 한 장 (내 것 · 학생에게 보여도 되는 것만, 휴대폰 번호는 가림)
+create or replace function public.member_sheet(p_id text, p_pin text, p_sid bigint)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); s public.lesson_sheets; on_ boolean;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  select coalesce(student_notes, false) into on_ from public.settings limit 1;
+  if not coalesce(on_, false) then return private.fail('지금은 볼 수 없어요.'); end if;
+  select * into s from public.lesson_sheets where id = p_sid and member_id = who ->> 'id';
+  if s.id is null or not private.sheet_for_student(s.title, s.sheet) then return private.fail('볼 수 없는 시트예요.'); end if;
+  return jsonb_build_object('ok', true, 'id', s.id, 'title', s.title, 'sheet', private.mask_phone(s.sheet));
+end $$;
+
+revoke all on function public.member_sheets(text, text) from public;
+revoke all on function public.member_sheet(text, text, bigint) from public;
+grant execute on function public.member_sheets(text, text) to anon, authenticated;
+grant execute on function public.member_sheet(text, text, bigint) to anon, authenticated;
+
+-- ===== leesh_practice_photos (2026-11-10) =====
+-- 연습 일지 사진 (원장님 2026-11-10 "학생들 연습일지에 사진 업로드"): 학생이 자기 연습 일지에 사진을 붙임.
+-- 파일은 레슨 사진과 같은 비공개 보관함 lesson-photos/<수강 ID>/log/<이름> (긴 쪽 1600px로 줄여서).
+-- 보는 사람: 그 학생 본인 · 담당 선생님(private.photo_teacher가 학생 폴더 전체를 봄) · 관리자. 학부모 · 다른 학생은 못 봄.
+-- 일지를 지우면 사진 줄도 지워짐(파일은 남음, 자동 삭제 없음). 일지 하나에 10장, 하루 40장.
+
+create table if not exists public.practice_photos (
+  id bigserial primary key,
+  member_id text not null references public.members (id) on delete cascade,
+  log_id bigint not null references public.practice_logs (id) on delete cascade,
+  path text not null unique check (path ~ '^[A-Za-z0-9]+/log/[a-z0-9]+\.(webp|jpg)$'),
+  w int, h int,
+  created_at timestamptz not null default now()
+);
+create index if not exists practice_photos_log on public.practice_photos (log_id);
+create index if not exists practice_photos_member on public.practice_photos (member_id, created_at desc);
+alter table public.practice_photos enable row level security;
+revoke all on public.practice_photos from anon, authenticated;
+drop policy if exists practice_photos_admin on public.practice_photos;
+create policy practice_photos_admin on public.practice_photos for all to authenticated using (public.is_admin()) with check (public.is_admin());
+grant select, insert, update, delete on public.practice_photos to authenticated;
+grant usage on sequence public.practice_photos_id_seq to authenticated;
+drop trigger if exists zz_admin_log on public.practice_photos;
+create trigger zz_admin_log after insert or update or delete on public.practice_photos for each row execute function private.log_change();
+
+-- 보관함: 학생은 자기 폴더의 log/ 안에만 올리기 · 보기 · 지우기
+create or replace function private.photo_log_owner(p_name text)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select split_part(p_name, '/', 2) = 'log' and split_part(p_name, '/', 1) = private.song_owner();
+$$;
+revoke all on function private.photo_log_owner(text) from public, anon;
+grant execute on function private.photo_log_owner(text) to authenticated;
+drop policy if exists lesson_photos_log_add on storage.objects;
+drop policy if exists lesson_photos_log_read on storage.objects;
+drop policy if exists lesson_photos_log_remove on storage.objects;
+create policy lesson_photos_log_add on storage.objects for insert to authenticated with check (bucket_id = 'lesson-photos' and private.photo_log_owner(name));
+create policy lesson_photos_log_read on storage.objects for select to authenticated using (bucket_id = 'lesson-photos' and private.photo_log_owner(name));
+create policy lesson_photos_log_remove on storage.objects for delete to authenticated using (bucket_id = 'lesson-photos' and private.photo_log_owner(name));
+
+-- 학생: 내 연습 일지 사진 목록
+create or replace function public.member_log_photos(p_id text, p_pin text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', p.id, 'log', p.log_id, 'path', p.path, 'w', p.w, 'h', p.h) order by p.id)
+    from public.practice_photos p where p.member_id = who ->> 'id'), '[]'::jsonb));
+end $$;
+
+-- 학생: 올린 파일을 일지에 붙이기 (내 일지 · 내 폴더 · 파일이 정말 올라갔는지 확인)
+create or replace function public.member_log_photo_add(p_id text, p_pin text, p_log bigint, p_path text, p_w int default null, p_h int default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); mid text; new_id bigint;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if not exists (select 1 from public.practice_logs where id = p_log and member_id = mid) then return private.fail('일지를 찾을 수 없어요.'); end if;
+  if coalesce(p_path, '') !~ ('^' || mid || '/log/[a-z0-9]+\.(webp|jpg)$') then return private.fail('사진 이름이 맞지 않아요.'); end if;
+  if not exists (select 1 from storage.objects o where o.bucket_id = 'lesson-photos' and o.name = p_path) then return private.fail('사진이 아직 안 올라갔어요. 다시 해주세요.'); end if;
+  if (select count(*) from public.practice_photos where log_id = p_log) >= 10 then return private.fail('일지 하나에 사진은 10장까지예요.'); end if;
+  if (select count(*) from public.practice_photos where member_id = mid and created_at > now() - interval '1 day') >= 40 then return private.fail('오늘은 사진을 많이 올렸어요. 내일 다시 올려주세요.'); end if;
+  insert into public.practice_photos (member_id, log_id, path, w, h)
+  values (mid, p_log, p_path, case when p_w between 1 and 10000 then p_w end, case when p_h between 1 and 10000 then p_h end)
+  on conflict (path) do nothing returning id into new_id;
+  return jsonb_build_object('ok', true, 'id', new_id);
+end $$;
+
+-- 학생: 사진 빼기 (줄 지우고, 파일 지울 이름을 돌려줌)
+create or replace function public.member_log_photo_delete(p_id text, p_pin text, p_photo bigint)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); p text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  delete from public.practice_photos where id = p_photo and member_id = who ->> 'id' returning path into p;
+  if p is null then return private.fail('사진을 찾을 수 없어요.'); end if;
+  return jsonb_build_object('ok', true, 'path', p);
+end $$;
+
+-- 선생님: 담당 학생의 연습 일지 사진
+create or replace function public.teacher_log_photos(p_member text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if t.id is null then return private.fail('선생님 연결이 필요해요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생이 아니에요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', p.id, 'log', p.log_id, 'path', p.path, 'w', p.w, 'h', p.h) order by p.id)
+    from public.practice_photos p where p.member_id = p_member), '[]'::jsonb));
+end $$;
+
+revoke all on function public.member_log_photos(text, text) from public;
+revoke all on function public.member_log_photo_add(text, text, bigint, text, int, int) from public;
+revoke all on function public.member_log_photo_delete(text, text, bigint) from public;
+revoke all on function public.teacher_log_photos(text) from public, anon;
+grant execute on function public.member_log_photos(text, text) to anon, authenticated;
+grant execute on function public.member_log_photo_add(text, text, bigint, text, int, int) to anon, authenticated;
+grant execute on function public.member_log_photo_delete(text, text, bigint) to anon, authenticated;
+grant execute on function public.teacher_log_photos(text) to authenticated;
+
+-- ===== leesh_teacher_log_ids (2026-11-10) =====
+-- 선생님 화면 연습 일지에 일지 번호(id)도 보내기 → 그 일지의 사진을 붙여 보여줌 (2026-11-10 연습 일지 사진)
+do $do$
+declare d text := pg_get_functiondef('public.teacher_student(text)'::regprocedure);
+begin
+  if position($q$jsonb_build_object('id', l.id, 'day', l.day$q$ in d) = 0 then
+    d := replace(d, $q$jsonb_build_object('day', l.day, 'minutes', l.minutes$q$, $q$jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes$q$);
+    execute d;
+  end if;
+end $do$;

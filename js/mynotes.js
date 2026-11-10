@@ -53,7 +53,9 @@
     if (note) sign.note(note);
   }
 
+  function foldAll() { scene.querySelectorAll("#myPlans details, #myNotices details").forEach(function (d) { d.open = false; }); }
   function showTab(name) {
+    if (name === "plans" || name === "notices") foldAll(); // 다시 들어오면 접힌 채로
     scene.querySelectorAll("[data-book-tab]").forEach(function (t) { t.setAttribute("aria-selected", t.getAttribute("data-book-tab") === name ? "true" : "false"); });
     scene.querySelectorAll("[data-book-page]").forEach(function (p) { p.hidden = p.getAttribute("data-book-page") !== name; });
     // phones: the tab row scrolls sideways, so bring the chosen tab into view
@@ -176,10 +178,51 @@
     });
   }
 
+  /* 곡·자료 · 가사지 (원장님 2026-11-10 "이전 시트에서 진행했던 가사지가 안 보인다"): 선생님 시트의 날짜 탭이 아닌 탭(가사 · 곡 노트 · 오디션 일정 …)을
+     보기만. OT · 양식처럼 개인정보가 든 시트는 서버(member_sheets)가 빼고 보내요. 이름만 먼저, 누르면 그 표를 불러와요. */
+  function renderSheets(box) {
+    var wrap = el("details", "lsheets");
+    var sum = el("summary", null, "📄 곡·자료 · 가사지");
+    wrap.appendChild(sum);
+    var list = el("div", "lsheets__list");
+    wrap.appendChild(list);
+    box.insertBefore(wrap, box.firstChild);
+    LeeshAPI.rpc("member_sheets", { p_id: who.id, p_pin: who.key }).then(function (res) {
+      var items = (res.ok && res.items) || [];
+      if (!items.length) { wrap.remove(); return; }
+      sum.textContent = "📄 곡·자료 · 가사지 (" + items.length + ")";
+      list.appendChild(el("p", "sys-note", "선생님 시트의 가사지 · 곡 노트예요. 눌러서 보세요 (보기만)."));
+      items.forEach(function (it) {
+        var row = el("div", "lsheets__item");
+        var b = el("button", "lsheets__btn", it.title || "시트");
+        b.type = "button";
+        if (it.teacher) b.appendChild(el("span", "lnote__teacher", " " + it.teacher + " 선생님"));
+        var slot = el("div", "lnote__sheet");
+        slot.hidden = true;
+        b.addEventListener("click", function () {
+          if (!slot.hidden) { slot.hidden = true; b.classList.remove("is-open"); return; }
+          slot.hidden = false;
+          b.classList.add("is-open");
+          if (slot.childNodes.length) return;
+          slot.appendChild(el("p", "sys-note", "불러오는 중…"));
+          LeeshAPI.rpc("member_sheet", { p_id: who.id, p_pin: who.key, p_sid: it.id }).then(function (r) {
+            slot.textContent = "";
+            if (!r.ok || !r.sheet) { slot.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
+            slot.appendChild(LeeshGrid.view(r.sheet));
+          });
+        });
+        row.appendChild(b);
+        row.appendChild(slot);
+        list.appendChild(row);
+      });
+    });
+  }
+
   function renderNotes(notes) {
     var box = scene.querySelector("#myNotes");
     box.textContent = "";
     var cards = {};
+    if (window.LeeshGrid && who) renderSheets(box);
     if (!notes.length) { box.appendChild(el("p", "book__empty", "아직 적힌 레슨 노트가 없어요. 수업이 끝나면 선생님이 적어줘요.")); return; }
     notes.forEach(function (n) {
       var card = el("article", "lnote");
@@ -340,8 +383,7 @@
   /* 일정·공지: dated things coming up (학원 내방 오디션, 월말평가 날, 휴원일 …) by date, then the other notices */
   function dday(d) { var n = Math.round((new Date(d + "T00:00:00Z") - new Date(todayKst() + "T00:00:00Z")) / 86400000); return n === 0 ? "오늘" : n < 0 ? "진행 중" : "D-" + n; }
   function noticeCard(n) {
-    var d = el("details", "fold__notice");
-    if (n.pinned) d.open = true;
+    var d = el("details", "fold__notice"); // 늘 접힌 채로 (원장님 2026-11-10: 휴대폰에서 열린 채로 남아 한참 내려야 했음)
     var s = el("summary");
     if (n.pinned) s.appendChild(el("b", "news__badge", "중요"));
     s.appendChild(document.createTextNode(" " + n.title));
@@ -351,8 +393,10 @@
   }
   function prevDay(d) { var t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - 1); return t.toISOString().slice(0, 10); }
   function renderNotices(res) {
-    var box = scene.querySelector("#myNotices");
+    // 일정 · 공지 탭 따로 (원장님 2026-11-10 "휴대폰에서 일정이랑 공지를 나눠줘"): 일정 = 이번 달 요약 · 신청 · 다가오는 일정, 공지 = 공지 글 · 규정 상자
+    var box = scene.querySelector("#myPlans"), nbox = scene.querySelector("#myNotices");
     box.textContent = "";
+    nbox.textContent = "";
     var today = todayKst(), month = today.slice(0, 7);
     var plans = (res.visits || []).map(function (a) {
       return { date: a.date, kind: "내방 오디션", title: (a.company ? a.company + " " : "") + a.title, href: "audition.html",
@@ -410,13 +454,11 @@
         v.appendChild(row);
       });
       box.appendChild(v);
-    }
-    if (plain.length) {
-      box.appendChild(el("h3", "rec__title", "공지"));
-      plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
-    }
-    if (!plans.length && !plain.length) box.appendChild(el("p", "book__empty", "새 일정이나 공지가 없어요."));
-    if (!plain.length && (window.LeeshVisitRules || window.LeeshRoomRules)) box.appendChild(el("h3", "rec__title", "공지"));
+    } else box.appendChild(el("p", "book__empty", "다가오는 일정이 없어요."));
+    box = nbox; // 여기부터 공지 탭
+    if (plain.length) plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
+    else box.appendChild(el("p", "book__empty", "새 공지가 없어요."));
+    box.appendChild(el("h3", "rec__title", "학원 규정 · 안내"));
     // 연습실 예약 및 이용 안내 + 와이파이 (원장님 2026-11-06) — js/roomrules.js, 와이파이는 펼칠 때 서버에서
     if (window.LeeshRoomRules) {
       var roomInfo = null; // member_wifi 한 번만 (와이파이). 연습실 비밀번호는 그냥 일정·공지 글 (원장님 2026-11-06)
@@ -954,6 +996,7 @@
   function renderLogs(logs, songs) {
     var box = scene.querySelector("#myLogs");
     box.textContent = "";
+    var cards = {};
     var today = todayKst(), week = {};
     logs.forEach(function (l) { if (l.day > addDays(today, -7)) week[l.day] = 1; });
     var sum = el("div", "fold__sum");
@@ -979,6 +1022,13 @@
     f.appendChild(field2("곡", song));
     var did = el("textarea"); did.name = "did"; did.rows = 3; did.maxLength = 1000; did.placeholder = "예) 후렴 고음 10번, 립트릴 5분. 호흡이 모자랐음";
     f.appendChild(field2("오늘 연습한 것", did));
+    // 연습 사진 (원장님 2026-11-10): 고르면 일지를 저장한 뒤 그 일지에 붙어요
+    var pics = el("input"); pics.type = "file"; pics.accept = "image/*"; pics.multiple = true;
+    var picsNote = el("span", "sys-note");
+    pics.addEventListener("change", function () { picsNote.textContent = pics.files && pics.files.length ? " " + pics.files.length + "장 골랐어요" : ""; });
+    var picsField = field2("📷 사진 (선택 · 악보 · 가사 · 연습하는 모습)", pics);
+    picsField.appendChild(picsNote);
+    if (window.LeeshPhotos) f.appendChild(picsField);
     var btn = el("button", "sys-btn", "일지 쓰기");
     btn.type = "submit";
     f.appendChild(btn);
@@ -987,8 +1037,15 @@
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       btn.disabled = true;
-      call("member_log_save", { p_log: null, p_day: day.value, p_minutes: mins.value ? Number(mins.value) : null, p_song: song.value || null, p_did: did.value || null }, note)
-        .then(function (ok) { btn.disabled = false; if (ok) showTab("logs"); });
+      var files = Array.prototype.slice.call(pics.files || []);
+      LeeshAPI.rpc("member_log_save", { p_id: who.id, p_pin: who.key, p_log: null, p_day: day.value, p_minutes: mins.value ? Number(mins.value) : null, p_song: song.value || null, p_did: did.value || null })
+        .then(function (res) {
+          if (!res.ok) { note.textContent = res.error; note.className = "sys-msg sys-msg--error"; btn.disabled = false; return; }
+          var up = files.length ? (note.textContent = "사진 올리는 중…", note.className = "sys-msg", logPhotoUpload(res.id, files.slice(0, 10))) : Promise.resolve("");
+          return up.then(function (msg) {
+            return load().then(function () { showTab("logs"); if (msg) { var n = scene.querySelector("#myLogs .sys-msg"); if (n) { n.textContent = msg; n.className = "sys-msg sys-msg--error"; } } });
+          });
+        });
     });
     box.appendChild(f);
 
@@ -1009,7 +1066,63 @@
       });
       c.appendChild(del);
       c.appendChild(n2);
+      cards[l.id] = c;
       box.appendChild(c);
+    });
+    logPhotos(cards);
+  }
+
+  /* 연습 일지 사진 (원장님 2026-11-10): lesson-photos/<수강 ID>/log/<이름>, 본인 · 담당 선생님 · 관리자만 봐요 */
+  function logPhotoUpload(logId, files) {
+    var failed = 0, why = "";
+    return files.reduce(function (chain, file) {
+      return chain.then(function () {
+        return LeeshPhotos.shrink(file).then(function (sm) {
+          var path = who.id + "/log/" + (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).replace(/[^a-z0-9]/g, "") + "." + sm.ext;
+          return LeeshAPI.kakao.token().then(function (t) { return LeeshAPI.storage.uploadPhoto(path, sm.blob, t); }).then(function (ok) {
+            if (!ok) throw new Error("인터넷 연결을 확인해 주세요.");
+            return LeeshAPI.rpc("member_log_photo_add", { p_id: who.id, p_pin: who.key, p_log: logId, p_path: path, p_w: sm.w, p_h: sm.h });
+          }).then(function (res) {
+            if (!res.ok) throw new Error(res.error);
+            photoUrls[path] = Promise.resolve(URL.createObjectURL(sm.blob));
+          });
+        }).catch(function (e) { failed++; why = (e && e.message) || ""; });
+      });
+    }, Promise.resolve()).then(function () { return failed ? failed + "장은 못 올렸어요. " + why : ""; });
+  }
+  function logPhotos(cards) {
+    if (!window.LeeshPhotos || !who || !Object.keys(cards).length) return;
+    LeeshAPI.rpc("member_log_photos", { p_id: who.id, p_pin: who.key }).then(function (res) {
+      var by = {};
+      ((res.ok && res.items) || []).forEach(function (p) { (by[p.log] = by[p.log] || []).push(p); });
+      Object.keys(cards).forEach(function (id) {
+        var items = by[id] || [];
+        var strip = LeeshPhotos.strip({
+          items: items, canEdit: true, load: photoUrl,
+          note: "사진은 나 · 담당 선생님 · 학원만 볼 수 있어요.",
+          onAdd: function (files) {
+            var left = 10 - strip.count();
+            if (left <= 0) { strip.busy("일지 하나에 사진은 10장까지예요.", "error"); return; }
+            strip.busy("사진 올리는 중…");
+            logPhotoUpload(Number(id), files.slice(0, left)).then(function (msg) {
+              return LeeshAPI.rpc("member_log_photos", { p_id: who.id, p_pin: who.key }).then(function (r2) {
+                strip.set(((r2.ok && r2.items) || []).filter(function (p) { return String(p.log) === String(id); }));
+                strip.busy(msg || "올렸어요.", msg ? "error" : "ok");
+              });
+            });
+          },
+          onDelete: function (it) {
+            return LeeshAPI.rpc("member_log_photo_delete", { p_id: who.id, p_pin: who.key, p_photo: it.id }).then(function (r) {
+              if (!r.ok) { strip.busy(r.error, "error"); return false; }
+              LeeshAPI.kakao.token().then(function (t) { LeeshAPI.storage.removePhotos([r.path], t); });
+              items = items.filter(function (x) { return x.id !== it.id; });
+              strip.set(items);
+              return true;
+            });
+          }
+        });
+        cards[id].appendChild(strip.node);
+      });
     });
   }
 
@@ -1086,6 +1199,11 @@
       f.appendChild(field2(x[1], ta));
     });
     f.appendChild(el("p", "sys-note", "선생님들과 학원만 봐요. 다른 학생에게는 보이지 않아요. 결과가 나오면 다시 열어서 특이사항에 적어주세요."));
+    // 원장님 2026-11-10: 제출 버튼 바로 위에 잘 보이게
+    var gift = el("p", "rv__gift");
+    gift.appendChild(el("b", null, "📢 후기 작성 후 담당 선생님께 꼭 알려주세요!"));
+    gift.appendChild(el("span", null, "확인 후 기프티콘을 보내드립니다. 🎁"));
+    f.appendChild(gift);
     var btns = el("div", "sys-row rv__btns");
     var save = el("button", "sys-btn", r ? "고친 내용 저장" : "후기 보내기");
     save.type = "submit";

@@ -210,7 +210,8 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
           <button type="button" role="tab" aria-selected="true" data-book-tab="notes">레슨 노트</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="msgs">메시지<b class="book__badge" id="myMsgBadge" hidden></b></button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="bookings">내 예약</button>
-          <button type="button" role="tab" aria-selected="false" data-book-tab="notices">일정·공지</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="plans">일정</button>
+          <button type="button" role="tab" aria-selected="false" data-book-tab="notices">공지</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="evals">월말평가</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="recs">노래 추천</button>
           <button type="button" role="tab" aria-selected="false" data-book-tab="videos">영상 추천</button>
@@ -223,6 +224,7 @@ MY_FOLDER = """  <section class="scene scene--book" id="scene-me" role="dialog" 
         <div class="book__page" data-book-page="notes" id="myNotes"></div>
         <div class="book__page" data-book-page="msgs" id="myMsgs" hidden></div>
         <div class="book__page" data-book-page="bookings" id="myBookings" hidden></div>
+        <div class="book__page" data-book-page="plans" id="myPlans" hidden></div>
         <div class="book__page" data-book-page="notices" id="myNotices" hidden></div>
         <div class="book__page" data-book-page="evals" id="myEvals" hidden></div>
         <div class="book__page" data-book-page="recs" id="myRecs" hidden></div>

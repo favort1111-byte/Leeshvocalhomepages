@@ -14,7 +14,8 @@
   if (!R) return;
   var COLS = 26, ROWS = 100, MAX_ROWS = 1000, CW = 100, RH = 21, MAXLEN = 5000, BASE = 13;
   var LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  var ZOOMS = [75, 90, 100, 110, 125, 150, 200];
+  var ZOOMS = [50, 60, 75, 90, 100, 110, 125, 150, 200]; // 50 · 60% 더함 (선생님 의견 2026-11-10)
+  var lastGrid = null; // 마지막으로 만진 표 (여러 표가 한 화면에 있을 때 Delete 받을 곳)
   var ZOOM_KEY = "leesh_grid_zoom";
   var SIZES = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 36];
   // 구글시트 색 판 그대로 (회색 줄 · 밝은 색 줄 · 옅은 색 3줄 · 짙은 색 3줄)
@@ -1160,7 +1161,7 @@
       if (cell.classList.contains("xs-rh")) return { row: r };
       return { r: r, c: cell.cellIndex - 1 };
     }
-    sc.addEventListener("pointerdown", function (e) { touch = e.pointerType === "touch" || e.pointerType === "pen"; }, true);
+    sc.addEventListener("pointerdown", function (e) { touch = e.pointerType === "touch" || e.pointerType === "pen"; lastGrid = wrap; }, true);
     sc.addEventListener("mousedown", function (e) {
       if (e.button !== 0 || /grip/.test(e.target.className)) return;
       var h = hit(e);
@@ -1231,7 +1232,21 @@
       dragPt = { x: e.clientX, y: e.clientY };
       if (!dragRaf) dragRaf = window.requestAnimationFrame(dragTick);
     });
-    document.addEventListener("mouseup", function () { dragging = false; dragPt = null; });
+    // 끌어서 여러 칸을 고른 뒤 Delete가 안 먹던 것 (선생님 의견 2026-11-10): 끄는 동안 칸 초점이 풀려(body) 글쇠가 표로 안 왔음 → 놓을 때 다시 칸에 초점
+    document.addEventListener("mouseup", function () {
+      var was = dragging;
+      dragging = false; dragPt = null;
+      if (was && mode !== "edit") focusCur(null, true);
+    });
+    // 그래도 초점이 표 밖(body)에 있으면, 마지막으로 만진 표가 Delete · Backspace를 받아요
+    document.addEventListener("keydown", function (e) {
+      if ((e.key !== "Delete" && e.key !== "Backspace") || mode === "edit" || e.defaultPrevented) return;
+      var ae = document.activeElement;
+      if (ae && ae !== document.body && ae !== document.documentElement) return;
+      if (lastGrid !== wrap || !document.body.contains(wrap)) return;
+      e.preventDefault();
+      clearRange();
+    });
     sc.addEventListener("dblclick", function (e) {
       var h = hit(e);
       if (!h || h.r == null) return;

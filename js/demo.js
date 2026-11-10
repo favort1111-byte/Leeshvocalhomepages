@@ -97,7 +97,11 @@
         { id: 702, member_id: "S002", teacher_id: 501, src_file: "demo-sheet-hanul", src_tab: 202, title: "Honeymoon Avenue", pos: 3, synced_at: new Date().toISOString(),
           sheet: { v: 1, n: 100, w: { 0: 300, 1: 300 }, h: {}, c: { "0,0": { t: "가사", s: { b: 1 } }, "0,1": { t: "곡별 피드백", s: { b: 1 } },
             "1,0": { t: "(체험용 가사 자리)" }, "1,1": { t: "<span style=\"color:#ff0000\">첫 음 낮게 시작하지 않기</span>" },
-            "2,0": { t: "(체험용 가사 자리)" }, "2,1": { t: "후렴 호흡 미리 채우기", s: { g: "#fff2cc" } } } } }
+            "2,0": { t: "(체험용 가사 자리)" }, "2,1": { t: "후렴 호흡 미리 채우기", s: { g: "#fff2cc" } } } } },
+        { id: 703, member_id: "S001", teacher_id: 501, src_file: null, src_tab: null, title: "체험곡 가사지", pos: 1, synced_at: null,
+          sheet: { v: 1, n: 100, w: { 0: 300, 1: 300 }, h: {}, c: { "0,0": { t: "가사", s: { b: 1 } }, "0,1": { t: "곡별 피드백", s: { b: 1 } },
+            "1,0": { t: "(체험용 가사 첫 줄)" }, "1,1": { t: "<span style=\"color:#ff0000\">첫 음 너무 세게 내지 않기</span>" },
+            "2,0": { t: "(체험용 가사 둘째 줄)" }, "2,1": { t: "끝음 처리 · 호흡 유지", s: { g: "#fff2cc" } } } } }
       ],
       lesson_sources: [
         { file: "demo-sheet-hanul", title: "이하늘 (입시반)", folder: "유정T 레슨시트", member: "S002", name: "이하늘", teacher: "안유정", status: "ok", why: null, by: "auto", notes: 1, sheets: 2, kept: 0, gone: 0, syncedAt: new Date().toISOString() },
@@ -448,6 +452,34 @@
         return { id: p.id, note: p.note_id, sheet: p.sheet_id, path: p.path, w: p.w, h: p.h, at: p.created_at };
       }) };
     },
+    // 연습 일지 사진 (체험)
+    member_log_photos: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      return { ok: true, items: (db.practice_photos || []).filter(function (p) { return p.member_id === who.id; }) };
+    },
+    member_log_photo_add: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      db.practice_photos = db.practice_photos || [];
+      if (db.practice_photos.filter(function (p) { return p.log === a.p_log; }).length >= 10) return fail("일지 하나에 사진은 10장까지예요.");
+      var id = db.practice_photos.reduce(function (m, x) { return Math.max(m, x.id); }, 950) + 1;
+      db.practice_photos.push({ id: id, member_id: who.id, log: a.p_log, path: a.p_path, w: a.p_w, h: a.p_h });
+      save();
+      return { ok: true, id: id };
+    },
+    member_log_photo_delete: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var p = (db.practice_photos || []).filter(function (x) { return x.id === a.p_photo && x.member_id === who.id; })[0];
+      if (!p) return fail("사진을 찾을 수 없어요.");
+      db.practice_photos = db.practice_photos.filter(function (x) { return x !== p; });
+      save();
+      return { ok: true, path: p.path };
+    },
+    teacher_log_photos: function (a) {
+      return { ok: true, items: (db.practice_photos || []).filter(function (p) { return p.member_id === a.p_member; }) };
+    },
     teacher_photo_add: function (a, uid) {
       var t = (db.teachers || []).filter(function (x) { return x.kakao_user === uid; })[0];
       if (!t) return { ok: false, error: "선생님으로 연결된 계정만 할 수 있어요." };
@@ -465,6 +497,20 @@
       db.lesson_photos = db.lesson_photos.filter(function (x) { return x.id !== a.p_id; });
       save();
       return { ok: true, path: p.path };
+    },
+    // 곡·자료 · 가사지 보기 (체험): OT · 양식 제목은 빼요 (실제 서버는 개인정보 칸도 확인)
+    member_sheets: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var ok = function (x) { return !/(^|[^A-Za-z])(OT|ot)([^A-Za-z]|$)|양식|상담|등록|개인정보/.test(x.title || ""); };
+      return { ok: true, items: (db.lesson_sheets || []).filter(function (x) { return x.member_id === who.id && ok(x); })
+        .map(function (x) { return { id: x.id, title: x.title, teacher: "안유정" }; }) };
+    },
+    member_sheet: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var x = (db.lesson_sheets || []).filter(function (y) { return y.id === a.p_sid && y.member_id === who.id; })[0];
+      return x ? { ok: true, id: x.id, title: x.title, sheet: x.sheet } : fail("볼 수 없는 시트예요.");
     },
     member_photos: function (a, uid) {
       var m = db.members.filter(function (x) { return x.kakao_user === uid; })[0];
@@ -989,7 +1035,7 @@
             src: !!n.src_file, srcTitle: n.src_title || null, siteEdited: !!n.site_edited, title: n.title || null, tabPos: n.tab_pos == null ? null : n.tab_pos }; }),
         sheets: (db.lesson_sheets || []).filter(function (x) { return x.member_id === m.id; }).sort(function (x, y) { return x.pos - y.pos; })
           .map(function (x) { return { id: x.id, title: x.title, teacher: t.name, pos: x.pos || 0, tabPos: x.tab_pos == null ? null : x.tab_pos, src: !!x.src_file, siteEdited: !!x.site_edited }; }),
-        logs: db.practice_logs.filter(function (l) { return l.member_id === m.id; }).map(function (l) { return { day: l.day, minutes: l.minutes, song: l.song, did: l.did }; }),
+        logs: db.practice_logs.filter(function (l) { return l.member_id === m.id; }).map(function (l) { return { id: l.id, day: l.day, minutes: l.minutes, song: l.song, did: l.did }; }),
         repertoire: db.repertoire.filter(function (r) { return r.member_id === m.id; }).map(function (r) { return { title: r.title, artist: r.artist, status: r.status, purpose: r.purpose }; }) };
     },
     teacher_note_save: function (a, uid) {

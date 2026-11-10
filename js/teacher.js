@@ -474,7 +474,7 @@
     app.appendChild(back);
     app.appendChild(el("h3", "tch__name", s.name + (s.status !== "재원" ? " (" + s.status + ")" : "")));
     // 맨 위 한눈에 보기: 저번 시간 수업 내용 + 최근 연습 일지 + 레퍼토리 (원장님 2026-10-29: 수업하면서 한 화면에)
-    app.appendChild(glance(res));
+    app.appendChild(glance(res, book));
     var slot = el("div", "tch__slot");
     app.appendChild(slot);
 
@@ -521,13 +521,16 @@
     sheetPage(pages.sheets, sheets, book);
 
     if (!res.logs.length) pages.logs.appendChild(el("p", "book__empty", "학생이 쓴 연습 일지가 없어요."));
+    var logCards = {};
     res.logs.forEach(function (l) {
       var c = el("article", "fold__card");
       c.appendChild(el("p", "fold__date", dayLabel(l.day) + (l.minutes ? " · " + l.minutes + "분" : "")));
       if (l.song) c.appendChild(el("p", "fold__main", l.song));
       if (l.did) c.appendChild(el("p", "fold__body", l.did));
+      if (l.id) logCards[l.id] = c;
       pages.logs.appendChild(c);
     });
+    logPhotos(book, logCards);
 
     if (!res.repertoire.length) pages.songs.appendChild(el("p", "book__empty", "학생이 적은 레퍼토리가 없어요."));
     res.repertoire.forEach(function (r) {
@@ -757,6 +760,18 @@
       photoUrls[path].then(function (u) { if (!u) delete photoUrls[path]; });
     }
     return photoUrls[path];
+  }
+  // 학생이 연습 일지에 붙인 사진 (원장님 2026-11-10): 보기만
+  function logPhotos(book, cards) {
+    if (!window.LeeshPhotos || !Object.keys(cards).length) return;
+    if (!book.logPhotosP) book.logPhotosP = LeeshAPI.rpc("teacher_log_photos", { p_member: book.s.id }).then(function (r) { return r.ok ? r.items : []; }, function () { return []; });
+    book.logPhotosP.then(function (items) {
+      var by = {};
+      items.forEach(function (p) { (by[p.log] = by[p.log] || []).push(p); });
+      Object.keys(by).forEach(function (id) {
+        if (cards[id]) cards[id].appendChild(LeeshPhotos.strip({ items: by[id], canEdit: false, load: photoUrl }).node);
+      });
+    });
   }
   function photoList(book) {
     if (!book.photosP) {
@@ -995,20 +1010,23 @@
   }
 
   /** 한눈에 보기: 왼쪽 저번 시간 수업 내용, 오른쪽 최근 연습 일지 3개 + 레퍼토리 (준비 중인 곡 먼저). */
-  function glance(res) {
+  function glance(res, book) {
     var wrap = el("div", "tch__glance");
     wrap.appendChild(lastTime(res.notes, null));
     var side = el("div", "tch__side");
     var logs = el("section", "tch__mini");
     logs.appendChild(el("h4", "tch__minihead", "최근 연습 일지"));
     if (!res.logs.length) logs.appendChild(el("p", "book__empty", "학생이 쓴 연습 일지가 없어요."));
+    var miniCards = {};
     res.logs.slice(0, 3).forEach(function (l) {
       var c = el("div", "tch__miniitem");
       c.appendChild(el("p", "fold__date", dayLabel(l.day) + (l.minutes ? " · " + l.minutes + "분" : "")));
       if (l.song) c.appendChild(el("p", "fold__main", l.song));
       if (l.did) c.appendChild(el("p", "fold__body", l.did));
+      if (l.id) miniCards[l.id] = c;
       logs.appendChild(c);
     });
+    logPhotos(book, miniCards);
     side.appendChild(logs);
     var songs = el("section", "tch__mini");
     songs.appendChild(el("h4", "tch__minihead", "레퍼토리"));

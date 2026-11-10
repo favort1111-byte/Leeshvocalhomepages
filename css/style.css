@@ -420,6 +420,12 @@ img{display:block;}
 .lnote__toggle{margin-left:auto;font-size:13px;font-weight:400;}
 .lnote__sheet{margin-top:8px;min-width:0;max-width:100%;}
 .lnote__sheet .xs-scroll{max-height:70vh;}
+.lsheets{margin:0 0 12px;padding:10px 12px;border:1px solid rgba(110,59,40,.25);border-radius:12px;background:#FFFDF8;}
+.lsheets>summary{cursor:pointer;font-weight:500;}
+.lsheets__list{display:grid;gap:6px;margin-top:8px;min-width:0;}
+.lsheets__item{min-width:0;}
+.lsheets__btn{width:100%;padding:8px 10px;border:1px solid rgba(110,59,40,.2);border-radius:8px;background:#fff;font:inherit;text-align:left;cursor:pointer;}
+.lsheets__btn.is-open{background:#F1E1B9;}
 .lnote__hint{margin-top:4px !important;font-size:12px;color:#8A7564;text-align:center;}
 .lnote__practice{
   font-family:var(--f-sans);font-size:24px;color:var(--brown);white-space:pre-wrap;
@@ -1242,3 +1248,8 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .tch__side2title{flex:1 1 auto;}
 .tch__side2body .xs-scroll{max-height:min(72vh,760px);}
 @media (max-width:1100px){ .tch__split.is-split{display:block;} .tch__side2{margin-top:12px;} .tch__side2body .xs-scroll{max-height:60vh;} }
+
+/* 오디션 후기 기프티콘 안내 (원장님 2026-11-10) */
+.rv__gift{display:grid;gap:4px;word-break:keep-all;margin:14px 0 6px !important;padding:12px 14px;border:2px solid #E0A100;border-radius:12px;background:#FFF3C4;color:#5A3A00;text-align:center;line-height:1.45;}
+.rv__gift b{font-size:16px;color:#B3261E;}
+.rv__gift span{font-size:15px;font-weight:500;}
