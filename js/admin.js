@@ -114,7 +114,15 @@
       $("#loginForm").hidden = true;
       $("#app").hidden = false;
       $("#adminWho").hidden = false;
-      $("#adminWho").textContent = session.email || "";
+      $("#adminWho").textContent = (session.email || "") + " · ";
+      // 보컬 오락실 (원장님 2026-11-10 "관리자도 게임하게"): 로그인을 새로 받은 뒤 넘어가요 (js/gate.js가 관리자 로그인을 확인)
+      var play = el("a", "sys-link", "🎮 보컬 오락실");
+      play.href = "games.html";
+      play.addEventListener("click", function (e) {
+        e.preventDefault();
+        token().then(function () { location.href = "games.html"; });
+      });
+      $("#adminWho").appendChild(play);
       loadBase().then(function () { showTab("bookings"); countAll(); });
     });
   }
