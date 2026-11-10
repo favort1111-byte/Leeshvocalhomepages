@@ -687,7 +687,7 @@
       var row = a.p_review ? db.audition_reviews.filter(function (r) { return r.id === a.p_review && r.member_id === who.id; })[0] : null;
       if (a.p_review && !row) return fail("후기를 찾을 수 없어요.");
       if (!row) { row = { id: ++db.next, member_id: who.id, created_at: new Date().toISOString() }; db.audition_reviews.push(row); }
-      Object.assign(row, { audition_date: d.date, company: String(d.company).trim(), gender: d.gender, birth: d.birth, song_vocal: d.songVocal || null, song_dance: d.songDance || null,
+      Object.assign(row, { audition_date: d.date, company: String(d.company).trim(), gender: d.gender, birth: d.birth, height: d.height || null, weight: d.weight || null, song_vocal: d.songVocal || null, song_dance: d.songDance || null,
         asked: d.asked || null, tip: d.tip || null, process: d.process || null, note: d.note || null, updated_at: new Date().toISOString() });
       save();
       return { ok: true, id: row.id, "new": !a.p_review };
@@ -1218,7 +1218,7 @@
   };
 
   function rvSort(x, y) { return x.audition_date < y.audition_date ? 1 : x.audition_date > y.audition_date ? -1 : y.id - x.id; }
-  function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, gender: r.gender, birth: r.birth, songVocal: r.song_vocal, songDance: r.song_dance, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
+  function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, gender: r.gender, birth: r.birth, height: r.height, weight: r.weight, songVocal: r.song_vocal, songDance: r.song_dance, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
   function myTeacher(uid) { return uid ? db.teachers.filter(function (x) { return x.kakao_user === uid && x.active; })[0] || null : null; }
   function teaches(t, mid) {
     var m = db.members.filter(function (x) { return x.id === mid; })[0];

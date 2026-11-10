@@ -265,7 +265,7 @@
     h.appendChild(el("b", null, dayLabel(r.date) + " · " + r.company));
     h.appendChild(el("span", "rv__tag", r.name + (r.teacher ? " · 담당 " + r.teacher : "")));
     c.appendChild(h);
-    var info = [r.gender, r.birth].filter(Boolean).join(" · ");
+    var info = [r.gender, r.birth, r.height && "키 " + r.height, r.weight && "몸무게 " + r.weight].filter(Boolean).join(" · ");
     if (info) c.appendChild(el("p", "rv__info", info));
     if (r.songVocal || r.songDance) {
       c.appendChild(el("p", "rv__label", "준비한 곡"));

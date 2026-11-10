@@ -1150,7 +1150,7 @@
     var c = el("article", "lnote rv");
     var head = el("p", "lnote__date", dayLabel(r.date) + " · " + r.company);
     c.appendChild(head);
-    var info = [r.gender, r.birth].filter(Boolean).join(" · ");
+    var info = [r.gender, r.birth, r.height && "키 " + r.height, r.weight && "몸무게 " + r.weight].filter(Boolean).join(" · ");
     if (info) c.appendChild(el("p", "rv__info", info));
     if (r.songVocal || r.songDance) {
       c.appendChild(el("p", "rv__label", "준비한 곡"));
@@ -1180,6 +1180,13 @@
     row1.appendChild(field2("성별", gender));
     row1.appendChild(field2("생년월일", birth));
     f.appendChild(row1);
+    // 키 · 몸무게 (원장님 2026-11-10, 선택 칸 · 지난 후기에서 미리 채움)
+    var ht = el("input"); ht.maxLength = 20; ht.placeholder = "예) 165cm"; ht.value = r ? (r.height || "") : (last.height || "");
+    var wt = el("input"); wt.maxLength = 20; wt.placeholder = "예) 48kg"; wt.value = r ? (r.weight || "") : (last.weight || "");
+    var rowHw = el("div", "sys-row");
+    rowHw.appendChild(field2("키", ht));
+    rowHw.appendChild(field2("몸무게", wt));
+    f.appendChild(rowHw);
     var co = el("input"); co.maxLength = 60; co.required = true; co.placeholder = "예) SM 엔터테인먼트"; co.value = r ? r.company : "";
     var day = el("input"); day.type = "date"; day.value = r ? r.date : today; day.max = today; day.min = addDays(today, -730); day.required = true;
     var row2 = el("div", "sys-row");
@@ -1218,7 +1225,7 @@
     f.appendChild(note);
     f.addEventListener("submit", function (e) {
       e.preventDefault();
-      var data = { gender: gender.value, birth: birth.value, company: co.value, date: day.value, songVocal: sv.value, songDance: sd.value };
+      var data = { gender: gender.value, birth: birth.value, height: ht.value, weight: wt.value, company: co.value, date: day.value, songVocal: sv.value, songDance: sd.value };
       RV_TEXT.forEach(function (x) { data[x[0]] = boxes[x[0]].value; });
       save.disabled = true;
       note.textContent = "보내는 중…"; note.className = "sys-msg";

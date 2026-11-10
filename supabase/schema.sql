@@ -7084,3 +7084,70 @@ begin
     'send_hour', c.send_hour, 'enabled', c.enabled, 'last_run_at', c.last_run_at, 'last_note', c.last_note,
     'contacts', (select count(*) from private.member_contacts));
 end $$;
+
+-- ===== leesh_review_height_weight (2026-11-10) =====
+-- 오디션 후기에 키 · 몸무게 (원장님 2026-11-10: 성별 · 생년월일과 기획사명 · 오디션 일자 사이). 선택 칸, 20자까지.
+alter table public.audition_reviews add column if not exists height text check (char_length(coalesce(height, '')) <= 20);
+alter table public.audition_reviews add column if not exists weight text check (char_length(coalesce(weight, '')) <= 20);
+CREATE OR REPLACE FUNCTION private.review_json(r public.audition_reviews)
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE
+ SET search_path TO ''
+AS $function$
+  select jsonb_build_object('id', r.id, 'date', r.audition_date, 'company', r.company, 'gender', r.gender, 'birth', r.birth, 'height', r.height, 'weight', r.weight,
+    'songVocal', r.song_vocal, 'songDance', r.song_dance, 'asked', r.asked, 'tip', r.tip, 'process', r.process, 'note', r.note,
+    'at', r.created_at, 'updated', r.updated_at);
+$function$;
+CREATE OR REPLACE FUNCTION public.member_review_save(p_id text, p_pin text, p_review bigint, p_data jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text; d date; today date := private.now_kst()::date; v_id bigint; v_name text;
+  f_company text; f_gender text; f_birth text; f_height text; f_weight text; f_vocal text; f_dance text; f_asked text; f_tip text; f_process text; f_note text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if jsonb_typeof(p_data) <> 'object' then return private.fail('보낸 내용이 이상해요.'); end if;
+  f_gender := nullif(trim(coalesce(p_data ->> 'gender', '')), '');
+  if f_gender is null or f_gender not in ('남', '여') then return private.fail('성별을 골라주세요.'); end if;
+  f_birth := left(trim(coalesce(p_data ->> 'birth', '')), 20);
+  if f_birth !~ '\d{2}' then return private.fail('생년월일을 적어주세요. 예) 2009.03.15'); end if;
+  f_height := nullif(left(trim(coalesce(p_data ->> 'height', '')), 20), '');
+  f_weight := nullif(left(trim(coalesce(p_data ->> 'weight', '')), 20), '');
+  f_company := left(trim(coalesce(p_data ->> 'company', '')), 60);
+  if f_company = '' then return private.fail('기획사 이름을 적어주세요.'); end if;
+  begin d := (p_data ->> 'date')::date; exception when others then return private.fail('오디션 일자를 골라주세요.'); end;
+  if d is null or d > today or d < today - 730 then return private.fail('오디션 일자는 오늘부터 2년 전까지로 골라주세요.'); end if;
+  f_vocal := nullif(left(trim(coalesce(p_data ->> 'songVocal', '')), 300), '');
+  f_dance := nullif(left(trim(coalesce(p_data ->> 'songDance', '')), 300), '');
+  f_asked := nullif(trim(coalesce(p_data ->> 'asked', '')), '');
+  f_tip := nullif(trim(coalesce(p_data ->> 'tip', '')), '');
+  f_process := nullif(trim(coalesce(p_data ->> 'process', '')), '');
+  f_note := nullif(trim(coalesce(p_data ->> 'note', '')), '');
+  if char_length(coalesce(f_asked, '')) > 2000 or char_length(coalesce(f_tip, '')) > 2000
+     or char_length(coalesce(f_process, '')) > 2000 or char_length(coalesce(f_note, '')) > 1000 then
+    return private.fail('글이 너무 길어요. 조금 줄여주세요.');
+  end if;
+  if coalesce(f_vocal, f_dance, f_asked, f_tip, f_process, f_note) is null then return private.fail('준비한 곡이나 후기를 하나 이상 적어주세요.'); end if;
+  if p_review is null then
+    if (select count(*) from public.audition_reviews where member_id = mid and created_at > now() - interval '1 day') >= 10 then
+      return private.fail('하루에 10개까지 쓸 수 있어요.');
+    end if;
+    insert into public.audition_reviews (member_id, audition_date, company, gender, birth, height, weight, song_vocal, song_dance, asked, tip, process, note)
+    values (mid, d, f_company, f_gender, f_birth, f_height, f_weight, f_vocal, f_dance, f_asked, f_tip, f_process, f_note)
+    returning id into v_id;
+    select name into v_name from public.members where id = mid;
+    perform private.notify('📝 오디션 후기 · ' || coalesce(v_name, mid) || ' · ' || f_company || ' (' || to_char(d, 'MM/DD') || ')');
+    return jsonb_build_object('ok', true, 'id', v_id, 'new', true);
+  end if;
+  update public.audition_reviews set audition_date = d, company = f_company, gender = f_gender, birth = f_birth, height = f_height, weight = f_weight, song_vocal = f_vocal,
+    song_dance = f_dance, asked = f_asked, tip = f_tip, process = f_process, note = f_note, updated_at = now()
+  where id = p_review and member_id = mid returning id into v_id;
+  if v_id is null then return private.fail('후기를 찾을 수 없어요.'); end if;
+  return jsonb_build_object('ok', true, 'id', v_id, 'new', false);
+end $function$;
