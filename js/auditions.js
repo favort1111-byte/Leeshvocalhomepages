@@ -71,6 +71,15 @@
       a.rel = "noopener";
       body.appendChild(a);
     }
+    // 오디션 정보 시트에서 온 공고: 지원 주소 (원장님 2026-11-10)
+    if (p.apply_link && /^(https?:|mailto:)/.test(p.apply_link)) {
+      var ap2 = el("a", "news__link", /^mailto:/.test(p.apply_link) ? "이메일로 지원 ↗" : "지원하러 가기 ↗");
+      ap2.href = p.apply_link;
+      ap2.target = "_blank";
+      ap2.rel = "noopener";
+      body.appendChild(document.createTextNode(" "));
+      body.appendChild(ap2);
+    }
     box.appendChild(body);
     li.appendChild(box);
     return li;
@@ -179,8 +188,9 @@
       var anchor = sec.querySelector(".news__list, .news__more, .news__empty");
       var empty = sec.querySelector(".news__empty");
       if (now.length) {
-        // 날짜가 가장 나중인 것이 맨 위 (원장님 2026-10-30)
-        now.sort(function (x, y) { return (x.event_date || x.deadline || "") < (y.event_date || y.deadline || "") ? 1 : -1; });
+        // 날짜가 가장 나중인 것이 맨 위 (원장님 2026-10-30) — 카드에 보이는 날짜(일시, 없으면 올린 날) 그대로 (2026-11-10)
+        var shown = function (p) { return p.event_date || String(p.created_at || "").slice(0, 10); };
+        now.sort(function (x, y) { return shown(x) < shown(y) ? 1 : -1; });
         var ul = el("ul", "news__list news__list--own");
         now.forEach(function (p) { ul.appendChild(card(p, today)); });
         sec.insertBefore(ul, anchor);

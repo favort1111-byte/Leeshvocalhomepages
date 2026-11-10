@@ -6200,3 +6200,125 @@ grant execute on function public.admin_kakao_attach(uuid, text) to authenticated
 grant execute on function public.admin_kakao_ignore(uuid) to authenticated;
 revoke all on function private.kakao_stuck_list() from public, anon, authenticated;
 revoke all on function private.kakao_user_ok(uuid) from public, anon, authenticated;
+
+-- ===== leesh_audition_sheet (2026-11-10) =====
+-- 오디션 정보 시트 → audition news "기획사 오디션 정보" (원장님 2026-11-10)
+-- 시트 "이송희보컬레슨 오디션 정보 목록" '오디션 목록' 탭 (인스타 · 기획사 홈페이지에서 모은 공고, 국내 · 해외 모두)을
+-- 서버가 3시간마다 읽어서(링크 공유 · 읽기만, 시트는 고치지 않음) audition_news(kind '오디션', source 'sheet')로 넣음.
+-- 확인일이 2026-07-19 뒤인 줄만 (그 전 소식은 예전 블로그 · 인스타 글로 이미 있음). 공고ID(없으면 원문 주소 · 기획사+오디션명)로 같은 공고는 한 번만.
+-- 내용은 시트 칸만 짧게: 상태 · 형태 · 지역 / 접수 기간 / 심사 일정 / 장소 / 대상 / 분야 / 접수 방법 / 준비물. 메모 · 확인 · 공고ID 같은 안쪽 칸은 안 씀.
+-- 관리자가 관리자 화면에서 고치거나 숨긴 글은 그 뒤로 덮지 않음, 시트에서 지운 줄도 홈페이지에서 지우지 않음.
+
+alter table public.audition_news add column if not exists ext_id text;
+alter table public.audition_news add column if not exists apply_link text;
+alter table public.audition_news add column if not exists synced_at timestamptz;
+create unique index if not exists audition_news_ext_id on public.audition_news (ext_id) where ext_id is not null;
+alter table public.audition_news drop constraint if exists audition_news_source_check;
+alter table public.audition_news add constraint audition_news_source_check check (source = any (array['ig', 'sheet']));
+alter table public.audition_news drop constraint if exists audition_news_apply_link_check;
+alter table public.audition_news add constraint audition_news_apply_link_check check (apply_link is null or apply_link ~ '^(https?://|mailto:)');
+
+create table if not exists private.audition_sheet (
+  id int primary key default 1 check (id = 1),
+  sheet_id text not null,
+  tab text not null default '오디션 목록',
+  since date not null default '2026-07-19',
+  last_at timestamptz, last_ok boolean, last_note text
+);
+revoke all on private.audition_sheet from public, anon, authenticated;
+insert into private.audition_sheet (sheet_id) values ('1iViJCW0i2i4WMzusQSZ7IpMzjQZ7L__ZHFAc-j6dU0U') on conflict (id) do nothing;
+
+create or replace function private.aud_clean(t text)
+returns text language sql immutable set search_path = '' as $$
+  select case when x in ('', '공고확인', '미상', '원문확인', '-', '확인 필요') then null else x end
+  from (select btrim(regexp_replace(coalesce(t, ''), '\s+', ' ', 'g')) x) s;
+$$;
+
+create or replace function private.audition_sheet_sync()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  cfg private.audition_sheet; res record; j jsonb; cols jsonb; r jsonb; i int; idx jsonb := '{}';
+  v jsonb; cells text[]; added int := 0; changed int := 0; skipped int := 0;
+  v_company text; v_title text; key text; dl date; ev date; seen date; v_body text; v_link text; v_apply text; st text; t text;
+  old public.audition_news;
+begin
+  select * into cfg from private.audition_sheet where id = 1;
+  if cfg.sheet_id is null then return jsonb_build_object('ok', false, 'error', 'no sheet'); end if;
+  select status, content into res from extensions.http_get(
+    'https://docs.google.com/spreadsheets/d/' || cfg.sheet_id || '/gviz/tq?tqx=out:json&headers=1&sheet=' || extensions.urlencode(cfg.tab));
+  if res.status <> 200 then
+    update private.audition_sheet set last_at = now(), last_ok = false, last_note = '시트를 읽지 못함 (' || res.status || ')' where id = 1;
+    return jsonb_build_object('ok', false, 'status', res.status);
+  end if;
+  j := substring(res.content from '\((\{.*\})\);?\s*$')::jsonb;
+  cols := j -> 'table' -> 'cols';
+  for i in 0 .. jsonb_array_length(cols) - 1 loop
+    if coalesce(cols -> i ->> 'label', '') <> '' and not idx ? (cols -> i ->> 'label') then
+      idx := idx || jsonb_build_object(cols -> i ->> 'label', i);
+    end if;
+  end loop;
+
+  for r in select x from jsonb_array_elements(j -> 'table' -> 'rows') x loop
+    -- 칸 값 (날짜 칸은 "2026-09-13" 모양의 f)
+    cells := array(select coalesce(c ->> 'f', c ->> 'v') from jsonb_array_elements(r -> 'c') with ordinality e(c, n) order by n);
+    -- 몇 줄은 시트에서 칸 하나가 빠져 한 칸씩 왼쪽으로 밀려 있음 (원문주소 칸에 날짜, 확인일 칸에 메모):
+    -- 그런 줄은 심사일정 자리에 빈칸을 하나 넣어 제자리로 (시트는 그대로 두고 읽을 때만)
+    if coalesce(cells[(idx ->> '원문주소')::int + 1], '') ~ '^\d{4}-\d{2}-\d{2}$'
+       and coalesce(cells[(idx ->> '확인일')::int + 1], '') !~ '^\d{4}-\d{2}-\d{2}' then
+      cells := cells[1:(idx ->> '심사일정')::int] || array[null::text] || cells[(idx ->> '심사일정')::int + 1:];
+    end if;
+    v := '{}';
+    for t in select jsonb_object_keys(idx) loop
+      v := v || jsonb_build_object(t, cells[(idx ->> t)::int + 1]);
+    end loop;
+    v_company := left(private.aud_clean(v ->> '기획사'), 40);
+    v_title := left(private.aud_clean(v ->> '오디션명'), 80);
+    if v_company is null or v_title is null then skipped := skipped + 1; continue; end if;
+    seen := case when (v ->> '확인일') ~ '^\d{4}-\d{2}-\d{2}' then left(v ->> '확인일', 10)::date end;
+    if seen is not null and seen <= cfg.since then skipped := skipped + 1; continue; end if;
+    dl := case when (v ->> '접수마감') ~ '^\d{4}-\d{2}-\d{2}' then left(v ->> '접수마감', 10)::date end;
+    ev := (select m[1]::date from regexp_matches(coalesce(v ->> '심사일정', ''), '(\d{4}-\d{2}-\d{2})') m limit 1);
+    st := private.aud_clean(v ->> '상태');
+    if st = '마감' and dl is null then dl := coalesce(ev, seen, current_date - 1); end if;
+    v_link := case when private.aud_clean(v ->> '원문주소') ~ '^https?://' then private.aud_clean(v ->> '원문주소')
+                 when private.aud_clean(v ->> '지원주소') ~ '^https?://' then private.aud_clean(v ->> '지원주소') end;
+    v_apply := case when private.aud_clean(v ->> '지원주소') ~ '^(https?://|mailto:)' and private.aud_clean(v ->> '지원주소') is distinct from v_link
+                  then private.aud_clean(v ->> '지원주소') end;
+    key := coalesce(private.aud_clean(v ->> '공고ID'), v_link, v_company || '|' || v_title);
+    v_body := concat_ws(E'\n',
+      nullif(concat_ws(' · ', st, private.aud_clean(v ->> '형태'), private.aud_clean(v ->> '지역')), ''),
+      case when coalesce(private.aud_clean(v ->> '접수시작'), private.aud_clean(v ->> '접수마감')) is not null then
+        '접수: ' || concat_ws(' ~ ', private.aud_clean(v ->> '접수시작'), private.aud_clean(v ->> '접수마감'))
+        || coalesce(' ' || private.aud_clean(v ->> '마감시각'), '') || coalesce(' (' || private.aud_clean(v ->> '마감기준') || ')', '') end,
+      '심사 일정: ' || private.aud_clean(v ->> '심사일정'),
+      '장소: ' || private.aud_clean(v ->> '장소'),
+      '대상: ' || nullif(concat_ws(' · ', private.aud_clean(v ->> '성별'), private.aud_clean(v ->> '나이'), private.aud_clean(v ->> '자격')), ''),
+      '분야: ' || private.aud_clean(v ->> '분야'),
+      '접수 방법: ' || private.aud_clean(v ->> '접수'),
+      '준비물: ' || private.aud_clean(v ->> '준비물'));
+    v_body := left(nullif(v_body, ''), 3000);
+
+    select * into old from public.audition_news where ext_id = key;
+    if old.id is null then
+      insert into public.audition_news (kind, company, title, event_date, deadline, body, link, apply_link, published, created_at, updated_at, source, ext_id, synced_at)
+      values ('오디션', v_company, v_title, ev, dl, v_body, v_link, v_apply, true,
+              coalesce(seen::timestamptz, now()), now(), 'sheet', key, now());
+      added := added + 1;
+    elsif old.source = 'sheet' and (old.updated_at is null or old.updated_at <= old.synced_at + interval '1 second') then
+      if (old.company, old.title, old.event_date, old.deadline, old.body, old.link, old.apply_link)
+         is distinct from (v_company, v_title, ev, dl, v_body, v_link, v_apply) then
+        update public.audition_news set company = v_company, title = v_title, event_date = ev, deadline = dl, body = v_body,
+          link = v_link, apply_link = v_apply, updated_at = now(), synced_at = now()
+        where id = old.id;
+        changed := changed + 1;
+      end if;
+    end if;
+  end loop;
+  update private.audition_sheet set last_at = now(), last_ok = true,
+    last_note = '새 ' || added || ' · 바뀜 ' || changed || ' · 건너뜀 ' || skipped where id = 1;
+  return jsonb_build_object('ok', true, 'added', added, 'changed', changed, 'skipped', skipped);
+end $$;
+revoke all on function private.audition_sheet_sync() from public, anon, authenticated;
+
+-- 3시간마다 (가져오기만, 지우지 않음)
+select cron.schedule('leesh_audition_sheet', '23 */3 * * *', 'select private.audition_sheet_sync()');
