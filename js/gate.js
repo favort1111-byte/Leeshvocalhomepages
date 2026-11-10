@@ -7,8 +7,9 @@
   body.hidden = true;
   var who = document.getElementById("membersWho");
   var sign = LeeshSignIn.mount(gate, {
-    title: "수강생 전용",
-    lede: "보컬 오락실은 이송희보컬레슨 수강생만 할 수 있어요. 카카오로 로그인해주세요.",
+    title: "수강생 · 선생님 전용",
+    lede: "보컬 오락실은 이송희보컬레슨 수강생과 선생님만 할 수 있어요. 카카오로 로그인해주세요.",
+    allowTeacher: true, // 선생님 카카오도 들어와요 (원장님 2026-11-10). 선생님은 이벤트 점수에는 안 들어가요
     onSignedIn: function (res, me) {
       gate.hidden = true;
       // 보컬오락실 이벤트 (js/gameevent.js): 로그인한 학생으로 점수를 보내요

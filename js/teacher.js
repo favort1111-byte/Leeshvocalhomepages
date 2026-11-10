@@ -127,9 +127,15 @@
     t.appendChild(el("h2", "sys-h", me + " 선생님"));
     if (sub) t.appendChild(el("p", "sys-note", sub));
     h.appendChild(t);
+    var side = el("div", "tch__links");
+    // 보컬 오락실 (원장님 2026-11-10 "선생님 화면에서도 게임 보이게"): 같은 카카오 로그인으로 바로 들어가요
+    var games = el("a", "sys-link", "🎮 보컬 오락실");
+    games.href = "games.html";
+    side.appendChild(games);
     var out = button("로그아웃", "sys-link");
     out.addEventListener("click", signOut);
-    h.appendChild(out);
+    side.appendChild(out);
+    h.appendChild(side);
     return h;
   }
   /* 학원 → 선생님 메시지 (원장님 2026-11-05, 관리자 화면에서 보냄). 새 것은 위에 펼쳐 보이고, 보이면 읽음. */

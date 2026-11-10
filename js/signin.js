@@ -162,7 +162,13 @@
           if (!LeeshAPI.kakao.session()) return choose("카카오 로그인이 풀렸어요. 다시 눌러주세요.");
           return choose(res.error, "error");
         }
-        return LeeshAPI.rpc("kakao_status", {}).then(function (st) {
+        // 선생님 카카오 (원장님 2026-11-10 "선생님 화면에서도 게임 보이게"): allowTeacher인 화면(보컬 오락실)만 선생님도 들어와요
+        var teacherCheck = opts.allowTeacher ? LeeshAPI.rpc("teacher_me", {}) : Promise.resolve(null);
+        return teacherCheck.then(function (t) {
+          if (t && t.ok && t.linked) return done({ ok: true, name: t.name + " 선생", teacher: true }, null); // "○○ 선생님, 반가워요"
+          return LeeshAPI.rpc("kakao_status", {});
+        }).then(function (st) {
+          if (!st) return;
           if (!st.ok) return choose(st.error, "error");
           if (st.request && st.request.status === "대기") return pending(st.request);
           return linkForm(st.request);
