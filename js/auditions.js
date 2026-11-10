@@ -38,10 +38,14 @@
     return p.kind !== "합격" && !!p.event_date && p.event_date < today;
   }
 
-  function card(p, today) {
-    var li = el("li"), box = el("details", "news__card news__card--own");
+  function card(p, today, byDeadline) {
+    var li = el("li"), box = el("details", "news__card news__card--own" + (byDeadline && isPast(p, today) ? " news__card--past" : ""));
     var sum = el("summary");
-    sum.appendChild(el("time", null, label(p.event_date || String(p.created_at || today).slice(0, 10))));
+    // 이번 달 오디션은 마감일 순이라 왼쪽 날짜도 마감일 (마감일이 없으면 오디션 날)
+    var shown = byDeadline && p.deadline ? p.deadline : (p.event_date || String(p.created_at || today).slice(0, 10));
+    var tm = el("time", null, label(shown));
+    if (byDeadline && p.deadline) tm.appendChild(el("small", "news__due", " 마감"));
+    sum.appendChild(tm);
     var what = el("span", "news__what");
     if (p.company) { what.appendChild(el("b", null, p.company)); what.appendChild(document.createTextNode(" ")); }
     what.appendChild(document.createTextNode(p.title));
@@ -164,18 +168,24 @@
   }).then(function (res) {
     if (!res.ok || !Array.isArray(res.data) || !res.data.length) return;
     var today = todayKst();
-    // 이번 달 오디션 (원장님 2026-11-06): 내방 · 기획사 오디션 중 일정이나 마감이 이번 달인 것, 날짜 빠른 순
+    // 이번 달 오디션 (원장님 2026-11-06): 내방 · 기획사 오디션 중 일정이나 마감이 이번 달인 것
+    // 순서 (원장님 2026-11-10 "마감 가장 빠른 것부터 위에서 아래로"): 아직 안 끝난 것을 마감일(없으면 오디션 날) 빠른 순, 끝난 것은 맨 아래 흐리게
     var monthSec = document.getElementById("news-month");
     if (monthSec) {
       var ym = today.slice(0, 7);
       var month = res.data.filter(function (p) {
         return (p.kind === "내방" || p.kind === "오디션") && ((p.event_date || "").slice(0, 7) === ym || (p.deadline || "").slice(0, 7) === ym);
-      }).sort(function (x, y) { return (x.event_date || x.deadline || "") < (y.event_date || y.deadline || "") ? -1 : 1; });
+      }).sort(function (x, y) {
+        var px = isPast(x, today) ? 1 : 0, py = isPast(y, today) ? 1 : 0;
+        if (px !== py) return px - py;
+        var kx = x.deadline || x.event_date || "", ky = y.deadline || y.event_date || "";
+        return kx < ky ? -1 : kx > ky ? 1 : 0;
+      });
       if (month.length) {
         var mEmpty = monthSec.querySelector(".news__empty");
         if (mEmpty) mEmpty.hidden = true;
         var mul = el("ul", "news__list news__list--own");
-        month.forEach(function (p) { mul.appendChild(card(p, today)); });
+        month.forEach(function (p) { mul.appendChild(card(p, today, true)); });
         monthSec.appendChild(mul);
       }
     }

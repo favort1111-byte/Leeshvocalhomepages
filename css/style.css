@@ -803,6 +803,8 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .news__badge{padding:2px 9px;border-radius:999px;background:var(--brown);color:#FBF3E4;font-size:12px;white-space:nowrap;}
 .news__badge.is-empty{background:none;color:var(--brown);font-size:16px;}
 .news__card--own[open] .news__badge.is-empty{transform:rotate(45deg);}
+.news__card--past{opacity:.55;}
+.news__card--own time .news__due{font-size:11px;margin-left:2px;color:#A0522D;}
 .news__body{padding:0 14px 14px;font-size:14.5px;line-height:1.65;color:var(--ink-body);}
 .news__meta{margin:0 0 6px;font-weight:500;color:var(--brown);}
 .news__text{margin:0 0 10px;white-space:pre-wrap;}
