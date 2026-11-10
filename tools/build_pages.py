@@ -690,7 +690,7 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + '    <header class="arcade__head">\n'
               + '      <p class="arcade__kicker">mini games</p>\n'
               + '      <h1>보컬 오락실</h1>\n'
-              + '      <p>귀 · 목소리 워밍업 미니게임. 최고 기록은 이 기기에 남아요.</p>\n'
+              + '      <p>귀 · 목소리 워밍업 미니게임. 기록은 이 기기에만 남아요.</p>\n'
               + '      <p class="arcade__who" id="membersWho"></p>\n'
               + '    </header>\n'
               # 수강생 전용 (원장님 2026-10-29): js/gate.js shows the games after a Kakao sign-in
