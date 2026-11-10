@@ -2499,7 +2499,7 @@
       if (!d.event) { $("#gameEventWhen").textContent = "진행 중인 이벤트가 없어요."; return; }
       var ev = d.event, now = Date.now();
       $("#gameEventWhen").textContent = "기간 " + kstDay(ev.starts) + " 0시 ~ " + kstDay(ev.ends) + " 밤 11:59 · "
-        + (now < new Date(ev.starts).getTime() ? "시작 전" : now > new Date(ev.ends).getTime() ? "끝남" : "진행 중") + " · 참여 " + (ev.players || 0) + "명";
+        + (ev.enabled === false ? "꺼져 있음 (학생 화면에 안 보이고 점수도 안 받아요)" : now < new Date(ev.starts).getTime() ? "시작 전" : now > new Date(ev.ends).getTime() ? "끝남" : "진행 중") + " · 참여 " + (ev.players || 0) + "명";
       (ev.games || []).forEach(function (g) {
         var info = GAME_NAMES[g] || [g, "점"], rows = (d.board || {})[g] || [];
         var col = el("div", "adm__gamecol");
