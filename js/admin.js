@@ -151,6 +151,7 @@
     if (name === "visits") loadVisits();
     if (name === "journal") loadJournal();
     if (name === "reviews") loadReviews();
+    if (name === "adminlog") loadLog();
     if (name === "partners") loadPartners();
     if (name === "teachers") { loadTeachers(); loadLessonSync(); }
     if (name === "records") loadRecords();
@@ -2377,6 +2378,85 @@
   }
   $("#reviewFind").addEventListener("input", drawReviews);
   $("#reviewTeacher").addEventListener("change", drawReviews);
+
+  /* ---------------- 관리자 작업 기록 (원장님 2026-11-10, 서버 private.admin_log · rpc admin_log) ---------------- */
+  var LOG_TBL = {
+    members: "수강 ID", link_requests: "카카오 연결 요청", teachers: "선생님", teacher_requests: "선생님 연결 요청",
+    parents: "학부모", parent_links: "학부모 · 자녀 연결", parent_requests: "학부모 연결 요청", admins: "관리자",
+    bookings: "연습실 예약", rooms: "연습실", settings: "예약 · 운영 설정", notices: "일정 · 공지", messages: "메시지",
+    admin_inbox: "선생님이 보낸 메시지", audition_news: "오디션 소식", ig_posts: "인스타그램 글", interviews: "합격자 인터뷰",
+    visit_applications: "내방 신청", lesson_notes: "레슨 노트", lesson_sheets: "곡 · 자료", lesson_photos: "레슨 사진",
+    lesson_sources: "레슨 시트 가져오기", eval_reports: "월말평가", monthly_evals: "월말평가 (예전)", song_requests: "노래 추천 신청",
+    song_recs: "노래 추천", partners: "제휴 업체", partner_requests: "제휴 신청", consults: "상담 신청",
+    practice_logs: "연습 일지", repertoire: "레퍼토리", audition_reviews: "오디션 후기"
+  };
+  var LOG_COL = {
+    name: "이름", status: "상태", memo: "메모", phone: "전화번호", kakao_user: "카카오 연결", title: "제목", body: "내용",
+    published: "공개", hidden: "숨기기", active: "사용", pinned: "고정", start_date: "시작일", end_date: "종료일", event_date: "일시",
+    deadline: "마감", company: "회사", kind: "종류", image: "사진", link: "링크", member_id: "학생", teacher_id: "선생님",
+    sheet: "시트 내용", lesson_date: "수업 날짜", booking_open: "연습실 예약 열기", student_notes: "학생 레슨 노트", song_recs: "학생 노래 추천",
+    max_minutes: "한 번 최대 시간", daily_max_minutes: "하루 최대 시간", max_days: "예약 가능 날짜", cancel_minutes: "취소 가능 시간",
+    expires_on: "만료일", reply: "학생에게 보낼 말", info: "안내", category: "종류", sort: "순서", read_at: "읽음", tab_pos: "탭 순서",
+    pass_type: "합격 종류", pass_stage: "합격 단계", initials: "이니셜", kind_fixed: "칸 고정", pages: "평가지 쪽 수", total: "총점", stage: "단계"
+  };
+  var LOG_ACT = { insert: "추가", update: "고침", "delete": "지움" };
+  var logState = { items: [], loaded: false };
+  function loadLog(more) {
+    var list = $("#logList"), last = logState.items[logState.items.length - 1];
+    if (!more) { list.textContent = ""; list.appendChild(el("li", "sys-empty", "불러오는 중…")); logState.items = []; }
+    var body = { p_before: more && last ? last.id : null, p_actor: $("#logActor").value || null, p_tbl: $("#logTbl").value || null,
+      p_find: $("#logFind").value.trim() || null, p_limit: 100 };
+    api("rpc/admin_log", { method: "POST", body: body }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { list.textContent = ""; list.appendChild(el("li", "sys-msg sys-msg--error", d.error || friendly(res, "불러오지 못했어요."))); return; }
+      var a = $("#logActor"), keepA = a.value;
+      a.length = 1;
+      (d.actors || []).sort().forEach(function (x) { var o = el("option", null, x); o.value = x; a.appendChild(o); });
+      a.value = keepA;
+      var t = $("#logTbl");
+      if (t.length === 1) Object.keys(LOG_TBL).sort(function (x, y) { return LOG_TBL[x].localeCompare(LOG_TBL[y], "ko"); })
+        .forEach(function (k) { var o = el("option", null, LOG_TBL[k]); o.value = k; t.appendChild(o); });
+      logState.items = logState.items.concat(d.items || []);
+      $("#logMore").hidden = (d.items || []).length < 100;
+      drawLog();
+    });
+  }
+  function logTime(iso) {
+    var x = new Date(iso);
+    return (x.getMonth() + 1) + "/" + x.getDate() + " " + String(x.getHours()).padStart(2, "0") + ":" + String(x.getMinutes()).padStart(2, "0");
+  }
+  function drawLog() {
+    var list = $("#logList");
+    list.textContent = "";
+    if (!logState.items.length) { list.appendChild(el("li", "sys-empty", "아직 기록이 없어요.")); return; }
+    logState.items.forEach(function (r) {
+      var li = el("li", "adm__card adm__logrow adm__logrow--" + r.action);
+      var h = el("p", "adm__loghead");
+      h.appendChild(el("span", "adm__logtime", logTime(r.at)));
+      h.appendChild(el("b", null, (LOG_TBL[r.tbl] || r.tbl) + " " + (LOG_ACT[r.action] || r.action) + (r.n > 1 ? " " + r.n + "건" : "")));
+      h.appendChild(el("span", "adm__logwho", r.actor));
+      li.appendChild(h);
+      var labels = (r.labels && r.labels.length ? r.labels : [r.label]).filter(Boolean);
+      if (labels.length) li.appendChild(el("p", "adm__logwhat", labels.join(", ") + (r.n > labels.length && r.n > 1 ? " 외" : "")));
+      var ch = r.changes || {};
+      var parts = Object.keys(ch).map(function (k) {
+        var nm = LOG_COL[k] || k, v = ch[k];
+        if (Array.isArray(v)) {
+          var f = function (s) { return s == null || s === "" ? "(없음)" : s === "true" ? "켬" : s === "false" ? "끔" : s; };
+          return nm + ": " + f(v[0]) + " → " + f(v[1]);
+        }
+        return nm + " 바뀜";
+      });
+      if (parts.length) li.appendChild(el("p", "adm__logch", parts.join(" · ")));
+      if (r.n > 1 && r.first && r.first !== r.at) li.appendChild(el("p", "sys-note adm__logspan", logTime(r.first) + " ~ " + logTime(r.at)));
+      list.appendChild(li);
+    });
+  }
+  $("#logActor").addEventListener("change", function () { loadLog(); });
+  $("#logTbl").addEventListener("change", function () { loadLog(); });
+  var logFindTimer = null;
+  $("#logFind").addEventListener("input", function () { clearTimeout(logFindTimer); logFindTimer = setTimeout(function () { loadLog(); }, 400); });
+  $("#logMore").addEventListener("click", function () { loadLog(true); });
 
   /* ---------------- 건의함 (익명) ---------------- */
   function countSuggest() {

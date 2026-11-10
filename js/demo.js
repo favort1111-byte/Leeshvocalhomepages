@@ -641,6 +641,18 @@
         var o = rvJson(r); o.name = m.name; o.teacher = ((m.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null; o.mine = teaches(t, r.member_id); return o;
       }) };
     },
+    // 관리자 작업 기록 (체험 모드는 예시 몇 줄)
+    admin_log: function () {
+      var ago = function (m) { return new Date(Date.now() - m * 60000).toISOString(); };
+      var items = [
+        { id: 5, at: ago(4), first: ago(4), actor: "admin@example.com", tbl: "link_requests", action: "update", label: "정다온", labels: ["정다온"], changes: { status: ["대기", "승인"], member_id: ["(없음)", "S004"] }, n: 1 },
+        { id: 4, at: ago(4), first: ago(4), actor: "admin@example.com", tbl: "members", action: "update", label: "정다온 (S004)", labels: ["정다온 (S004)"], changes: { kakao_user: ["없음", "연결"] }, n: 1 },
+        { id: 3, at: ago(35), first: ago(37), actor: "admin@example.com", tbl: "messages", action: "insert", label: "김시우", labels: ["김시우", "이하늘", "정다온"], changes: {}, n: 3 },
+        { id: 2, at: ago(90), first: ago(90), actor: "staff@example.com", tbl: "notices", action: "update", label: "11월 월말평가 안내", labels: ["11월 월말평가 안내"], changes: { title: ["11월 월말평가", "11월 월말평가 안내"], body: true }, n: 1 },
+        { id: 1, at: ago(300), first: ago(300), actor: "staff@example.com", tbl: "audition_news", action: "delete", label: "블리츠웨이뮤직 · 2026-10-30", labels: ["블리츠웨이뮤직 · 2026-10-30"], changes: {}, n: 1 }
+      ];
+      return { ok: true, items: items, actors: ["admin@example.com", "staff@example.com"] };
+    },
     admin_reviews: function () {
       return { ok: true, items: (db.audition_reviews || []).slice().sort(rvSort).map(function (r) {
         var m = db.members.filter(function (x) { return x.id === r.member_id; })[0] || {};

@@ -5879,3 +5879,157 @@ begin
            order by r.audition_date desc, r.id desc)
     from public.audition_reviews r join public.members m on m.id = r.member_id), '[]'::jsonb));
 end $$;
+-- ===== leesh_admin_log (2026-11-10) =====
+-- 관리자 작업 기록 (원장님 2026-11-10 "관리자 작업기록 만들어줘")
+-- 관리자(이메일 로그인)가 관리자 화면에서 바꾼 것을 표마다 저절로 남김: 누가 · 언제 · 어느 표 · 추가/수정/삭제 · 무엇(이름 · 제목) · 바뀐 칸.
+-- Claude가 관리 도구(Management API)로 바꾼 것도 "Claude (관리 도구)"로 남김. 학생 · 선생님 · 자동 실행(시트 맞추기 · 인스타)은 안 남김.
+-- 글 내용 · 전화번호 · 생년월일 같은 값은 남기지 않고 "바뀜"만. 지울 수 없음 (관리자 화면에도 지우기 없음), 자동 삭제 없음.
+
+create table if not exists private.admin_log (
+  id bigserial primary key,
+  at timestamptz not null default now(),
+  first_at timestamptz not null default now(),
+  actor text not null,
+  tbl text not null,
+  action text not null check (action in ('insert', 'update', 'delete')),
+  row_id text,
+  label text,
+  labels text[] not null default '{}',
+  changes jsonb not null default '{}',
+  n int not null default 1
+);
+create index if not exists admin_log_at on private.admin_log (at desc);
+create index if not exists admin_log_merge on private.admin_log (actor, tbl, action, row_id, at desc);
+revoke all on private.admin_log from public, anon, authenticated;
+
+-- 한 줄을 사람이 알아보는 이름으로
+create or replace function private.log_label(p_tbl text, r jsonb)
+returns text language plpgsql stable security definer set search_path = '' as $$
+declare m text; t text; d text;
+begin
+  if r is null then return null; end if;
+  if p_tbl = 'members' then return concat_ws(' ', r->>'name', '(' || (r->>'id') || ')'); end if;
+  if p_tbl = 'admins' then return r->>'email'; end if;
+  if p_tbl = 'settings' then return '예약 · 운영 설정'; end if;
+  if coalesce(r->>'member_id', r->>'to_member') is not null then
+    select name into m from public.members where id = coalesce(r->>'member_id', r->>'to_member');
+    m := coalesce(m, coalesce(r->>'member_id', r->>'to_member'));
+  end if;
+  if p_tbl = 'messages' and m is null then
+    if r->>'to_teacher' is not null then select name || ' 선생님' into m from public.teachers where id = (r->>'to_teacher')::bigint; end if;
+    if r->>'to_parent' is not null then select coalesce(name, kakao_name) || ' (학부모)' into m from public.parents where id = (r->>'to_parent')::bigint; end if;
+  end if;
+  if p_tbl = 'parent_links' then
+    select coalesce(name, kakao_name) into t from public.parents where id = (r->>'parent_id')::bigint;
+    return concat_ws(' → ', t, m);
+  end if;
+  if p_tbl = 'admin_inbox' then select name || ' 선생님' into t from public.teachers where id = (r->>'teacher_id')::bigint; end if;
+  if p_tbl = 'bookings' then select name into t from public.rooms where id = (r->>'room_id')::int; end if;
+  if p_tbl in ('lesson_photos') then t := '사진'; end if;
+  t := coalesce(t, r->>'title', r->>'name', r->>'company', r->>'kakao_name', r->>'category', r->>'partner', r->>'audition');
+  d := coalesce(r->>'day', r->>'lesson_date', r->>'event_date', r->>'audition_date', r->>'made_on', r->>'posted_on', left(r->>'month', 7));
+  return nullif(concat_ws(' · ', m, nullif(t, m), d), '');
+end $$;
+
+create or replace function private.log_change()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  who text; o jsonb; nw jsonb; rid text; lbl text; ch jsonb := '{}'; k text; a jsonb; b jsonb;
+  skip text[] := array['updated_at', 'synced_at', 'seen_at', 'client_key', 'decided_at', 'synced_modified', 'synced_ver', 'modified', 'notes', 'sheets', 'kept', 'gone'];
+  hide text[] := array['pin_hash', 'phone', 'birth', 'body', 'sheet', 'message', 'caption', 'summary', 'songs', 'did', 'practice', 'audition', 'recommend',
+                       'asked', 'tip', 'process', 'note', 'files', 'music', 'images', 'info', 'reply', 'wish', 'likes', 'goal', 'comment', 'tips', 'styling', 'body_size', 'path'];
+  win interval; prev private.admin_log;
+begin
+  if coalesce(auth.jwt() ->> 'email', '') <> '' then
+    if not public.is_admin() then return null; end if;
+    who := lower(auth.jwt() ->> 'email');
+  elsif current_setting('application_name', true) = 'mgmt-api' then
+    who := 'Claude (관리 도구)';
+  else
+    return null;
+  end if;
+
+  if tg_op <> 'INSERT' then o := to_jsonb(old); end if;
+  if tg_op <> 'DELETE' then nw := to_jsonb(new); end if;
+  rid := coalesce(coalesce(nw, o)->>'id', coalesce(nw, o)->>'file_id', coalesce(nw, o)->>'email',
+                  concat_ws('/', coalesce(nw, o)->>'parent_id', coalesce(nw, o)->>'member_id', coalesce(nw, o)->>'month'));
+  lbl := private.log_label(tg_table_name, coalesce(nw, o));
+
+  if tg_op = 'UPDATE' then
+    for k in select jsonb_object_keys(nw) loop
+      a := o -> k; b := nw -> k;
+      if a is distinct from b and not (k = any (skip)) then
+        if k = 'kakao_user' then
+          ch := ch || jsonb_build_object(k, jsonb_build_array(case when a = 'null'::jsonb then '없음' else '연결' end, case when b = 'null'::jsonb then '없음' else '연결' end));
+        elsif k = any (hide) or jsonb_typeof(coalesce(b, a)) in ('object', 'array')
+              or length(coalesce(a #>> '{}', '')) > 40 or length(coalesce(b #>> '{}', '')) > 40 then
+          ch := ch || jsonb_build_object(k, true);
+        else
+          ch := ch || jsonb_build_object(k, jsonb_build_array(a #>> '{}', b #>> '{}'));
+        end if;
+      end if;
+    end loop;
+    if ch = '{}' then return null; end if;
+  end if;
+
+  -- 같은 사람이 짧은 사이에 같은 일을 하면 한 줄로 (일지 저절로 저장 · 여러 명에게 메시지 · Claude의 한꺼번에 고치기)
+  win := case when tg_op = 'UPDATE' then interval '10 minutes' else interval '2 minutes' end;
+  select * into prev from private.admin_log l
+  where l.actor = who and l.tbl = tg_table_name and l.action = lower(tg_op) and l.at > now() - win
+    and (tg_op <> 'UPDATE' or who like 'Claude%' or l.row_id is not distinct from rid)
+  order by l.at desc limit 1;
+  if found then
+    update private.admin_log set at = now(), n = n + case when prev.row_id is not distinct from rid and tg_op = 'UPDATE' then 0 else 1 end,
+      row_id = case when prev.row_id is not distinct from rid then rid else null end,
+      labels = case when lbl is null or lbl = any (labels) or cardinality(labels) >= 5 then labels else labels || lbl end,
+      changes = changes || ch
+    where id = prev.id;
+  else
+    insert into private.admin_log (actor, tbl, action, row_id, label, labels, changes)
+    values (who, tg_table_name, lower(tg_op), rid, lbl, case when lbl is null then '{}' else array[lbl] end, ch);
+  end if;
+  return null;
+end $$;
+
+do $$
+declare t text;
+begin
+  for t in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relkind = 'r' loop
+    execute format('drop trigger if exists zz_admin_log on public.%I', t);
+    execute format('create trigger zz_admin_log after insert or update or delete on public.%I for each row execute function private.log_change()', t);
+  end loop;
+end $$;
+
+-- 관리자 화면에서 읽기 (지우기 · 고치기 함수는 일부러 없음)
+create or replace function public.admin_log(p_before bigint default null, p_actor text default null, p_tbl text default null,
+                                            p_find text default null, p_limit int default 100)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare rows jsonb; actors jsonb;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'at', at, 'first', first_at, 'actor', actor, 'tbl', tbl, 'action', action,
+           'label', label, 'labels', labels, 'changes', changes, 'n', n) order by at desc), '[]') into rows
+  from (select * from private.admin_log l
+        where (p_before is null or l.id < p_before)
+          and (p_actor is null or l.actor = p_actor)
+          and (p_tbl is null or l.tbl = p_tbl)
+          and (coalesce(p_find, '') = '' or l.label ilike '%' || p_find || '%' or array_to_string(l.labels, ' ') ilike '%' || p_find || '%')
+        order by l.id desc limit greatest(1, least(coalesce(p_limit, 100), 300))) x;
+  select coalesce(jsonb_agg(distinct actor), '[]') into actors from private.admin_log;
+  return jsonb_build_object('ok', true, 'items', rows, 'actors', actors);
+end $$;
+revoke all on function public.admin_log(bigint, text, text, text, int) from public, anon;
+grant execute on function public.admin_log(bigint, text, text, text, int) to authenticated;
+revoke all on function private.log_change() from public, anon, authenticated;
+revoke all on function private.log_label(text, jsonb) from public, anon, authenticated;
+
+-- 매일 백업에도 넣기
+create or replace function private.backup_list()
+returns text[] language sql stable security definer set search_path = '' as $$
+  select array_agg(t order by t) from (
+    select 'public.' || c.relname t from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind in ('r', 'p')
+    union all select 'private.suggestions' union all select 'private.lesson_skip' union all select 'private.admin_log'
+  ) x;
+$$;

@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=91b3edb7">
-<link rel="stylesheet" href="css/admin.css?v=0384012f">
+<link rel="stylesheet" href="css/admin.css?v=0b71c45b">
 </head>
 <body class="sys adm">
 
@@ -62,6 +62,7 @@
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="suggest" aria-selected="false">건의함 <span class="adm__badge" id="suggestBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="adminlog" aria-selected="false">작업 기록</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
       <button type="button" class="sys-link adm__logout" id="logout">로그아웃</button>
     </nav>
@@ -471,6 +472,19 @@
       <ul class="adm__cards" id="reviewList"></ul>
     </section>
 
+    <!-- 관리자 작업 기록 (원장님 2026-11-10): 누가 · 언제 · 무엇을 추가 · 고침 · 지움. 서버가 저절로 남기고, 지울 수 없음 -->
+    <section class="sys-card" data-panel="adminlog" hidden>
+      <h3 class="sys-h">관리자 작업 기록</h3>
+      <p class="sys-note">관리자 화면에서 누가 언제 무엇을 추가 · 고침 · 지웠는지 서버가 저절로 남겨요 (2026-11-10부터). 글 내용 · 전화번호 · 생년월일은 남기지 않고 "바뀜"만 적어요. 기록은 지울 수 없어요.</p>
+      <div class="adm__bar">
+        <select id="logActor" aria-label="누가"><option value="">모든 사람</option></select>
+        <select id="logTbl" aria-label="어디"><option value="">모든 곳</option></select>
+        <input type="search" id="logFind" placeholder="학생 이름 · 제목으로 찾기" aria-label="작업 기록 찾기">
+      </div>
+      <ul class="adm__cards adm__log" id="logList"></ul>
+      <button type="button" class="sys-btn" id="logMore" hidden>더 보기</button>
+    </section>
+
     <section class="sys-card" data-panel="consults" hidden>
       <div class="adm__bar">
         <select id="consultFilter" aria-label="상태">
@@ -550,6 +564,6 @@
 <script src="js/richtext.js?v=6d782c73"></script>
 <script src="js/grid.js?v=5cb76b9e"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
-<script src="js/admin.js?v=01c83337"></script>
+<script src="js/admin.js?v=fd431194"></script>
 </body>
 </html>
