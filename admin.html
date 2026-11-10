@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=91b3edb7">
-<link rel="stylesheet" href="css/admin.css?v=0b71c45b">
+<link rel="stylesheet" href="css/admin.css?v=8347d6bb">
 </head>
 <body class="sys adm">
 
@@ -103,6 +103,12 @@
         <h3 class="sys-h">카카오 연결 요청</h3>
         <p class="sys-note">학생이 처음 카카오로 로그인하면 여기에 요청이 와요. 맞는 수강 ID를 골라 승인하면, 그 학생은 다음부터 카카오 버튼 한 번으로 들어와요.</p>
         <ul class="adm__cards" id="kakaoList"></ul>
+      </div>
+      <!-- 연결 요청을 못 끝낸 카카오 계정 (원장님 2026-11-10 "누가 신청했는데 안 되는지도 모르는 거 같아") -->
+      <div class="adm__links-box adm__stuck" id="stuckBox" hidden>
+        <h3 class="sys-h">연결 요청을 못 끝낸 카카오 계정</h3>
+        <p class="sys-note">카카오로 로그인은 했는데 이름을 못 보낸 계정이에요. <b>카카오 이름</b>으로 누군지 알면 수강 ID를 골라 <b>바로 연결</b>하세요 (학생은 다음부터 바로 들어와요). 모르는 계정은 목록에서 빼면 돼요.</p>
+        <ul class="adm__cards" id="stuckList"></ul>
       </div>
       <!-- 구글시트 "수강ID 관리" → 홈페이지 (tools/sheet_sync.gs, 3시간마다) -->
       <div class="adm__links-box adm__sheet" id="sheetBox">
@@ -564,6 +570,6 @@
 <script src="js/richtext.js?v=6d782c73"></script>
 <script src="js/grid.js?v=5cb76b9e"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
-<script src="js/admin.js?v=fd431194"></script>
+<script src="js/admin.js?v=0f2be3d7"></script>
 </body>
 </html>

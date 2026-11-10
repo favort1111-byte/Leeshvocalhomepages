@@ -641,6 +641,30 @@
         var o = rvJson(r); o.name = m.name; o.teacher = ((m.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null; o.mine = teaches(t, r.member_id); return o;
       }) };
     },
+    // 연결 요청을 못 끝낸 카카오 계정 (체험 모드 예시 2개)
+    admin_kakao_stuck: function () {
+      if (!db.stuck) db.stuck = [
+        { user: "kakao-stuck-1", kakao_name: "다온🎵", kind: "noname", at: new Date(Date.now() - 2 * 86400000).toISOString() },
+        { user: "kakao-stuck-2", kakao_name: "지우", kind: "email", at: new Date(Date.now() - 86400000).toISOString() }
+      ];
+      return { ok: true, items: db.stuck };
+    },
+    admin_kakao_confirm: function (a) {
+      (db.stuck || []).forEach(function (x) { if (x.user === a.p_user) x.kind = "noname"; });
+      return { ok: true };
+    },
+    admin_kakao_attach: function (a) {
+      var m = db.members.filter(function (x) { return x.id === a.p_member; })[0];
+      if (!m) return fail("수강 ID를 골라주세요.");
+      if (m.kakao_user) return fail("이미 다른 카카오 계정과 연결된 학생이에요 (" + m.name + " · " + m.id + ").");
+      m.kakao_user = a.p_user;
+      db.stuck = (db.stuck || []).filter(function (x) { return x.user !== a.p_user; });
+      return { ok: true, member: m.id, name: m.name };
+    },
+    admin_kakao_ignore: function (a) {
+      db.stuck = (db.stuck || []).filter(function (x) { return x.user !== a.p_user; });
+      return { ok: true };
+    },
     // 관리자 작업 기록 (체험 모드는 예시 몇 줄)
     admin_log: function () {
       var ago = function (m) { return new Date(Date.now() - m * 60000).toISOString(); };

@@ -398,14 +398,94 @@
   /* 카카오 연결 요청: a student signed in with Kakao and said who they are; pick the 수강 ID and approve. */
   var WAITING = "status=eq." + encodeURIComponent("대기");
   function badge(n) { setBadge("#linkBadge", n); }
+  var stuckN = 0, waitN = 0;
   function countLinks() {
-    api("link_requests?select=id&" + WAITING).then(function (res) { if (res.ok) badge(res.data.length); });
+    api("link_requests?select=id&" + WAITING).then(function (res) { if (res.ok) { waitN = res.data.length; badge(waitN + stuckN); } });
+    token().then(function (t) { return LeeshAPI.rpc("admin_kakao_stuck", {}, t); }).then(function (res) {
+      if (res && res.ok) { stuckN = (res.items || []).length; badge(waitN + stuckN); }
+    });
   }
   function loadLinks() {
     api("link_requests?select=*&" + WAITING + "&order=created_at").then(function (res) {
       if (!res.ok) return;
-      badge(res.data.length);
+      waitN = res.data.length;
+      badge(waitN + stuckN);
       renderLinks(res.data);
+    });
+    loadStuck();
+  }
+  /* 연결 요청을 못 끝낸 카카오 계정: 이름을 안 보냈거나, 이메일 인증 전이라 로그인이 안 끝남 (2026-11-10) */
+  function memberOptions(sel, kname) {
+    var none = el("option", null, "수강 ID 고르기");
+    none.value = "";
+    sel.appendChild(none);
+    var key = String(kname || "").replace(/[^가-힣a-zA-Z]/g, "");
+    state.members.filter(function (m) { return m.status !== "종료" && !m.kakao_user; }).map(function (m) {
+      var nm = m.name.replace(/\s/g, "");
+      return { m: m, score: key && (nm === key || (key.length >= 2 && key.indexOf(nm) !== -1)) ? 2 : 0 };
+    }).sort(function (a, b) { return b.score - a.score || (a.m.id < b.m.id ? -1 : 1); }).forEach(function (c) {
+      var o = el("option", null, (c.score ? "★ " : "") + c.m.name + " (" + c.m.id + ")" + (c.m.memo ? " · " + c.m.memo : ""));
+      o.value = c.m.id;
+      sel.appendChild(o);
+      if (c.score && !sel.getAttribute("data-auto")) { sel.value = c.m.id; sel.setAttribute("data-auto", "1"); }
+    });
+  }
+  function loadStuck() {
+    token().then(function (t) { return LeeshAPI.rpc("admin_kakao_stuck", {}, t); }).then(function (res) {
+      var box = $("#stuckBox"), ul = $("#stuckList");
+      if (!res || !res.ok) { box.hidden = true; return; }
+      var items = res.items || [];
+      stuckN = items.length;
+      badge(waitN + stuckN);
+      box.hidden = !items.length;
+      ul.textContent = "";
+      items.forEach(function (r) {
+        var li = el("li", "adm__card");
+        var top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, "카카오 이름: " + r.kakao_name));
+        top.appendChild(el("span", "fold__tag" + (r.kind === "email" ? " adm__tag--warn" : ""), r.kind === "email" ? "이메일 인증 전 (로그인이 안 끝남)" : "이름을 안 보냄"));
+        top.appendChild(el("span", "sys-note", "처음 로그인 " + new Date(r.at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })));
+        li.appendChild(top);
+        var row = el("div", "adm__cardrow");
+        var sel = el("select");
+        sel.setAttribute("aria-label", r.kakao_name + " 수강 ID 고르기");
+        memberOptions(sel, r.kakao_name);
+        var go = el("button", "sys-btn", "바로 연결");
+        go.type = "button";
+        row.appendChild(sel);
+        row.appendChild(go);
+        var free = null;
+        if (r.kind === "email") { free = el("button", "sys-link", "로그인 풀어주기"); free.type = "button"; row.appendChild(free); }
+        var drop = el("button", "sys-link", "목록에서 빼기");
+        drop.type = "button";
+        row.appendChild(drop);
+        li.appendChild(row);
+        var note = el("p", "sys-msg");
+        li.appendChild(note);
+        function run(fn, args, done) {
+          [go, drop, free].forEach(function (b) { if (b) b.disabled = true; });
+          token().then(function (t) { return LeeshAPI.rpc(fn, args, t); }).then(function (res) {
+            [go, drop, free].forEach(function (b) { if (b) b.disabled = false; });
+            if (!res.ok) { msg(note, res.error, "error"); return; }
+            done(res);
+          });
+        }
+        go.addEventListener("click", function () {
+          if (!sel.value) { msg(note, "수강 ID를 골라주세요.", "error"); return; }
+          run("admin_kakao_attach", { p_user: r.user, p_member: sel.value }, function () { loadMembers(); });
+        });
+        if (free) free.addEventListener("click", function () {
+          run("admin_kakao_confirm", { p_user: r.user }, function () {
+            msg(note, "풀었어요. 학생이 다시 카카오로 로그인하면 이름 보내는 화면이 나와요.", "ok");
+            free.remove();
+          });
+        });
+        drop.addEventListener("click", function () {
+          if (drop.getAttribute("data-armed") !== "1") { drop.setAttribute("data-armed", "1"); drop.textContent = "한 번 더 누르면 빼기"; return; }
+          run("admin_kakao_ignore", { p_user: r.user }, function () { loadStuck(); });
+        });
+        ul.appendChild(li);
+      });
     });
   }
   function renderLinks(list) {

@@ -6099,3 +6099,104 @@ begin
   return null;
 end $$;
 
+
+-- ===== leesh_kakao_stuck (2026-11-10) =====
+-- 연결 요청을 못 끝낸 카카오 계정 (원장님 2026-11-10 "누가 신청했는데 안 되는지도 모르는 거 같아")
+-- 관리자 → 수강 ID → 카카오 연결 요청 아래에 보이기:
+--   ① 이메일 인증 전이라 카카오 로그인이 안 끝난 계정 → "로그인 풀어주기" (학생이 다시 카카오 로그인하면 이름 보내는 화면)
+--   ② 카카오 로그인은 했는데 이름을 안 보낸 계정
+--   둘 다 카카오 이름을 보고 수강 ID를 골라 "바로 연결" (학생이 다시 할 일 없음), 모르는 계정은 "목록에서 빼기".
+
+create table if not exists private.kakao_ignored (user_id uuid primary key, at timestamptz not null default now());
+revoke all on private.kakao_ignored from public, anon, authenticated;
+
+create or replace function private.kakao_stuck_list()
+returns setof jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'user', u.id,
+    'kakao_name', coalesce(u.raw_user_meta_data ->> 'name', u.raw_user_meta_data ->> 'nickname', u.raw_user_meta_data ->> 'full_name', '(이름 없음)'),
+    'kind', case when u.email_confirmed_at is null and u.last_sign_in_at is null then 'email' else 'noname' end,
+    'at', u.created_at,
+    'last', u.last_sign_in_at)
+  from auth.users u
+  where u.raw_app_meta_data ->> 'provider' = 'kakao'
+    and not exists (select 1 from public.members m where m.kakao_user = u.id)
+    and not exists (select 1 from public.teachers t where t.kakao_user = u.id)
+    and not exists (select 1 from public.link_requests r where r.user_id = u.id)
+    and not exists (select 1 from public.teacher_requests r where r.user_id = u.id)
+    and not exists (select 1 from public.parents p where p.kakao_user = u.id)
+    and not exists (select 1 from public.parent_requests r where r.user_id = u.id)
+    and not exists (select 1 from private.kakao_ignored i where i.user_id = u.id)
+  order by u.created_at desc
+  limit 100;
+$$;
+
+create or replace function public.admin_kakao_stuck()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((select jsonb_agg(x) from private.kakao_stuck_list() x), '[]'));
+end $$;
+
+-- 카카오 계정 하나가 관리자 계정이면 안 됨 (이메일 로그인 관리자와 같은 이메일)
+create or replace function private.kakao_user_ok(p_user uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from auth.users u where u.id = p_user and u.raw_app_meta_data ->> 'provider' = 'kakao')
+     and not exists (select 1 from auth.users u join public.admins a on a.email = lower(u.email) where u.id = p_user);
+$$;
+
+-- ① 로그인 풀어주기 (이메일 인증 전 계정만)
+create or replace function public.admin_kakao_confirm(p_user uuid)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있습니다.'); end if;
+  if not private.kakao_user_ok(p_user) then return private.fail('카카오 계정을 찾을 수 없어요.'); end if;
+  update auth.users set email_confirmed_at = now(), confirmation_token = '', confirmation_sent_at = null
+  where id = p_user and email_confirmed_at is null;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- ①② 수강 ID에 바로 연결 (학생이 이름을 안 보냈어도). 승인된 연결 요청 기록도 남김.
+create or replace function public.admin_kakao_attach(p_user uuid, p_member text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare m public.members; mid text := upper(trim(coalesce(p_member, ''))); kname text; owner text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있습니다.'); end if;
+  if not private.kakao_user_ok(p_user) then return private.fail('카카오 계정을 찾을 수 없어요.'); end if;
+  select * into m from public.members where id = mid;
+  if m.id is null then return private.fail('수강 ID를 골라주세요.'); end if;
+  if m.status = '종료' then return private.fail('종료된 학생이에요.'); end if;
+  if m.kakao_user is not null and m.kakao_user <> p_user then return private.fail('이미 다른 카카오 계정과 연결된 학생이에요 (' || m.name || ' · ' || m.id || ').'); end if;
+  select id into owner from public.members where kakao_user = p_user and id <> mid;
+  if owner is not null then return private.fail('이 카카오 계정은 이미 ' || owner || '에 연결돼 있어요.'); end if;
+  if exists (select 1 from public.teachers where kakao_user = p_user) then return private.fail('선생님으로 연결된 카카오 계정이에요.'); end if;
+  select coalesce(raw_user_meta_data ->> 'name', raw_user_meta_data ->> 'nickname') into kname from auth.users where id = p_user;
+  update auth.users set email_confirmed_at = now(), confirmation_token = '', confirmation_sent_at = null
+  where id = p_user and email_confirmed_at is null;
+  update public.members set kakao_user = p_user where id = mid;
+  insert into public.link_requests (user_id, kakao_name, name, teacher, status, member_id, decided_at)
+  values (p_user, left(kname, 60), left(m.name, 30), nullif(substring(coalesce(m.memo, '') from '담당\s*([^\s·,]+)'), ''), '승인', mid, now())
+  on conflict (user_id) do update set status = '승인', member_id = mid, decided_at = now();
+  delete from private.kakao_ignored where user_id = p_user;
+  return jsonb_build_object('ok', true, 'member', mid, 'name', m.name);
+end $$;
+
+-- 모르는 계정은 목록에서 빼기 (계정은 그대로, 나중에 그 사람이 이름을 보내면 연결 요청에 정상으로 뜸)
+create or replace function public.admin_kakao_ignore(p_user uuid)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있습니다.'); end if;
+  insert into private.kakao_ignored (user_id) values (p_user) on conflict do nothing;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.admin_kakao_stuck() from public, anon;
+revoke all on function public.admin_kakao_confirm(uuid) from public, anon;
+revoke all on function public.admin_kakao_attach(uuid, text) from public, anon;
+revoke all on function public.admin_kakao_ignore(uuid) from public, anon;
+grant execute on function public.admin_kakao_stuck() to authenticated;
+grant execute on function public.admin_kakao_confirm(uuid) to authenticated;
+grant execute on function public.admin_kakao_attach(uuid, text) to authenticated;
+grant execute on function public.admin_kakao_ignore(uuid) to authenticated;
+revoke all on function private.kakao_stuck_list() from public, anon, authenticated;
+revoke all on function private.kakao_user_ok(uuid) from public, anon, authenticated;
