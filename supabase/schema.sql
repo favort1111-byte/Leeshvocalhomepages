@@ -6033,3 +6033,69 @@ returns text[] language sql stable security definer set search_path = '' as $$
     union all select 'private.suggestions' union all select 'private.lesson_skip' union all select 'private.admin_log'
   ) x;
 $$;
+
+-- ===== leesh_admin_log_name (2026-11-10) =====
+-- 관리자 작업 기록: 관리 도구(Management API)로 바꾼 것의 이름 (원장님 2026-11-10 "Claude 라고 남기지 말고 ○○○으로")
+-- 이름은 저장소가 공개라 DB(private.log_names)에만 넣음.
+create table if not exists private.log_names (key text primary key, name text not null);
+revoke all on private.log_names from public, anon, authenticated;
+create or replace function private.log_change()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  who text; o jsonb; nw jsonb; rid text; lbl text; ch jsonb := '{}'; k text; a jsonb; b jsonb;
+  skip text[] := array['updated_at', 'synced_at', 'seen_at', 'client_key', 'decided_at', 'synced_modified', 'synced_ver', 'modified', 'notes', 'sheets', 'kept', 'gone'];
+  hide text[] := array['pin_hash', 'phone', 'birth', 'body', 'sheet', 'message', 'caption', 'summary', 'songs', 'did', 'practice', 'audition', 'recommend',
+                       'asked', 'tip', 'process', 'note', 'files', 'music', 'images', 'info', 'reply', 'wish', 'likes', 'goal', 'comment', 'tips', 'styling', 'body_size', 'path'];
+  win interval; prev private.admin_log;
+begin
+  if coalesce(auth.jwt() ->> 'email', '') <> '' then
+    if not public.is_admin() then return null; end if;
+    who := lower(auth.jwt() ->> 'email');
+  elsif current_setting('application_name', true) = 'mgmt-api' then
+    who := coalesce((select name from private.log_names where key = 'mgmt-api'), '관리 도구');
+  else
+    return null;
+  end if;
+
+  if tg_op <> 'INSERT' then o := to_jsonb(old); end if;
+  if tg_op <> 'DELETE' then nw := to_jsonb(new); end if;
+  rid := coalesce(coalesce(nw, o)->>'id', coalesce(nw, o)->>'file_id', coalesce(nw, o)->>'email',
+                  concat_ws('/', coalesce(nw, o)->>'parent_id', coalesce(nw, o)->>'member_id', coalesce(nw, o)->>'month'));
+  lbl := private.log_label(tg_table_name, coalesce(nw, o));
+
+  if tg_op = 'UPDATE' then
+    for k in select jsonb_object_keys(nw) loop
+      a := o -> k; b := nw -> k;
+      if a is distinct from b and not (k = any (skip)) then
+        if k = 'kakao_user' then
+          ch := ch || jsonb_build_object(k, jsonb_build_array(case when a = 'null'::jsonb then '없음' else '연결' end, case when b = 'null'::jsonb then '없음' else '연결' end));
+        elsif k = any (hide) or jsonb_typeof(coalesce(b, a)) in ('object', 'array')
+              or length(coalesce(a #>> '{}', '')) > 40 or length(coalesce(b #>> '{}', '')) > 40 then
+          ch := ch || jsonb_build_object(k, true);
+        else
+          ch := ch || jsonb_build_object(k, jsonb_build_array(a #>> '{}', b #>> '{}'));
+        end if;
+      end if;
+    end loop;
+    if ch = '{}' then return null; end if;
+  end if;
+
+  -- 같은 사람이 짧은 사이에 같은 일을 하면 한 줄로 (일지 저절로 저장 · 여러 명에게 메시지 · Claude의 한꺼번에 고치기)
+  win := case when tg_op = 'UPDATE' then interval '10 minutes' else interval '2 minutes' end;
+  select * into prev from private.admin_log l
+  where l.actor = who and l.tbl = tg_table_name and l.action = lower(tg_op) and l.at > now() - win
+    and (tg_op <> 'UPDATE' or current_setting('application_name', true) = 'mgmt-api' or l.row_id is not distinct from rid)
+  order by l.at desc limit 1;
+  if found then
+    update private.admin_log set at = now(), n = n + case when prev.row_id is not distinct from rid and tg_op = 'UPDATE' then 0 else 1 end,
+      row_id = case when prev.row_id is not distinct from rid then rid else null end,
+      labels = case when lbl is null or lbl = any (labels) or cardinality(labels) >= 5 then labels else labels || lbl end,
+      changes = changes || ch
+    where id = prev.id;
+  else
+    insert into private.admin_log (actor, tbl, action, row_id, label, labels, changes)
+    values (who, tg_table_name, lower(tg_op), rid, lbl, case when lbl is null then '{}' else array[lbl] end, ch);
+  end if;
+  return null;
+end $$;
+
