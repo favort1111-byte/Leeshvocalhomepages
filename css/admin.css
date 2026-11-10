@@ -180,3 +180,18 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__gamerank{margin:0;padding-left:22px;display:grid;gap:6px;font-size:14px;}
 .adm__gamerank li.is-first b{color:#B5651D;}
 .adm__gamerank small{opacity:.7;}
+
+/* 카톡 자동발송 (2026-11-10) */
+.adm__sub{margin:18px 0 8px;font-size:16px;}
+.adm__kkwho{display:flex;flex-wrap:wrap;gap:6px 16px;border:0;padding:0;}
+.adm__kkwho>span{width:100%;}
+.adm__kkpick,#kkChosen{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
+.adm__kkpick .sys-chip,#kkChosen .sys-chip{padding:4px 10px;border:1px solid #CDBFAF;border-radius:999px;background:#fff;font:inherit;font-size:13px;cursor:pointer;}
+.adm__kkpick .sys-chip.is-on,#kkChosen .sys-chip.is-on{background:#1D4948;color:#fff;border-color:#1D4948;}
+.adm__kkpreview{white-space:pre-wrap;margin:10px 0;padding:12px 14px;border-radius:12px;background:#FEE500;color:#3C1E1E;font-size:14px;line-height:1.5;max-width:420px;}
+.adm__kkrow--sent{border-left:4px solid #2E7D32;}
+.adm__kkrow--fail{border-left:4px solid #C62828;}
+.adm__kkrow--off{opacity:.55;}
+.adm__kkset{margin-top:20px;padding:12px 14px;border:1px solid #E2D6C8;border-radius:10px;}
+.adm__kkset>summary{cursor:pointer;font-weight:500;}
+.adm__kktpl{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;}

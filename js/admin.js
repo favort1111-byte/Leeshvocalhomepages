@@ -161,6 +161,7 @@
     if (name === "reviews") loadReviews();
     if (name === "adminlog") loadLog();
     if (name === "gameevent") loadGameEvent();
+    if (name === "kakao") loadKakao();
     if (name === "partners") loadPartners();
     if (name === "teachers") { loadTeachers(); loadLessonSync(); }
     if (name === "records") loadRecords();
@@ -2500,6 +2501,191 @@
   };
   var LOG_ACT = { insert: "추가", update: "고침", "delete": "지움" };
   var logState = { items: [], loaded: false };
+  /* ---------------- 카톡 자동발송 (원장님 2026-11-10): 전날 오후 6시 솔라피 알림톡 리마인더 ---------------- */
+  var KK_KINDS = ["상담", "컨설팅", "특강", "첫 레슨", "보강"];
+  // 미리보기용 문구 (docs/alimtalk_templates.md와 같은 초안. 실제로 나가는 문구는 솔라피에서 승인된 템플릿)
+  var KK_LEAD = { "상담": "내일 상담 예약을 안내드립니다.", "컨설팅": "내일 오디션 컨설팅 일정을 안내드립니다.", "특강": "내일 특강 일정을 안내드립니다.",
+    "첫 레슨": "내일 첫 레슨 일정을 안내드립니다.", "보강": "내일 보강 레슨 일정을 안내드립니다." };
+  var kk = { picked: {}, consults: [] };
+  function kkWhen(day, time) {
+    if (!day || !time) return "";
+    var d = new Date(day + "T00:00:00Z"), h = Number(time.slice(0, 2)), m = time.slice(3, 5);
+    return (d.getUTCMonth() + 1) + "월 " + d.getUTCDate() + "일(" + WD[d.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + (m === "00" ? "시" : ":" + m);
+  }
+  function kkPreview() {
+    var f = $("#kkForm"), kind = field(f, "kind").value, names = Object.keys(kk.picked).map(function (id) { return kk.picked[id]; });
+    var who = f.querySelector("[name=who]:checked").value;
+    var name = who === "direct" ? ($("#kkName").value.trim() || "○○○") : who === "consult" ? (($("#kkConsultSel").selectedOptions[0] || {}).dataset || {}).name || "○○○" : (names[0] || "○○○");
+    $("#kkPreview").textContent = "[이송희보컬레슨] " + kind + " 안내\n\n안녕하세요, " + name + "님.\n" + KK_LEAD[kind] + "\n\n▶ 일시: " + (kkWhen(field(f, "day").value, field(f, "time").value) || "-")
+      + "\n▶ 장소: " + (field(f, "place").value.trim() || "이송희보컬레슨") + "\n▶ 안내: " + (field(f, "memo").value.trim() || "-")
+      + "\n\n일정 변경이 필요하시면 카카오톡 채널로 미리 말씀해 주세요.\n감사합니다." + (names.length > 1 ? "\n\n(" + names.length + "명에게 이름만 바꿔 한 통씩)" : "");
+  }
+  function kkPickList() {
+    var q = $("#kkFind").value.trim().toLowerCase(), box = $("#kkPick");
+    box.textContent = "";
+    members().then(function (ms) {
+      var list = ms.filter(function (m) { return m.status !== "종료" && (!q || m.name.toLowerCase().indexOf(q) >= 0 || m.id.toLowerCase().indexOf(q) >= 0); }).slice(0, q ? 30 : 0);
+      list.forEach(function (m) {
+        var b = el("button", "sys-chip" + (kk.picked[m.id] ? " is-on" : ""), m.name + " · " + m.id + (teacherOf(m) ? " · " + teacherOf(m) : ""));
+        b.type = "button";
+        b.addEventListener("click", function () { if (kk.picked[m.id]) delete kk.picked[m.id]; else kk.picked[m.id] = m.name; kkPickList(); kkChosen(); });
+        box.appendChild(b);
+      });
+      if (q && !list.length) box.appendChild(el("span", "sys-note", "찾는 학생이 없어요."));
+    });
+  }
+  function kkChosen() {
+    var ids = Object.keys(kk.picked), p = $("#kkChosen");
+    p.textContent = ids.length ? "고른 학생: " : "학생을 찾아서 눌러 고르세요.";
+    ids.forEach(function (id) {
+      var b = el("button", "sys-chip is-on", kk.picked[id] + " ✕");
+      b.type = "button";
+      b.addEventListener("click", function () { delete kk.picked[id]; kkPickList(); kkChosen(); });
+      p.appendChild(b);
+    });
+    if (ids.length) api("rpc/admin_member_phones", { method: "POST", body: { p_ids: ids } }).then(function (r) {
+      var have = (r.data && r.data.items) || {}, none = ids.filter(function (id) { return !have[id]; });
+      if (none.length) p.appendChild(el("span", "sys-msg sys-msg--error", " · 번호 없음: " + none.map(function (id) { return kk.picked[id]; }).join(", ") + " (시트 P열 결제 연락처 확인)"));
+    });
+    kkPreview();
+  }
+  function kkWhoMode() {
+    var v = $("#kkForm").querySelector("[name=who]:checked").value;
+    $("#kkMembers").hidden = v !== "member"; $("#kkConsult").hidden = v !== "consult"; $("#kkDirect").hidden = v !== "direct";
+    if (v === "consult" && !kk.consults.length) api("consults?select=id,name,status,created_at,method&order=created_at.desc&limit=60").then(function (r) {
+      kk.consults = r.ok ? r.data : [];
+      var sel = $("#kkConsultSel");
+      sel.textContent = "";
+      kk.consults.forEach(function (c) { var o = el("option", null, c.name + " · " + (c.method || "") + " · " + stamp(c.created_at) + " 신청 · " + c.status); o.value = c.id; o.dataset.name = c.name; sel.appendChild(o); });
+      if (!kk.consults.length) sel.appendChild(el("option", null, "상담 신청이 없어요"));
+      kkPreview();
+    });
+    kkPreview();
+  }
+  function loadKakao() {
+    var f = $("#kkForm");
+    if (!field(f, "day").value) field(f, "day").value = addDays(todayKst(), 1);
+    api("rpc/admin_solapi_status", { method: "POST", body: {} }).then(function (r) {
+      var d = r.data || {};
+      if (!r.ok || !d.ok) { $("#kkState").textContent = d.error || "불러오지 못했어요."; return; }
+      var tpl = d.templates || {}, missing = KK_KINDS.filter(function (k) { return !tpl[k]; });
+      $("#kkState").textContent = (d.connected ? "✅ 솔라피 연결됨 (" + d.key_tail + (d.sender ? " · 발신 " + d.sender : " · 발신번호 없음") + (d.pf_id ? "" : " · 채널 pfId 없음") + ")" : "⚠️ 솔라피 연결 전 — 아래 설정에서 연결해 주세요")
+        + " · " + (d.enabled ? "자동 발송 켜짐 (전날 " + d.send_hour + "시)" : "자동 발송 꺼짐") + (missing.length ? " · 템플릿 ID 없음: " + missing.join(", ") : "")
+        + " · 시트에서 받은 번호 " + d.contacts + "명" + (d.last_note ? " · 마지막 발송 " + stamp(d.last_run_at) + " " + d.last_note : "");
+      var rows = $("#kkTplRows");
+      rows.textContent = "";
+      KK_KINDS.forEach(function (k) {
+        var lab = el("label", "sys-field"), inp = el("input");
+        inp.name = k; inp.value = tpl[k] || ""; inp.placeholder = "KA01TP…"; inp.autocomplete = "off";
+        lab.appendChild(el("span", null, k));
+        lab.appendChild(inp);
+        rows.appendChild(lab);
+      });
+      $("#kkOn").checked = !!d.enabled;
+    });
+    var list = $("#kkList");
+    list.textContent = "";
+    list.appendChild(el("li", "sys-empty", "불러오는 중…"));
+    api("rpc/admin_reminders", { method: "POST", body: { p_from: addDays(todayKst(), -7) } }).then(function (r) {
+      var d = r.data || {};
+      list.textContent = "";
+      if (!r.ok || !d.ok) { list.appendChild(el("li", "sys-msg sys-msg--error", d.error || friendly(r, "불러오지 못했어요."))); return; }
+      if (!d.items.length) { list.appendChild(el("li", "sys-empty", "넣은 일정이 없어요.")); return; }
+      d.items.forEach(function (x) {
+        var li = el("li", "adm__card adm__kkrow adm__kkrow--" + ({ "예정": "wait", "보냄": "sent", "실패": "fail", "취소": "off" }[x.status] || "wait")), top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, x.when));
+        top.appendChild(el("span", "adm__badge adm__badge--kind", x.kind));
+        top.appendChild(el("span", null, x.name + (x.member ? " (" + x.member + ")" : "")));
+        top.appendChild(el("span", "adm__badge", x.status));
+        li.appendChild(top);
+        li.appendChild(el("p", "sys-note", (x.phone ? "📱 " + x.phone : "⚠️ 번호 없음") + (x.place ? " · " + x.place : "") + (x.memo ? " · " + x.memo : "")
+          + (x.sent_at ? " · 보낸 시각 " + stamp(x.sent_at) : "") + (x.result && x.status !== "보냄" ? " · " + x.result : "")));
+        var acts = el("div", "adm__acts"), note = el("p", "sys-msg");
+        if (x.status !== "취소") {
+          var send = el("button", "sys-btn sys-btn--ghost", x.status === "보냄" ? "한 번 더 보내기" : "지금 보내기");
+          send.type = "button";
+          send.addEventListener("click", function () {
+            if (send.getAttribute("data-armed") !== "1") { send.setAttribute("data-armed", "1"); send.textContent = "한 번 더 누르면 보내요"; return; }
+            send.disabled = true;
+            api("rpc/admin_reminder_send", { method: "POST", body: { p_id: x.id } }).then(function (rr) {
+              var dd = rr.data || {};
+              if (rr.ok && dd.ok) loadKakao(); else { send.disabled = false; msg(note, dd.error || friendly(rr, "보내지 못했어요."), "error"); }
+            });
+          });
+          acts.appendChild(send);
+        }
+        if (x.status === "예정" || x.status === "실패") {
+          var cancel = el("button", "sys-link", "취소 (안 보내기)");
+          cancel.type = "button";
+          cancel.addEventListener("click", function () { api("rpc/admin_reminder_cancel", { method: "POST", body: { p_id: x.id } }).then(loadKakao); });
+          acts.appendChild(cancel);
+        }
+        var del = el("button", "sys-link", "지우기");
+        del.type = "button";
+        del.addEventListener("click", function () {
+          if (del.getAttribute("data-armed") !== "1") { del.setAttribute("data-armed", "1"); del.textContent = "한 번 더 누르면 지워요"; return; }
+          api("rpc/admin_reminder_cancel", { method: "POST", body: { p_id: x.id, p_delete: true } }).then(loadKakao);
+        });
+        acts.appendChild(del);
+        li.appendChild(acts);
+        li.appendChild(note);
+        list.appendChild(li);
+      });
+    });
+  }
+  (function () {
+    var f = $("#kkForm");
+    f.querySelectorAll("[name=who]").forEach(function (r) { r.addEventListener("change", kkWhoMode); });
+    ["kind", "day", "time", "place", "memo"].forEach(function (n) { field(f, n).addEventListener("input", kkPreview); });
+    $("#kkName").addEventListener("input", kkPreview);
+    $("#kkConsultSel").addEventListener("change", kkPreview);
+    var t = null;
+    $("#kkFind").addEventListener("input", function () { clearTimeout(t); t = setTimeout(kkPickList, 200); });
+    kkChosen();
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var who = f.querySelector("[name=who]:checked").value, day = field(f, "day").value, time = field(f, "time").value;
+      var body = { p_id: null, p_kind: field(f, "kind").value, p_at: day + "T" + time + ":00+09:00", p_place: field(f, "place").value, p_memo: field(f, "memo").value };
+      if (who === "member") { body.p_members = Object.keys(kk.picked); if (!body.p_members.length) { msg($("#kkMsg"), "학생을 골라주세요.", "error"); return; } }
+      if (who === "consult") body.p_consult = Number($("#kkConsultSel").value) || null;
+      if (who === "direct") { body.p_name = $("#kkName").value; body.p_phone = $("#kkPhone").value; }
+      api("rpc/admin_reminder_save", { method: "POST", body: body }).then(function (r) {
+        var d = r.data || {};
+        if (!r.ok || !d.ok) { msg($("#kkMsg"), d.error || friendly(r, "넣지 못했어요."), "error"); return; }
+        msg($("#kkMsg"), d.count + "건 넣었어요. 전날 오후 6시에 저절로 보내요.", "ok");
+        kk.picked = {}; $("#kkFind").value = ""; kkPickList(); kkChosen(); field(f, "memo").value = "";
+        loadKakao();
+      });
+    });
+    $("#kkConn").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var c = e.target, m = $("#kkConnMsg");
+      msg(m, "확인하는 중…");
+      api("rpc/admin_solapi_set", { method: "POST", body: { p_key: field(c, "key").value, p_secret: field(c, "secret").value, p_sender: field(c, "sender").value, p_pf: field(c, "pf").value } }).then(function (r) {
+        var d = r.data || {};
+        if (!r.ok || !d.ok) { msg(m, d.error || friendly(r, "연결하지 못했어요."), "error"); return; }
+        c.reset();
+        msg(m, "연결됐어요." + (d.balance != null ? " 솔라피 잔액 " + Number(d.balance).toLocaleString("ko-KR") + "원" : ""), "ok");
+        loadKakao();
+      });
+    });
+    $("#kkOff").addEventListener("click", function () {
+      if (!window.confirm("솔라피 연결을 끊을까요? 자동 발송도 꺼져요.")) return;
+      api("rpc/admin_solapi_off", { method: "POST", body: {} }).then(loadKakao);
+    });
+    $("#kkTpl").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var t2 = {};
+      $("#kkTplRows").querySelectorAll("input").forEach(function (i) { t2[i.name] = i.value.trim(); });
+      api("rpc/admin_solapi_options", { method: "POST", body: { p_templates: t2, p_enabled: $("#kkOn").checked } }).then(function (r) {
+        var d = r.data || {};
+        if (!r.ok || !d.ok) { msg($("#kkTplMsg"), d.error || friendly(r, "저장하지 못했어요."), "error"); return; }
+        msg($("#kkTplMsg"), "저장했어요.", "ok");
+        loadKakao();
+      });
+    });
+  })();
+
   // 보컬오락실 이벤트 순위 (원장님 2026-11-10)
   var GAME_NAMES = { solfa: ["👂 계이름 맞히기", "점"], simon: ["👂 멜로디 따라치기", "점"], fly: ["🎤 목소리로 날아라", "점"] };
   function kstDay(iso) {

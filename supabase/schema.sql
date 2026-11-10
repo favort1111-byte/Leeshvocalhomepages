@@ -6709,3 +6709,342 @@ begin
     execute d;
   end if;
 end $do$;
+
+-- ===== leesh_kakao_auto (2026-11-10) =====
+-- 카톡 자동발송 (원장님 2026-11-10): 상담 예약 · 컨설팅 · 특강 · 첫 레슨 · 보강 전날 오후 6시에 솔라피 알림톡으로 리마인더.
+-- 솔라피 열쇠(API Key · Secret) · 발신번호 · 채널(pfId) · 템플릿 ID는 관리자 화면 설정에만 넣음(채팅 · 저장소 금지), private에 보관.
+-- 받는 번호: 학생은 학생관리 시트 '회차·결제 관리' P열 "결제 연락처"(시트 담당 세션의 스크립트가 sheet_sync_contacts로 보냄, 읽기만) ·
+-- 상담은 상담 신청서 번호 · 일정마다 직접 적은 번호가 있으면 그걸 먼저. 번호는 관리자만, 화면엔 가운데를 가려서.
+
+create table if not exists private.solapi (
+  id int primary key default 1 check (id = 1),
+  api_key text, api_secret text, sender text, pf_id text,
+  templates jsonb not null default '{}',
+  send_hour int not null default 18 check (send_hour between 8 and 21),
+  enabled boolean not null default false,
+  last_run_at timestamptz, last_note text
+);
+insert into private.solapi (id) values (1) on conflict do nothing;
+revoke all on private.solapi from public, anon, authenticated;
+
+create table if not exists private.member_contacts (
+  member_id text primary key references public.members (id) on delete cascade,
+  phone text not null check (phone ~ '^01[0-9]{8,9}$'),
+  updated_at timestamptz not null default now()
+);
+revoke all on private.member_contacts from public, anon, authenticated;
+
+create table if not exists public.reminders (
+  id bigserial primary key,
+  kind text not null check (kind in ('상담', '컨설팅', '특강', '첫 레슨', '보강')),
+  member_id text references public.members (id) on delete set null,
+  consult_id bigint references public.consults (id) on delete set null,
+  name text not null check (char_length(name) between 1 and 30),
+  phone text check (phone is null or phone ~ '^01[0-9]{8,9}$'),
+  at timestamptz not null,
+  place text check (char_length(coalesce(place, '')) <= 60),
+  memo text check (char_length(coalesce(memo, '')) <= 200),
+  status text not null default '예정' check (status in ('예정', '보냄', '실패', '취소')),
+  sent_at timestamptz,
+  result text,
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists reminders_at on public.reminders (at);
+alter table public.reminders enable row level security;
+revoke all on public.reminders from anon, authenticated;
+drop trigger if exists zz_admin_log on public.reminders;
+create trigger zz_admin_log after insert or update or delete on public.reminders for each row execute function private.log_change();
+
+create or replace function private.phone_norm(p text)
+returns text language sql immutable set search_path = '' as $$
+  select m[1] || m[2] || m[3] from regexp_matches(coalesce(p, ''), '(01[016789])[- .)]*([0-9]{3,4})[- .]*([0-9]{4})') m limit 1;
+$$;
+create or replace function private.phone_mask(p text)
+returns text language sql immutable set search_path = '' as $$
+  select case when p is null then null else left(p, 3) || '-****-' || right(p, 4) end;
+$$;
+
+-- 시트 → 연락처 (시트 담당 세션의 Apps Script가 수강ID 명단과 같은 열쇠로 부름). 빈 칸이면 그 학생 번호를 지움.
+create or replace function public.sheet_sync_contacts(p_key text, p_rows jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare s private.sheet_sync; r jsonb; v_id text; v_phone text; saved int := 0; cleared int := 0; skipped int := 0;
+begin
+  select * into s from private.sheet_sync where id = 1;
+  if s.key_hash is null or s.key_hash <> extensions.digest(coalesce(p_key, ''), 'sha256') then return private.fail('연결 열쇠가 맞지 않아요.'); end if;
+  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) > 2000 then return private.fail('보낸 목록이 맞지 않아요.'); end if;
+  for r in select * from jsonb_array_elements(p_rows) loop
+    v_id := upper(trim(coalesce(r ->> 'id', '')));
+    if not exists (select 1 from public.members where id = v_id) then skipped := skipped + 1; continue; end if;
+    v_phone := private.phone_norm(r ->> 'phone');
+    if v_phone is null then
+      delete from private.member_contacts where member_id = v_id;
+      if found then cleared := cleared + 1; end if;
+    else
+      insert into private.member_contacts (member_id, phone) values (v_id, v_phone)
+      on conflict (member_id) do update set phone = excluded.phone, updated_at = now() where private.member_contacts.phone <> excluded.phone;
+      saved := saved + 1;
+    end if;
+  end loop;
+  return jsonb_build_object('ok', true, 'saved', saved, 'cleared', cleared, 'skipped', skipped);
+end $$;
+revoke all on function public.sheet_sync_contacts(text, jsonb) from public;
+grant execute on function public.sheet_sync_contacts(text, jsonb) to anon, authenticated;
+
+-- 솔라피 부르기 (HMAC-SHA256 서명)
+create or replace function private.solapi_call(p_method text, p_path text, p_body jsonb default null, out status int, out content text)
+returns record language plpgsql security definer set search_path = '' as $$
+declare c private.solapi; d text; salt text; sig text; res record;
+begin
+  select * into c from private.solapi where id = 1;
+  if c.api_key is null or c.api_secret is null then status := 0; content := '솔라피 연결 전'; return; end if;
+  d := to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+  salt := encode(extensions.gen_random_bytes(16), 'hex');
+  sig := encode(extensions.hmac(d || salt, c.api_secret, 'sha256'), 'hex');
+  perform extensions.http_set_curlopt('CURLOPT_CONNECTTIMEOUT', '10');
+  perform extensions.http_set_curlopt('CURLOPT_TIMEOUT', '20');
+  begin
+    select h.status, h.content into res from extensions.http((
+      p_method, 'https://api.solapi.com' || p_path,
+      array[extensions.http_header('Authorization', 'HMAC-SHA256 apiKey=' || c.api_key || ', date=' || d || ', salt=' || salt || ', signature=' || sig)],
+      'application/json', case when p_body is null then null else p_body::text end)::extensions.http_request) h;
+    status := res.status; content := res.content;
+  exception when others then status := 0; content := sqlerrm;
+  end;
+end $$;
+revoke all on function private.solapi_call(text, text, jsonb) from public, anon, authenticated;
+
+-- 알림톡 문구에 들어갈 값: #{이름} · #{일시} · #{장소} · #{안내}
+create or replace function private.reminder_when(p timestamptz)
+returns text language sql stable set search_path = '' as $$
+  select to_char(k, 'FMMM"월" FMDD"일"') || '(' || (array['일','월','화','수','목','금','토'])[extract(dow from k)::int + 1] || ') '
+       || case when extract(hour from k) < 12 then '오전 ' else '오후 ' end
+       || (case when extract(hour from k)::int % 12 = 0 then 12 else extract(hour from k)::int % 12 end)::text
+       || case when extract(minute from k) = 0 then '시' else ':' || to_char(k, 'MI') end
+  from (select p at time zone 'Asia/Seoul' k) x;
+$$;
+
+create or replace function private.reminder_phone(r public.reminders)
+returns text language sql stable security definer set search_path = '' as $$
+  select coalesce(r.phone,
+    (select phone from private.member_contacts where member_id = r.member_id),
+    (select private.phone_norm(phone) from public.consults where id = r.consult_id));
+$$;
+
+-- 한 건 보내기
+create or replace function private.reminder_send(p_id bigint)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare c private.solapi; r public.reminders; ph text; tpl text; res record; j jsonb; ok boolean; why text;
+begin
+  select * into c from private.solapi where id = 1;
+  select * into r from public.reminders where id = p_id for update;
+  if r.id is null then return private.fail('일정을 찾을 수 없어요.'); end if;
+  if r.status = '취소' then return private.fail('취소된 일정이에요.'); end if;
+  tpl := c.templates ->> r.kind;
+  ph := private.reminder_phone(r);
+  if c.api_key is null or c.sender is null or c.pf_id is null then why := '솔라피 연결 전이에요 (관리자 → 카톡 자동발송 → 솔라피 연결).';
+  elsif coalesce(tpl, '') = '' then why := '"' || r.kind || '" 알림톡 템플릿 ID가 비어 있어요.';
+  elsif ph is null then why := '받는 전화번호가 없어요.';
+  end if;
+  if why is not null then
+    update public.reminders set status = '실패', result = why, updated_at = now() where id = r.id;
+    return private.fail(why);
+  end if;
+  select * into res from private.solapi_call('POST', '/messages/v4/send-many/detail', jsonb_build_object('messages', jsonb_build_array(jsonb_build_object(
+    'to', ph, 'from', c.sender,
+    'kakaoOptions', jsonb_build_object('pfId', c.pf_id, 'templateId', tpl, 'disableSms', true,
+      'variables', jsonb_build_object('#{이름}', r.name, '#{일시}', private.reminder_when(r.at),
+                                      '#{장소}', coalesce(nullif(r.place, ''), '이송희보컬레슨'), '#{안내}', coalesce(nullif(r.memo, ''), '-')))))));
+  begin j := res.content::jsonb; exception when others then j := null; end;
+  ok := res.status between 200 and 299 and coalesce(jsonb_array_length(j -> 'failedMessageList'), 0) = 0;
+  why := case when ok then '보냄' else left(coalesce(j -> 'failedMessageList' -> 0 ->> 'statusMessage', j ->> 'errorMessage', j ->> 'message', res.content, '응답 없음'), 200) end;
+  update public.reminders set status = case when ok then '보냄' else '실패' end, sent_at = case when ok then now() else sent_at end,
+    result = why, updated_at = now() where id = r.id;
+  return jsonb_build_object('ok', ok, 'error', case when ok then null else why end);
+end $$;
+revoke all on function private.reminder_send(bigint) from public, anon, authenticated;
+
+-- 매시 2분: 보내는 시각(기본 18시) ~ 22시 사이에, 내일 일정 중 아직 안 보낸 것 (18시 뒤에 넣은 내일 일정도 22시까지는 저절로)
+create or replace function private.reminders_daily()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare c private.solapi; h int := extract(hour from now() at time zone 'Asia/Seoul'); tmr date := (now() at time zone 'Asia/Seoul')::date + 1;
+  r record; sent int := 0; failed int := 0; x jsonb;
+begin
+  select * into c from private.solapi where id = 1;
+  if not c.enabled or h < c.send_hour or h >= 22 then return jsonb_build_object('ok', true, 'skip', true); end if;
+  for r in select id from public.reminders where status = '예정' and (at at time zone 'Asia/Seoul')::date = tmr order by at limit 200 loop
+    x := private.reminder_send(r.id);
+    if (x ->> 'ok')::boolean then sent := sent + 1; else failed := failed + 1; end if;
+  end loop;
+  update private.solapi set last_run_at = now(), last_note = '보냄 ' || sent || ' · 실패 ' || failed where id = 1 and (sent + failed) > 0;
+  return jsonb_build_object('ok', true, 'sent', sent, 'failed', failed);
+end $$;
+revoke all on function private.reminders_daily() from public, anon, authenticated;
+select cron.schedule('leesh_reminders', '2 * * * *', 'select private.reminders_daily()');
+
+/* ---------------- 관리자 ---------------- */
+create or replace function public.admin_solapi_status()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare c private.solapi;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into c from private.solapi where id = 1;
+  return jsonb_build_object('ok', true, 'connected', c.api_key is not null and c.api_secret is not null,
+    'key_tail', case when c.api_key is null then null else '…' || right(c.api_key, 4) end,
+    'sender', private.phone_mask(c.sender), 'pf_id', c.pf_id is not null, 'templates', c.templates,
+    'send_hour', c.send_hour, 'enabled', c.enabled, 'last_run_at', c.last_run_at, 'last_note', c.last_note,
+    'contacts', (select count(*) from private.member_contacts));
+end $$;
+
+-- 연결: 빈 칸은 그대로 둠. 넣은 열쇠로 잔액을 물어 맞는지 확인
+create or replace function public.admin_solapi_set(p_key text default null, p_secret text default null, p_sender text default null, p_pf text default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare res record; j jsonb; snd text := private.phone_norm(p_sender);
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if nullif(trim(coalesce(p_sender, '')), '') is not null and snd is null and trim(p_sender) !~ '^0[2-9][0-9]{7,10}$' then return private.fail('발신번호를 다시 확인해주세요.'); end if;
+  update private.solapi set
+    api_key = coalesce(nullif(trim(coalesce(p_key, '')), ''), api_key),
+    api_secret = coalesce(nullif(trim(coalesce(p_secret, '')), ''), api_secret),
+    sender = coalesce(snd, nullif(regexp_replace(coalesce(p_sender, ''), '[^0-9]', '', 'g'), ''), sender),
+    pf_id = coalesce(nullif(trim(coalesce(p_pf, '')), ''), pf_id)
+  where id = 1;
+  select * into res from private.solapi_call('GET', '/cash/v1/balance');
+  begin j := res.content::jsonb; exception when others then j := null; end;
+  if res.status between 200 and 299 then
+    return jsonb_build_object('ok', true, 'balance', j -> 'balance', 'point', j -> 'point');
+  end if;
+  return private.fail('솔라피가 열쇠를 받지 않았어요: ' || left(coalesce(j ->> 'errorMessage', j ->> 'message', res.content, '응답 없음'), 120));
+end $$;
+
+create or replace function public.admin_solapi_options(p_templates jsonb default null, p_send_hour int default null, p_enabled boolean default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare t jsonb := '{}'; k text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if p_templates is not null then
+    foreach k in array array['상담', '컨설팅', '특강', '첫 레슨', '보강'] loop
+      if nullif(trim(coalesce(p_templates ->> k, '')), '') is not null then
+        if trim(p_templates ->> k) !~ '^[A-Za-z0-9_-]{6,60}$' then return private.fail('"' || k || '" 템플릿 ID를 다시 확인해주세요.'); end if;
+        t := t || jsonb_build_object(k, trim(p_templates ->> k));
+      end if;
+    end loop;
+    update private.solapi set templates = t where id = 1;
+  end if;
+  if p_send_hour is not null then
+    if p_send_hour not between 8 and 21 then return private.fail('보내는 시각은 8시 ~ 21시 사이로 골라주세요.'); end if;
+    update private.solapi set send_hour = p_send_hour where id = 1;
+  end if;
+  if p_enabled is not null then update private.solapi set enabled = p_enabled where id = 1; end if;
+  return public.admin_solapi_status();
+end $$;
+
+create or replace function public.admin_solapi_off()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update private.solapi set api_key = null, api_secret = null, enabled = false where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 일정 목록 (번호는 가려서)
+create or replace function public.admin_reminders(p_from date default null, p_limit int default 200)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', r.id, 'kind', r.kind, 'member', r.member_id, 'consult', r.consult_id, 'name', r.name,
+      'at', r.at, 'when', private.reminder_when(r.at), 'place', r.place, 'memo', r.memo, 'status', r.status, 'sent_at', r.sent_at,
+      'result', r.result, 'phone', r.ph, 'own_phone', r.phone is not null) order by r.at)
+    from (select r0.*, private.phone_mask(private.reminder_phone(r0)) ph from public.reminders r0
+          where r0.at >= coalesce(p_from, (now() at time zone 'Asia/Seoul')::date - 7)::timestamp at time zone 'Asia/Seoul'
+          order by r0.at limit greatest(1, least(coalesce(p_limit, 200), 500))) r), '[]'::jsonb));
+end $$;
+
+-- 일정 넣기 · 고치기 (특강처럼 여러 학생이면 p_members로 한 번에 여러 줄)
+create or replace function public.admin_reminder_save(p_id bigint, p_kind text, p_at timestamptz, p_place text default null, p_memo text default null,
+  p_members text[] default null, p_consult bigint default null, p_name text default null, p_phone text default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare me text := lower(auth.jwt() ->> 'email'); m public.members; c public.consults; ph text := private.phone_norm(p_phone); n int := 0; mid text;
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if p_kind not in ('상담', '컨설팅', '특강', '첫 레슨', '보강') then return private.fail('종류를 골라주세요.'); end if;
+  if p_at is null or p_at < now() - interval '1 day' then return private.fail('날짜 · 시간을 확인해주세요.'); end if;
+  if nullif(trim(coalesce(p_phone, '')), '') is not null and ph is null then return private.fail('휴대폰 번호를 다시 확인해주세요.'); end if;
+  if p_id is not null then
+    update public.reminders set kind = p_kind, at = p_at, place = nullif(trim(coalesce(p_place, '')), ''), memo = nullif(trim(coalesce(p_memo, '')), ''),
+      name = coalesce(nullif(trim(coalesce(p_name, '')), ''), name), phone = case when p_phone is null then phone else ph end,
+      status = case when status = '보냄' and at = p_at then status else '예정' end, result = case when status = '보냄' and at = p_at then result else null end,
+      updated_at = now()
+    where id = p_id;
+    if not found then return private.fail('일정을 찾을 수 없어요.'); end if;
+    return jsonb_build_object('ok', true, 'count', 1);
+  end if;
+  if p_consult is not null then
+    select * into c from public.consults where id = p_consult;
+    if c.id is null then return private.fail('상담 신청을 찾을 수 없어요.'); end if;
+    insert into public.reminders (kind, consult_id, name, phone, at, place, memo, created_by)
+    values (p_kind, c.id, left(coalesce(nullif(trim(coalesce(p_name, '')), ''), c.name), 30), ph, p_at, nullif(trim(coalesce(p_place, '')), ''), nullif(trim(coalesce(p_memo, '')), ''), me);
+    return jsonb_build_object('ok', true, 'count', 1);
+  end if;
+  if coalesce(array_length(p_members, 1), 0) = 0 then
+    if nullif(trim(coalesce(p_name, '')), '') is null or ph is null then return private.fail('학생을 고르거나, 이름과 번호를 적어주세요.'); end if;
+    insert into public.reminders (kind, name, phone, at, place, memo, created_by)
+    values (p_kind, left(trim(p_name), 30), ph, p_at, nullif(trim(coalesce(p_place, '')), ''), nullif(trim(coalesce(p_memo, '')), ''), me);
+    return jsonb_build_object('ok', true, 'count', 1);
+  end if;
+  if array_length(p_members, 1) > 100 then return private.fail('한 번에 100명까지예요.'); end if;
+  foreach mid in array p_members loop
+    select * into m from public.members where id = upper(trim(mid));
+    if m.id is null then continue; end if;
+    insert into public.reminders (kind, member_id, name, phone, at, place, memo, created_by)
+    values (p_kind, m.id, m.name, case when array_length(p_members, 1) = 1 then ph end, p_at, nullif(trim(coalesce(p_place, '')), ''), nullif(trim(coalesce(p_memo, '')), ''), me);
+    n := n + 1;
+  end loop;
+  return jsonb_build_object('ok', true, 'count', n);
+end $$;
+
+create or replace function public.admin_reminder_cancel(p_id bigint, p_delete boolean default false)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if p_delete then delete from public.reminders where id = p_id;
+  else update public.reminders set status = '취소', updated_at = now() where id = p_id and status <> '보냄'; end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- 지금 보내기 (시험 · 늦게 넣은 일정)
+create or replace function public.admin_reminder_send(p_id bigint)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update public.reminders set status = '예정' where id = p_id and status = '실패';
+  return private.reminder_send(p_id);
+end $$;
+
+-- 번호 확인용: 이 학생에게 보낼 번호가 있는지 (가려서)
+create or replace function public.admin_member_phones(p_ids text[])
+returns jsonb language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((select jsonb_object_agg(member_id, private.phone_mask(phone))
+    from private.member_contacts where member_id = any (coalesce(p_ids, '{}'))), '{}'::jsonb));
+end $$;
+
+revoke all on function public.admin_solapi_status() from public, anon;
+revoke all on function public.admin_solapi_set(text, text, text, text) from public, anon;
+revoke all on function public.admin_solapi_options(jsonb, int, boolean) from public, anon;
+revoke all on function public.admin_solapi_off() from public, anon;
+revoke all on function public.admin_reminders(date, int) from public, anon;
+revoke all on function public.admin_reminder_save(bigint, text, timestamptz, text, text, text[], bigint, text, text) from public, anon;
+revoke all on function public.admin_reminder_cancel(bigint, boolean) from public, anon;
+revoke all on function public.admin_reminder_send(bigint) from public, anon;
+revoke all on function public.admin_member_phones(text[]) from public, anon;
+grant execute on function public.admin_solapi_status(), public.admin_solapi_set(text, text, text, text), public.admin_solapi_options(jsonb, int, boolean),
+  public.admin_solapi_off(), public.admin_reminders(date, int), public.admin_reminder_save(bigint, text, timestamptz, text, text, text[], bigint, text, text),
+  public.admin_reminder_cancel(bigint, boolean), public.admin_reminder_send(bigint), public.admin_member_phones(text[]) to authenticated;
+revoke all on function private.phone_norm(text) from public, anon, authenticated;
+revoke all on function private.phone_mask(text) from public, anon, authenticated;
+revoke all on function private.reminder_when(timestamptz) from public, anon, authenticated;
+revoke all on function private.reminder_phone(public.reminders) from public, anon, authenticated;

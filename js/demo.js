@@ -732,6 +732,38 @@
       return { ok: true };
     },
     // 관리자 작업 기록 (체험 모드는 예시 몇 줄)
+    // 카톡 자동발송 (체험): 솔라피 연결 없이 일정만 넣어 보기
+    admin_solapi_status: function () {
+      return { ok: true, connected: false, key_tail: null, sender: null, pf_id: false, templates: {}, send_hour: 18, enabled: false, contacts: 1, last_run_at: null, last_note: null };
+    },
+    admin_solapi_set: function () { return fail("체험 모드에서는 솔라피에 연결하지 않아요."); },
+    admin_solapi_options: function () { return fail("체험 모드에서는 저장하지 않아요."); },
+    admin_solapi_off: function () { return { ok: true }; },
+    admin_member_phones: function (a) { var o = {}; (a.p_ids || []).forEach(function (id) { if (id === "S001") o[id] = "010-****-5678"; }); return { ok: true, items: o }; },
+    admin_reminders: function () {
+      var wd = ["일", "월", "화", "수", "목", "금", "토"];
+      return { ok: true, items: (db.reminders || []).slice().sort(function (x, y) { return x.at < y.at ? -1 : 1; }).map(function (r) {
+        var k = new Date(new Date(r.at).getTime() + 9 * 3600000), h = k.getUTCHours(), m = k.getUTCMinutes();
+        return Object.assign({}, r, { when: (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일(" + wd[k.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + (m ? ":" + String(m).padStart(2, "0") : "시"),
+          phone: r.phone ? r.phone.slice(0, 3) + "-****-" + r.phone.slice(-4) : r.member === "S001" ? "010-****-5678" : null });
+      }) };
+    },
+    admin_reminder_save: function (a) {
+      db.reminders = db.reminders || [];
+      var add = function (member, name, phone) { db.reminders.push({ id: ++db.next, kind: a.p_kind, member: member, name: name, phone: phone, at: a.p_at, place: a.p_place || null, memo: a.p_memo || null, status: "예정" }); };
+      if (a.p_members && a.p_members.length) a.p_members.forEach(function (id) { var m = db.members.filter(function (x) { return x.id === id; })[0]; if (m) add(m.id, m.name, null); });
+      else if (a.p_consult) { var c = (db.consults || []).filter(function (x) { return x.id === a.p_consult; })[0]; add(null, c ? c.name : "상담 신청자", "01000000000"); }
+      else { if (!a.p_name) return fail("학생을 고르거나, 이름과 번호를 적어주세요."); add(null, a.p_name, String(a.p_phone || "").replace(/\D/g, "") || null); }
+      save();
+      return { ok: true, count: a.p_members ? a.p_members.length : 1 };
+    },
+    admin_reminder_cancel: function (a) {
+      db.reminders = (db.reminders || []).filter(function (r) { return !(a.p_delete && r.id === a.p_id); });
+      db.reminders.forEach(function (r) { if (r.id === a.p_id && !a.p_delete) r.status = "취소"; });
+      save();
+      return { ok: true };
+    },
+    admin_reminder_send: function () { return fail("체험 모드라 실제 카톡은 보내지 않아요."); },
     // 보컬오락실 이벤트 (체험): 늘 진행 중, 가짜 친구 점수
     member_game_board: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);

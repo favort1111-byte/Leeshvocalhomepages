@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=91b3edb7">
-<link rel="stylesheet" href="css/admin.css?v=95d05b98">
+<link rel="stylesheet" href="css/admin.css?v=a76f9b7b">
 </head>
 <body class="sys adm">
 
@@ -62,6 +62,7 @@
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="suggest" aria-selected="false">건의함 <span class="adm__badge" id="suggestBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="kakao" aria-selected="false">카톡 자동발송</button>
       <button type="button" role="tab" data-tab="gameevent" aria-selected="false" hidden>오락실 이벤트</button>
       <button type="button" role="tab" data-tab="adminlog" aria-selected="false">작업 기록</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
@@ -479,6 +480,72 @@
       <ul class="adm__cards" id="reviewList"></ul>
     </section>
 
+    <!-- 카톡 자동발송 (원장님 2026-11-10): 상담 · 컨설팅 · 특강 · 첫 레슨 · 보강 전날 오후 6시 솔라피 알림톡 리마인더 -->
+    <section class="sys-card" data-panel="kakao" hidden>
+      <h3 class="sys-h">카톡 자동발송 · 전날 리마인더</h3>
+      <p class="sys-note">일정을 넣어 두면 <b>전날 오후 6시</b>에 솔라피 알림톡으로 저절로 보내요 (6시 뒤에 넣은 내일 일정도 밤 10시까지는 저절로). 학생 번호는 학생관리 시트 '회차·결제 관리' P열 "결제 연락처"에서 받아요.</p>
+      <p class="sys-note" id="kkState"></p>
+
+      <h4 class="adm__sub">일정 넣기</h4>
+      <form class="sys adm__kkform" id="kkForm">
+        <div class="sys-row">
+          <label class="sys-field"><span>종류</span><select name="kind"><option>상담</option><option>컨설팅</option><option>특강</option><option>첫 레슨</option><option>보강</option></select></label>
+          <label class="sys-field"><span>날짜</span><input name="day" type="date" required></label>
+          <label class="sys-field"><span>시간</span><input name="time" type="time" step="600" value="15:00" required></label>
+        </div>
+        <fieldset class="sys-field adm__kkwho"><span>받는 사람</span>
+          <label><input type="radio" name="who" value="member" checked> 학생 (여러 명 가능)</label>
+          <label><input type="radio" name="who" value="consult"> 상담 신청한 분</label>
+          <label><input type="radio" name="who" value="direct"> 직접 적기</label>
+        </fieldset>
+        <div id="kkMembers">
+          <input type="search" id="kkFind" placeholder="학생 이름 · 수강 ID로 찾기" aria-label="학생 찾기">
+          <div class="adm__kkpick" id="kkPick"></div>
+          <p class="sys-note" id="kkChosen"></p>
+        </div>
+        <div id="kkConsult" hidden><label class="sys-field"><span>상담 신청</span><select id="kkConsultSel"></select></label></div>
+        <div id="kkDirect" hidden class="sys-row">
+          <label class="sys-field"><span>이름</span><input id="kkName" maxlength="30"></label>
+          <label class="sys-field"><span>휴대폰 번호</span><input id="kkPhone" inputmode="tel" placeholder="010-0000-0000"></label>
+        </div>
+        <div class="sys-row">
+          <label class="sys-field"><span>장소</span><input name="place" maxlength="60" placeholder="비우면 '이송희보컬레슨'"></label>
+          <label class="sys-field"><span>안내 (선택)</span><input name="memo" maxlength="200" placeholder="예) 10분 전 도착 · 악보 지참"></label>
+        </div>
+        <p class="adm__kkpreview" id="kkPreview"></p>
+        <button class="sys-btn" type="submit">일정 넣기</button>
+        <p class="sys-msg" id="kkMsg"></p>
+      </form>
+
+      <h4 class="adm__sub">보낼 일정 · 보낸 기록</h4>
+      <ul class="adm__cards" id="kkList"></ul>
+
+      <details class="adm__kkset">
+        <summary>솔라피 연결 · 템플릿 설정</summary>
+        <p class="sys-note">솔라피 콘솔 → 개발/연동 → API Key 관리에서 키를 만들어 여기에만 붙여넣어 주세요 (채팅에는 올리지 마세요). 빈 칸은 그대로 둬요.</p>
+        <form class="sys" id="kkConn">
+          <div class="sys-row">
+            <label class="sys-field"><span>API Key</span><input name="key" autocomplete="off"></label>
+            <label class="sys-field"><span>API Secret</span><input name="secret" type="password" autocomplete="new-password"></label>
+          </div>
+          <div class="sys-row">
+            <label class="sys-field"><span>발신번호 (솔라피에 등록된 번호)</span><input name="sender" inputmode="tel"></label>
+            <label class="sys-field"><span>카카오 채널 pfId (솔라피 → 카카오 채널)</span><input name="pf" autocomplete="off"></label>
+          </div>
+          <button class="sys-btn" type="submit">연결 · 확인</button>
+          <button class="sys-link" type="button" id="kkOff">연결 끊기</button>
+          <p class="sys-msg" id="kkConnMsg"></p>
+        </form>
+        <form class="sys" id="kkTpl">
+          <p class="sys-note">카카오 승인이 끝난 알림톡 템플릿 ID (KA01TP…)를 종류마다 넣어 주세요. 문구 초안은 docs/alimtalk_templates.md · 변수는 #{이름} #{일시} #{장소} #{안내}.</p>
+          <div class="adm__kktpl" id="kkTplRows"></div>
+          <label class="sys-check"><input type="checkbox" id="kkOn"> 전날 자동 발송 켜기</label>
+          <button class="sys-btn" type="submit">저장</button>
+          <p class="sys-msg" id="kkTplMsg"></p>
+        </form>
+      </details>
+    </section>
+
     <!-- 보컬오락실 이벤트 (원장님 2026-11-10): 게임별 1~10등. 학생 화면엔 1등만 "이*희"처럼 가려서 -->
     <section class="sys-card" data-panel="gameevent" hidden>
       <h3 class="sys-h">보컬오락실 이벤트 순위</h3>
@@ -582,6 +649,6 @@
 <script src="js/grid.js?v=3e54add9"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
 <script src="js/photos.js?v=a00ab1e5"></script>
-<script src="js/admin.js?v=9368a666"></script>
+<script src="js/admin.js?v=90833b73"></script>
 </body>
 </html>
