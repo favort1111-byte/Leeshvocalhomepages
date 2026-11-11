@@ -2511,6 +2511,7 @@
         top.appendChild(el("strong", null, x.when));
         top.appendChild(el("span", "adm__badge adm__badge--kind", x.kinds === "보컬" ? "보컬만" : "보컬 · 댄스"));
         if (!x.open) top.appendChild(el("span", "adm__badge", "닫힘"));
+        if (x.until) top.appendChild(el("span", "sys-note", "신청 마감 " + stamp(x.until)));
         top.appendChild(el("span", x.booking ? "adm__badge" : "sys-note", x.booking ? "신청 " + x.name + " (" + x.member + ")" + (x.teacher ? " · 담당 " + x.teacher : "") + " · " + x.kind : "빈 시간"));
         li.appendChild(top);
         if (x.note) li.appendChild(el("p", "sys-note", "남긴 말: " + x.note));
@@ -2559,7 +2560,8 @@
   $("#fbAdd").addEventListener("submit", function (e) {
     e.preventDefault();
     var f = e.target;
-    api("rpc/admin_feedback_slot", { method: "POST", body: { p_id: null, p_at: field(f, "day").value + "T" + field(f, "time").value + ":00+09:00", p_kinds: field(f, "kinds").value } }).then(function (r) {
+    api("rpc/admin_feedback_slot", { method: "POST", body: { p_id: null, p_at: field(f, "day").value + "T" + field(f, "time").value + ":00+09:00", p_kinds: field(f, "kinds").value,
+      p_until: field(f, "until").value ? field(f, "until").value + "T23:59:59+09:00" : null } }).then(function (r) {
       var d = r.data || {};
       if (!r.ok || !d.ok) { msg($("#fbAddMsg"), d.error || friendly(r, "넣지 못했어요."), "error"); return; }
       msg($("#fbAddMsg"), "넣었어요.", "ok");

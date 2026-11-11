@@ -445,3 +445,4 @@
 .fb__introul{margin:0 0 4px;padding-left:20px;}
 .fb__introul li{margin:2px 0;}
 .fb__intro .fb__introp:last-child{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#FFF4C2;font-weight:700;}
+.fb__introdate{margin:0 0 12px;padding:8px 12px;border-radius:10px;background:#1D4948;color:#fff;font-weight:700;display:inline-block;}

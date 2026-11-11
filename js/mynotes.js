@@ -1152,9 +1152,21 @@
     ["ul", ["현재 실력과 가능성에 대한 객관적인 평가", "강점과 보완점 분석 및 앞으로의 방향성 제시", "합격 가능성을 높이기 위한 구체적인 준비 방법", "원장님의 개별 코멘트 및 질의응답"]],
     ["p", "단순히 실력을 평가하는 시간이 아닌, 앞으로 무엇을 어떻게 준비해야 할지 함께 방향을 잡아가는 시간입니다. 🫶🏻"]
   ];
-  function consultIntro() {
+  // 두 번째 문단 (원장님 2026-11-11): 예약 안내 — 예약 기간은 서버 feedback_slots.book_until(11/15 23:59)과 같게
+  var CONSULT_INTRO2 = [
+    ["title", "📅 컨설팅 예약 안내"],
+    ["date", "예약 기간 : 11월 11일(수) ~ 11월 15일(일)"],
+    ["p", "예약 기간 내 원하시는 컨설팅 일정을 선택하여 예약해 주시기 바랍니다."],
+    ["p", "기간 내 예약을 완료하셔야 컨설팅 일정이 최종 확정됩니다."],
+    ["p", "예약 확정 후에는 일정 변경이 어려우므로, 개인 일정을 충분히 확인하신 후 신중하게 선택해 주세요."],
+    ["p", "원활한 컨설팅 진행을 위해 예약 기간 이후에는 추가 예약 및 일정 변경이 어려운 점 양해 부탁드립니다."],
+    ["p", "감사합니다."],
+    ["p", "여러분의 가능성을 함께 발견하고, 목표에 한 걸음 더 가까워질 수 있도록 원장님도 최선을 다하겠습니다! 함께 좋은 결과 만들어 봐요! 💪🏻✨"]
+  ];
+  function consultIntro(list) {
     var c = el("section", "fb__intro");
-    CONSULT_INTRO.forEach(function (x) {
+    (list || CONSULT_INTRO).forEach(function (x) {
+      if (x[0] === "date") { c.appendChild(el("p", "fb__introdate", x[1])); return; }
       if (x[0] === "title") c.appendChild(el("h3", "fb__introtitle", x[1]));
       else if (x[0] === "h2") c.appendChild(el("h4", "fb__introh2", x[1]));
       else if (x[0] === "h") c.appendChild(el("p", "fb__introh", x[1]));
@@ -1167,12 +1179,15 @@
     var box = scene.querySelector("#myFeedback");
     box.textContent = "";
     box.appendChild(consultIntro());
+    box.appendChild(consultIntro(CONSULT_INTRO2));
+    var slots = res.slots || [];
+    var open = slots.filter(function (x) { return !x.closed; });
     var sum = el("div", "fold__sum");
-    sum.appendChild(el("p", null, "심화반 원장님 1:1 컨설팅 신청이에요. 아래 시간 중 하나를 골라 신청해요."));
-    sum.appendChild(el("p", "sys-note", "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 바꾸려면 내 신청을 취소하고 다시 골라요. 직접 취소는 시작 1시간 전까지예요."));
+    sum.appendChild(el("p", null, "아래 시간 중 하나를 골라 신청해요."));
+    sum.appendChild(el("p", "sys-note", "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 예약 기간 안에는 내 신청을 취소하고 다시 고를 수 있어요."));
+    if (slots.length && !open.length) sum.appendChild(el("p", "sys-msg sys-msg--error", "예약 기간이 끝났어요. 일정 변경은 학원(실장님)에 연락해주세요."));
     box.appendChild(sum);
     var msgEl = el("p", "sys-msg");
-    var slots = res.slots || [];
     var mine = slots.filter(function (x) { return x.mine; })[0];
     if (mine) {
       var card = el("div", "fold__card fb__mine");
@@ -1191,7 +1206,7 @@
           });
         });
         card.appendChild(c);
-      } else card.appendChild(el("p", "sys-note", "시작 1시간 전이라 바꾸려면 학원(실장님)에 연락해주세요."));
+      } else card.appendChild(el("p", "sys-note", (mine.closed ? "예약 기간이 끝나서" : "시작 1시간 전이라") + " 바꾸려면 학원(실장님)에 연락해주세요."));
       box.appendChild(card);
     }
     if (!slots.length) { box.appendChild(el("p", "book__empty", "지금 신청할 수 있는 시간이 없어요.")); return; }
@@ -1210,9 +1225,9 @@
         var times = el("div", "fb__times");
         days[d].forEach(function (x) {
           var label = x.when.replace(/^.*\) /, "");
-          var b = el("button", "fb__time" + (x.mine ? " is-mine" : x.taken ? " is-taken" : ""), x.mine ? label + " ✓" : x.taken ? label + " 마감" : label);
+          var b = el("button", "fb__time" + (x.mine ? " is-mine" : x.taken || x.closed ? " is-taken" : ""), x.mine ? label + " ✓" : x.taken ? label + " 마감" : label);
           b.type = "button";
-          b.disabled = x.taken || !!mine;
+          b.disabled = x.taken || x.closed || !!mine;
           b.addEventListener("click", function () {
             picked = x;
             box.querySelectorAll(".fb__time.is-on").forEach(function (n) { n.classList.remove("is-on"); });

@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/system.css?v=3af896a3">
+<link rel="stylesheet" href="css/system.css?v=d4d9420e">
 <link rel="stylesheet" href="css/admin.css?v=25c9f02d">
 </head>
 <body class="sys adm">
@@ -493,7 +493,7 @@
     <!-- 원장님 컨설팅 신청 (원장님 2026-11-11): 심화반 학생만 내 폴더에서 신청, 한 타임 한 명 -->
     <section class="sys-card" data-panel="feedback" hidden>
       <h3 class="sys-h">원장님 컨설팅 신청 (심화반)</h3>
-      <p class="sys-note">아래 명단의 심화반 학생만 내 폴더 → <b>원장님 컨설팅</b> 탭이 보여요. 한 타임에 한 명(먼저 신청한 사람), 한 학생은 남은 신청 하나만. 신청 · 취소는 텔레그램으로도 와요.</p>
+      <p class="sys-note">아래 명단의 심화반 학생만 내 폴더 → <b>원장님 컨설팅</b> 탭이 보여요. 한 타임에 한 명(먼저 신청한 사람), 한 학생은 남은 신청 하나만, 신청 마감이 지나면 학생은 신청 · 취소를 못 해요(학원에서 취소 가능). 신청 · 취소는 텔레그램으로도 와요.</p>
       <h4 class="adm__sub">시간표 · 신청</h4>
       <ul class="adm__cards" id="fbSlots"></ul>
       <details class="adm__kkset">
@@ -503,6 +503,7 @@
             <label class="sys-field"><span>날짜</span><input name="day" type="date" required></label>
             <label class="sys-field"><span>시간</span><input name="time" type="time" step="1800" value="18:00" required></label>
             <label class="sys-field"><span>종류</span><select name="kinds"><option value="보컬">보컬만</option><option value="보컬·댄스">보컬 · 댄스</option></select></label>
+            <label class="sys-field"><span>신청 마감 (선택, 그날 밤까지)</span><input name="until" type="date"></label>
           </div>
           <button class="sys-btn" type="submit">시간 더하기</button>
           <p class="sys-msg" id="fbAddMsg"></p>
@@ -702,6 +703,6 @@
 <script src="js/grid.js?v=3e54add9"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
 <script src="js/photos.js?v=a00ab1e5"></script>
-<script src="js/admin.js?v=8fd8c035"></script>
+<script src="js/admin.js?v=33a6a919"></script>
 </body>
 </html>

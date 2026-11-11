@@ -287,15 +287,15 @@
     return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일(" + wd[k.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시";
   }
   function fbSeed() {
-    if (db.fb && db.fb.v === 2) return;
+    if (db.fb && db.fb.v === 3) return;
     // 실제 서버와 같은 2026년 11월 시간 (원장님 2026-11-11)
     var id = 9000, slots = [];
     [["16", [18, 19, 20], "보컬"], ["17", [19, 20], "보컬·댄스"], ["19", [17, 18], "보컬·댄스"], ["19", [19, 20], "보컬"], ["20", [17, 18, 19, 20], "보컬"],
      ["23", [18, 19, 20], "보컬"], ["24", [19, 20], "보컬"], ["27", [15, 16, 17, 18, 19, 20], "보컬"]].forEach(function (g) {
-      g[1].forEach(function (h) { slots.push({ id: ++id, at: "2026-11-" + g[0] + "T" + h + ":00:00+09:00", kinds: g[2], open: true }); });
+      g[1].forEach(function (h) { slots.push({ id: ++id, at: "2026-11-" + g[0] + "T" + h + ":00:00+09:00", kinds: g[2], open: true, until: "2026-11-15T23:59:59+09:00" }); });
     });
     slots.sort(function (x, y) { return x.at < y.at ? -1 : 1; });
-    db.fb = { v: 2, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
+    db.fb = { v: 3, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();
@@ -878,7 +878,7 @@
       return { ok: true, eligible: true, track: "평일", slot: "A", slots: db.fb.slots.filter(function (x) { return x.open && new Date(x.at).getTime() > Date.now() - 3 * 3600000; }).map(function (x) {
         var b = db.fb.bookings.filter(function (y) { return y.slot === x.id; })[0], mine = b && b.member === who.id;
         return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, taken: !!b, mine: !!mine, booking: mine ? b.id : null, kind: mine ? b.kind : null, note: mine ? b.note : null,
-          cancel: new Date(x.at).getTime() - 3600000 > Date.now() };
+          cancel: new Date(x.at).getTime() - 3600000 > Date.now() && new Date(x.until).getTime() > Date.now(), until: x.until, closed: new Date(x.until).getTime() <= Date.now() };
       }) };
     },
     member_feedback_book: function (a, uid) {
@@ -907,7 +907,7 @@
       var nm = function (id) { return (db.members.filter(function (m) { return m.id === id; })[0] || { name: "박하늘" }).name; };
       return { ok: true, slots: db.fb.slots.map(function (x) {
         var b = db.fb.bookings.filter(function (y) { return y.slot === x.id; })[0];
-        return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, open: x.open, booking: b ? b.id : null, member: b ? b.member : null, name: b ? nm(b.member) : null, teacher: b ? "원장님" : null, kind: b ? b.kind : null, note: b ? b.note : null };
+        return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, open: x.open, until: x.until, booking: b ? b.id : null, member: b ? b.member : null, name: b ? nm(b.member) : null, teacher: b ? "원장님" : null, kind: b ? b.kind : null, note: b ? b.note : null };
       }), members: db.fb.members.map(function (id) { return { member: id, name: nm(id), track: "평일", slot: "A", teacher: "원장님", status: "재원", kakao: true }; }) };
     },
     admin_feedback_cancel: function (a) { db.fb.bookings = db.fb.bookings.filter(function (y) { return y.id !== a.p_booking; }); save(); return { ok: true }; },
