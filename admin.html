@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/system.css?v=0165dd9a">
+<link rel="stylesheet" href="css/system.css?v=fb7d02c1">
 <link rel="stylesheet" href="css/admin.css?v=dd39eecc">
 </head>
 <body class="sys adm">
@@ -485,11 +485,7 @@
     <section class="sys-card" data-panel="director" hidden>
       <h3 class="sys-h">원장 컨설팅 (심화반)</h3>
       <p class="sys-note" id="dcNote">원장님 구글시트 "심화반 원장님 컨설팅"을 1시간마다 저절로 가져와요. 선생님 화면 "🎯 원장 컨설팅"과 같은 내용이고, 학생 · 학부모에게는 안 보여요. 고칠 때는 시트에서 고치세요.</p>
-      <div class="adm__bar">
-        <input type="search" id="dcFind" placeholder="학생 이름 · 반으로 찾기" aria-label="컨설팅 학생 찾기">
-        <select id="dcTeacher" aria-label="담당 선생님"><option value="">담당 선생님 전체</option></select>
-      </div>
-      <div id="dcList"></div>
+      <label class="sys-field cs__pick"><span id="dcPickLab">학생 고르기 (선생님별)</span><select id="dcPick"><option value="">학생을 고르세요</option></select></label>
       <div class="cs__detail" id="dcDetail"></div>
     </section>
 
@@ -674,6 +670,6 @@
 <script src="js/grid.js?v=3e54add9"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
 <script src="js/photos.js?v=a00ab1e5"></script>
-<script src="js/admin.js?v=d308047d"></script>
+<script src="js/admin.js?v=8b6e1789"></script>
 </body>
 </html>

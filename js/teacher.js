@@ -280,6 +280,13 @@
       var items = res.items || [];
       if (res.synced) note.textContent += " 원장님 시트에서 1시간마다 저절로 들어와요 (마지막 " + msgTime(res.synced) + ").";
       if (!items.length) { box.appendChild(el("p", "book__empty", "아직 컨설팅 기록이 없어요.")); return; }
+      // 원장님은 모든 선생님 학생이 다 보여서 너무 많음 → 선생님별로 묶은 드롭다운 하나 (원장님 2026-11-11)
+      if (res.director) {
+        var detail0 = el("div", "cs__detail");
+        box.appendChild(consultPicker(items, function (x) { consultShow(detail0, x); }));
+        box.appendChild(detail0);
+        return;
+      }
       var bar = el("div", "tch__rvbar");
       var q = el("input", "tch__find");
       q.type = "search";
@@ -319,33 +326,60 @@
         });
         if (!groups.childNodes.length) groups.appendChild(el("p", "book__empty", "찾는 학생이 없어요."));
       }
-      function openOne(x) {
-        detail.textContent = "";
-        detail.appendChild(el("p", "sys-note", "불러오는 중…"));
-        LeeshAPI.rpc("teacher_consult", { p_gid: x.gid }).then(function (r) {
-          detail.textContent = "";
-          if (!r.ok) { detail.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
-          detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 컨설팅 " + (r.rows || []).length + "회"));
-          if (!(r.rows || []).length) detail.appendChild(el("p", "book__empty", "아직 적힌 컨설팅이 없어요."));
-          (r.rows || []).forEach(function (row, i) {
-            var c = el("article", "rv tch__rv cs__card");
-            var h = el("p", "rv__head");
-            h.appendChild(el("b", null, row[0] || "날짜 없음"));
-            if (i === 0) h.appendChild(el("span", "rv__tag", "가장 최근"));
-            c.appendChild(h);
-            row.forEach(function (v, k) {
-              if (!k || !v) return;
-              c.appendChild(el("p", "rv__label", (r.head || [])[k] || "칸 " + (k + 1)));
-              c.appendChild(el("p", "rv__text", v));
-            });
-            detail.appendChild(c);
-          });
-          detail.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      }
+      function openOne(x) { consultShow(detail, x); }
       q.addEventListener("input", draw);
       mine.addEventListener("change", draw);
       draw();
+    });
+  }
+
+  // 원장님용: 선생님별로 묶은 학생 드롭다운 (그만둔 선생님은 맨 아래 "(퇴사)")
+  function consultPicker(items, onPick) {
+    var lab = el("label", "sys-field cs__pick");
+    lab.appendChild(el("span", null, "학생 고르기 (선생님별 · " + items.length + "명)"));
+    var sel = el("select");
+    sel.appendChild(el("option", null, "학생을 고르세요"));
+    var names = items.map(function (x) { return x.teacher || "담당 없음"; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+    names.sort(function (a, b) {
+      var la = items.some(function (x) { return x.teacher === a && x.left; }), lb = items.some(function (x) { return x.teacher === b && x.left; });
+      return la !== lb ? (la ? 1 : -1) : a.localeCompare(b, "ko");
+    });
+    names.forEach(function (t) {
+      var mine = items.filter(function (x) { return (x.teacher || "담당 없음") === t; });
+      var g = el("optgroup");
+      g.label = t + " 선생님" + (mine[0].left ? " (퇴사)" : "") + " · " + mine.length + "명";
+      mine.forEach(function (x) { var o = el("option", null, x.name + " · " + (x.klass || x.section) + " · " + x.count + "회"); o.value = x.gid; g.appendChild(o); });
+      sel.appendChild(g);
+    });
+    sel.addEventListener("change", function () {
+      var x = items.filter(function (y) { return y.gid === sel.value; })[0];
+      if (x) onPick(x);
+    });
+    lab.appendChild(sel);
+    return lab;
+  }
+  function consultShow(detail, x) {
+    detail.textContent = "";
+    detail.appendChild(el("p", "sys-note", "불러오는 중…"));
+    LeeshAPI.rpc("teacher_consult", { p_gid: x.gid }).then(function (r) {
+      detail.textContent = "";
+      if (!r.ok) { detail.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
+      detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 컨설팅 " + (r.rows || []).length + "회"));
+      if (!(r.rows || []).length) detail.appendChild(el("p", "book__empty", "아직 적힌 컨설팅이 없어요."));
+      (r.rows || []).forEach(function (row, i) {
+        var c = el("article", "rv tch__rv cs__card");
+        var h = el("p", "rv__head");
+        h.appendChild(el("b", null, row[0] || "날짜 없음"));
+        if (i === 0) h.appendChild(el("span", "rv__tag", "가장 최근"));
+        c.appendChild(h);
+        row.forEach(function (v, k) {
+          if (!k || !v) return;
+          c.appendChild(el("p", "rv__label", (r.head || [])[k] || "칸 " + (k + 1)));
+          c.appendChild(el("p", "rv__text", v));
+        });
+        detail.appendChild(c);
+      });
+      detail.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 

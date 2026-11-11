@@ -2431,46 +2431,33 @@
   /* ---------------- 오디션 후기 (학생이 내 폴더에서 씀, 원장님 2026-11-09) ---------------- */
   var RV_TEXT = [["asked", "질문 리스트"], ["tip", "나만의 꿀팁 · 나의 후기"], ["process", "진행 순서 · 상황 설명"], ["note", "특이사항"]];
   var reviewItems = [];
-  /* 원장 컨설팅 (원장님 2026-11-11 "관리자도 넣어줘"): 선생님 화면과 같은 서버 함수 (teacher_consults · teacher_consult, 관리자도 됨) */
-  var dc = { items: [], cur: null };
+  /* 원장 컨설팅 (원장님 2026-11-11 "관리자도 넣어줘" · "원장님은 드롭다운으로"): 선생님 화면과 같은 서버 함수
+     (teacher_consults · teacher_consult, 관리자도 됨). 선생님별로 묶은 학생 드롭다운 하나, 그만둔 선생님은 맨 아래 "(퇴사)". */
+  var dc = { items: [] };
   function loadDirector() {
-    var list = $("#dcList");
-    list.textContent = "";
-    list.appendChild(el("p", "sys-empty", "불러오는 중…"));
+    var sel = $("#dcPick");
+    sel.length = 1;
+    sel.options[0].textContent = "불러오는 중…";
     api("rpc/teacher_consults", { method: "POST", body: {} }).then(function (res) {
       var d = res.data || {};
-      if (!res.ok || !d.ok) { list.textContent = ""; list.appendChild(el("p", "sys-msg sys-msg--error", d.error || friendly(res, "불러오지 못했어요."))); return; }
+      if (!res.ok || !d.ok) { sel.options[0].textContent = d.error || "불러오지 못했어요."; return; }
       dc.items = d.items || [];
       var base = $("#dcNote").getAttribute("data-base") || $("#dcNote").textContent;
       $("#dcNote").setAttribute("data-base", base);
       $("#dcNote").textContent = base + (d.synced ? " (마지막 " + stamp(d.synced) + ")" : "");
-      var sel = $("#dcTeacher"), keep = sel.value;
-      sel.length = 1;
-      dc.items.map(function (x) { return x.teacher; }).filter(function (t, i, a) { return t && a.indexOf(t) === i; }).sort()
-        .forEach(function (t) { var o = el("option", null, t); o.value = t; sel.appendChild(o); });
-      sel.value = keep;
-      drawDirector();
-    });
-  }
-  function drawDirector() {
-    var list = $("#dcList"), w = $("#dcFind").value.trim(), t = $("#dcTeacher").value;
-    list.textContent = "";
-    ["평일", "주말"].forEach(function (sec) {
-      var hit = dc.items.filter(function (x) { return x.section === sec && (!t || x.teacher === t) && (!w || (x.name + " " + (x.klass || "")).indexOf(w) !== -1); });
-      if (!hit.length) return;
-      list.appendChild(el("p", "rv__label", sec + "반 " + hit.length + "명"));
-      var row = el("div", "cs__chips");
-      hit.forEach(function (x) {
-        var b = el("button", "cs__chip" + (dc.cur === x.gid ? " is-on" : ""));
-        b.type = "button";
-        b.appendChild(el("b", null, x.name));
-        b.appendChild(el("span", null, [x.klass, x.teacher && "담당 " + x.teacher, x.count + "회"].filter(Boolean).join(" · ")));
-        b.addEventListener("click", function () { dc.cur = x.gid; drawDirector(); openDirector(x.gid); });
-        row.appendChild(b);
+      $("#dcPickLab").textContent = "학생 고르기 (선생님별 · " + dc.items.length + "명)";
+      sel.options[0].textContent = dc.items.length ? "학생을 고르세요" : "아직 컨설팅 기록이 없어요";
+      var names = dc.items.map(function (x) { return x.teacher || "담당 없음"; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+      var left = function (t) { return dc.items.some(function (x) { return (x.teacher || "담당 없음") === t && x.left; }); };
+      names.sort(function (a, b) { return left(a) !== left(b) ? (left(a) ? 1 : -1) : a.localeCompare(b, "ko"); });
+      names.forEach(function (t) {
+        var mine = dc.items.filter(function (x) { return (x.teacher || "담당 없음") === t; });
+        var g = el("optgroup");
+        g.label = t + " 선생님" + (left(t) ? " (퇴사)" : "") + " · " + mine.length + "명";
+        mine.forEach(function (x) { var o = el("option", null, x.name + " · " + (x.klass || x.section) + " · " + x.count + "회"); o.value = x.gid; g.appendChild(o); });
+        sel.appendChild(g);
       });
-      list.appendChild(row);
     });
-    if (!list.childNodes.length) list.appendChild(el("p", "sys-empty", dc.items.length ? "찾는 학생이 없어요." : "아직 컨설팅 기록이 없어요."));
   }
   function openDirector(gid) {
     var box = $("#dcDetail");
@@ -2497,8 +2484,7 @@
       box.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
-  $("#dcFind").addEventListener("input", drawDirector);
-  $("#dcTeacher").addEventListener("change", drawDirector);
+  $("#dcPick").addEventListener("change", function () { if ($("#dcPick").value) openDirector($("#dcPick").value); else $("#dcDetail").textContent = ""; });
   function loadReviews() {
     var list = $("#reviewList");
     list.textContent = "";

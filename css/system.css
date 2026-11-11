@@ -410,6 +410,8 @@
 .cs__chip span{font-size:12px;opacity:.75;}
 .cs__detail{scroll-margin-top:70px;}
 .cs__who{margin:18px 0 6px;font-size:16px;}
+.cs__pick{display:block;max-width:520px;margin:8px 0;}
+.cs__pick select{width:100%;max-width:100%;}
 .cs__card .rv__text{word-break:break-word;}
 .tch__rvbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;}
 .tch__rvbar .tch__find{flex:1 1 220px;margin:0;}

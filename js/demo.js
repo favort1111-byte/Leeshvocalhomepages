@@ -721,7 +721,7 @@
     // 원장 컨설팅 (체험): 가짜 학생 두 명
     teacher_consults: function (a, uid) {
       if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
-      return { ok: true, synced: new Date().toISOString(), items: [
+      return { ok: true, synced: new Date().toISOString(), director: !uid || (myTeacher(uid) || {}).name === "원장님", items: [
         { gid: "1", name: "김시우", klass: "평일A반", section: "평일", teacher: "안유정", mine: true, count: 2, last: "11/4 화요일 19시" },
         { gid: "2", name: "박하늘", klass: "주말B반", section: "주말", teacher: "이수빈", mine: false, count: 1, last: "10/26 일요일 14시" }] };
     },

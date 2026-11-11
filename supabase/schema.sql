@@ -7481,3 +7481,50 @@ grant execute on function public.teacher_consults(), public.teacher_consult(text
 -- 1시간마다 (읽기만, 지우지 않음)
 select cron.schedule('leesh_consult_sheet', '41 * * * *', 'select private.consult_sync()');
 -- 시트 주소는 저장소가 공개라 여기 적지 않음: insert into private.consult_sheet (id, sheet_id) values (1, '<시트 ID>');
+
+-- ===== leesh_director_consults_view (2026-11-11) =====
+-- 원장 컨설팅 보는 사람 (원장님 2026-11-11): 시트의 선생님("은지쌤")이 그만둔 선생님(teachers.active = false)이면 원장님 · 관리자만.
+-- 선생님 이름은 시트 기준으로 ("수빈" → 이수빈), 원장님 화면은 선생님별 드롭다운으로 봄.
+create or replace function private.consult_teacher(p text) returns public.teachers
+language sql stable security definer set search_path = '' as $$
+  select t from public.teachers t where p is not null and t.name <> '원장님' and t.name like '%' || p
+    and (select count(*) from public.teachers x where x.name <> '원장님' and x.name like '%' || p) = 1;
+$$;
+revoke all on function private.consult_teacher(text) from public, anon, authenticated;
+
+create or replace function private.consult_can(t public.teachers, d public.director_consults) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select d.section in ('평일', '주말') and not d.missing
+    and (public.is_admin() or t.name = '원장님'
+         or (t.id is not null and coalesce((private.consult_teacher(d.sheet_teacher)).active, true)));
+$$;
+revoke all on function private.consult_can(public.teachers, public.director_consults) from public, anon, authenticated;
+
+create or replace function public.teacher_consults() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if t.id is null and not public.is_admin() then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'synced', (select last_at from private.consult_sheet where id = 1),
+    'director', public.is_admin() or t.name = '원장님',
+    'items', coalesce((select jsonb_agg(jsonb_build_object('gid', d.gid, 'name', d.name, 'klass', d.klass, 'section', d.section,
+        'teacher', coalesce(ct.name, substring(m.memo from '담당\s*([^\s·,]+)'), d.sheet_teacher),
+        'left', ct.id is not null and not ct.active,
+        'mine', t.id is not null and (ct.id = t.id or (d.member_id is not null and private.teaches(t, d.member_id))),
+        'count', jsonb_array_length(d.rows), 'last', d.rows -> 0 ->> 0) order by d.pos)
+      from public.director_consults d left join public.members m on m.id = d.member_id
+      left join lateral (select (private.consult_teacher(d.sheet_teacher)).*) ct on true
+      where private.consult_can(t, d) and (m.id is null or m.status in ('재원', '휴원'))), '[]'::jsonb));
+end $$;
+
+create or replace function public.teacher_consult(p_gid text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare t public.teachers := private.my_teacher(); d public.director_consults;
+begin
+  if t.id is null and not public.is_admin() then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  select * into d from public.director_consults where gid = p_gid;
+  if d.gid is null or not private.consult_can(t, d) then return private.fail('컨설팅 기록을 찾을 수 없어요.'); end if;
+  return jsonb_build_object('ok', true, 'gid', d.gid, 'name', d.name, 'klass', d.klass, 'head', d.head, 'rows', d.rows);
+end $$;
+revoke all on function public.teacher_consults(), public.teacher_consult(text) from public, anon;
+grant execute on function public.teacher_consults(), public.teacher_consult(text) to authenticated;
