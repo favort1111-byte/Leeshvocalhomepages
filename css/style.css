@@ -669,15 +669,24 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .motto footer{margin-top:10px;font-size:14px;opacity:.8;}
 
 /* audition care */
-.care-wrap{display:grid;grid-template-columns:1fr minmax(240px,360px);gap:30px;align-items:start;}
+.care-wrap{display:grid;grid-template-columns:minmax(260px,400px) 1fr;gap:24px;align-items:stretch;}
 .cares{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
 .care{padding:20px;background:var(--cream);color:var(--ink);border-radius:3px;box-shadow:0 6px 18px rgba(20,10,5,.3);}
 .care h3{margin:0 0 8px;font-family:var(--f-sans);font-weight:400;font-size:21px;color:var(--brown);}
 .care ul{margin:0;padding-left:1.1em;font-size:15px;}
-.care-photos{display:flex;flex-direction:column;gap:26px;padding-top:10px;}
-.snap--poster{transform:rotate(-1deg);}
+.care-wrap .cares{grid-template-columns:1fr 1fr;grid-auto-rows:1fr;}
+.snap--poster{align-self:start;transform:rotate(-1deg);}
 .snap--poster img{aspect-ratio:auto;}
 .snap--poster a{display:block;}
+.care--photo{padding:0;background:none;box-shadow:none;display:flex;}
+.care--photo .snap{flex:1;display:flex;flex-direction:column;transform:rotate(1deg);}
+.care--photo .snap img{flex:1 1 0;min-height:150px;aspect-ratio:auto;object-fit:cover;}
+@media (max-width:1100px){
+  .care-wrap{grid-template-columns:1fr;}
+  .snap--poster{justify-self:center;width:100%;max-width:440px;}
+  .care-wrap .cares{grid-auto-rows:auto;}
+  .care--photo .snap img{flex:none;aspect-ratio:3/2;}
+}
 .partners{margin:28px 0 0;}
 .partners p{margin:0 0 10px;}
 .partners .card__chips li{border-color:rgba(246,235,221,.5);}
@@ -737,8 +746,9 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
   .teacher__photos{flex-direction:row;justify-content:center;align-items:flex-start;}
   .teacher__photos .snap{max-width:200px;}
   .teacher__photos .snap--small{max-width:130px;}
-  .care-photos{flex-direction:column;align-items:center;}
-  .care-photos .snap{width:100%;max-width:440px;}
+  .snap--poster{justify-self:center;width:100%;max-width:440px;}
+  .care-wrap .cares{grid-template-columns:1fr;grid-auto-rows:auto;}
+  .care--photo .snap img{aspect-ratio:3/2;}
   .card--paper{padding:20px 18px;}
   .gallery{grid-template-columns:1fr 1fr;gap:22px 14px;}
   .gallery .snap figcaption{font-size:16px;}
