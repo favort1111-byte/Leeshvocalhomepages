@@ -287,13 +287,15 @@
     return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일(" + wd[k.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시";
   }
   function fbSeed() {
-    if (db.fb) return;
-    var t = addDays(new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10), 0), id = 9000, slots = [];
-    [[2, [18, 19, 20], "보컬"], [3, [19, 20], "보컬·댄스"], [5, [17, 18], "보컬·댄스"], [5, [19, 20], "보컬"], [6, [17, 18, 19, 20], "보컬"]].forEach(function (g) {
-      g[1].forEach(function (h) { slots.push({ id: ++id, at: addDays(t, g[0]) + "T" + (h < 10 ? "0" : "") + h + ":00:00+09:00", kinds: g[2], open: true }); });
+    if (db.fb && db.fb.v === 2) return;
+    // 실제 서버와 같은 2026년 11월 시간 (원장님 2026-11-11)
+    var id = 9000, slots = [];
+    [["16", [18, 19, 20], "보컬"], ["17", [19, 20], "보컬·댄스"], ["19", [17, 18], "보컬·댄스"], ["19", [19, 20], "보컬"], ["20", [17, 18, 19, 20], "보컬"],
+     ["23", [18, 19, 20], "보컬"], ["24", [19, 20], "보컬"], ["27", [15, 16, 17, 18, 19, 20], "보컬"]].forEach(function (g) {
+      g[1].forEach(function (h) { slots.push({ id: ++id, at: "2026-11-" + g[0] + "T" + h + ":00:00+09:00", kinds: g[2], open: true }); });
     });
     slots.sort(function (x, y) { return x.at < y.at ? -1 : 1; });
-    db.fb = { members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
+    db.fb = { v: 2, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();
