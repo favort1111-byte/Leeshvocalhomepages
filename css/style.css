@@ -671,7 +671,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 /* audition care */
 .care-wrap{display:grid;grid-template-columns:minmax(260px,400px) 1fr;gap:24px;align-items:stretch;}
 .cares{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
-.care{padding:20px;background:var(--cream);color:var(--ink);border-radius:3px;box-shadow:0 6px 18px rgba(20,10,5,.3);}
+.care{padding:20px;background:#FBFAF7;color:var(--ink);border-radius:3px;box-shadow:0 6px 18px rgba(20,10,5,.3);}
 .care h3{margin:0 0 8px;font-family:var(--f-sans);font-weight:400;font-size:21px;color:var(--brown);}
 .care ul{margin:0;padding-left:1.1em;font-size:15px;}
 .care-wrap .cares{grid-template-columns:1fr 1fr;grid-auto-rows:1fr;}
