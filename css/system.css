@@ -465,3 +465,33 @@
 .suggest__list li{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;margin:0 0 6px;border-radius:10px;background:#FFFDF6;border:1px solid #EADFC8;}
 .suggest__state{flex:none;font-weight:700;color:#8A7A60;}
 .suggest__state--read{color:#1D7A4C;}
+.book__open--consent .book__tabs,.book__open--consent .book__page{display:none !important;}
+.cc{margin:6px 0 20px;padding:18px 16px;border-radius:16px;background:#FFFDF6;border:1px solid #EADFC8;line-height:1.6;word-break:keep-all;}
+.cc__kicker{margin:0;font-size:13px;color:#B8651B;font-weight:700;}
+.cc__title{margin:2px 0 6px;font-size:20px;}
+.cc__lede{margin:0 0 14px;}
+.cc__all{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:0 0 12px;border-radius:12px;background:#1D4948;color:#fff;font-weight:700;cursor:pointer;}
+.cc input[type=checkbox],.cc input[type=radio]{width:20px;height:20px;flex:none;accent-color:#1D4948;margin:0;}
+.cc__all input{accent-color:#F5C451;}
+.cc__item{margin:0 0 10px;padding:12px 14px;border-radius:12px;background:#fff;border:1.5px solid #E5DCC8;}
+.cc__item.is-on,.cc__confirm.is-on{border-color:#1D7A4C;background:#F2FAF5;}
+.cc__head{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;}
+.cc__name{flex:1;min-width:0;}
+.cc__req{flex:none;font-size:12px;padding:1px 7px;border-radius:999px;background:#FDECEA;color:#9B2C1F;}
+.cc__yes{flex:none;font-size:12.5px;color:#8A7A60;}
+.cc__item.is-on .cc__yes{color:#1D7A4C;}
+.cc__item.is-on .cc__yes::before{content:"✓ ";}
+.cc__ul{margin:6px 0 0 28px;padding-left:16px;}
+.cc__ul li{margin:2px 0;}
+.cc__confirm{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin:4px 0 12px;border-radius:12px;background:#FFF4C2;border:1.5px solid #F0D774;font-weight:700;cursor:pointer;}
+.cc__kid{margin:0 0 12px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid #E5DCC8;}
+.cc__kidq{margin:0 0 6px;font-weight:700;}
+.cc__ages{display:flex;flex-wrap:wrap;gap:8px 18px;}
+.cc__ages label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+.cc__guard{margin-top:10px;padding-top:10px;border-top:1px dashed #E5DCC8;}
+.cc__line{margin:6px 0 8px;font-weight:700;}
+.cc__guard input,.cc__guard select{max-width:100%;}
+.cc__sign{margin:0 0 10px;text-align:right;color:#5C4E38;}
+.cc__submit{width:100%;}
+.cc__submit:disabled{opacity:.45;}
+.cc__foot{margin-top:8px;}

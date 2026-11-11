@@ -556,8 +556,10 @@
     member_notebook: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
+      var lr = (db.link_requests || []).filter(function (r) { return r.member_id === who.id; })[0];
       return withToken(who, {
         ok: true, id: who.id, name: who.name,
+        cctv_required: true, cctv: (db.cctv || {})[who.id] || null, guardian: !!(lr && lr.guardian),
         notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
@@ -1130,6 +1132,15 @@
       db.suggestions.unshift({ id: ++db.next, day: nowKst().today, topic: a.p_topic || "기타", body: body, read: false, ticket: ticket });
       save();
       return { ok: true, ticket: ticket };
+    },
+    member_cctv_consent: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      if (a.p_minor && (!a.p_guardian || String(a.p_guardian).trim().length < 2 || !a.p_relation)) return fail("보호자 성함과 관계를 적어주세요.");
+      db.cctv = db.cctv || {};
+      db.cctv[who.id] = { at: new Date().toISOString(), minor: !!a.p_minor, guardian: a.p_guardian || null, relation: a.p_relation || null };
+      save();
+      return { ok: true };
     },
     member_suggest_status: function (a) {
       var all = db.suggestions || [];

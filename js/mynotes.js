@@ -75,6 +75,9 @@
       }
       setLabel(res.name);
       scene.querySelector("#myTitle").textContent = res.name + "의 폴더";
+      // CCTV 영상정보 수집 동의 (원장님 2026-11-11): 서버가 cctv_required를 주면, 동의하기 전엔 폴더를 못 씀
+      if (res.cctv_required && !res.cctv) { showConsent(res); return; }
+      hideConsent();
       if (NOTES) renderNotes(res.notes);
       renderBookings(res);
       renderNotices(res);
@@ -90,6 +93,126 @@
       loadReviews();
       loadFeedback();
       return LeeshAPI.rpc("member_partners", { p_id: who.id, p_pin: who.key }).then(function (p) { if (p.ok) renderPartners(p); });
+    });
+  }
+
+  /* CCTV 영상정보 수집 동의서 (원장님 2026-11-11, 학원 종이 동의서 문구 그대로): 카카오 연결 뒤 내 폴더를
+     처음 열 때 한 번. 항목마다 "동의함" → 전체 동의 → 최종 제출. 만 14세 미만은 보호자 성함 · 관계도.
+     초상권 동의서는 지금처럼 종이로 받음 (원장님 결정). */
+  var CCTV_ITEMS = [
+    ["수집 항목 (필수항목)", ["영상(얼굴) 정보"]],
+    ["수집 · 이용 목적", ["원생 및 시설 안전, 도난 및 범죄 예방 등"]],
+    ["개인정보의 보유 및 이용 기간", ["4주 후 삭제", "4주 이내 삭제를 요청할 경우 해당 정보 삭제"]],
+    ["개인정보 제공 동의의 거부 권리 및 거부에 따른 불이익 내용 또는 제한 사항",
+      ["영상정보 제공에 동의하지 않을 권리가 있습니다.", "다만, 학원에서 제공받는 정보가 제한될 수 있으며 개인정보 제공에 동의하지 않을 경우 연습실 및 학원 시설의 사용에 제한이 있을 수 있습니다."]]
+  ];
+  function hideConsent() {
+    open.classList.remove("book__open--consent");
+    var c = scene.querySelector("#myConsent");
+    if (c) c.remove();
+  }
+  function showConsent(res) {
+    box.hidden = true;
+    open.hidden = false;
+    open.classList.add("book__open--consent");
+    var old = scene.querySelector("#myConsent");
+    if (old) old.remove();
+    var w = el("section", "cc sys");
+    w.id = "myConsent";
+    open.querySelector(".book__head").after(w);
+    w.appendChild(el("p", "cc__kicker", "처음 한 번만 확인해 주세요"));
+    w.appendChild(el("h3", "cc__title", "📹 CCTV 영상 정보 수집 동의서"));
+    w.appendChild(el("p", "cc__lede", "학원에는 안전을 위해 CCTV가 있어요. 아래 내용을 읽고 항목마다 동의해 주세요. 동의해야 내 폴더를 쓸 수 있어요."));
+    var boxes = [];
+    var all = el("label", "cc__all");
+    var allIn = el("input"); allIn.type = "checkbox";
+    all.appendChild(allIn);
+    all.appendChild(el("span", null, "전체 항목에 동의합니다"));
+    w.appendChild(all);
+    CCTV_ITEMS.forEach(function (it, i) {
+      var card = el("div", "cc__item");
+      var head = el("label", "cc__head");
+      var cb = el("input"); cb.type = "checkbox";
+      head.appendChild(cb);
+      head.appendChild(el("span", "cc__name", it[0]));
+      head.appendChild(el("span", "cc__req", "필수"));
+      card.appendChild(head);
+      var ul = el("ul", "cc__ul");
+      it[1].forEach(function (t) { ul.appendChild(el("li", null, t)); });
+      card.appendChild(ul);
+      var yes = el("span", "cc__yes", "동의함");
+      head.appendChild(yes);
+      boxes.push(cb);
+      w.appendChild(card);
+    });
+    var conf = el("label", "cc__confirm");
+    var confIn = el("input"); confIn.type = "checkbox";
+    conf.appendChild(confIn);
+    conf.appendChild(el("span", null, "본인은 \u201C영상정보 수집\u201D에 관한 설명을 모두 이해하였으며, 이에 동의합니다."));
+    boxes.push(confIn);
+    w.appendChild(conf);
+
+    // 만 14세 미만: 보호자(법정대리인) 동의
+    var kid = el("div", "cc__kid");
+    kid.appendChild(el("p", "cc__kidq", "학생 나이"));
+    var ages = el("div", "cc__ages");
+    var adult = el("label"), minor = el("label");
+    var aIn = el("input"), mIn = el("input");
+    aIn.type = mIn.type = "radio"; aIn.name = mIn.name = "ccAge";
+    adult.appendChild(aIn); adult.appendChild(el("span", null, "만 14세 이상 (본인이 동의)"));
+    minor.appendChild(mIn); minor.appendChild(el("span", null, "만 14세 미만 (보호자가 동의)"));
+    ages.appendChild(adult); ages.appendChild(minor);
+    kid.appendChild(ages);
+    var gbox = el("div", "cc__guard");
+    gbox.appendChild(el("p", "sys-note", "※ 만 14세 미만은 반드시 학부모 등 법정대리인의 동의가 필요해요. 보호자께서 직접 적어 주세요."));
+    gbox.appendChild(el("p", "cc__line", "본인은 아래 미성년자의 법정대리인으로 위 내용을 위해 영상정보를 수집하는 데 동의합니다."));
+    var gChild = el("input"); gChild.value = res.name || ""; gChild.readOnly = true;
+    var gName = el("input"); gName.maxLength = 30; gName.placeholder = "예: 김○○";
+    var gRel = el("select");
+    ["", "어머니", "아버지", "조부모", "기타 보호자"].forEach(function (t) { var o = el("option", null, t || "고르기"); o.value = t; gRel.appendChild(o); });
+    gbox.appendChild(field2("미성년 학생 성명", gChild));
+    gbox.appendChild(field2("법정대리인(보호자) 성명", gName));
+    gbox.appendChild(field2("학생과의 관계", gRel));
+    gbox.hidden = true;
+    kid.appendChild(gbox);
+    w.appendChild(kid);
+    if (res.guardian) mIn.checked = true; else aIn.checked = true;
+
+    var sign = el("p", "cc__sign");
+    var d = todayKst();
+    sign.textContent = d.slice(0, 4) + "년 " + Number(d.slice(5, 7)) + "월 " + Number(d.slice(8, 10)) + "일 · 성명 " + (res.name || "");
+    w.appendChild(sign);
+    var btn = el("button", "sys-btn cc__submit", "동의하고 시작하기");
+    btn.type = "button";
+    var msg = el("p", "sys-msg");
+    msg.setAttribute("role", "status");
+    w.appendChild(btn);
+    w.appendChild(msg);
+    w.appendChild(el("p", "sys-note cc__foot", "학원장 귀중 · 동의한 날짜와 내용은 학원에 저장돼요. 궁금한 점은 학원(실장님)에 물어봐 주세요."));
+
+    function sync() {
+      gbox.hidden = !mIn.checked;
+      var ok = boxes.every(function (b) { return b.checked; });
+      allIn.checked = ok;
+      var gOk = !mIn.checked || (gName.value.trim().length >= 2 && gRel.value);
+      btn.disabled = !(ok && gOk);
+      boxes.forEach(function (b) { var c = b.closest(".cc__item, .cc__confirm"); if (c) c.classList.toggle("is-on", b.checked); });
+    }
+    allIn.addEventListener("change", function () { boxes.forEach(function (b) { b.checked = allIn.checked; }); sync(); });
+    boxes.forEach(function (b) { b.addEventListener("change", sync); });
+    [aIn, mIn, gRel].forEach(function (x) { x.addEventListener("change", sync); });
+    gName.addEventListener("input", sync);
+    sync();
+    btn.addEventListener("click", function () {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      LeeshAPI.rpc("member_cctv_consent", {
+        p_id: who.id, p_pin: who.key, p_minor: mIn.checked,
+        p_guardian: mIn.checked ? gName.value.trim() : null, p_relation: mIn.checked ? gRel.value : null
+      }).then(function (r) {
+        if (!r.ok) { btn.disabled = false; msg.textContent = r.error; msg.className = "sys-msg sys-msg--error"; return; }
+        load();
+      });
     });
   }
 
