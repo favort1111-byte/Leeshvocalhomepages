@@ -43,6 +43,7 @@ select jsonb_build_object(
             'ok', coalesce((last_result ->> 'ok')::boolean, false),
             'errors', coalesce(jsonb_array_length(case when jsonb_typeof(last_result -> 'errors') = 'array' then last_result -> 'errors' end), 0),
             'error_sample', left(coalesce(last_result -> 'errors' ->> 0, last_result ->> 'error', ''), 200)) from private.lesson_sync where id = 1),
+  'consult_sync', (select jsonb_build_object('last_at', last_at, 'ok', coalesce(last_ok, false), 'note', last_note) from private.consult_sheet where id = 1),
   'sheet_sync', (select jsonb_build_object('connected', key_hash is not null, 'last_at', last_at,
             'ok', coalesce((last_result ->> 'ok')::boolean, false), 'error', left(coalesce(last_result ->> 'error', ''), 200)) from private.sheet_sync where id = 1),
   'backup', (select jsonb_build_object('connected', key_hash is not null, 'last_at', last_at,
@@ -193,6 +194,10 @@ def main():
     chk(not ls.get("ok") or (age_h(ls.get("last_at")) or 99) > 3 or ls.get("errors"),
         "선생님 레슨 시트 가져오기 문제: 마지막 %s · ok=%s · 오류 %s개 %s" % (kst(ls.get("last_at")), ls.get("ok"), ls.get("errors"), (ls.get("error_sample") or "").split(":", 1)[-1].strip()),
         "레슨 시트 가져오기 마지막 %s · 오류 0" % kst(ls.get("last_at")))
+    cs = d.get("consult_sync") or {}
+    chk(not cs.get("ok") or (age_h(cs.get("last_at")) or 99) > 3,
+        "원장 컨설팅 시트 가져오기 문제: 마지막 %s · %s" % (kst(cs.get("last_at")), cs.get("note") or ""),
+        "원장 컨설팅 시트 가져오기 마지막 %s · %s" % (kst(cs.get("last_at")), cs.get("note") or ""))
     ss = d["sheet_sync"] or {}
     chk(not ss.get("ok"), "수강ID 시트 → 명단 맞추기 마지막 결과가 실패: %s" % (ss.get("error") or ""),
         "수강ID 시트 맞추기 마지막 %s ok (시트가 바뀐 날에만 돎)" % kst(ss.get("last_at")))

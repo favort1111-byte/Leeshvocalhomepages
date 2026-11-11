@@ -132,6 +132,10 @@
     var games = el("a", "sys-link", "🎮 보컬 오락실");
     games.href = "games.html";
     side.appendChild(games);
+    // 원장 컨설팅 (원장님 2026-11-11): 심화반 원장님 1:1 컨설팅 기록, 선생님들만 (학생 · 학부모는 못 봄)
+    var cons = button("🎯 원장 컨설팅", "sys-link");
+    cons.addEventListener("click", consultPage);
+    side.appendChild(cons);
     var out = button("로그아웃", "sys-link");
     out.addEventListener("click", signOut);
     side.appendChild(out);
@@ -254,6 +258,95 @@
     var rvHolder = el("div");
     app.appendChild(rvHolder);
     reviewsBox(rvHolder);
+  }
+
+  /* 원장 컨설팅 (원장님 2026-11-11 "심화반만 하는 원장님 특별 컨설팅, 선생님들만 볼 수 있게 · 학생은 보면 안 됨 · 학생별로"):
+     원장님 구글시트(학생마다 탭 하나, 컨설팅 한 번 = 한 줄)를 서버가 1시간마다 가져와요. 보기만. 서버 teacher_consults · teacher_consult. */
+  function consultPage() {
+    clear();
+    app.appendChild(header());
+    var back = button("← 담당 학생", "sys-link tch__back");
+    back.addEventListener("click", start);
+    app.appendChild(back);
+    app.appendChild(el("h3", "tch__name", "🎯 원장 컨설팅 (심화반)"));
+    var note = el("p", "sys-note", "원장님이 심화반 학생과 한 1:1 컨설팅 기록이에요. 선생님들과 학원만 보고, 학생 · 학부모에게는 보이지 않아요.");
+    app.appendChild(note);
+    var box = el("div", "cs");
+    box.appendChild(el("p", "sys-note", "불러오는 중…"));
+    app.appendChild(box);
+    LeeshAPI.rpc("teacher_consults", {}).then(function (res) {
+      box.textContent = "";
+      if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", res.error || "불러오지 못했어요.")); return; }
+      var items = res.items || [];
+      if (res.synced) note.textContent += " 원장님 시트에서 1시간마다 저절로 들어와요 (마지막 " + msgTime(res.synced) + ").";
+      if (!items.length) { box.appendChild(el("p", "book__empty", "아직 컨설팅 기록이 없어요.")); return; }
+      var bar = el("div", "tch__rvbar");
+      var q = el("input", "tch__find");
+      q.type = "search";
+      q.placeholder = "학생 이름 · 반으로 찾기";
+      q.setAttribute("aria-label", "컨설팅 학생 찾기");
+      var mineL = el("label", "tch__rvmine");
+      var mine = el("input");
+      mine.type = "checkbox";
+      mineL.appendChild(mine);
+      mineL.appendChild(document.createTextNode(" 내 담당 학생만"));
+      bar.appendChild(q);
+      bar.appendChild(mineL);
+      box.appendChild(bar);
+      var groups = el("div");
+      box.appendChild(groups);
+      var detail = el("div", "cs__detail");
+      box.appendChild(detail);
+      var cur = null;
+      function draw() {
+        var w = q.value.trim();
+        groups.textContent = "";
+        ["평일", "주말"].forEach(function (sec) {
+          var hit = items.filter(function (x) {
+            return x.section === sec && (!mine.checked || x.mine) && (!w || (x.name + " " + (x.klass || "")).indexOf(w) !== -1);
+          });
+          if (!hit.length) return;
+          groups.appendChild(el("p", "rv__label", sec + "반 " + hit.length + "명"));
+          var row = el("div", "cs__chips");
+          hit.forEach(function (x) {
+            var b = button("", "sys-chip cs__chip" + (cur === x.gid ? " is-on" : ""));
+            b.appendChild(el("b", null, x.name));
+            b.appendChild(el("span", null, [x.klass, x.teacher && "담당 " + x.teacher, x.count + "회"].filter(Boolean).join(" · ")));
+            b.addEventListener("click", function () { cur = x.gid; draw(); openOne(x); });
+            row.appendChild(b);
+          });
+          groups.appendChild(row);
+        });
+        if (!groups.childNodes.length) groups.appendChild(el("p", "book__empty", "찾는 학생이 없어요."));
+      }
+      function openOne(x) {
+        detail.textContent = "";
+        detail.appendChild(el("p", "sys-note", "불러오는 중…"));
+        LeeshAPI.rpc("teacher_consult", { p_gid: x.gid }).then(function (r) {
+          detail.textContent = "";
+          if (!r.ok) { detail.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
+          detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 컨설팅 " + (r.rows || []).length + "회"));
+          if (!(r.rows || []).length) detail.appendChild(el("p", "book__empty", "아직 적힌 컨설팅이 없어요."));
+          (r.rows || []).forEach(function (row, i) {
+            var c = el("article", "rv tch__rv cs__card");
+            var h = el("p", "rv__head");
+            h.appendChild(el("b", null, row[0] || "날짜 없음"));
+            if (i === 0) h.appendChild(el("span", "rv__tag", "가장 최근"));
+            c.appendChild(h);
+            row.forEach(function (v, k) {
+              if (!k || !v) return;
+              c.appendChild(el("p", "rv__label", (r.head || [])[k] || "칸 " + (k + 1)));
+              c.appendChild(el("p", "rv__text", v));
+            });
+            detail.appendChild(c);
+          });
+          detail.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      q.addEventListener("input", draw);
+      mine.addEventListener("change", draw);
+      draw();
+    });
   }
 
   /* 학생 오디션 후기 (원장님 2026-11-09 "작성은 학생이, 보는 건 선생님들이랑 관리자만" · "선생님 모두"):

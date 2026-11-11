@@ -404,6 +404,13 @@
 .rv__btns{gap:8px;}
 .tch__rvbox{margin:22px 0 8px;padding:12px 14px;border-radius:12px;background:#FFFDF6;border:1px solid #EADFC8;}
 .tch__rvsum{cursor:pointer;font-weight:700;font-size:16px;}
+.cs__chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px;}
+.cs__chip{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:8px 12px;border:1px solid #CDBFAF;border-radius:12px;background:#fff;color:inherit;font:inherit;font-size:14px;cursor:pointer;}
+.cs__chip.is-on{background:#1D4948;color:#fff;border-color:#1D4948;}
+.cs__chip span{font-size:12px;opacity:.75;}
+.cs__detail{scroll-margin-top:70px;}
+.cs__who{margin:18px 0 6px;font-size:16px;}
+.cs__card .rv__text{word-break:break-word;}
 .tch__rvbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;}
 .tch__rvbar .tch__find{flex:1 1 220px;margin:0;}
 .tch__rvmine{white-space:nowrap;font-size:14px;}
