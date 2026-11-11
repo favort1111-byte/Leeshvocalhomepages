@@ -269,7 +269,7 @@
     back.addEventListener("click", start);
     app.appendChild(back);
     app.appendChild(el("h3", "tch__name", "🎯 원장 컨설팅 (심화반)"));
-    var note = el("p", "sys-note", "원장님이 심화반 학생과 한 1:1 컨설팅 기록이에요. 선생님들과 학원만 보고, 학생 · 학부모에게는 보이지 않아요.");
+    var note = el("p", "sys-note", "원장님이 심화반 학생과 한 1:1 컨설팅 기록이에요. 선생님은 자기 담당 학생 것만 보고, 학생 · 학부모에게는 보이지 않아요.");
     app.appendChild(note);
     var box = el("div", "cs");
     box.appendChild(el("p", "sys-note", "불러오는 중…"));
@@ -279,7 +279,7 @@
       if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", res.error || "불러오지 못했어요.")); return; }
       var items = res.items || [];
       if (res.synced) note.textContent += " 원장님 시트에서 1시간마다 저절로 들어와요 (마지막 " + msgTime(res.synced) + ").";
-      if (!items.length) { box.appendChild(el("p", "book__empty", "아직 컨설팅 기록이 없어요.")); return; }
+      if (!items.length) { box.appendChild(el("p", "book__empty", res.director ? "아직 컨설팅 기록이 없어요." : "담당 학생 중 원장님 컨설팅을 받은 학생이 아직 없어요.")); return; }
       // 원장님은 모든 선생님 학생이 다 보여서 너무 많음 → 선생님별로 묶은 드롭다운 하나 (원장님 2026-11-11)
       if (res.director) {
         var detail0 = el("div", "cs__detail");
@@ -292,13 +292,7 @@
       q.type = "search";
       q.placeholder = "학생 이름 · 반으로 찾기";
       q.setAttribute("aria-label", "컨설팅 학생 찾기");
-      var mineL = el("label", "tch__rvmine");
-      var mine = el("input");
-      mine.type = "checkbox";
-      mineL.appendChild(mine);
-      mineL.appendChild(document.createTextNode(" 내 담당 학생만"));
       bar.appendChild(q);
-      bar.appendChild(mineL);
       box.appendChild(bar);
       var groups = el("div");
       box.appendChild(groups);
@@ -310,7 +304,7 @@
         groups.textContent = "";
         ["평일", "주말"].forEach(function (sec) {
           var hit = items.filter(function (x) {
-            return x.section === sec && (!mine.checked || x.mine) && (!w || (x.name + " " + (x.klass || "")).indexOf(w) !== -1);
+            return x.section === sec && (!w || (x.name + " " + (x.klass || "")).indexOf(w) !== -1);
           });
           if (!hit.length) return;
           groups.appendChild(el("p", "rv__label", sec + "반 " + hit.length + "명"));
@@ -328,7 +322,6 @@
       }
       function openOne(x) { consultShow(detail, x); }
       q.addEventListener("input", draw);
-      mine.addEventListener("change", draw);
       draw();
     });
   }

@@ -723,7 +723,7 @@
       if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
       return { ok: true, synced: new Date().toISOString(), director: !uid || (myTeacher(uid) || {}).name === "원장님", items: [
         { gid: "1", name: "김시우", klass: "평일A반", section: "평일", teacher: "안유정", mine: true, count: 2, last: "11/4 화요일 19시" },
-        { gid: "2", name: "박하늘", klass: "주말B반", section: "주말", teacher: "이수빈", mine: false, count: 1, last: "10/26 일요일 14시" }] };
+        { gid: "2", name: "박하늘", klass: "주말B반", section: "주말", teacher: "이수빈", mine: false, count: 1, last: "10/26 일요일 14시" }].filter(function (x) { return !uid || x.mine || (myTeacher(uid) || {}).name === "원장님"; }) };
     },
     teacher_consult: function (a, uid) {
       if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");

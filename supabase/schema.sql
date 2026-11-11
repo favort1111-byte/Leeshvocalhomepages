@@ -7528,3 +7528,15 @@ begin
 end $$;
 revoke all on function public.teacher_consults(), public.teacher_consult(text) from public, anon;
 grant execute on function public.teacher_consults(), public.teacher_consult(text) to authenticated;
+
+-- ===== leesh_director_consults_own (2026-11-11) =====
+-- 원장 컨설팅: 선생님은 자기 담당 학생만 (원장님 2026-11-11). 원장님 · 관리자는 전부 (그만둔 선생님 학생 포함).
+-- 담당 = 시트에 적힌 선생님("수빈쌤" → 이수빈)이 나이거나, 명단에 연결된 학생의 담당이 나.
+create or replace function private.consult_can(t public.teachers, d public.director_consults) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select d.section in ('평일', '주말') and not d.missing
+    and (public.is_admin() or t.name = '원장님'
+         or (t.id is not null and ((private.consult_teacher(d.sheet_teacher)).id = t.id
+                                   or (d.member_id is not null and private.teaches(t, d.member_id)))));
+$$;
+revoke all on function private.consult_can(public.teachers, public.director_consults) from public, anon, authenticated;
