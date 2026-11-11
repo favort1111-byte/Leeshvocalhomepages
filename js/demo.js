@@ -720,13 +720,13 @@
     },
     // 원장 컨설팅 (체험): 가짜 학생 두 명
     teacher_consults: function (a, uid) {
-      if (!myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
+      if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
       return { ok: true, synced: new Date().toISOString(), items: [
         { gid: "1", name: "김시우", klass: "평일A반", section: "평일", teacher: "안유정", mine: true, count: 2, last: "11/4 화요일 19시" },
         { gid: "2", name: "박하늘", klass: "주말B반", section: "주말", teacher: "이수빈", mine: false, count: 1, last: "10/26 일요일 14시" }] };
     },
     teacher_consult: function (a, uid) {
-      if (!myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
+      if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
       var head = ["시간", "이름(출생년도) / 선생님", "나이/키/체중/고민", "수강기간 및 합격여부", "비고"];
       if (a.p_gid === "2") return { ok: true, gid: "2", name: "박하늘", klass: "주말B반", head: head, rows: [
         ["10/26 일요일 14시", "박하늘 (10) / 수빈쌤", "10년생 / 고1\n고음에서 목이 조임", "26.03 부터 수강\n약 7개월\n\n합격이력없음", "현재 노래체크\n- 고음 전 호흡 미리 준비\n\n다음 시간: 메인곡 액팅까지 같이 체크"]] };
