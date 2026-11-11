@@ -413,8 +413,12 @@ def care_section():
     return (_head("audition care", "1:1 맞춤형 집중 케어", "care")
             + '    <div class="care-wrap">\n'
             + f'      <ul class="cares">{groups}</ul>\n'
-            + '      <div class="care-photos">' + _photo("seminar-2026-11", "매달 하는 오디션 세미나", "snap--tilt-r")
-            + _photo("audition-board", "학원 내방 오디션 공지", "snap--tilt-l") + "</div>\n"
+            # 합격자 배출 현황 포스터가 먼저 · 크게 · 안 잘리게, 누르면 크게 (원장님 2026-11-11, 예전 "학원 내방 오디션 공지" 자리)
+            + '      <div class="care-photos">'
+            + f'<figure class="snap snap--poster"><a href="{B}results-board-2026-11.webp" target="_blank" rel="noopener">'
+            + f'<img src="{B}results-board-2026-11.webp" alt="이송희보컬레슨 오디션 합격자 배출 현황 · 누적 합격자 273명 · SM · JYP · YG · ADOR · SOURCE MUSIC · PLEDIS · THEBLACKLABEL · A2O · KOZ" loading="lazy"></a>'
+            + '<figcaption>합격자 배출 현황</figcaption></figure>'
+            + _photo("seminar-2026-11", "매달 하는 오디션 세미나", "snap--tilt-r") + "</div>\n"
             + "    </div>\n"
             + '    <div class="partners"><p>엔터 관계자가 추천한 제휴 업체 전문가 케어</p>'
             + f'<ul class="card__chips">{partners}</ul></div>\n'
