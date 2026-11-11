@@ -1188,36 +1188,47 @@
     w.appendChild(e);
     return w;
   }
-  // 두 번째 문단 (원장님 2026-11-11): 예약 안내 — 예약 기간은 서버 feedback_slots.book_until(11/15 23:59)과 같게
-  var CONSULT_INTRO2 = [
-    ["title", "📅 컨설팅 예약 안내"],
-    ["date", "예약 기간 : 11월 11일(수) ~ 11월 15일(일)"],
-    ["p", "예약 기간 내 원하시는 컨설팅 일정을 선택하여 예약해 주시기 바랍니다."],
-    ["p", "기간 내 예약을 완료하셔야 컨설팅 일정이 최종 확정됩니다."],
-    ["warn", "⚠️ 예약 기간(11월 15일까지) 안에 신청하지 않으시면 이번 달 컨설팅은 진행되지 않고, 다음 달 컨설팅으로 넘어갑니다."],
-    ["p", "예약 확정 후에는 일정 변경이 어려우므로, 개인 일정을 충분히 확인하신 후 신중하게 선택해 주세요."],
-    ["p", "원활한 컨설팅 진행을 위해 예약 기간 이후에는 추가 예약 및 일정 변경이 어려운 점 양해 부탁드립니다."],
-    ["p", "감사합니다."],
-    ["p", "여러분의 가능성을 함께 발견하고, 목표에 한 걸음 더 가까워질 수 있도록 원장님도 최선을 다하겠습니다! 함께 좋은 결과 만들어 봐요! 💪🏻✨"]
-  ];
-  function consultIntro(list) {
-    var c = el("section", "fb__intro");
-    list.forEach(function (x) {
-      if (x[0] === "date") { c.appendChild(el("p", "fb__introdate", x[1])); return; }
-      if (x[0] === "warn") { c.appendChild(el("p", "fb__introwarn", x[1])); return; }
-      if (x[0] === "title") c.appendChild(el("h3", "fb__introtitle", x[1]));
-      else if (x[0] === "h2") c.appendChild(el("h4", "fb__introh2", x[1]));
-      else if (x[0] === "h") c.appendChild(el("p", "fb__introh", x[1]));
-      else if (x[0] === "ul") { var ul = el("ul", "fb__introul"); x[1].forEach(function (t) { ul.appendChild(el("li", null, t)); }); c.appendChild(ul); }
-      else c.appendChild(el("p", "fb__introp", x[1]));
-    });
-    return c;
+  // 두 번째 안내 (원장님 2026-11-11 문구 그대로, 같은 날 첫 안내처럼 카드로 나눔)
+  // 예약 기간은 서버 feedback_slots.book_until(11/15 23:59)과 같게 — 다음 달엔 날짜 문구도 같이 고치기
+  var CONSULT_INTRO2 = {
+    title: "📅 컨설팅 예약 안내",
+    date: "11월 11일(수) ~ 11월 15일(일)",
+    when: [
+      "예약 기간 내 원하시는 컨설팅 일정을 선택하여 예약해 주시기 바랍니다.",
+      "기간 내 예약을 완료하셔야 컨설팅 일정이 **최종 확정**됩니다."
+    ],
+    warn: "⚠️ 예약 기간(11월 15일까지) 안에 신청하지 않으시면 이번 달 컨설팅은 진행되지 않고, 다음 달 컨설팅으로 넘어갑니다.",
+    check: [
+      "예약 확정 후에는 **일정 변경이 어려우므로**, 개인 일정을 충분히 확인하신 후 신중하게 선택해 주세요.",
+      "원활한 컨설팅 진행을 위해 **예약 기간 이후에는 추가 예약 및 일정 변경이 어려운 점** 양해 부탁드립니다."
+    ],
+    end: ["감사합니다.", "여러분의 가능성을 함께 발견하고,", "목표에 한 걸음 더 가까워질 수 있도록 원장님도 최선을 다하겠습니다!", "함께 좋은 결과 만들어 봐요! 💪🏻✨"]
+  };
+  function consultIntro2() {
+    var d = CONSULT_INTRO2, w = el("section", "ci");
+    w.appendChild(el("h3", "ci__title", d.title));
+    var c1 = el("div", "ci__card");
+    c1.appendChild(el("span", "ci__pill", "🗓 예약 기간"));
+    c1.appendChild(el("p", "ci__date", d.date));
+    d.when.forEach(function (t) { c1.appendChild(hiText(el("p", "ci__p"), t)); });
+    c1.appendChild(el("p", "ci__warn", d.warn));
+    w.appendChild(c1);
+    var c2 = el("div", "ci__card");
+    c2.appendChild(el("span", "ci__pill", "📌 꼭 확인해 주세요"));
+    var ul = el("ul", "ci__ul ci__ul--note");
+    d.check.forEach(function (t) { ul.appendChild(hiText(el("li"), t)); });
+    c2.appendChild(ul);
+    w.appendChild(c2);
+    var e = el("div", "ci__end");
+    d.end.forEach(function (t, i) { e.appendChild(el("p", i === 0 ? "ci__endthanks" : (i === 2 ? "ci__endhi" : null), t)); });
+    w.appendChild(e);
+    return w;
   }
   function renderFeedback(res) {
     var box = scene.querySelector("#myFeedback");
     box.textContent = "";
     box.appendChild(consultIntro1());
-    box.appendChild(consultIntro(CONSULT_INTRO2));
+    box.appendChild(consultIntro2());
     var slots = res.slots || [];
     var open = slots.filter(function (x) { return !x.closed; });
     var sum = el("div", "fold__sum");
