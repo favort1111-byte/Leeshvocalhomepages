@@ -7705,3 +7705,47 @@ insert into public.feedback_slots (at, kinds) select (d || ' ' || h || ':00+09')
   ('2026-11-27', 15, '보컬'), ('2026-11-27', 16, '보컬'), ('2026-11-27', 17, '보컬'), ('2026-11-27', 18, '보컬'), ('2026-11-27', 19, '보컬'), ('2026-11-27', 20, '보컬')
 ) v(d, h, k) on conflict (at) do nothing;
 -- 명단은 저장소가 공개라 여기 적지 않음 (관리자 화면 → 원장님 피드백 → 명단에 더하기)
+
+-- ===== leesh_director_feedback_name (2026-11-11) =====
+-- 이름 바꿈 (원장님 2026-11-11 "원장님 피드백이 아니고 원장님 컨설팅"): 텔레그램 문구
+create or replace function public.member_feedback_book(p_id text, p_pin text, p_slot bigint, p_kind text, p_note text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); mid text; s public.feedback_slots; v_name text; v_kind text := coalesce(nullif(trim(p_kind), ''), '보컬');
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if not exists (select 1 from public.feedback_members where member_id = mid) then return private.fail('심화반 학생만 신청할 수 있어요.'); end if;
+  perform pg_advisory_xact_lock(hashtext('feedback:' || mid));
+  select * into s from public.feedback_slots where id = p_slot for update;
+  if s.id is null or not s.open then return private.fail('신청할 수 없는 시간이에요.'); end if;
+  if s.at <= now() then return private.fail('이미 지난 시간이에요.'); end if;
+  if v_kind not in ('보컬', '댄스') then return private.fail('피드백 종류를 골라주세요.'); end if;
+  if v_kind = '댄스' and s.kinds <> '보컬·댄스' then return private.fail('이 시간은 보컬 피드백만 할 수 있어요.'); end if;
+  if exists (select 1 from public.feedback_bookings b join public.feedback_slots x on x.id = b.slot_id where b.member_id = mid and x.at > now()) then
+    return private.fail('이미 신청한 시간이 있어요. 바꾸려면 먼저 취소해주세요.');
+  end if;
+  if exists (select 1 from public.feedback_bookings where slot_id = s.id) then return private.fail('방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.'); end if;
+  begin
+    insert into public.feedback_bookings (slot_id, member_id, kind, note) values (s.id, mid, v_kind, nullif(left(trim(coalesce(p_note, '')), 300), ''));
+  exception when unique_violation then
+    return private.fail('방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.');
+  end;
+  select name into v_name from public.members where id = mid;
+  perform private.notify('🎯 원장님 컨설팅 신청: ' || v_name || ' · ' || private.reminder_when(s.at) || ' · ' || v_kind);
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.member_feedback_cancel(p_id text, p_pin text, p_booking bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); b public.feedback_bookings; s public.feedback_slots; v_name text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  select * into b from public.feedback_bookings where id = p_booking and member_id = who ->> 'id';
+  if b.id is null then return private.fail('신청을 찾을 수 없어요.'); end if;
+  select * into s from public.feedback_slots where id = b.slot_id;
+  if s.at - interval '1 hour' <= now() then return private.fail('시작 1시간 전부터는 직접 취소할 수 없어요. 학원(실장님)에 연락해주세요.'); end if;
+  delete from public.feedback_bookings where id = b.id;
+  select name into v_name from public.members where id = b.member_id;
+  perform private.notify('🎯 원장님 컨설팅 취소: ' || v_name || ' · ' || private.reminder_when(s.at));
+  return jsonb_build_object('ok', true);
+end $$;

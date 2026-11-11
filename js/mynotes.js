@@ -1127,7 +1127,7 @@
     });
   }
 
-  /* 원장님 피드백 신청 (원장님 2026-11-11): 심화반 학생에게만 탭이 보여요. 정해 둔 시간 중 하나, 한 타임에 한 명(먼저 신청한 사람),
+  /* 원장님 컨설팅 신청 (원장님 2026-11-11, 처음 이름 "원장님 피드백" → "원장님 컨설팅"): 심화반 학생에게만 탭이 보여요. 정해 둔 시간 중 하나, 한 타임에 한 명(먼저 신청한 사람),
      한 사람은 남은 신청 하나만 (바꾸려면 취소 후 다시). 서버 member_feedback · member_feedback_book · member_feedback_cancel. */
   function loadFeedback() {
     var tab = scene.querySelector('[data-book-tab="feedback"]');
@@ -1142,7 +1142,7 @@
     var box = scene.querySelector("#myFeedback");
     box.textContent = "";
     var sum = el("div", "fold__sum");
-    sum.appendChild(el("p", null, "심화반 원장님 1:1 피드백 신청이에요. 아래 시간 중 하나를 골라 신청해요."));
+    sum.appendChild(el("p", null, "심화반 원장님 1:1 컨설팅 신청이에요. 아래 시간 중 하나를 골라 신청해요."));
     sum.appendChild(el("p", "sys-note", "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 바꾸려면 내 신청을 취소하고 다시 골라요. 직접 취소는 시작 1시간 전까지예요."));
     box.appendChild(sum);
     var msgEl = el("p", "sys-msg");
@@ -1231,7 +1231,7 @@
         go.disabled = true;
         LeeshAPI.rpc("member_feedback_book", { p_id: who.id, p_pin: who.key, p_slot: picked.id, p_kind: kind, p_note: ta.value }).then(function (r) {
           if (!r.ok) { go.disabled = false; msgEl.textContent = r.error; msgEl.className = "sys-msg sys-msg--error"; if (/다른 학생/.test(r.error || "")) loadFeedback(); return; }
-          loadFeedback().then(function () { var m = scene.querySelector("#myFeedback .sys-msg"); if (m) { m.textContent = "신청했어요. 원장님 피드백 시간에 맞춰 와주세요!"; m.className = "sys-msg sys-msg--ok"; } });
+          loadFeedback().then(function () { var m = scene.querySelector("#myFeedback .sys-msg"); if (m) { m.textContent = "신청했어요. 원장님 컨설팅 시간에 맞춰 와주세요!"; m.className = "sys-msg sys-msg--ok"; } });
         });
       });
       form.appendChild(go);

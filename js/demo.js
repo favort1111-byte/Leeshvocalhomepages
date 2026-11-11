@@ -867,7 +867,7 @@
       ];
       return { ok: true, items: items, actors: ["admin@example.com", "staff@example.com"] };
     },
-    // 원장님 피드백 신청 (체험): 김시우(S001)가 심화반, 시간은 오늘부터 며칠 뒤
+    // 원장님 컨설팅 신청 (체험): 김시우(S001)가 심화반, 시간은 오늘부터 며칠 뒤
     member_feedback: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;

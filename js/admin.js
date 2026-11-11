@@ -2486,7 +2486,7 @@
     });
   }
   $("#dcPick").addEventListener("change", function () { if ($("#dcPick").value) openDirector($("#dcPick").value); else $("#dcDetail").textContent = ""; });
-  /* 원장님 피드백 신청 (원장님 2026-11-11): 시간표 · 신청한 학생 · 취소, 시간 더하기 · 닫기 · 지우기, 심화반 명단 */
+  /* 원장님 컨설팅 신청 (원장님 2026-11-11): 시간표 · 신청한 학생 · 취소, 시간 더하기 · 닫기 · 지우기, 심화반 명단 */
   function fbTwice(btn, label, run) {
     btn.addEventListener("click", function () {
       if (btn.getAttribute("data-armed") !== "1") { btn.setAttribute("data-armed", "1"); btn.textContent = label; return; }
