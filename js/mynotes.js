@@ -497,7 +497,12 @@
   var TOPICS = ["수업", "선생님", "연습실", "시설", "홈페이지", "기타"];
   function renderSuggest() {
     var box = scene.querySelector("#mySuggest");
-    if (!box || box.getAttribute("data-ready") === "1") return; // 쓰던 글이 새로고침으로 지워지지 않게 한 번만
+    if (!box) return;
+    if (box.getAttribute("data-ready") === "1") { // 쓰던 글이 새로고침으로 지워지지 않게 한 번만 · 읽음 표시만 다시
+      var old = box.querySelector(".suggest__sent");
+      if (old) drawSent(old);
+      return;
+    }
     box.setAttribute("data-ready", "1");
     var sum = el("div", "fold__sum suggest__sum");
     sum.appendChild(el("p", "suggest__lock", "🔒 이름 없이 보내는 건의함"));
@@ -507,7 +512,15 @@
      "내용은 암호화해서 저장되고, 관리자(실장님)만 읽을 수 있어요. 선생님 · 다른 학생은 볼 수 없어요.",
      "편하게 적어주세요. 수업 · 연습실 · 학원 생활 무엇이든 좋아요."].forEach(function (t) { ul.appendChild(el("li", null, t)); });
     sum.appendChild(ul);
+    // 원장님 2026-11-11: 답장은 못 하지만 꼭 읽는다는 안내
+    var noreply = el("div", "suggest__noreply");
+    noreply.appendChild(el("p", null, "💌 누가 썼는지 모르기 때문에 학원에서 답장은 드릴 수 없어요."));
+    noreply.appendChild(el("p", null, "하지만 보내주신 건의는 실장님이 하나도 빠짐없이 꼭 읽고 있어요. 읽으면 아래 \"내가 보낸 건의\"에 ✅ 읽음으로 표시돼요."));
+    sum.appendChild(noreply);
     box.appendChild(sum);
+    var sent = el("div", "suggest__sent");
+    box.appendChild(sent);
+    drawSent(sent);
     var f = el("form", "fold__form sys");
     var sel = el("select");
     TOPICS.forEach(function (t) { var o = el("option", null, t); o.value = t; sel.appendChild(o); });
@@ -522,7 +535,7 @@
     var note = el("p", "sys-msg");
     note.setAttribute("role", "status");
     f.appendChild(note);
-    f.appendChild(el("p", "sys-note", "이름이 없어서 보낸 글은 다시 볼 수 없어요. 답이 필요하면 카카오톡 채널로 물어봐 주세요. (하루 5번까지)"));
+    f.appendChild(el("p", "sys-note", "보낸 글 내용은 다시 볼 수 없고, 이 기기에서만 주제 · 날짜 · 읽음 표시가 보여요. 답이 필요하면 카카오톡 채널로 물어봐 주세요. (하루 5번까지)"));
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       if (ta.value.trim().length < 2) { note.textContent = "하고 싶은 말을 적어주세요."; note.className = "sys-msg sys-msg--error"; return; }
@@ -531,11 +544,45 @@
         btn.disabled = false;
         if (!res.ok) { note.textContent = res.error; note.className = "sys-msg sys-msg--error"; return; }
         ta.value = "";
+        if (res.ticket) { var list = sentLoad(); list.unshift({ t: res.ticket, day: todayKst(), topic: sel.value }); sentSave(list); drawSent(sent); }
         note.textContent = "보냈어요. 소중한 이야기 고마워요! 🙏";
         note.className = "sys-msg sys-msg--ok";
       });
     });
     box.appendChild(f);
+  }
+
+  /* 내가 보낸 건의 (원장님 2026-11-11): 이 기기에만 무작위 번호 · 주제 · 날짜를 남기고(내용은 안 남김),
+     로그인 없이(token "") 번호로 읽었는지만 물어봐요 → 서버는 누가 묻는지 몰라요. */
+  function sentKey() { return "leesh_suggest_sent:" + who.id; }
+  function sentLoad() { try { return JSON.parse(localStorage.getItem(sentKey()) || "[]") || []; } catch (e) { return []; } }
+  function sentSave(list) { try { localStorage.setItem(sentKey(), JSON.stringify(list.slice(0, 30))); } catch (e) {} }
+  function todayKst() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
+  function drawSent(box) {
+    var list = sentLoad();
+    box.textContent = "";
+    if (!list.length) return;
+    box.appendChild(el("h3", "rec__title", "📬 내가 보낸 건의"));
+    var ul = el("ul", "suggest__list");
+    var rows = {};
+    list.forEach(function (x) {
+      var li = el("li");
+      li.appendChild(el("span", "suggest__when", dayLabel(x.day) + " · " + x.topic));
+      var st = el("span", "suggest__state", "확인 중…");
+      li.appendChild(st);
+      rows[x.t] = st;
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    LeeshAPI.rpc("member_suggest_status", { p_tickets: list.map(function (x) { return x.t; }) }, "").then(function (res) {
+      if (!res.ok) { Object.keys(rows).forEach(function (k) { rows[k].textContent = ""; }); return; }
+      (res.items || []).forEach(function (it) {
+        var st = rows[it.t];
+        if (!st) return;
+        st.textContent = it.read ? "✅ 읽음" : "⏳ 아직 안 읽음";
+        st.className = "suggest__state" + (it.read ? " suggest__state--read" : "");
+      });
+    });
   }
 
   function renderPartners(res) {

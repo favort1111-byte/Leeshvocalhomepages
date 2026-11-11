@@ -7881,3 +7881,45 @@ begin
         'teacher', substring(m.memo from '담당\s*([^\s·,]+)'), 'status', m.status, 'kakao', m.kakao_user is not null) order by f.track desc, f.slot, m.name)
       from public.feedback_members f join public.members m on m.id = f.member_id), '[]'::jsonb));
 end $$;
+
+-- ===== leesh_suggest_read (2026-11-11) =====
+-- 건의함 읽음 표시 (원장님 2026-11-11): 보낸 학생 기기에만 무작위 번호(ticket)를 남기고,
+-- 로그인 없이 그 번호로 "읽었는지"만 물어봄 → 서버는 여전히 누가 썼는지 모름.
+alter table private.suggestions add column if not exists ticket uuid not null default gen_random_uuid();
+create unique index if not exists suggestions_ticket on private.suggestions (ticket);
+
+create or replace function public.member_suggest(p_id text, p_pin text, p_topic text, p_body text)
+ returns jsonb language plpgsql security definer set search_path to ''
+as $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  k private.suggest_key;
+  today date := private.now_kst()::date;
+  v_topic text := case when p_topic in ('수업', '선생님', '연습실', '시설', '홈페이지', '기타') then p_topic else '기타' end;
+  v_body text := trim(coalesce(p_body, ''));
+  hh bytea; cnt int; v_t uuid;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  if char_length(v_body) < 2 then return private.fail('하고 싶은 말을 적어주세요.'); end if;
+  if char_length(v_body) > 1000 then return private.fail('1000자까지 쓸 수 있어요.'); end if;
+  select * into k from private.suggest_key where id = 1;
+  hh := extensions.digest((who ->> 'id') || '|' || today::text || '|' || k.salt, 'sha256');
+  insert into private.suggest_counts (h, day, n) values (hh, today, 1)
+    on conflict (h, day) do update set n = private.suggest_counts.n + 1 returning n into cnt;
+  if cnt > 5 then return private.fail('하루에 5번까지 보낼 수 있어요. 내일 다시 보내주세요.'); end if;
+  delete from private.suggest_counts where day < today - 1;  -- 지난 횟수는 바로 지움
+  insert into private.suggestions (day, topic, body) values (today, v_topic, extensions.pgp_sym_encrypt(v_body, k.k))
+    returning ticket into v_t;
+  return jsonb_build_object('ok', true, 'ticket', v_t);
+end $function$;
+
+-- 로그인 없이 부름 (누가 묻는지 모르게). 번호를 아는 사람만, 읽었는지만 알 수 있음. 지운 건의는 "읽음".
+create or replace function public.member_suggest_status(p_tickets uuid[])
+ returns jsonb language sql stable security definer set search_path to ''
+as $function$
+  select jsonb_build_object('ok', true, 'items', coalesce(jsonb_agg(jsonb_build_object('t', t, 'read', coalesce(s.is_read, true))), '[]'::jsonb))
+  from unnest((coalesce(p_tickets, '{}'::uuid[]))[1:30]) as t
+  left join private.suggestions s on s.ticket = t
+$function$;
+revoke all on function public.member_suggest_status(uuid[]) from public;
+grant execute on function public.member_suggest_status(uuid[]) to anon, authenticated;

@@ -1126,9 +1126,17 @@
       var body = String(a.p_body || "").trim();
       if (body.length < 2) return fail("하고 싶은 말을 적어주세요.");
       db.suggestions = db.suggestions || [];
-      db.suggestions.unshift({ id: ++db.next, day: nowKst().today, topic: a.p_topic || "기타", body: body, read: false });
+      var ticket = "demo-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      db.suggestions.unshift({ id: ++db.next, day: nowKst().today, topic: a.p_topic || "기타", body: body, read: false, ticket: ticket });
       save();
-      return { ok: true };
+      return { ok: true, ticket: ticket };
+    },
+    member_suggest_status: function (a) {
+      var all = db.suggestions || [];
+      return { ok: true, items: (a.p_tickets || []).slice(0, 30).map(function (t) {
+        var s = all.filter(function (x) { return x.ticket === t; })[0];
+        return { t: t, read: s ? !!s.read : true };
+      }) };
     },
     admin_suggestions: function () { return { ok: true, items: db.suggestions || [] }; },
     admin_suggest_count: function () { return (db.suggestions || []).filter(function (s) { return !s.read; }).length; },
