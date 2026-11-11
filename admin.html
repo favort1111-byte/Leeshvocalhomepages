@@ -508,9 +508,15 @@
           <label class="sys-field"><span>이름</span><input id="kkName" maxlength="30"></label>
           <label class="sys-field"><span>휴대폰 번호</span><input id="kkPhone" inputmode="tel" placeholder="010-0000-0000"></label>
         </div>
+        <p class="sys-note adm__kkhint" id="kkHint"></p>
         <div class="sys-row">
-          <label class="sys-field"><span>장소</span><input name="place" maxlength="60" placeholder="비우면 '이송희보컬레슨'"></label>
-          <label class="sys-field"><span>안내 (선택)</span><input name="memo" maxlength="200" placeholder="예) 10분 전 도착 · 악보 지참"></label>
+          <label class="sys-field" data-var="#{강사}"><span>강사</span><input name="teacher" maxlength="30" placeholder="비우면 학생의 담당 선생님"></label>
+          <label class="sys-field" data-var="#{클래스}"><span>클래스</span><select name="track"><option>오디션반</option><option>오디션 심화반</option><option>입시반</option><option>전문반</option><option>취미반</option></select></label>
+          <label class="sys-field" data-var="#{특강}"><span>특강 주제</span><input name="topic" maxlength="40" placeholder="예) 헤어메이크업"></label>
+        </div>
+        <div class="sys-row">
+          <label class="sys-field" data-var="#{장소}"><span>장소</span><input name="place" maxlength="60" placeholder="비우면 '이송희보컬레슨'"></label>
+          <label class="sys-field" data-var="#{안내}"><span id="kkMemoLab">안내 (선택)</span><input name="memo" maxlength="200" placeholder="예) 10분 전 도착 · 악보 지참"></label>
         </div>
         <p class="adm__kkpreview" id="kkPreview"></p>
         <button class="sys-btn" type="submit">일정 넣기</button>
@@ -521,7 +527,7 @@
       <ul class="adm__cards" id="kkList"></ul>
 
       <h4 class="adm__sub">알림톡 문구 (솔라피 검수 신청용)</h4>
-      <p class="sys-note">종류마다 예시 문구를 골라 고친 뒤 <b>저장</b> → <b>복사</b>해서 솔라피 → 카카오 알림톡 → 템플릿 등록에 붙여넣고 검수 신청하세요. 바꿀 수 있는 자리는 <b>#{이름} #{일시} #{장소} #{안내}</b> 4개만 써 주세요. 승인된 뒤 문구를 또 고치면 솔라피에 다시 신청해야 해요.</p>
+      <p class="sys-note">종류마다 예시 문구를 골라 고친 뒤 <b>저장</b> → <b>복사</b>해서 솔라피 → 카카오 알림톡 → 템플릿 등록에 붙여넣고 검수 신청하세요. 바꿀 수 있는 자리는 <b>#{이름} #{시간} #{일시} #{강사} #{클래스} #{특강} #{장소} #{안내}</b>만 써 주세요 (#{시간} = "오후 6시", #{일시} = "11월 15일(일) 오후 3시", 나머지는 일정 넣을 때 적는 칸). 승인된 뒤 문구를 또 고치면 솔라피에 다시 신청해야 해요.</p>
       <div class="adm__kktexts" id="kkTexts"></div>
       <button class="sys-btn" type="button" id="kkTextSave">문구 저장</button>
       <p class="sys-msg" id="kkTextMsg"></p>
@@ -655,6 +661,6 @@
 <script src="js/grid.js?v=3e54add9"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
 <script src="js/photos.js?v=a00ab1e5"></script>
-<script src="js/admin.js?v=57b8e157"></script>
+<script src="js/admin.js?v=1f2d854f"></script>
 </body>
 </html>

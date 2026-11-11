@@ -777,8 +777,9 @@
     },
     admin_reminder_save: function (a) {
       db.reminders = db.reminders || [];
-      var add = function (member, name, phone) { db.reminders.push({ id: ++db.next, kind: a.p_kind, member: member, name: name, phone: phone, at: a.p_at, place: a.p_place || null, memo: a.p_memo || null, status: "예정" }); };
-      if (a.p_members && a.p_members.length) a.p_members.forEach(function (id) { var m = db.members.filter(function (x) { return x.id === id; })[0]; if (m) add(m.id, m.name, null); });
+      var add = function (member, name, phone, t) { db.reminders.push({ id: ++db.next, kind: a.p_kind, member: member, name: name, phone: phone, at: a.p_at, place: a.p_place || null, memo: a.p_memo || null,
+        teacher: a.p_teacher || t || null, track: a.p_track || null, topic: a.p_topic || null, status: "예정" }); };
+      if (a.p_members && a.p_members.length) a.p_members.forEach(function (id) { var m = db.members.filter(function (x) { return x.id === id; })[0], t = m && /담당\s*([^\s·,]+)/.exec(m.memo || ""); if (m) add(m.id, m.name, null, t && (t[1] === "원장님" ? "이송희" : t[1])); });
       else if (a.p_consult) { var c = (db.consults || []).filter(function (x) { return x.id === a.p_consult; })[0]; add(null, c ? c.name : "상담 신청자", "01000000000"); }
       else { if (!a.p_name) return fail("학생을 고르거나, 이름과 번호를 적어주세요."); add(null, a.p_name, String(a.p_phone || "").replace(/\D/g, "") || null); }
       save();

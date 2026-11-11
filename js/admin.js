@@ -2517,9 +2517,14 @@
     var who = f.querySelector("[name=who]:checked").value;
     var name = who === "direct" ? ($("#kkName").value.trim() || "○○○") : who === "consult" ? (($("#kkConsultSel").selectedOptions[0] || {}).dataset || {}).name || "○○○" : (names[0] || "○○○");
     var txt = (kk.texts && kk.texts[kind]) || (typeof KK_STYLES !== "undefined" && KK_STYLES ? KK_STYLES[0][1](kind) : "");
-    $("#kkPreview").textContent = txt.split("#{이름}").join(name).split("#{일시}").join(kkWhen(field(f, "day").value, field(f, "time").value) || "-")
-      .split("#{장소}").join(field(f, "place").value.trim() || "이송희보컬레슨").split("#{안내}").join(field(f, "memo").value.trim() || "-")
-      + (names.length > 1 ? "\n\n(" + names.length + "명에게 이름만 바꿔 한 통씩)" : "");
+    var when = kkWhen(field(f, "day").value, field(f, "time").value), teacher = field(f, "teacher").value.trim();
+    if (!teacher && who === "member") teacher = kkTeacher(Object.keys(kk.picked)[0]) || "";
+    var vals = { "#{이름}": name, "#{일시}": when || "-", "#{시간}": when ? when.replace(/^.*\) /, "") : "-", "#{장소}": field(f, "place").value.trim() || "이송희보컬레슨",
+      "#{안내}": field(f, "memo").value.trim() || (kind === "특강" ? "따로 챙기실 준비물은 없어요!" : "-"), "#{강사}": teacher || "○○○",
+      "#{클래스}": field(f, "track").value, "#{특강}": field(f, "topic").value.trim() || "○○" };
+    Object.keys(vals).forEach(function (k) { txt = txt.split(k).join(vals[k]); });
+    $("#kkPreview").textContent = txt + (names.length > 1 ? "\n\n(" + names.length + "명에게 이름만 바꿔 한 통씩" + (kkText(kind).indexOf("#{강사}") >= 0 && !field(f, "teacher").value.trim() ? " · 강사는 학생마다 담당 선생님" : "") + ")" : "");
+    kkFields(kind);
   }
   function kkPickList() {
     var q = $("#kkFind").value.trim().toLowerCase(), box = $("#kkPick");
@@ -2565,18 +2570,47 @@
   }
   // 알림톡 문구 예시 (원장님 2026-11-10 "바꿀 수 있는 문구 여러 개") — 고른 뒤 고쳐서 저장 · 복사 → 솔라피 검수 신청
   var KK_WORD = { "상담": "상담 예약", "컨설팅": "오디션 컨설팅", "특강": "특강", "첫 레슨": "첫 레슨", "보강": "보강 레슨" };
+  // 원장님 리마인더 문구 (2026-11-11 원장님이 준 4개 그대로, 상담은 같은 말투로 만든 초안)
+  var KK_DIRECTOR = {
+    "상담": "[이송희보컬레슨학원 상담 리마인더]\n안녕하세요 #{이름}님! 😻\n내일 #{시간}, 이송희보컬레슨학원\n상담이 예정되어 있습니다!\n궁금하신 점을 미리 정리해 오시면\n더 알찬 상담이 될 거예요.\n혹시 일정이 어려우시면\n꼭 미리 연락 주세요!\n내일 뵙겠습니다 💛\n이송희보컬레슨학원 드림",
+    "첫 레슨": "[이송희보컬레슨학원 수업 리마인더]\n안녕하세요 #{이름}님! 😻\n내일 #{시간}, #{강사}T와 함께하는\n#{클래스} 1:1 보컬레슨이 시작됩니다!\n목표하시는 오디션을 향해\n저희가 함께 차근차근 준비하겠습니다.\n궁금한 점은 언제든 편하게 문의 주세요!\n내일 뵙겠습니다 💛\n이송희보컬레슨학원 드림",
+    "컨설팅": "[이송희보컬레슨학원 컨설팅 리마인더]\n안녕하세요 #{이름}님! 😻\n내일 #{시간}, 이송희 원장님과 함께하는\n1:1 오디션 컨설팅이 진행됩니다!\n현재 실력과 방향을 점검하고\n꼭 필요한 부분을 짚어드릴게요.\n준비하고 계신 곡이나 궁금한 점을\n미리 정리해 오시면 더 알찬 시간이 될 거예요!\n내일 뵙겠습니다 💛\n이송희보컬레슨학원 드림",
+    "특강": "[이송희보컬레슨학원 특강 리마인더]\n안녕하세요 #{이름}님! 😻\n내일 #{시간}, #{강사}과 함께하는\n#{특강} 특강이 열립니다!\n오디션 현장에서 바로 써먹을 수 있는\n실전 팁을 가득 담아 준비했어요.\n#{안내}\n늦지 않게 와주시면 감사하겠습니다.\n내일 뵙겠습니다 💛\n이송희보컬레슨학원 드림",
+    "보강": "[이송희보컬레슨학원 보강 리마인더]\n안녕하세요 #{이름}님! 😻\n내일 #{시간}, #{강사}T와 함께하는\n보강 수업이 있어요!\n보강은 한 번 잡힌 일정으로 진행되어\n불참 시 추가 보강이 어려운 점\n너그러운 양해 부탁드려요. 🫶🏻\n혹시 일정이 어려우시면\n꼭 미리 연락 주세요!\n소중한 레슨 놓치지 않도록\n내일 꼭 뵐게요 💛\n이송희보컬레슨학원 드림"
+  };
+  // 원장님 메모 (보내기 전에 할 일)
+  var KK_HINT = { "첫 레슨": "📌 첫 레슨 등록할 때 전화번호도 미리 등록해 두기 (시트 P열 결제 연락처, 없으면 '직접 적기')",
+    "컨설팅": "📌 컨설팅 참여 학생들을 모아서, 시간이 같은 학생끼리 한 번에 넣기 (시간이 다르면 따로)",
+    "특강": "📌 특강 참여 학생들을 모아서, 시간이 같은 학생끼리 한 번에 넣기 · 준비물은 아래 칸에",
+    "보강": "📌 강사를 비우면 학생의 담당 선생님 이름으로 보내요", "상담": "" };
   var KK_STYLES = [
+    ["원장님 리마인더형", function (k) { return KK_DIRECTOR[k]; }],
     ["기본형", function (k) { return "[이송희보컬레슨] " + k + " 안내\n\n안녕하세요, #{이름}님.\n" + KK_LEAD[k] + "\n\n▶ 일시: #{일시}\n▶ 장소: #{장소}\n▶ 안내: #{안내}\n\n일정 변경이 필요하시면 카카오톡 채널로 미리 말씀해 주세요.\n감사합니다."; }],
     ["짧은 형", function (k) { return "[이송희보컬레슨] #{이름}님, 내일 " + KK_WORD[k] + " 안내입니다.\n\n▶ #{일시}\n▶ #{장소}\n▶ #{안내}\n\n변경은 카카오톡 채널로 연락 주세요."; }],
     ["친절한 형", function (k) { return "안녕하세요, 이송희보컬레슨입니다.\n\n#{이름}님, 내일은 " + KK_WORD[k] + " 날이에요.\n\n▶ 일시: #{일시}\n▶ 장소: #{장소}\n▶ 안내: #{안내}\n\n편하게 오시면 됩니다. 혹시 일정이 어려우시면 카카오톡 채널로 미리 알려 주세요.\n내일 뵙겠습니다. 감사합니다."; }],
     ["준비 안내형", function (k) { return "[이송희보컬레슨] " + k + " 안내\n\n#{이름}님, 내일 " + KK_WORD[k] + " 일정을 안내드립니다.\n\n▶ 일시: #{일시}\n▶ 장소: #{장소}\n▶ 준비할 것 · 안내: #{안내}\n\n시작 10분 전까지 도착해 주세요.\n일정 변경은 카카오톡 채널로 미리 말씀해 주세요.\n감사합니다."; }]
   ];
-  var KK_VARS = ["#{이름}", "#{일시}", "#{장소}", "#{안내}"];
+  var KK_VARS = ["#{이름}", "#{시간}", "#{일시}", "#{강사}", "#{클래스}", "#{특강}", "#{장소}", "#{안내}"];
+  function kkTeacher(id) {
+    var m = id && (state.members || []).filter(function (x) { return x.id === id; })[0], t = m && teacherOf(m);
+    return t === "원장님" ? "이송희" : t || "";
+  }
+  // 지금 문구에 있는 자리만 칸을 보여 줌
+  function kkFields(kind) {
+    var f = $("#kkForm"), txt = kkText(kind);
+    f.querySelectorAll("[data-var]").forEach(function (lab) { lab.hidden = txt.indexOf(lab.getAttribute("data-var")) < 0; });
+    $("#kkMemoLab").textContent = kind === "특강" ? "준비물 (선택)" : "안내 (선택)";
+    field(f, "memo").placeholder = kind === "특강" ? "예) 헤어롤 · 거울 챙겨와 주세요!" : "예) 10분 전 도착 · 악보 지참";
+    field(f, "teacher").placeholder = kind === "특강" ? "예) 메이크업 김○○ 원장님 (뒤에 '과')" : "비우면 학생의 담당 선생님 (뒤에 'T와')";
+    $("#kkHint").textContent = KK_HINT[kind] || "";
+    $("#kkHint").hidden = !KK_HINT[kind];
+  }
   kk.texts = {};
   function kkText(k) { return kk.texts[k] || KK_STYLES[0][1](k); }
   function kkCheck(v) {
     var bad = (v.match(/#\{[^}]*\}/g) || []).filter(function (x) { return KK_VARS.indexOf(x) < 0; });
-    var miss = ["#{이름}", "#{일시}"].filter(function (x) { return v.indexOf(x) < 0; });
+    var miss = (v.indexOf("#{시간}") < 0 && v.indexOf("#{일시}") < 0 ? ["#{시간} 또는 #{일시}"] : []);
+    if (v.indexOf("#{이름}") < 0) miss.unshift("#{이름}");
     return (bad.length ? "쓸 수 없는 자리: " + bad.join(" ") + " (홈페이지가 채우지 못해요) · " : "") + (miss.length ? "빠진 자리: " + miss.join(" ") + " · " : "") + v.length + " / 1000자";
   }
   function kkDrawTexts() {
@@ -2665,7 +2699,8 @@
         top.appendChild(el("span", null, x.name + (x.member ? " (" + x.member + ")" : "")));
         top.appendChild(el("span", "adm__badge", x.status));
         li.appendChild(top);
-        li.appendChild(el("p", "sys-note", (x.phone ? "📱 " + x.phone : "⚠️ 번호 없음") + (x.place ? " · " + x.place : "") + (x.memo ? " · " + x.memo : "")
+        li.appendChild(el("p", "sys-note", (x.phone ? "📱 " + x.phone : "⚠️ 번호 없음") + (x.teacher ? " · 강사 " + x.teacher : "") + (x.track ? " · " + x.track : "") + (x.topic ? " · " + x.topic + " 특강" : "")
+          + (x.place ? " · " + x.place : "") + (x.memo ? " · " + x.memo : "")
           + (x.sent_at ? " · 보낸 시각 " + stamp(x.sent_at) : "") + (x.result && x.status !== "보냄" ? " · " + x.result : "")));
         var acts = el("div", "adm__acts"), note = el("p", "sys-msg");
         if (x.status !== "취소") {
@@ -2703,7 +2738,7 @@
   (function () {
     var f = $("#kkForm");
     f.querySelectorAll("[name=who]").forEach(function (r) { r.addEventListener("change", kkWhoMode); });
-    ["kind", "day", "time", "place", "memo"].forEach(function (n) { field(f, n).addEventListener("input", kkPreview); });
+    ["kind", "day", "time", "place", "memo", "teacher", "track", "topic"].forEach(function (n) { field(f, n).addEventListener("input", kkPreview); field(f, n).addEventListener("change", kkPreview); });
     $("#kkName").addEventListener("input", kkPreview);
     $("#kkConsultSel").addEventListener("change", kkPreview);
     var t = null;
@@ -2712,15 +2747,22 @@
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       var who = f.querySelector("[name=who]:checked").value, day = field(f, "day").value, time = field(f, "time").value;
-      var body = { p_id: null, p_kind: field(f, "kind").value, p_at: day + "T" + time + ":00+09:00", p_place: field(f, "place").value, p_memo: field(f, "memo").value };
+      var kind = field(f, "kind").value, txt = kkText(kind), has = function (v) { return txt.indexOf(v) >= 0; };
+      var body = { p_id: null, p_kind: kind, p_at: day + "T" + time + ":00+09:00", p_place: has("#{장소}") ? field(f, "place").value : null, p_memo: has("#{안내}") ? field(f, "memo").value : null,
+        p_teacher: has("#{강사}") ? field(f, "teacher").value : null, p_track: has("#{클래스}") ? field(f, "track").value : null, p_topic: has("#{특강}") ? field(f, "topic").value : null };
       if (who === "member") { body.p_members = Object.keys(kk.picked); if (!body.p_members.length) { msg($("#kkMsg"), "학생을 골라주세요.", "error"); return; } }
+      if (has("#{특강}") && !String(body.p_topic || "").trim()) { msg($("#kkMsg"), "특강 주제를 적어주세요. (예: 헤어메이크업)", "error"); return; }
+      if (has("#{강사}") && !String(body.p_teacher || "").trim()) {
+        var noT = who === "member" ? body.p_members.filter(function (id) { return !kkTeacher(id); }) : [1];
+        if (noT.length) { msg($("#kkMsg"), "강사 이름을 적어주세요." + (who === "member" ? " (담당 선생님이 없는 학생: " + noT.map(function (id) { return kk.picked[id]; }).join(", ") + ")" : ""), "error"); return; }
+      }
       if (who === "consult") body.p_consult = Number($("#kkConsultSel").value) || null;
       if (who === "direct") { body.p_name = $("#kkName").value; body.p_phone = $("#kkPhone").value; }
       api("rpc/admin_reminder_save", { method: "POST", body: body }).then(function (r) {
         var d = r.data || {};
         if (!r.ok || !d.ok) { msg($("#kkMsg"), d.error || friendly(r, "넣지 못했어요."), "error"); return; }
         msg($("#kkMsg"), d.count + "건 넣었어요. 전날 오후 6시에 저절로 보내요.", "ok");
-        kk.picked = {}; $("#kkFind").value = ""; kkPickList(); kkChosen(); field(f, "memo").value = "";
+        kk.picked = {}; $("#kkFind").value = ""; kkPickList(); kkChosen(); field(f, "memo").value = ""; field(f, "teacher").value = ""; field(f, "topic").value = "";
         loadKakao();
       });
     });
