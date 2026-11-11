@@ -1139,19 +1139,55 @@
     });
   }
   // 원장님 안내 문구 그대로 (2026-11-11, 첫 번째 문단). ["p", 글] = 문단, ["h", 제목], ["ul", [줄…]]
-  var CONSULT_INTRO = [
-    ["title", "📢 오디션 컨설팅 예약 안내"],
-    ["p", "오디션을 준비하다 보면 현재 나의 실력과 가능성은 어느 정도인지, 어떤 부분을 보완해야 하는지, 앞으로 어떤 방향으로 준비해야 할지 고민되는 순간들이 있습니다."],
-    ["p", "이번 컨설팅은 현재 자신의 위치를 객관적으로 점검하고, 보다 정확한 방향과 전략을 세워 오디션 합격 가능성을 높이기 위해 진행됩니다."],
-    ["h2", "🎤 컨설팅 주요 내용"],
-    ["h", "✔️ 보컬 점검 및 피드백"],
-    ["ul", ["오디션 곡 선정 및 적합성 점검", "보컬 기본기, 테크닉, 표현력 등 디테일한 피드백"]],
-    ["h", "✔️ 기획사 분석 및 오디션 전략"],
-    ["ul", ["주요 기획사별 특징 및 선호하는 인재상", "기획사별 신인 개발 방향 및 최근 캐스팅 동향", "현재 준비 중인 오디션에 맞춘 전략"]],
-    ["h", "✔️ 개인별 맞춤 컨설팅"],
-    ["ul", ["현재 실력과 가능성에 대한 객관적인 평가", "강점과 보완점 분석 및 앞으로의 방향성 제시", "합격 가능성을 높이기 위한 구체적인 준비 방법", "원장님의 개별 코멘트 및 질의응답"]],
-    ["p", "단순히 실력을 평가하는 시간이 아닌, 앞으로 무엇을 어떻게 준비해야 할지 함께 방향을 잡아가는 시간입니다. 🫶🏻"]
-  ];
+  // 첫 번째 안내 (원장님 2026-11-11 문구 그대로, 같은 날 "가독성 있게 나눠" → 소개 카드 · 주요 내용 카드 · 마무리 띠)
+  // **…** = 강조(주황 굵게)
+  var CONSULT_INTRO = {
+    title: "📢 오디션 컨설팅 예약 안내",
+    intro: [
+      "오디션을 준비하다 보면 **현재 나의 실력과 가능성**은 어느 정도인지, **어떤 부분을 보완**해야 하는지, 앞으로 **어떤 방향으로 준비**해야 할지 고민되는 순간들이 있습니다.",
+      "이번 컨설팅은 현재 자신의 위치를 객관적으로 점검하고, 보다 정확한 방향과 전략을 세워 **오디션 합격 가능성을 높이기 위해** 진행됩니다."
+    ],
+    items: [
+      ["보컬 점검 및 피드백", ["오디션 곡 선정 및 적합성 점검", "보컬 기본기, 테크닉, 표현력 등 디테일한 피드백"]],
+      ["기획사 분석 및 오디션 전략", ["주요 기획사별 특징 및 선호하는 인재상", "기획사별 신인 개발 방향 및 최근 캐스팅 동향", "현재 준비 중인 오디션에 맞춘 전략"]],
+      ["개인별 맞춤 컨설팅", ["현재 실력과 가능성에 대한 객관적인 평가", "강점과 보완점 분석 및 앞으로의 방향성 제시", "합격 가능성을 높이기 위한 구체적인 준비 방법", "원장님의 개별 코멘트 및 질의응답"]]
+    ],
+    end: ["단순히 실력을 평가하는 시간이 아닌,", "앞으로 무엇을 어떻게 준비해야 할지", "함께 방향을 잡아가는 시간입니다. 🫶🏻"]
+  };
+  function hiText(node, text) {
+    text.split("**").forEach(function (t, i) {
+      if (!t) return;
+      if (i % 2) node.appendChild(el("strong", "ci__hi", t));
+      else node.appendChild(document.createTextNode(t));
+    });
+    return node;
+  }
+  function consultIntro1() {
+    var d = CONSULT_INTRO, w = el("section", "ci");
+    w.appendChild(el("h3", "ci__title", d.title));
+    var c1 = el("div", "ci__card");
+    c1.appendChild(el("span", "ci__pill", "컨설팅 소개"));
+    d.intro.forEach(function (t) { c1.appendChild(hiText(el("p", "ci__p"), t)); });
+    w.appendChild(c1);
+    var c2 = el("div", "ci__card");
+    c2.appendChild(el("span", "ci__pill", "🎤 컨설팅 주요 내용"));
+    d.items.forEach(function (it, i) {
+      var s = el("div", "ci__item");
+      var h = el("p", "ci__h");
+      h.appendChild(el("span", "ci__num", String(i + 1)));
+      h.appendChild(document.createTextNode(it[0]));
+      s.appendChild(h);
+      var ul = el("ul", "ci__ul");
+      it[1].forEach(function (t) { ul.appendChild(el("li", null, t)); });
+      s.appendChild(ul);
+      c2.appendChild(s);
+    });
+    w.appendChild(c2);
+    var e = el("div", "ci__end");
+    d.end.forEach(function (t, i) { e.appendChild(el("p", i === 1 ? "ci__endhi" : null, t)); });
+    w.appendChild(e);
+    return w;
+  }
   // 두 번째 문단 (원장님 2026-11-11): 예약 안내 — 예약 기간은 서버 feedback_slots.book_until(11/15 23:59)과 같게
   var CONSULT_INTRO2 = [
     ["title", "📅 컨설팅 예약 안내"],
@@ -1166,7 +1202,7 @@
   ];
   function consultIntro(list) {
     var c = el("section", "fb__intro");
-    (list || CONSULT_INTRO).forEach(function (x) {
+    list.forEach(function (x) {
       if (x[0] === "date") { c.appendChild(el("p", "fb__introdate", x[1])); return; }
       if (x[0] === "warn") { c.appendChild(el("p", "fb__introwarn", x[1])); return; }
       if (x[0] === "title") c.appendChild(el("h3", "fb__introtitle", x[1]));
@@ -1180,7 +1216,7 @@
   function renderFeedback(res) {
     var box = scene.querySelector("#myFeedback");
     box.textContent = "";
-    box.appendChild(consultIntro());
+    box.appendChild(consultIntro1());
     box.appendChild(consultIntro(CONSULT_INTRO2));
     var slots = res.slots || [];
     var open = slots.filter(function (x) { return !x.closed; });

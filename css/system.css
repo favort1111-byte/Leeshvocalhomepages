@@ -437,6 +437,21 @@
 .fb__form{margin:12px 0;}
 .fb__form textarea{width:100%;margin:8px 0;}
 .fb__kinds{display:flex;gap:16px;margin:6px 0;}
+.ci{margin:0 0 14px;padding:20px 16px 18px;border-radius:16px;background:#F6E9CF;word-break:keep-all;line-height:1.7;}
+.ci__title{margin:0 0 14px;font-size:21px;font-weight:700;}
+.ci__card{margin:0 0 12px;padding:16px 16px 6px;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(80,60,30,.08);}
+.ci__pill{display:inline-block;margin:0 0 10px;padding:4px 12px;border-radius:999px;background:#3B2A1E;color:#fff;font-size:13px;font-weight:700;}
+.ci__p{margin:0 0 10px;}
+.ci__hi{color:#B8651B;font-weight:700;}
+.ci__item{margin:0 0 14px;padding:0 0 0 12px;border-left:3px solid #E3A857;}
+.ci__h{margin:0 0 4px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.ci__num{flex:none;width:22px;height:22px;border-radius:50%;background:#E3A857;color:#fff;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;}
+.ci__ul{margin:0;padding:0;list-style:none;}
+.ci__ul li{margin:2px 0;padding-left:20px;position:relative;}
+.ci__ul li::before{content:"✓";position:absolute;left:2px;color:#6B5BD2;font-weight:700;}
+.ci__end{padding:16px 14px;border-radius:14px;background:#3B2A1E;color:#fff;text-align:center;font-weight:700;line-height:1.75;}
+.ci__end p{margin:0;}
+.ci__endhi{color:#F5C451;}
 .fb__intro{margin:0 0 14px;padding:16px 18px;border-radius:14px;background:#FFFDF6;border:1px solid #EADFC8;line-height:1.65;word-break:keep-all;}
 .fb__introtitle{margin:0 0 10px;font-size:17px;}
 .fb__introp{margin:0 0 10px;}
