@@ -1044,8 +1044,37 @@
     if (list.length) songs.appendChild(ul);
     if (list.length > 6) songs.appendChild(el("p", "sys-note", "외 " + (list.length - 6) + "곡 · 아래 레퍼토리 탭에서 전부 보여요."));
     side.appendChild(songs);
+    side.appendChild(visitMonth(book));
     wrap.appendChild(side);
     return wrap;
+  }
+
+  /** 이번 달 학원 내방 오디션 일정 + 이 학생이 신청했는지 (원장님 2026-11-11 "레슨할 때 좋게"). */
+  function visitMonth(book) {
+    var box = el("section", "tch__mini tch__visits");
+    var m = Number(todayKst().slice(5, 7));
+    box.appendChild(el("h4", "tch__minihead", "🏫 " + m + "월 학원 내방 오디션"));
+    var body = el("p", "sys-note", "불러오는 중…");
+    box.appendChild(body);
+    LeeshAPI.rpc("teacher_visit_month", { p_member: book.s.id }).then(function (r) {
+      box.removeChild(body);
+      if (!r.ok) { box.appendChild(el("p", "sys-note", r.error || "불러오지 못했어요.")); return; }
+      if (!r.items.length) { box.appendChild(el("p", "book__empty", "이번 달 내방 오디션 일정이 아직 없어요.")); return; }
+      var today = todayKst();
+      var ul = el("ul", "tch__songs");
+      r.items.forEach(function (v) {
+        var li = el("li", v.date < today ? "is-past" : null);
+        var tag = v.applied ? "신청함" : v.date < today ? "지남" : v.deadline < today ? "마감" : "미신청";
+        li.appendChild(el("span", "fold__tag" + (v.applied ? " is-done" : ""), tag));
+        li.appendChild(el("b", null, " " + dayLabel(v.date) + " "));
+        li.appendChild(document.createTextNode(v.company || "내방 오디션"));
+        if (v.applied && v.field) li.appendChild(el("small", null, " (" + v.field + ")"));
+        if (v.applied && v.note) li.appendChild(el("small", "tch__visitnote", v.note));
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    }, function () { box.removeChild(body); box.appendChild(el("p", "sys-note", "불러오지 못했어요.")); });
+    return box;
   }
 
   /** 저번 시간 수업 내용: 오늘보다 앞선 가장 최근 일지 하나를 시트 모양 그대로 (보기만). */

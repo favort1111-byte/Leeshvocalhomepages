@@ -143,6 +143,12 @@
         { id: 41, kind: "내방", company: "체험 엔터테인먼트", title: "다음 달 학원 내방 오디션", event_date: addDays(t, 18), deadline: addDays(t, 12),
           body: "일시 : 다음 달 금요일 오후 6시30분\n장소 : 이송희보컬레슨 C홀\n지원자격 : 남녀 04~15년생\n지원분야 : 보컬, 랩, 댄스, 라이브퍼포먼스, 연기 중 택 1\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 44, kind: "내방", company: "샘플 뮤직", title: "학원 내방 오디션", event_date: addDays(t, 2), deadline: null,
+          body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 45, kind: "내방", company: "예시 엔터테인먼트", title: "학원 내방 오디션", event_date: addDays(t, -4), deadline: null,
+          body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 42, kind: "합격", company: "체험 엔터테인먼트", title: "1차 합격 (김OO)", event_date: addDays(t, -3), deadline: null,
           pass_type: "기획사", pass_stage: "1차 합격", initials: "김OO",
           body: "축하해요! 체험 모드 예시 글이에요.", link: null, image: null, published: true,
@@ -212,6 +218,9 @@
       ],
       // 내방 오디션 신청서 (apply.html): one sample application for the audition above
       visit_applications: [
+        { id: 92, news_id: 44, audition: "샘플 뮤직 학원 내방 오디션", member_id: "S001", name: "김시우", gender: "남", birth: "08년/19살",
+          body_size: "178/63", field: "보컬", music: null, note: "자유곡 2곡 준비 (체험 모드 예시)",
+          created_at: new Date(Date.now() - 7200000).toISOString(), updated_at: new Date(Date.now() - 7200000).toISOString() },
         { id: 91, news_id: 41, audition: "체험 엔터테인먼트 다음 달 학원 내방 오디션", member_id: "S002", name: "이하늘", gender: "여", birth: "09년/18살",
           body_size: "163/47", field: "보컬", music: null, note: "학교가 늦게 끝나서 뒷순서로 부탁드려요 (체험 모드 예시)",
           created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: new Date(Date.now() - 3600000).toISOString() }
@@ -476,6 +485,16 @@
       db.practice_photos = db.practice_photos.filter(function (x) { return x !== p; });
       save();
       return { ok: true, path: p.path };
+    },
+    teacher_visit_month: function (a) {
+      var ym = nowKst().today.slice(0, 7);
+      return { ok: true, items: db.audition_news.filter(function (n) { return n.published && n.kind === "내방" && n.event_date && n.event_date.slice(0, 7) === ym; })
+        .sort(function (x, y) { return x.event_date < y.event_date ? -1 : 1; })
+        .map(function (n) {
+          var app = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === a.p_member; })[0];
+          var dl = n.deadline; if (!dl) { var t = new Date(n.event_date + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - 1); dl = t.toISOString().slice(0, 10); }
+          return { id: n.id, company: n.company, date: n.event_date, deadline: dl, applied: !!app, field: app ? app.field : null, note: app ? app.note : null };
+        }) };
     },
     teacher_log_photos: function (a) {
       return { ok: true, items: (db.practice_photos || []).filter(function (p) { return p.member_id === a.p_member; }) };

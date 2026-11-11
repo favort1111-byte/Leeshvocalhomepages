@@ -7151,3 +7151,27 @@ begin
   if v_id is null then return private.fail('후기를 찾을 수 없어요.'); end if;
   return jsonb_build_object('ok', true, 'id', v_id, 'new', false);
 end $function$;
+
+-- ===== leesh_teacher_visit_month (2026-11-11) =====
+-- 선생님 화면 학생 페이지 "한눈에 보기"에 이번 달(한국 시간) 학원 내방 오디션 일정 + 이 학생의 신청 여부 (원장님 2026-11-11)
+create or replace function public.teacher_visit_month(p_member text)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  d date := (now() at time zone 'Asia/Seoul')::date;
+begin
+  if t.id is null then return private.fail('선생님 연결이 필요해요.'); end if;
+  if not private.teaches(t, p_member) then return private.fail('담당 학생이 아니에요.'); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'id', n.id, 'company', n.company, 'date', n.event_date,
+             'deadline', coalesce(n.deadline, n.event_date - 1),
+             'applied', a.id is not null, 'field', a.field, 'note', a.note)
+           order by n.event_date, n.id)
+    from public.audition_news n
+    left join public.visit_applications a on a.news_id = n.id and a.member_id = p_member
+    where n.kind = '내방' and n.published and n.event_date is not null
+      and date_trunc('month', n.event_date) = date_trunc('month', d)), '[]'::jsonb));
+end $$;
+revoke all on function public.teacher_visit_month(text) from public, anon;
+grant execute on function public.teacher_visit_month(text) to authenticated;
