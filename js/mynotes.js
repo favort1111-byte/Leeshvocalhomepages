@@ -122,7 +122,8 @@
     open.querySelector(".book__head").after(w);
     w.appendChild(el("p", "cc__kicker", "처음 한 번만 확인해 주세요"));
     w.appendChild(el("h3", "cc__title", "📹 CCTV 영상 정보 수집 동의서"));
-    w.appendChild(el("p", "cc__lede", "학원에는 안전을 위해 CCTV가 있어요. 아래 내용을 읽고 항목마다 동의해 주세요. 동의해야 내 폴더를 쓸 수 있어요."));
+    w.appendChild(el("p", "cc__lede", "학원에는 원생 및 시설 안전을 위해 CCTV가 설치되어 있어요. 아래 내용을 읽고 항목마다 동의해 주세요."));
+    w.appendChild(el("p", "cc__warn", "동의하지 않으시면 연습실 및 학원 시설 이용에 제한이 있을 수 있습니다."));
     var boxes = [];
     var all = el("label", "cc__all");
     var allIn = el("input"); allIn.type = "checkbox";
@@ -163,16 +164,25 @@
     minor.appendChild(mIn); minor.appendChild(el("span", null, "만 14세 미만 (보호자가 동의)"));
     ages.appendChild(adult); ages.appendChild(minor);
     kid.appendChild(ages);
+    var star = el("p", "cc__star", "※ 만 14세 미만 아동인 경우 반드시 학부모 등 법정대리인의 동의가 필요합니다.");
+    kid.appendChild(star);
+    // 종이 동의서 아래쪽 표 그대로: 미성년 아동 성명 · 법정대리인 성명 (서명) · 법정대리인과의 관계
     var gbox = el("div", "cc__guard");
-    gbox.appendChild(el("p", "sys-note", "※ 만 14세 미만은 반드시 학부모 등 법정대리인의 동의가 필요해요. 보호자께서 직접 적어 주세요."));
     gbox.appendChild(el("p", "cc__line", "본인은 아래 미성년자의 법정대리인으로 위 내용을 위해 영상정보를 수집하는 데 동의합니다."));
     var gChild = el("input"); gChild.value = res.name || ""; gChild.readOnly = true;
-    var gName = el("input"); gName.maxLength = 30; gName.placeholder = "예: 김○○";
-    var gRel = el("select");
-    ["", "어머니", "아버지", "조부모", "기타 보호자"].forEach(function (t) { var o = el("option", null, t || "고르기"); o.value = t; gRel.appendChild(o); });
-    gbox.appendChild(field2("미성년 학생 성명", gChild));
-    gbox.appendChild(field2("법정대리인(보호자) 성명", gName));
-    gbox.appendChild(field2("학생과의 관계", gRel));
+    var gName = el("input"); gName.maxLength = 30; gName.placeholder = "보호자 성함 (직접 적으면 서명으로 봐요)";
+    var gRel = el("input"); gRel.maxLength = 20; gRel.placeholder = "예: 어머니"; gRel.setAttribute("list", "ccRelList");
+    var dl = el("datalist"); dl.id = "ccRelList";
+    ["어머니", "아버지", "할머니", "할아버지", "기타 보호자"].forEach(function (t) { var o = el("option"); o.value = t; dl.appendChild(o); });
+    gbox.appendChild(dl);
+    var tb = el("table", "cc__table");
+    [["미성년 아동 성명", gChild], ["법정대리인 성명 (서명)", gName], ["법정대리인과의 관계", gRel]].forEach(function (r) {
+      var tr = el("tr");
+      tr.appendChild(el("th", null, r[0]));
+      var td = el("td"); td.appendChild(r[1]); tr.appendChild(td);
+      tb.appendChild(tr);
+    });
+    gbox.appendChild(tb);
     gbox.hidden = true;
     kid.appendChild(gbox);
     w.appendChild(kid);
@@ -182,33 +192,34 @@
     var d = todayKst();
     sign.textContent = d.slice(0, 4) + "년 " + Number(d.slice(5, 7)) + "월 " + Number(d.slice(8, 10)) + "일 · 성명 " + (res.name || "");
     w.appendChild(sign);
+    w.appendChild(el("p", "cc__to", "학원장 귀중"));
     var btn = el("button", "sys-btn cc__submit", "동의하고 시작하기");
     btn.type = "button";
     var msg = el("p", "sys-msg");
     msg.setAttribute("role", "status");
     w.appendChild(btn);
     w.appendChild(msg);
-    w.appendChild(el("p", "sys-note cc__foot", "학원장 귀중 · 동의한 날짜와 내용은 학원에 저장돼요. 궁금한 점은 학원(실장님)에 물어봐 주세요."));
+    w.appendChild(el("p", "sys-note cc__foot", "동의한 날짜와 내용은 학원에 저장돼요. 궁금한 점은 학원(실장님)에 물어봐 주세요."));
 
     function sync() {
       gbox.hidden = !mIn.checked;
       var ok = boxes.every(function (b) { return b.checked; });
       allIn.checked = ok;
-      var gOk = !mIn.checked || (gName.value.trim().length >= 2 && gRel.value);
+      var gOk = !mIn.checked || (gName.value.trim().length >= 2 && gRel.value.trim().length >= 1);
       btn.disabled = !(ok && gOk);
       boxes.forEach(function (b) { var c = b.closest(".cc__item, .cc__confirm"); if (c) c.classList.toggle("is-on", b.checked); });
     }
     allIn.addEventListener("change", function () { boxes.forEach(function (b) { b.checked = allIn.checked; }); sync(); });
     boxes.forEach(function (b) { b.addEventListener("change", sync); });
-    [aIn, mIn, gRel].forEach(function (x) { x.addEventListener("change", sync); });
-    gName.addEventListener("input", sync);
+    [aIn, mIn].forEach(function (x) { x.addEventListener("change", sync); });
+    [gName, gRel].forEach(function (x) { x.addEventListener("input", sync); });
     sync();
     btn.addEventListener("click", function () {
       if (btn.disabled) return;
       btn.disabled = true;
       LeeshAPI.rpc("member_cctv_consent", {
         p_id: who.id, p_pin: who.key, p_minor: mIn.checked,
-        p_guardian: mIn.checked ? gName.value.trim() : null, p_relation: mIn.checked ? gRel.value : null
+        p_guardian: mIn.checked ? gName.value.trim() : null, p_relation: mIn.checked ? gRel.value.trim() : null
       }).then(function (r) {
         if (!r.ok) { btn.disabled = false; msg.textContent = r.error; msg.className = "sys-msg sys-msg--error"; return; }
         load();

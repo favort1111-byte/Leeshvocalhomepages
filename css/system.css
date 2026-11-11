@@ -495,3 +495,10 @@
 .cc__submit{width:100%;}
 .cc__submit:disabled{opacity:.45;}
 .cc__foot{margin-top:8px;}
+.cc__warn{margin:-6px 0 14px;padding:9px 12px;border-radius:10px;background:#FDECEA;border:1px solid #F3B9B2;color:#9B2C1F;font-weight:700;}
+.cc__star{margin:10px 0 0;color:#9B2C1F;font-weight:700;font-size:14px;}
+.cc__table{width:100%;border-collapse:collapse;margin-top:4px;}
+.cc__table th,.cc__table td{border:1px solid #CFC4AD;padding:6px 8px;vertical-align:middle;}
+.cc__table th{width:38%;background:#F7F1E3;text-align:left;font-size:13.5px;}
+.cc__table input{width:100%;box-sizing:border-box;margin:0;}
+.cc__to{margin:0 0 12px;text-align:right;font-weight:700;font-size:16px;}
