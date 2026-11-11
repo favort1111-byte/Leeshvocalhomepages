@@ -413,7 +413,7 @@ def care_section():
     return (_head("audition care", "1:1 맞춤형 집중 케어", "care")
             + '    <div class="care-wrap">\n'
             + f'      <ul class="cares">{groups}</ul>\n'
-            + '      <div class="care-photos">' + _photo("seminar", "매달 하는 오디션 세미나", "snap--tilt-r")
+            + '      <div class="care-photos">' + _photo("seminar-2026-11", "매달 하는 오디션 세미나", "snap--tilt-r")
             + _photo("audition-board", "학원 내방 오디션 공지", "snap--tilt-l") + "</div>\n"
             + "    </div>\n"
             + '    <div class="partners"><p>엔터 관계자가 추천한 제휴 업체 전문가 케어</p>'
