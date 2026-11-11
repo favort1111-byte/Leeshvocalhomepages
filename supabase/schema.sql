@@ -7749,3 +7749,32 @@ begin
   perform private.notify('🎯 원장님 컨설팅 취소: ' || v_name || ' · ' || private.reminder_when(s.at));
   return jsonb_build_object('ok', true);
 end $$;
+
+-- ===== leesh_director_feedback_name2 (2026-11-11) =====
+-- 시간 묶음 · 종류 이름도 "피드백" → "컨설팅" (원장님 2026-11-11)
+create or replace function public.member_feedback_book(p_id text, p_pin text, p_slot bigint, p_kind text, p_note text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare who jsonb := private.check_ready(p_id, p_pin); mid text; s public.feedback_slots; v_name text; v_kind text := coalesce(nullif(trim(p_kind), ''), '보컬');
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if not exists (select 1 from public.feedback_members where member_id = mid) then return private.fail('심화반 학생만 신청할 수 있어요.'); end if;
+  perform pg_advisory_xact_lock(hashtext('feedback:' || mid));
+  select * into s from public.feedback_slots where id = p_slot for update;
+  if s.id is null or not s.open then return private.fail('신청할 수 없는 시간이에요.'); end if;
+  if s.at <= now() then return private.fail('이미 지난 시간이에요.'); end if;
+  if v_kind not in ('보컬', '댄스') then return private.fail('컨설팅 종류를 골라주세요.'); end if;
+  if v_kind = '댄스' and s.kinds <> '보컬·댄스' then return private.fail('이 시간은 보컬 컨설팅만 할 수 있어요.'); end if;
+  if exists (select 1 from public.feedback_bookings b join public.feedback_slots x on x.id = b.slot_id where b.member_id = mid and x.at > now()) then
+    return private.fail('이미 신청한 시간이 있어요. 바꾸려면 먼저 취소해주세요.');
+  end if;
+  if exists (select 1 from public.feedback_bookings where slot_id = s.id) then return private.fail('방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.'); end if;
+  begin
+    insert into public.feedback_bookings (slot_id, member_id, kind, note) values (s.id, mid, v_kind, nullif(left(trim(coalesce(p_note, '')), 300), ''));
+  exception when unique_violation then
+    return private.fail('방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.');
+  end;
+  select name into v_name from public.members where id = mid;
+  perform private.notify('🎯 원장님 컨설팅 신청: ' || v_name || ' · ' || private.reminder_when(s.at) || ' · ' || v_kind);
+  return jsonb_build_object('ok', true);
+end $$;

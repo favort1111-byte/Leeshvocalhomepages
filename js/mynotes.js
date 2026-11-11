@@ -1151,7 +1151,7 @@
     if (mine) {
       var card = el("div", "fold__card fb__mine");
       card.appendChild(el("p", "fb__minehead", "✅ 내 신청"));
-      card.appendChild(el("p", "fb__minewhen", mine.when + " · " + mine.kind + " 피드백"));
+      card.appendChild(el("p", "fb__minewhen", mine.when + " · " + mine.kind + " 컨설팅"));
       if (mine.note) card.appendChild(el("p", "sys-note", mine.note));
       if (mine.cancel) {
         var c = el("button", "sys-link", "신청 취소");
@@ -1171,7 +1171,7 @@
     if (!slots.length) { box.appendChild(el("p", "book__empty", "지금 신청할 수 있는 시간이 없어요.")); return; }
     var picked = null, form = el("div", "fold__card fb__form");
     form.hidden = true;
-    [["보컬", "🎤 보컬 피드백"], ["보컬·댄스", "🎤💃 보컬 · 댄스 피드백"]].forEach(function (g) {
+    [["보컬", "🎤 보컬 컨설팅"], ["보컬·댄스", "🎤💃 보컬 · 댄스 컨설팅"]].forEach(function (g) {
       var list = slots.filter(function (x) { return x.kinds === g[0]; });
       if (!list.length) return;
       var sec = el("section", "fb__group");
@@ -1215,11 +1215,11 @@
           r.type = "radio"; r.name = "fbkind"; r.value = k; r.checked = !i;
           r.addEventListener("change", function () { kind = k; });
           lab.appendChild(r);
-          lab.appendChild(document.createTextNode(" " + k + " 피드백"));
+          lab.appendChild(document.createTextNode(" " + k + " 컨설팅"));
           kr.appendChild(lab);
         });
         form.appendChild(kr);
-      } else form.appendChild(el("p", "sys-note", "이 시간은 보컬 피드백만 해요."));
+      } else form.appendChild(el("p", "sys-note", "이 시간은 보컬 컨설팅만 해요."));
       var ta = el("textarea");
       ta.rows = 2; ta.maxLength = 300;
       ta.placeholder = "원장님께 남길 말 (선택) · 예) 준비하는 곡, 궁금한 점";

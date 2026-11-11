@@ -886,7 +886,7 @@
       if (db.fb.members.indexOf(who.id) < 0) return fail("심화반 학생만 신청할 수 있어요.");
       var x = db.fb.slots.filter(function (y) { return y.id === a.p_slot; })[0];
       if (!x) return fail("신청할 수 없는 시간이에요.");
-      if (a.p_kind === "댄스" && x.kinds !== "보컬·댄스") return fail("이 시간은 보컬 피드백만 할 수 있어요.");
+      if (a.p_kind === "댄스" && x.kinds !== "보컬·댄스") return fail("이 시간은 보컬 컨설팅만 할 수 있어요.");
       if (db.fb.bookings.some(function (y) { return y.member === who.id; })) return fail("이미 신청한 시간이 있어요. 바꾸려면 먼저 취소해주세요.");
       if (db.fb.bookings.some(function (y) { return y.slot === x.id; })) return fail("방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.");
       db.fb.bookings.push({ id: ++db.next, slot: x.id, member: who.id, kind: a.p_kind || "보컬", note: a.p_note || null });
