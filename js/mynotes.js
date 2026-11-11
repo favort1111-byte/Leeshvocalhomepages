@@ -1158,6 +1158,7 @@
     ["date", "예약 기간 : 11월 11일(수) ~ 11월 15일(일)"],
     ["p", "예약 기간 내 원하시는 컨설팅 일정을 선택하여 예약해 주시기 바랍니다."],
     ["p", "기간 내 예약을 완료하셔야 컨설팅 일정이 최종 확정됩니다."],
+    ["warn", "⚠️ 예약 기간(11월 15일까지) 안에 신청하지 않으시면 이번 달 컨설팅은 진행되지 않고, 다음 달 컨설팅으로 넘어갑니다."],
     ["p", "예약 확정 후에는 일정 변경이 어려우므로, 개인 일정을 충분히 확인하신 후 신중하게 선택해 주세요."],
     ["p", "원활한 컨설팅 진행을 위해 예약 기간 이후에는 추가 예약 및 일정 변경이 어려운 점 양해 부탁드립니다."],
     ["p", "감사합니다."],
@@ -1167,6 +1168,7 @@
     var c = el("section", "fb__intro");
     (list || CONSULT_INTRO).forEach(function (x) {
       if (x[0] === "date") { c.appendChild(el("p", "fb__introdate", x[1])); return; }
+      if (x[0] === "warn") { c.appendChild(el("p", "fb__introwarn", x[1])); return; }
       if (x[0] === "title") c.appendChild(el("h3", "fb__introtitle", x[1]));
       else if (x[0] === "h2") c.appendChild(el("h4", "fb__introh2", x[1]));
       else if (x[0] === "h") c.appendChild(el("p", "fb__introh", x[1]));
@@ -1185,7 +1187,7 @@
     var sum = el("div", "fold__sum");
     sum.appendChild(el("p", null, "아래 시간 중 하나를 골라 신청해요."));
     sum.appendChild(el("p", "sys-note", "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 예약 기간 안에는 내 신청을 취소하고 다시 고를 수 있어요."));
-    if (slots.length && !open.length) sum.appendChild(el("p", "sys-msg sys-msg--error", "예약 기간이 끝났어요. 일정 변경은 학원(실장님)에 연락해주세요."));
+    if (slots.length && !open.length) sum.appendChild(el("p", "sys-msg sys-msg--error", "예약 기간이 끝났어요. 이번 달에 신청하지 못했다면 다음 달 컨설팅으로 넘어가요. 일정 변경은 학원(실장님)에 연락해주세요."));
     box.appendChild(sum);
     var msgEl = el("p", "sys-msg");
     var mine = slots.filter(function (x) { return x.mine; })[0];
