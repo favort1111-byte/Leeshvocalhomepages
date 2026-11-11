@@ -1136,9 +1136,10 @@
     member_cctv_consent: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
-      if (a.p_minor && (!a.p_guardian || String(a.p_guardian).trim().length < 2 || !a.p_relation)) return fail("보호자 성함과 관계를 적어주세요.");
+      var agree = a.p_agree !== false;
+      if (agree && a.p_minor && (!a.p_guardian || String(a.p_guardian).trim().length < 2 || !a.p_relation)) return fail("보호자 성함과 관계를 적어주세요.");
       db.cctv = db.cctv || {};
-      db.cctv[who.id] = { at: new Date().toISOString(), minor: !!a.p_minor, guardian: a.p_guardian || null, relation: a.p_relation || null };
+      db.cctv[who.id] = { agree: agree, at: new Date().toISOString(), minor: !!a.p_minor, guardian: a.p_guardian || null, relation: a.p_relation || null };
       save();
       return { ok: true };
     },

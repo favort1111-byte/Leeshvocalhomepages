@@ -78,6 +78,7 @@
       // CCTV 영상정보 수집 동의 (원장님 2026-11-11): 서버가 cctv_required를 주면, 동의하기 전엔 폴더를 못 씀
       if (res.cctv_required && !res.cctv) { showConsent(res); return; }
       hideConsent();
+      cctvBanner(res);
       if (NOTES) renderNotes(res.notes);
       renderBookings(res);
       renderNotices(res);
@@ -198,6 +199,9 @@
     var msg = el("p", "sys-msg");
     msg.setAttribute("role", "status");
     w.appendChild(btn);
+    var no = el("button", "cc__no", "동의하지 않음");
+    no.type = "button";
+    w.appendChild(no);
     w.appendChild(msg);
     w.appendChild(el("p", "sys-note cc__foot", "동의한 날짜와 내용은 학원에 저장돼요. 궁금한 점은 학원(실장님)에 물어봐 주세요."));
 
@@ -218,13 +222,60 @@
       if (btn.disabled) return;
       btn.disabled = true;
       LeeshAPI.rpc("member_cctv_consent", {
-        p_id: who.id, p_pin: who.key, p_minor: mIn.checked,
+        p_id: who.id, p_pin: who.key, p_agree: true, p_minor: mIn.checked,
         p_guardian: mIn.checked ? gName.value.trim() : null, p_relation: mIn.checked ? gRel.value.trim() : null
       }).then(function (r) {
         if (!r.ok) { btn.disabled = false; msg.textContent = r.error; msg.className = "sys-msg sys-msg--error"; return; }
         load();
       });
     });
+    // 동의하지 않음 (원장님 2026-11-11): 한 번 더 경고 → 그래도 안 하면 기록이 학원(관리자)으로 가고 폴더는 열림
+    no.addEventListener("click", function () {
+      var bg = el("div", "cc__modal");
+      bg.setAttribute("role", "alertdialog");
+      bg.setAttribute("aria-modal", "true");
+      var card = el("div", "cc__alert");
+      card.appendChild(el("p", "cc__alerticon", "⚠️"));
+      card.appendChild(el("h4", "cc__alerttitle", "동의 안 하시면 시설물 이용에 불편이 발생해요."));
+      card.appendChild(el("p", "cc__alerttext", "본 학원은 본원생들의 안전과 시설물의 안전 및 화재에 대비한 CCTV를 운영하고 있습니다."));
+      var back = el("button", "sys-btn cc__alertback", "다시 동의하러 가기");
+      back.type = "button";
+      var still = el("button", "cc__alertno", "그래도 동의하지 않음");
+      still.type = "button";
+      var am = el("p", "sys-msg");
+      card.appendChild(back); card.appendChild(still); card.appendChild(am);
+      bg.appendChild(card);
+      document.body.appendChild(bg);
+      back.focus();
+      function close() { bg.remove(); }
+      back.addEventListener("click", close);
+      bg.addEventListener("click", function (e) { if (e.target === bg) close(); });
+      still.addEventListener("click", function () {
+        still.disabled = back.disabled = true;
+        LeeshAPI.rpc("member_cctv_consent", {
+          p_id: who.id, p_pin: who.key, p_agree: false, p_minor: mIn.checked,
+          p_guardian: mIn.checked && gName.value.trim() ? gName.value.trim() : null, p_relation: mIn.checked && gRel.value.trim() ? gRel.value.trim() : null
+        }).then(function (r) {
+          if (!r.ok) { still.disabled = back.disabled = false; am.textContent = r.error; am.className = "sys-msg sys-msg--error"; return; }
+          close();
+          load();
+        });
+      });
+    });
+  }
+  // 동의하지 않은 학생: 폴더 위에 작은 띠 + 언제든 "지금 동의하기"
+  function cctvBanner(res) {
+    var old = scene.querySelector("#myCctvBar");
+    if (old) old.remove();
+    if (!res.cctv_required || !res.cctv || res.cctv.agree !== false) return;
+    var bar = el("div", "cc__bar");
+    bar.id = "myCctvBar";
+    bar.appendChild(el("span", null, "📹 CCTV 영상정보 수집에 동의하지 않았어요. 시설 이용에 제한이 있을 수 있어요."));
+    var go = el("button", "sys-link", "지금 동의하기");
+    go.type = "button";
+    go.addEventListener("click", function () { showConsent(res); open.scrollIntoView({ block: "start" }); });
+    bar.appendChild(go);
+    open.querySelector(".book__head").after(bar);
   }
 
   /* 메시지: 학원(원장님 · 실장님)이 관리자 화면에서 나에게 보낸 것 (원장님 2026-11-05). 답장은 카카오톡으로.
