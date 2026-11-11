@@ -412,7 +412,7 @@ contact = (head("Contact | 이송희보컬레슨",
 # 상담 신청 = 학원이 카톡 채널로 받던 양식 4가지 그대로 (원장님 2026-10-29)
 CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
     <h1>상담 신청</h1>
-    <p class="consult__lede">모든 상담은 <b>100% 예약제</b>입니다. 아래 4가지를 적어 보내주시면 확인 후 상담 일정을 안내해 드립니다.</p>
+    <p class="consult__lede">모든 상담은 <b>100% 예약제</b>입니다. 아래 4가지를 적고 버튼을 누르면 적은 내용이 복사되고 <b>학원 카카오톡 채널</b> 채팅이 열립니다. 채팅창에 <b>붙여넣기 후 보내기</b>를 누르면 신청이 끝납니다.</p>
 
     <h2 class="consult__step"><span>1</span> 성함 · 생년월일 · 연락처</h2>
     <div class="sys-row">
@@ -456,15 +456,20 @@ CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
 
     <label class="sys-field"><span>더 하고 싶은 말 (선택)</span><textarea name="message" rows="3"></textarea></label>
     <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
-    <button class="sys-btn sys-btn--block" type="submit">상담 신청하기</button>
+    <button class="sys-btn sys-btn--block consult__kakao" type="submit">💬 카카오톡으로 상담 신청하기</button>
     <p class="sys-msg" id="consultMsg" role="status"></p>
+    <div class="consult__done" id="consultDone" hidden>
+      <p><b>내용이 복사되었습니다.</b> 열린 카카오톡 채팅창에 <b>붙여넣기</b> 후 보내주세요.<br>채팅창이 열리지 않았거나 붙여넣기가 안 되면 아래 버튼을 눌러주세요.</p>
+      <textarea id="consultText" rows="8" readonly></textarea>
+      <div class="consult__again"><button class="sys-btn consult__copy" type="button" id="consultCopy">내용 다시 복사</button> <a class="sys-btn" id="consultOpen" href="{KAKAO}/chat" target="_blank" rel="noopener">카카오톡 채팅 열기</a></div>
+    </div>
     <ul class="consult__notes">
       <li>상담은 1인 1회가 원칙입니다.</li>
       <li>담당 선생님이 직접 상담하므로 레슨 중에는 답장이 늦어질 수 있습니다.</li>
       <li>월 · 일요일과 공휴일은 상담 확정이 늦어질 수 있습니다.</li>
       <li>보강 · 결석 규정은 <a href="about.html#rules">강의 규정 안내</a>에서 확인할 수 있습니다.</li>
     </ul>
-    <small>적어주신 정보는 상담 안내에만 사용합니다. <a href="privacy.html">개인정보처리방침</a></small>
+    <small>적어주신 내용은 홈페이지에 저장되지 않고, 카카오톡 채널로 보내주신 내용만 상담 안내에 사용합니다. <a href="privacy.html">개인정보처리방침</a></small>
   </form>
 """
 
