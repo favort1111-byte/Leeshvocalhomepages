@@ -409,68 +409,26 @@ contact = (head("Contact | 이송희보컬레슨",
            + '  <div class="collage" aria-hidden="true">\n' + collage + "\n  </div>\n"
            + "</main>\n" + blog.find_us_section() + foot())
 
-# 상담 신청 = 학원이 카톡 채널로 받던 양식 4가지 그대로 (원장님 2026-10-29)
-CONSULT_FORM = f"""  <form class="modal sys" id="consultForm" novalidate>
-    <h1>상담 신청</h1>
-    <p class="consult__lede">모든 상담은 <b>100% 예약제</b>입니다. 아래 4가지를 적고 버튼을 누르면 적은 내용이 복사되고 <b>학원 카카오톡 채널</b> 채팅이 열립니다. 채팅창에 <b>붙여넣기 후 보내기</b>를 누르면 신청이 끝납니다.</p>
-
-    <h2 class="consult__step"><span>1</span> 성함 · 생년월일 · 연락처</h2>
-    <div class="sys-row">
-      <label class="sys-field"><span>성함</span><input name="name" autocomplete="name" maxlength="30" required></label>
-      <label class="sys-field"><span>생년월일</span><input name="birth" inputmode="numeric" maxlength="20" placeholder="예) 2008.03.15" required></label>
-    </div>
-    <label class="sys-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" required></label>
-
-    <h2 class="consult__step"><span>2</span> 상담 유형</h2>
-    <fieldset class="sys-radios">
-      <legend class="sr-only">상담 유형</legend>
-      <label><input type="radio" name="method" value="방문 상담" checked> 방문 상담</label>
-      <label><input type="radio" name="method" value="전화 상담"> 전화 상담</label>
-    </fieldset>
-
-    <h2 class="consult__step"><span>3</span> 클래스 · 온/오프라인 · 강사</h2>
-    <label class="sys-field"><span>클래스</span>
-      <select name="track">
-        <option value="">아직 정하지 않음</option>
-        <option>오디션 심화반</option>
-        <option>오디션반</option>
-        <option>입시반</option>
-        <option>전문반</option>
-        <option>취미반</option>
-      </select>
-    </label>
-    <fieldset class="sys-radios">
-      <legend>레슨 방식</legend>
-      <label><input type="radio" name="mode" value="오프라인" checked> 오프라인 (학원)</label>
-      <label><input type="radio" name="mode" value="온라인"> 온라인</label>
-    </fieldset>
-    <label class="sys-field" id="consultRegion" hidden><span>거주 지역 (온라인)</span><input name="region" maxlength="50" placeholder="예) 부산 해운대구"></label>
-    <label class="sys-field"><span>희망 강사 (선택)</span><input name="teacher" maxlength="30" placeholder="없으면 비워두세요"></label>
-
-    <h2 class="consult__step"><span>4</span> 희망하는 상담 요일 · 시간대</h2>
-    <fieldset class="sys-radios consult__days">
-      <legend>요일 (여러 개 선택 가능)</legend>
-      {"".join(f'<label><input type="checkbox" name="days" value="{d}"> {d}</label>' for d in "월화수목금토일")}
-    </fieldset>
-    <label class="sys-field"><span>시간대</span><input name="times" maxlength="60" placeholder="예) 2시~10시 사이" required></label>
-
-    <label class="sys-field"><span>더 하고 싶은 말 (선택)</span><textarea name="message" rows="3"></textarea></label>
-    <label class="sys-hp" aria-hidden="true">홈페이지<input name="website" tabindex="-1" autocomplete="off"></label>
-    <button class="sys-btn sys-btn--block consult__kakao" type="submit">💬 카카오톡으로 상담 신청하기</button>
-    <p class="sys-msg" id="consultMsg" role="status"></p>
-    <div class="consult__done" id="consultDone" hidden>
-      <p><b>내용이 복사되었습니다.</b> 열린 카카오톡 채팅창에 <b>붙여넣기</b> 후 보내주세요.<br>채팅창이 열리지 않았거나 붙여넣기가 안 되면 아래 버튼을 눌러주세요.</p>
-      <textarea id="consultText" rows="8" readonly></textarea>
-      <div class="consult__again"><button class="sys-btn consult__copy" type="button" id="consultCopy">내용 다시 복사</button> <a class="sys-btn" id="consultOpen" href="{KAKAO}/chat" target="_blank" rel="noopener">카카오톡 채팅 열기</a></div>
-    </div>
+# 상담 신청 = 카카오톡 채널 연결만 (원장님 2026-11-11 "홈페이지에서 내용 적는 거 다 없애고 카카오톡 채널 연결하기만")
+CONSULT_FORM = f"""  <section class="modal sys consult__box" aria-labelledby="consultTitle">
+    <h1 id="consultTitle">상담 신청</h1>
+    <p class="consult__lede">모든 상담은 <b>100% 예약제</b>입니다. 상담은 학원 <b>카카오톡 채널</b>에서 받습니다.</p>
+    <a class="sys-btn sys-btn--block consult__kakao" href="{KAKAO}/chat" target="_blank" rel="noopener">💬 카카오톡 채널로 상담 신청하기</a>
+    <h2 class="consult__step">채팅으로 보내주실 내용</h2>
+    <ol class="consult__what">
+      <li>성함 · 생년월일 · 연락처</li>
+      <li>상담 유형 (방문 상담 / 전화 상담)</li>
+      <li>클래스 (오디션 심화반 · 오디션반 · 입시반 · 전문반 · 취미반) · 온라인 / 오프라인 · 희망 강사 (온라인은 거주 지역도)</li>
+      <li>희망하는 상담 요일 · 시간대</li>
+    </ol>
+    <p class="consult__lede">확인 후 상담 일정을 안내해 드립니다. 전화 문의: <a href="tel:01044585448" style="white-space:nowrap">010-4458-5448</a></p>
     <ul class="consult__notes">
       <li>상담은 1인 1회가 원칙입니다.</li>
       <li>담당 선생님이 직접 상담하므로 레슨 중에는 답장이 늦어질 수 있습니다.</li>
       <li>월 · 일요일과 공휴일은 상담 확정이 늦어질 수 있습니다.</li>
       <li>보강 · 결석 규정은 <a href="about.html#rules">강의 규정 안내</a>에서 확인할 수 있습니다.</li>
     </ul>
-    <small>적어주신 내용은 홈페이지에 저장되지 않고, 카카오톡 채널로 보내주신 내용만 상담 안내에 사용합니다. <a href="privacy.html">개인정보처리방침</a></small>
-  </form>
+  </section>
 """
 
 BOOKING_APP = f"""  <div class="booking__inner">
@@ -525,13 +483,13 @@ consult_icons = "\n".join([
 ])
 
 consult = (head("Consult | 이송희보컬레슨",
-                "이송희보컬레슨 무료 상담 신청. 연락처를 남겨주시면 카카오톡 채널로 안내드립니다.")
+                "이송희보컬레슨 상담 신청. 학원 카카오톡 채널에서 상담을 받습니다.")
            + f'<main class="stage wall consult" style="background-image:url(\'{img(0)}\')">\n'
            + nav("consult", "light") + "\n"
            + '  <div class="icons">\n' + consult_icons + "\n  </div>\n"
            + CONSULT_FORM
            + MY_FOLDER
-           + "</main>\n" + foot("consult", "scene", "signin", "richtext", "grid", "photos", "evalcard", "visitrules", "roomrules", "mynotes"))
+           + "</main>\n" + foot("scene", "signin", "richtext", "grid", "photos", "evalcard", "visitrules", "roomrules", "mynotes"))
 
 # ---------- BOOKING (practice rooms, paper theme) ----------
 booking = (head("Booking | 이송희보컬레슨",

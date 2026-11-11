@@ -262,14 +262,9 @@ img{display:block;}
 .consult__step{display:flex;align-items:center;gap:8px;margin:20px 0 10px;font-size:16px;font-weight:700;color:var(--brown);}
 .consult__step span{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--brown);color:#fff;font-size:13px;}
 .consult__days label{min-width:46px;justify-content:center;padding:0 10px;}
-.sys-btn.consult__kakao,.consult__again .sys-btn#consultOpen{background:#FEE500;color:#191600;border-color:#FEE500;}
+.sys-btn.consult__kakao{background:#FEE500;color:#191600;margin:14px 0 4px;min-height:54px;font-size:17px;font-weight:700;text-decoration:none;}
 .sys-btn.consult__kakao:hover{background:#f5dc00;}
-.consult__done{margin:12px 0 0;padding:12px 14px;border-radius:10px;background:#FFF8C5;border:1px solid #E8D44D;font-size:14px;line-height:1.6;}
-.consult__done p{margin:0 0 8px;}
-.consult__done textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;padding:8px;border-radius:8px;border:1px solid #d8cfa0;background:#fff;resize:vertical;}
-.sys-btn.consult__copy{background:#fff;color:var(--brown);border:1px solid var(--brown);}
-.consult__again .sys-btn{text-decoration:none;}
-.consult__again{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.consult__what{margin:0 0 10px;padding:0 0 0 22px;font-size:14px;line-height:1.7;color:var(--ink-body);}
 .consult__notes{margin:14px 0 0;padding:12px 14px 12px 28px;border-radius:10px;background:rgba(110,59,40,.06);font-size:13px;line-height:1.6;color:var(--ink-body);}
 .modal small{display:block;margin-top:10px;text-align:center;font-family:var(--f-serif);font-size:13px;}
 
