@@ -437,3 +437,11 @@
 .fb__form{margin:12px 0;}
 .fb__form textarea{width:100%;margin:8px 0;}
 .fb__kinds{display:flex;gap:16px;margin:6px 0;}
+.fb__intro{margin:0 0 14px;padding:16px 18px;border-radius:14px;background:#FFFDF6;border:1px solid #EADFC8;line-height:1.65;word-break:keep-all;}
+.fb__introtitle{margin:0 0 10px;font-size:17px;}
+.fb__introp{margin:0 0 10px;}
+.fb__introh2{margin:16px 0 6px;font-size:15.5px;}
+.fb__introh{margin:10px 0 2px;font-weight:700;}
+.fb__introul{margin:0 0 4px;padding-left:20px;}
+.fb__introul li{margin:2px 0;}
+.fb__intro .fb__introp:last-child{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#FFF4C2;font-weight:700;}

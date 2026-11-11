@@ -1138,9 +1138,35 @@
       renderFeedback(res);
     });
   }
+  // 원장님 안내 문구 그대로 (2026-11-11, 첫 번째 문단). ["p", 글] = 문단, ["h", 제목], ["ul", [줄…]]
+  var CONSULT_INTRO = [
+    ["title", "📢 오디션 컨설팅 예약 안내"],
+    ["p", "오디션을 준비하다 보면 현재 나의 실력과 가능성은 어느 정도인지, 어떤 부분을 보완해야 하는지, 앞으로 어떤 방향으로 준비해야 할지 고민되는 순간들이 있습니다."],
+    ["p", "이번 컨설팅은 현재 자신의 위치를 객관적으로 점검하고, 보다 정확한 방향과 전략을 세워 오디션 합격 가능성을 높이기 위해 진행됩니다."],
+    ["h2", "🎤 컨설팅 주요 내용"],
+    ["h", "✔️ 보컬 점검 및 피드백"],
+    ["ul", ["오디션 곡 선정 및 적합성 점검", "보컬 기본기, 테크닉, 표현력 등 디테일한 피드백"]],
+    ["h", "✔️ 기획사 분석 및 오디션 전략"],
+    ["ul", ["주요 기획사별 특징 및 선호하는 인재상", "기획사별 신인 개발 방향 및 최근 캐스팅 동향", "현재 준비 중인 오디션에 맞춘 전략"]],
+    ["h", "✔️ 개인별 맞춤 컨설팅"],
+    ["ul", ["현재 실력과 가능성에 대한 객관적인 평가", "강점과 보완점 분석 및 앞으로의 방향성 제시", "합격 가능성을 높이기 위한 구체적인 준비 방법", "원장님의 개별 코멘트 및 질의응답"]],
+    ["p", "단순히 실력을 평가하는 시간이 아닌, 앞으로 무엇을 어떻게 준비해야 할지 함께 방향을 잡아가는 시간입니다. 🫶🏻"]
+  ];
+  function consultIntro() {
+    var c = el("section", "fb__intro");
+    CONSULT_INTRO.forEach(function (x) {
+      if (x[0] === "title") c.appendChild(el("h3", "fb__introtitle", x[1]));
+      else if (x[0] === "h2") c.appendChild(el("h4", "fb__introh2", x[1]));
+      else if (x[0] === "h") c.appendChild(el("p", "fb__introh", x[1]));
+      else if (x[0] === "ul") { var ul = el("ul", "fb__introul"); x[1].forEach(function (t) { ul.appendChild(el("li", null, t)); }); c.appendChild(ul); }
+      else c.appendChild(el("p", "fb__introp", x[1]));
+    });
+    return c;
+  }
   function renderFeedback(res) {
     var box = scene.querySelector("#myFeedback");
     box.textContent = "";
+    box.appendChild(consultIntro());
     var sum = el("div", "fold__sum");
     sum.appendChild(el("p", null, "심화반 원장님 1:1 컨설팅 신청이에요. 아래 시간 중 하나를 골라 신청해요."));
     sum.appendChild(el("p", "sys-note", "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 바꾸려면 내 신청을 취소하고 다시 골라요. 직접 취소는 시작 1시간 전까지예요."));
