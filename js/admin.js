@@ -160,6 +160,7 @@
     if (name === "journal") loadJournal();
     if (name === "reviews") loadReviews();
     if (name === "director") loadDirector();
+    if (name === "feedback") loadFeedback();
     if (name === "adminlog") loadLog();
     if (name === "gameevent") loadGameEvent();
     if (name === "kakao") loadKakao();
@@ -2485,6 +2486,97 @@
     });
   }
   $("#dcPick").addEventListener("change", function () { if ($("#dcPick").value) openDirector($("#dcPick").value); else $("#dcDetail").textContent = ""; });
+  /* 원장님 피드백 신청 (원장님 2026-11-11): 시간표 · 신청한 학생 · 취소, 시간 더하기 · 닫기 · 지우기, 심화반 명단 */
+  function fbTwice(btn, label, run) {
+    btn.addEventListener("click", function () {
+      if (btn.getAttribute("data-armed") !== "1") { btn.setAttribute("data-armed", "1"); btn.textContent = label; return; }
+      btn.disabled = true;
+      run();
+    });
+  }
+  function loadFeedback() {
+    var list = $("#fbSlots"), mem = $("#fbMembers");
+    list.textContent = "";
+    list.appendChild(el("li", "sys-empty", "불러오는 중…"));
+    api("rpc/admin_feedback", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      list.textContent = "";
+      mem.textContent = "";
+      if (!res.ok || !d.ok) { list.appendChild(el("li", "sys-msg sys-msg--error", d.error || friendly(res, "불러오지 못했어요."))); return; }
+      var now = Date.now(), slots = d.slots || [];
+      if (!slots.length) list.appendChild(el("li", "sys-empty", "넣은 시간이 없어요."));
+      slots.forEach(function (x) {
+        var past = new Date(x.at).getTime() < now;
+        var li = el("li", "adm__card" + (past ? " adm__card--past" : "")), top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, x.when));
+        top.appendChild(el("span", "adm__badge adm__badge--kind", x.kinds === "보컬" ? "보컬만" : "보컬 · 댄스"));
+        if (!x.open) top.appendChild(el("span", "adm__badge", "닫힘"));
+        top.appendChild(el("span", x.booking ? "adm__badge" : "sys-note", x.booking ? "신청 " + x.name + " (" + x.member + ")" + (x.teacher ? " · 담당 " + x.teacher : "") + " · " + x.kind : "빈 시간"));
+        li.appendChild(top);
+        if (x.note) li.appendChild(el("p", "sys-note", "남긴 말: " + x.note));
+        var acts = el("div", "adm__acts"), note = el("p", "sys-msg");
+        if (x.booking) {
+          var c = el("button", "sys-link", "신청 취소");
+          c.type = "button";
+          fbTwice(c, "한 번 더 누르면 취소해요", function () { api("rpc/admin_feedback_cancel", { method: "POST", body: { p_booking: x.booking } }).then(loadFeedback); });
+          acts.appendChild(c);
+        } else if (!past) {
+          var t = el("button", "sys-link", x.open ? "이 시간 닫기" : "다시 열기");
+          t.type = "button";
+          t.addEventListener("click", function () { api("rpc/admin_feedback_slot", { method: "POST", body: { p_id: x.id, p_open: !x.open } }).then(loadFeedback); });
+          acts.appendChild(t);
+          var del = el("button", "sys-link", "지우기");
+          del.type = "button";
+          fbTwice(del, "한 번 더 누르면 지워요", function () {
+            api("rpc/admin_feedback_slot", { method: "POST", body: { p_id: x.id, p_delete: true } }).then(function (r) {
+              var dd = r.data || {};
+              if (r.ok && dd.ok) loadFeedback(); else msg(note, dd.error || friendly(r, "지우지 못했어요."), "error");
+            });
+          });
+          acts.appendChild(del);
+        }
+        li.appendChild(acts);
+        li.appendChild(note);
+        list.appendChild(li);
+      });
+      var ms = d.members || [];
+      $("#fbCount").textContent = ms.length + "명";
+      ms.forEach(function (m) {
+        var li = el("li", "adm__card"), top = el("div", "adm__cardtop");
+        top.appendChild(el("strong", null, m.name));
+        top.appendChild(el("span", null, m.member + " · " + m.track + (m.slot ? " " + m.slot + "타임" : "") + (m.teacher ? " · 담당 " + m.teacher : "")));
+        if (m.status !== "재원") top.appendChild(el("span", "adm__badge", m.status));
+        if (!m.kakao) top.appendChild(el("span", "adm__badge", "카카오 연결 전"));
+        var rm = el("button", "sys-link", "빼기");
+        rm.type = "button";
+        fbTwice(rm, "한 번 더 누르면 빼요", function () { api("rpc/admin_feedback_member", { method: "POST", body: { p_member: m.member, p_remove: true } }).then(loadFeedback); });
+        top.appendChild(rm);
+        li.appendChild(top);
+        mem.appendChild(li);
+      });
+    });
+  }
+  $("#fbAdd").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    api("rpc/admin_feedback_slot", { method: "POST", body: { p_id: null, p_at: field(f, "day").value + "T" + field(f, "time").value + ":00+09:00", p_kinds: field(f, "kinds").value } }).then(function (r) {
+      var d = r.data || {};
+      if (!r.ok || !d.ok) { msg($("#fbAddMsg"), d.error || friendly(r, "넣지 못했어요."), "error"); return; }
+      msg($("#fbAddMsg"), "넣었어요.", "ok");
+      loadFeedback();
+    });
+  });
+  $("#fbMemberAdd").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target;
+    api("rpc/admin_feedback_member", { method: "POST", body: { p_member: field(f, "member").value, p_track: field(f, "track").value, p_slot: field(f, "slot").value } }).then(function (r) {
+      var d = r.data || {};
+      if (!r.ok || !d.ok) { msg($("#fbMemberMsg"), d.error || friendly(r, "넣지 못했어요."), "error"); return; }
+      msg($("#fbMemberMsg"), d.name + " 학생을 넣었어요.", "ok");
+      f.reset();
+      loadFeedback();
+    });
+  });
   function loadReviews() {
     var list = $("#reviewList");
     list.textContent = "";

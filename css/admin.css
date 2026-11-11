@@ -201,3 +201,5 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__kktexthead strong{min-width:4em;}
 .adm__kktexthead select{flex:1;min-width:0;width:auto;}
 .adm__kktext textarea{width:100%;box-sizing:border-box;padding:10px;border-radius:10px;background:#FEE500;color:#3C1E1E;border:1px solid #E8D200;font:inherit;font-size:14px;line-height:1.5;}
+
+.adm__card--past{opacity:.55;}

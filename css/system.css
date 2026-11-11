@@ -419,3 +419,21 @@
 .tch__rv{padding:12px 14px;margin:10px 0;border-radius:10px;background:#fff;border:1px solid #EADFC8;}
 .rv__info{margin:0 0 4px;font-size:13.5px;color:#6E5A4A;}
 .rv__fixed input[readonly]{background:#F3EFE6;color:#5A4A3A;}
+
+/* 원장님 피드백 신청 (내 폴더) */
+.fb__group{margin:14px 0;}
+.fb__h{font-size:16px;margin:0 0 8px;}
+.fb__day{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0;border-bottom:1px dashed #E3D8C6;}
+.fb__date{min-width:92px;font-size:14px;}
+.fb__times{display:flex;flex-wrap:wrap;gap:6px;}
+.fb__time{padding:7px 12px;border:1px solid #1D4948;border-radius:999px;background:#fff;color:#1D4948;font:inherit;font-size:14px;cursor:pointer;}
+.fb__time.is-on{background:#1D4948;color:#fff;}
+.fb__time.is-taken{border-color:#D8D0C4;color:#A79C8E;background:#F4F0E8;cursor:default;text-decoration:line-through;}
+.fb__time.is-mine{background:#FFE14D;border-color:#C9A800;color:#3A2E00;}
+.fb__time:disabled:not(.is-taken):not(.is-mine){opacity:.45;cursor:default;}
+.fb__mine{background:#FFFBE6;border:1px solid #F0D96A;}
+.fb__minehead{margin:0;font-weight:700;}
+.fb__minewhen{margin:4px 0;font-weight:700;font-size:15px;}
+.fb__form{margin:12px 0;}
+.fb__form textarea{width:100%;margin:8px 0;}
+.fb__kinds{display:flex;gap:16px;margin:6px 0;}

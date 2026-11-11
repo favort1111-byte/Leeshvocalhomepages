@@ -282,6 +282,19 @@
     });
     return rows.sort(function (x, y) { return y.score - x.score || (x.at < y.at ? -1 : 1); });
   }
+  function fbWhen(iso) {
+    var wd = ["일", "월", "화", "수", "목", "금", "토"], k = new Date(new Date(iso).getTime() + 9 * 3600000), h = k.getUTCHours();
+    return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일(" + wd[k.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시";
+  }
+  function fbSeed() {
+    if (db.fb) return;
+    var t = addDays(new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10), 0), id = 9000, slots = [];
+    [[2, [18, 19, 20], "보컬"], [3, [19, 20], "보컬·댄스"], [5, [17, 18], "보컬·댄스"], [5, [19, 20], "보컬"], [6, [17, 18, 19, 20], "보컬"]].forEach(function (g) {
+      g[1].forEach(function (h) { slots.push({ id: ++id, at: addDays(t, g[0]) + "T" + (h < 10 ? "0" : "") + h + ":00:00+09:00", kinds: g[2], open: true }); });
+    });
+    slots.sort(function (x, y) { return x.at < y.at ? -1 : 1; });
+    db.fb = { members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();
 
@@ -853,6 +866,63 @@
         { id: 1, at: ago(300), first: ago(300), actor: "staff@example.com", tbl: "audition_news", action: "delete", label: "블리츠웨이뮤직 · 2026-10-30", labels: ["블리츠웨이뮤직 · 2026-10-30"], changes: {}, n: 1 }
       ];
       return { ok: true, items: items, actors: ["admin@example.com", "staff@example.com"] };
+    },
+    // 원장님 피드백 신청 (체험): 김시우(S001)가 심화반, 시간은 오늘부터 며칠 뒤
+    member_feedback: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      fbSeed();
+      if (db.fb.members.indexOf(who.id) < 0) return { ok: true, eligible: false };
+      return { ok: true, eligible: true, track: "평일", slot: "A", slots: db.fb.slots.filter(function (x) { return x.open && new Date(x.at).getTime() > Date.now() - 3 * 3600000; }).map(function (x) {
+        var b = db.fb.bookings.filter(function (y) { return y.slot === x.id; })[0], mine = b && b.member === who.id;
+        return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, taken: !!b, mine: !!mine, booking: mine ? b.id : null, kind: mine ? b.kind : null, note: mine ? b.note : null,
+          cancel: new Date(x.at).getTime() - 3600000 > Date.now() };
+      }) };
+    },
+    member_feedback_book: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      fbSeed();
+      if (db.fb.members.indexOf(who.id) < 0) return fail("심화반 학생만 신청할 수 있어요.");
+      var x = db.fb.slots.filter(function (y) { return y.id === a.p_slot; })[0];
+      if (!x) return fail("신청할 수 없는 시간이에요.");
+      if (a.p_kind === "댄스" && x.kinds !== "보컬·댄스") return fail("이 시간은 보컬 피드백만 할 수 있어요.");
+      if (db.fb.bookings.some(function (y) { return y.member === who.id; })) return fail("이미 신청한 시간이 있어요. 바꾸려면 먼저 취소해주세요.");
+      if (db.fb.bookings.some(function (y) { return y.slot === x.id; })) return fail("방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.");
+      db.fb.bookings.push({ id: ++db.next, slot: x.id, member: who.id, kind: a.p_kind || "보컬", note: a.p_note || null });
+      save();
+      return { ok: true };
+    },
+    member_feedback_cancel: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      db.fb.bookings = db.fb.bookings.filter(function (y) { return !(y.id === a.p_booking && y.member === who.id); });
+      save();
+      return { ok: true };
+    },
+    admin_feedback: function () {
+      fbSeed();
+      var nm = function (id) { return (db.members.filter(function (m) { return m.id === id; })[0] || { name: "박하늘" }).name; };
+      return { ok: true, slots: db.fb.slots.map(function (x) {
+        var b = db.fb.bookings.filter(function (y) { return y.slot === x.id; })[0];
+        return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, open: x.open, booking: b ? b.id : null, member: b ? b.member : null, name: b ? nm(b.member) : null, teacher: b ? "원장님" : null, kind: b ? b.kind : null, note: b ? b.note : null };
+      }), members: db.fb.members.map(function (id) { return { member: id, name: nm(id), track: "평일", slot: "A", teacher: "원장님", status: "재원", kakao: true }; }) };
+    },
+    admin_feedback_cancel: function (a) { db.fb.bookings = db.fb.bookings.filter(function (y) { return y.id !== a.p_booking; }); save(); return { ok: true }; },
+    admin_feedback_slot: function (a) {
+      fbSeed();
+      if (!a.p_id) { db.fb.slots.push({ id: ++db.next, at: a.p_at, kinds: a.p_kinds, open: true }); db.fb.slots.sort(function (x, y) { return x.at < y.at ? -1 : 1; }); }
+      else if (a.p_delete) db.fb.slots = db.fb.slots.filter(function (x) { return x.id !== a.p_id; });
+      else db.fb.slots.forEach(function (x) { if (x.id === a.p_id && a.p_open != null) x.open = a.p_open; });
+      save();
+      return { ok: true };
+    },
+    admin_feedback_member: function (a) {
+      fbSeed();
+      if (a.p_remove) db.fb.members = db.fb.members.filter(function (id) { return id !== a.p_member; });
+      else if (db.fb.members.indexOf(a.p_member) < 0) db.fb.members.push(a.p_member);
+      save();
+      return { ok: true, name: (db.members.filter(function (m) { return m.id === a.p_member; })[0] || {}).name || a.p_member };
     },
     admin_reviews: function () {
       return { ok: true, items: (db.audition_reviews || []).slice().sort(rvSort).map(function (r) {

@@ -88,6 +88,7 @@
       renderSuggest();
       loadMsgs();
       loadReviews();
+      loadFeedback();
       return LeeshAPI.rpc("member_partners", { p_id: who.id, p_pin: who.key }).then(function (p) { if (p.ok) renderPartners(p); });
     });
   }
@@ -1124,6 +1125,117 @@
         cards[id].appendChild(strip.node);
       });
     });
+  }
+
+  /* 원장님 피드백 신청 (원장님 2026-11-11): 심화반 학생에게만 탭이 보여요. 정해 둔 시간 중 하나, 한 타임에 한 명(먼저 신청한 사람),
+     한 사람은 남은 신청 하나만 (바꾸려면 취소 후 다시). 서버 member_feedback · member_feedback_book · member_feedback_cancel. */
+  function loadFeedback() {
+    var tab = scene.querySelector('[data-book-tab="feedback"]');
+    return LeeshAPI.rpc("member_feedback", { p_id: who.id, p_pin: who.key }).then(function (res) {
+      if (!tab) return;
+      tab.hidden = !(res.ok && res.eligible);
+      if (tab.hidden) return;
+      renderFeedback(res);
+    });
+  }
+  function renderFeedback(res) {
+    var box = scene.querySelector("#myFeedback");
+    box.textContent = "";
+    var sum = el("div", "fold__sum");
+    sum.appendChild(el("p", null, "심화반 원장님 1:1 피드백 신청이에요. 아래 시간 중 하나를 골라 신청해요."));
+    sum.appendChild(el("p", "sys-note", "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 바꾸려면 내 신청을 취소하고 다시 골라요. 직접 취소는 시작 1시간 전까지예요."));
+    box.appendChild(sum);
+    var msgEl = el("p", "sys-msg");
+    var slots = res.slots || [];
+    var mine = slots.filter(function (x) { return x.mine; })[0];
+    if (mine) {
+      var card = el("div", "fold__card fb__mine");
+      card.appendChild(el("p", "fb__minehead", "✅ 내 신청"));
+      card.appendChild(el("p", "fb__minewhen", mine.when + " · " + mine.kind + " 피드백"));
+      if (mine.note) card.appendChild(el("p", "sys-note", mine.note));
+      if (mine.cancel) {
+        var c = el("button", "sys-link", "신청 취소");
+        c.type = "button";
+        c.addEventListener("click", function () {
+          if (c.getAttribute("data-armed") !== "1") { c.setAttribute("data-armed", "1"); c.textContent = "한 번 더 누르면 취소돼요"; return; }
+          c.disabled = true;
+          LeeshAPI.rpc("member_feedback_cancel", { p_id: who.id, p_pin: who.key, p_booking: mine.booking }).then(function (r) {
+            if (!r.ok) { c.disabled = false; msgEl.textContent = r.error; msgEl.className = "sys-msg sys-msg--error"; return; }
+            loadFeedback();
+          });
+        });
+        card.appendChild(c);
+      } else card.appendChild(el("p", "sys-note", "시작 1시간 전이라 바꾸려면 학원(실장님)에 연락해주세요."));
+      box.appendChild(card);
+    }
+    if (!slots.length) { box.appendChild(el("p", "book__empty", "지금 신청할 수 있는 시간이 없어요.")); return; }
+    var picked = null, form = el("div", "fold__card fb__form");
+    form.hidden = true;
+    [["보컬", "🎤 보컬 피드백"], ["보컬·댄스", "🎤💃 보컬 · 댄스 피드백"]].forEach(function (g) {
+      var list = slots.filter(function (x) { return x.kinds === g[0]; });
+      if (!list.length) return;
+      var sec = el("section", "fb__group");
+      sec.appendChild(el("h3", "fb__h", g[1]));
+      var days = {};
+      list.forEach(function (x) { var d = x.when.replace(/\) .*$/, ")"); (days[d] = days[d] || []).push(x); });
+      Object.keys(days).forEach(function (d) {
+        var row = el("div", "fb__day");
+        row.appendChild(el("b", "fb__date", d));
+        var times = el("div", "fb__times");
+        days[d].forEach(function (x) {
+          var label = x.when.replace(/^.*\) /, "");
+          var b = el("button", "fb__time" + (x.mine ? " is-mine" : x.taken ? " is-taken" : ""), x.mine ? label + " ✓" : x.taken ? label + " 마감" : label);
+          b.type = "button";
+          b.disabled = x.taken || !!mine;
+          b.addEventListener("click", function () {
+            picked = x;
+            box.querySelectorAll(".fb__time.is-on").forEach(function (n) { n.classList.remove("is-on"); });
+            b.classList.add("is-on");
+            drawForm();
+          });
+          times.appendChild(b);
+        });
+        row.appendChild(times);
+        sec.appendChild(row);
+      });
+      box.appendChild(sec);
+    });
+    if (mine) box.appendChild(el("p", "sys-note", "이미 신청한 시간이 있어서 다른 시간은 고를 수 없어요."));
+    box.appendChild(form);
+    box.appendChild(msgEl);
+    function drawForm() {
+      form.hidden = false;
+      form.textContent = "";
+      form.appendChild(el("p", "fb__minewhen", picked.when));
+      var kind = "보컬";
+      if (picked.kinds === "보컬·댄스") {
+        var kr = el("div", "fb__kinds");
+        ["보컬", "댄스"].forEach(function (k, i) {
+          var lab = el("label", "sys-check"), r = el("input");
+          r.type = "radio"; r.name = "fbkind"; r.value = k; r.checked = !i;
+          r.addEventListener("change", function () { kind = k; });
+          lab.appendChild(r);
+          lab.appendChild(document.createTextNode(" " + k + " 피드백"));
+          kr.appendChild(lab);
+        });
+        form.appendChild(kr);
+      } else form.appendChild(el("p", "sys-note", "이 시간은 보컬 피드백만 해요."));
+      var ta = el("textarea");
+      ta.rows = 2; ta.maxLength = 300;
+      ta.placeholder = "원장님께 남길 말 (선택) · 예) 준비하는 곡, 궁금한 점";
+      ta.setAttribute("aria-label", "원장님께 남길 말");
+      form.appendChild(ta);
+      var go = el("button", "sys-btn", "이 시간으로 신청하기");
+      go.type = "button";
+      go.addEventListener("click", function () {
+        go.disabled = true;
+        LeeshAPI.rpc("member_feedback_book", { p_id: who.id, p_pin: who.key, p_slot: picked.id, p_kind: kind, p_note: ta.value }).then(function (r) {
+          if (!r.ok) { go.disabled = false; msgEl.textContent = r.error; msgEl.className = "sys-msg sys-msg--error"; if (/다른 학생/.test(r.error || "")) loadFeedback(); return; }
+          loadFeedback().then(function () { var m = scene.querySelector("#myFeedback .sys-msg"); if (m) { m.textContent = "신청했어요. 원장님 피드백 시간에 맞춰 와주세요!"; m.className = "sys-msg sys-msg--ok"; } });
+        });
+      });
+      form.appendChild(go);
+    }
   }
 
   /* 오디션 후기 (원장님 2026-11-09 "작성은 학생이 하고 보는 건 선생님들이랑 관리자만"): 내가 쓴 것만 보이고 고치기 · 지우기.
