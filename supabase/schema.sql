@@ -8207,3 +8207,37 @@ end $$;
 revoke all on function private.fixed_blocks_fill() from public, anon, authenticated;
 
 select cron.schedule('leesh_fixed_blocks', '1 15 * * *', 'select private.fixed_blocks_fill()');
+
+-- ===== leesh_member_status_cancel (2026-11-12) =====
+-- 그만둔 · 쉬는 학생의 앞으로 예약 저절로 취소 (원장님 2026-11-12):
+-- members.status가 재원 · 외부(예약할 수 있는 상태)에서 휴원 · 종료 등으로 바뀌면 아직 시작 안 한 '확정' 예약을 '취소'로.
+-- 시트 맞추기(3시간마다) · 관리자 화면 어디서 바뀌어도 같음. 다시 재원이 돼도 취소된 예약은 되살리지 않음.
+create or replace function private.member_status_cancel() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  k timestamp := private.now_kst();
+  today date := k::date;
+  now_min int := extract(hour from k)::int * 60 + extract(minute from k)::int;
+  b record;
+begin
+  if new.status in ('재원', '외부') or old.status not in ('재원', '외부') then return new; end if;
+  for b in
+    update public.bookings x
+       set status = '취소', cancelled_at = now(),
+           memo = coalesce(x.memo || ' / ', '') || new.status || '(으)로 바뀌어 자동 취소'
+     where x.member_id = new.id and x.status = '확정'
+       and (x.day > today or (x.day = today and x.start_min > now_min))
+    returning x.day, x.start_min, x.end_min, x.room_id
+  loop
+    perform private.notify('↩️ 연습실 예약 자동 취소 (' || new.status || ')' || chr(10) || new.name || ' · '
+      || (select r.name from public.rooms r where r.id = b.room_id)
+      || chr(10) || private.day_label(b.day) || ' ' || private.hhmm(b.start_min) || '~' || private.hhmm(b.end_min));
+  end loop;
+  return new;
+end $$;
+revoke all on function private.member_status_cancel() from public, anon, authenticated;
+
+drop trigger if exists member_status_cancel on public.members;
+create trigger member_status_cancel after update of status on public.members
+  for each row when (old.status is distinct from new.status)
+  execute function private.member_status_cancel();
