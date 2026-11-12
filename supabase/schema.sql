@@ -8360,3 +8360,70 @@ begin
 end $$;
 revoke all on function private.usage_alert() from public, anon, authenticated;
 select cron.schedule('leesh_usage_alert', '13 0 * * *', 'select private.usage_alert()');
+
+-- ===== leesh_guardian_accounts (2026-11-12) =====
+-- 만 14세 미만 · 부모님 카카오로 가입한 기록 보관 (원장님 2026-11-12 "나중에 혹시 몰라서 데이터를 갖고 있어야"):
+-- 부모님 계정(guardian) 연결 요청이 승인되면 저절로 한 줄. 연결을 끊거나 학생이 종료돼도 지우지 않음.
+-- 관리자만 읽기 (RLS), 쓰기는 트리거만, 매일 백업에 들어감 (public 표).
+create table if not exists public.guardian_accounts (
+  id bigserial primary key,
+  request_id bigint unique,
+  member_id text,
+  student_name text,
+  teacher text,
+  request_name text,
+  kakao_user uuid,
+  kakao_name text,
+  kakao_email text,
+  same_name boolean,
+  approved_at timestamptz,
+  saved_at timestamptz not null default now(),
+  note text
+);
+alter table public.guardian_accounts enable row level security;
+drop policy if exists guardian_accounts_admin on public.guardian_accounts;
+create policy guardian_accounts_admin on public.guardian_accounts for select using (public.is_admin());
+revoke all on public.guardian_accounts from anon;
+grant select on public.guardian_accounts to authenticated;
+
+create or replace function private.guardian_save() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare m record; u record;
+begin
+  if not coalesce(new.guardian, false) or new.status <> '승인' or new.member_id is null then return new; end if;
+  select * into m from public.members where id = new.member_id;
+  select raw_user_meta_data, email into u from auth.users where id = new.user_id;
+  insert into public.guardian_accounts (request_id, member_id, student_name, teacher, request_name,
+      kakao_user, kakao_name, kakao_email, same_name, approved_at)
+  values (new.id, new.member_id, m.name, substring(m.memo from '담당 ([^ ,/]+)'), new.name,
+      new.user_id, coalesce(new.kakao_name, u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name'),
+      u.email,
+      replace(coalesce(new.kakao_name, u.raw_user_meta_data->>'name', ''), ' ', '') = replace(coalesce(m.name, ''), ' ', ''),
+      coalesce(new.decided_at, now()))
+  on conflict (request_id) do update set member_id = excluded.member_id, student_name = excluded.student_name,
+      teacher = excluded.teacher, kakao_user = excluded.kakao_user, kakao_name = excluded.kakao_name,
+      kakao_email = excluded.kakao_email, same_name = excluded.same_name, approved_at = excluded.approved_at;
+  return new;
+end $$;
+revoke all on function private.guardian_save() from public, anon, authenticated;
+
+drop trigger if exists guardian_save on public.link_requests;
+create trigger guardian_save after insert or update of status, member_id, guardian on public.link_requests
+  for each row execute function private.guardian_save();
+
+drop trigger if exists zz_admin_log on public.guardian_accounts;
+create trigger zz_admin_log after insert or update or delete on public.guardian_accounts
+  for each row execute function private.log_change();
+
+-- 지금까지 승인된 부모님 계정 연결 저장
+insert into public.guardian_accounts (request_id, member_id, student_name, teacher, request_name,
+    kakao_user, kakao_name, kakao_email, same_name, approved_at, note)
+select l.id, l.member_id, m.name, substring(m.memo from '담당 ([^ ,/]+)'), l.name,
+    l.user_id, coalesce(l.kakao_name, u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name'), u.email,
+    replace(coalesce(l.kakao_name, u.raw_user_meta_data->>'name', ''), ' ', '') = replace(coalesce(m.name, ''), ' ', ''),
+    l.decided_at, '2026-11-12 처음 저장 (그 전 승인분)'
+from public.link_requests l
+join public.members m on m.id = l.member_id
+left join auth.users u on u.id = l.user_id
+where l.guardian and l.status = '승인' and l.member_id is not null
+on conflict (request_id) do nothing;
