@@ -1183,6 +1183,61 @@
     admin_telegram_link: function () { demoTg.chats = 1; return { ok: true, chats: 1, groups: 1 }; },
     admin_telegram_options: function (a) { demoTg.bookings = !!a.p_bookings; return { ok: true }; },
     admin_telegram_off: function () { demoTg.bot = null; demoTg.chats = 0; return { ok: true }; },
+    // 선생님 연습실 예약 (2026-11-12): 오늘 ~ 1년 뒤, 준비 중이어도 됨, 시작 전이면 취소
+    teacher_rooms: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("승인된 선생님만 예약할 수 있어요.");
+      var s = db.settings, n = nowKst(), d = a.p_date || n.today, ahead = diffDays(n.today, d);
+      if (isNaN(ahead) || ahead < 0 || ahead > 365) return fail("오늘부터 1년 안의 날짜를 골라주세요.");
+      return {
+        ok: true, date: d, today: n.today, last: addDays(n.today, 365), now: ahead === 0 ? n.min : null, unit: s.unit_min, maxHours: s.max_minutes / 60,
+        rooms: db.rooms.filter(function (r) { return r.active; }).sort(function (x, y) { return x.sort - y.sort || x.id - y.id; }).map(function (r) {
+          var free = [];
+          for (var g = s.open_min; g + s.unit_min <= s.close_min; g += s.unit_min) {
+            if (ahead === 0 && g <= n.min) continue;
+            if (!live().some(function (b) { return b.room_id === r.id && b.day === d && b.start_min < g + s.unit_min && g < b.end_min; })) free.push(hhmm(g));
+          }
+          return { name: r.name, type: r.kind, free: free };
+        }),
+        mine: live().filter(function (b) { return b.teacher_id === t.id && (b.day > n.today || (b.day === n.today && b.end_min > n.min)); })
+          .sort(function (x, y) { return x.day === y.day ? x.start_min - y.start_min : (x.day < y.day ? -1 : 1); })
+          .map(function (b) { return { id: b.id, room: room(b.room_id).name, date: b.day, start: hhmm(b.start_min), end: hhmm(b.end_min) }; })
+      };
+    },
+    teacher_booking_create: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("승인된 선생님만 예약할 수 있어요.");
+      var s = db.settings, n = nowKst(), d = a.p_date, ahead = diffDays(n.today, d);
+      if (isNaN(ahead)) return fail("날짜 형식이 올바르지 않습니다.");
+      if (ahead < 0) return fail("지난 날짜는 예약할 수 없습니다.");
+      if (ahead > 365) return fail("1년 안의 날짜만 예약할 수 있어요.");
+      var r = db.rooms.filter(function (x) { return x.name === a.p_room && x.active; })[0];
+      if (!r) return fail("선택한 연습실을 찾을 수 없습니다.");
+      var st = toMin(a.p_start), h = Number(a.p_hours);
+      if (st == null || !(h >= 1)) return fail("시간을 골라주세요.");
+      if (h * 60 > s.max_minutes) return fail("한 번에 최대 " + s.max_minutes / 60 + "시간까지 예약할 수 있어요. 더 필요하면 이어서 한 번 더 예약해주세요.");
+      var en = st + h * 60;
+      if (en > s.close_min) return fail("운영 시간 안에서만 예약할 수 있습니다.");
+      if (ahead === 0 && st <= n.min) return fail("이미 시작한 시간이에요. 다음 시간부터 예약할 수 있어요.");
+      var sameDay = live().filter(function (b) { return b.day === d; });
+      if (sameDay.some(function (b) { return b.teacher_id === t.id && b.start_min < en && st < b.end_min; })) return fail("같은 시간에 이미 다른 방을 예약하셨어요.");
+      if (sameDay.some(function (b) { return b.room_id === r.id && b.start_min < en && st < b.end_min; })) return fail("그 시간에 이미 예약이 있어요. 다른 시간을 골라주세요.");
+      var b = { id: ++db.next, room_id: r.id, member_id: null, teacher_id: t.id, day: d, start_min: st, end_min: en, status: "확정", memo: t.name + " 선생님" };
+      db.bookings.push(b);
+      save();
+      return { ok: true, booking: { id: b.id, room: r.name, date: d, start: hhmm(st), end: hhmm(en) } };
+    },
+    teacher_booking_cancel: function (a, uid) {
+      var t = myTeacher(uid);
+      if (!t) return fail("승인된 선생님만 취소할 수 있어요.");
+      var n = nowKst();
+      var b = live().filter(function (x) { return x.id === a.p_booking && x.teacher_id === t.id; })[0];
+      if (!b) return fail("취소할 예약을 찾을 수 없습니다.");
+      if (b.day < n.today || (b.day === n.today && b.start_min <= n.min)) return fail("이미 시작한 예약은 취소할 수 없어요. 학원에 연락해주세요.");
+      b.status = "취소"; b.memo = (b.memo ? b.memo + " / " : "") + "선생님 취소";
+      save();
+      return { ok: true, cancelled: b.id };
+    },
     // 선생님 화면 (teacher.html)
     teacher_me: function (a, uid) {
       if (!uid) return fail("카카오 로그인이 필요해요.");

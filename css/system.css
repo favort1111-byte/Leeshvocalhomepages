@@ -520,3 +520,24 @@
 .suggest__replybody{margin:0;white-space:pre-wrap;}
 .book__tab--dot{position:relative;}
 .book__tab--dot::after{content:"";position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#E5483B;}
+
+/* 선생님 연습실 예약 (2026-11-12) */
+.tbk__mine{margin:10px 0 14px;padding:12px 14px;border:1px solid rgba(62,42,30,.18);border-radius:10px;background:#FFFDF8;}
+.tbk__h{margin:0 0 6px;font-weight:700;}
+.tbk__list{list-style:none;margin:0;padding:0;}
+.tbk__list li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;padding:6px 0;border-top:1px dashed rgba(62,42,30,.15);}
+.tbk__list li:first-child{border-top:0;}
+.tbk__cancel{color:#C8312B;}
+.tbk__bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0 12px;}
+.tbk__date{padding:8px 10px;border:1px solid rgba(62,42,30,.3);border-radius:8px;font:inherit;background:#FFFDF8;}
+.tbk__step{min-width:44px;}
+.tbk__day{flex:1 1 100%;font-size:17px;}
+.tbk__room{padding:10px 0;border-top:1px solid rgba(62,42,30,.12);}
+.tbk__rname{margin:0 0 6px;font-weight:700;}
+.tbk__chips{display:flex;flex-wrap:wrap;gap:6px;}
+.tbk__chip{min-width:58px;padding:7px 8px;border:1px solid #1D4948;border-radius:8px;background:#fff;color:#1D4948;font:inherit;font-size:14px;cursor:pointer;}
+.tbk__chip.is-on{background:#1D4948;color:#fff;}
+.tbk__form{position:sticky;bottom:0;margin-top:12px;padding:12px 14px;border:2px solid #1D4948;border-radius:10px;background:#FFFDF8;display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.tbk__pick{flex:1 1 100%;margin:0;font-weight:700;}
+.tbk__hours{padding:8px;border-radius:8px;font:inherit;}
+.tbk__form .sys-msg{flex:1 1 100%;margin:0;}

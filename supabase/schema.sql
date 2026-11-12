@@ -8026,3 +8026,118 @@ exception when others then
   update public.settings set booking_open = true;  -- 알림 · 작업 지우기가 실패해도 예약은 꼭 열기
 end $function$;
 select cron.schedule('leesh_booking_open', '0 15 15 11 *', 'select private.booking_open_now()');
+
+-- ===== leesh_teacher_booking (2026-11-12) =====
+-- 선생님 연습실 예약 (원장님 2026-11-12 "선생님들은 C홀 같은 데서 수업 → 오늘~내일 조건 없이 미리미리, 항상 예약"):
+-- 학생 예약과 같은 표 bookings에 teacher_id로 (member_id 비움), 학생 빈 시간표에서도 찬 칸으로 보임.
+-- 선생님은 날짜 제한 없음(오늘 ~ 1년 뒤), 준비 중(booking_open = false)이어도 됨, 시작 전이면 언제든 직접 취소. 한 번 최대 시간은 학생과 같음.
+alter table public.bookings add column if not exists teacher_id int references public.teachers(id);
+alter table public.bookings drop constraint if exists bookings_no_teacher_overlap;
+alter table public.bookings add constraint bookings_no_teacher_overlap
+  exclude using gist (teacher_id with =, day with =, int4range(start_min, end_min) with &&) where (status = '확정' and teacher_id is not null);
+
+create or replace function public.teacher_rooms(p_date text default null) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  s public.settings;
+  k timestamp := private.now_kst();
+  today date := k::date;
+  now_min int := extract(hour from k)::int * 60 + extract(minute from k)::int;
+  d date;
+begin
+  if t.id is null then return private.fail('승인된 선생님만 예약할 수 있어요.'); end if;
+  select * into s from public.settings where id = 1;
+  begin d := coalesce(nullif(p_date, '')::date, today); exception when others then return private.fail('날짜 형식이 올바르지 않습니다.'); end;
+  if d < today or d > today + 365 then return private.fail('오늘부터 1년 안의 날짜를 골라주세요.'); end if;
+  return jsonb_build_object('ok', true, 'date', d, 'today', today, 'last', today + 365,
+    'now', case when d = today then now_min end, 'unit', s.unit_min,
+    'maxHours', s.max_minutes / 60,
+    'rooms', coalesce((
+      select jsonb_agg(jsonb_build_object('name', r.name, 'type', r.kind,
+        'free', coalesce((select jsonb_agg(private.hhmm(g) order by g)
+          from generate_series(s.open_min, s.close_min - s.unit_min, s.unit_min) g
+          where (d > today or g > now_min)
+            and not exists (select 1 from public.bookings b where b.room_id = r.id and b.day = d and b.status = '확정'
+                            and b.start_min < g + s.unit_min and g < b.end_min)), '[]'::jsonb)
+      ) order by r.sort, r.id) from public.rooms r where r.active), '[]'::jsonb),
+    'mine', coalesce((
+      select jsonb_agg(jsonb_build_object('id', b.id, 'room', r.name, 'date', b.day,
+        'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min)) order by b.day, b.start_min)
+      from public.bookings b join public.rooms r on r.id = b.room_id
+      where b.teacher_id = t.id and b.status = '확정' and (b.day > today or (b.day = today and b.end_min > now_min))), '[]'::jsonb));
+end $$;
+
+create or replace function public.teacher_booking_create(p_room text, p_date text, p_start text, p_hours integer) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  s public.settings;
+  k timestamp := private.now_kst();
+  today date := k::date;
+  now_min int := extract(hour from k)::int * 60 + extract(minute from k)::int;
+  d date;
+  room public.rooms;
+  st int := private.to_min(p_start);
+  en int;
+  new_id bigint;
+begin
+  if t.id is null then return private.fail('승인된 선생님만 예약할 수 있어요.'); end if;
+  select * into s from public.settings where id = 1;
+  begin d := p_date::date; exception when others then return private.fail('날짜 형식이 올바르지 않습니다.'); end;
+  if d is null then return private.fail('날짜 형식이 올바르지 않습니다.'); end if;
+  if d < today then return private.fail('지난 날짜는 예약할 수 없습니다.'); end if;
+  if d > today + 365 then return private.fail('1년 안의 날짜만 예약할 수 있어요.'); end if;
+  select * into room from public.rooms where name = p_room and active;
+  if room.id is null then return private.fail('선택한 연습실을 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.'); end if;
+  if st is null then return private.fail('시작 시간이 올바르지 않습니다.'); end if;
+  if p_hours is null or p_hours < 1 then return private.fail('이용 시간을 선택해주세요.'); end if;
+  if p_hours * 60 > s.max_minutes then return private.fail('한 번에 최대 ' || s.max_minutes / 60 || '시간까지 예약할 수 있어요. 더 필요하면 이어서 한 번 더 예약해주세요.'); end if;
+  en := st + p_hours * 60;
+  if (st - s.open_min) % s.unit_min <> 0 then return private.fail('예약은 ' || s.unit_min || '분 단위로만 가능합니다.'); end if;
+  if st < s.open_min or en > s.close_min then
+    return private.fail('운영 시간(' || private.hhmm(s.open_min) || '~' || private.hhmm(s.close_min) || ') 안에서만 예약할 수 있습니다.');
+  end if;
+  if d = today and st <= now_min then return private.fail('이미 시작한 시간이에요. 다음 시간부터 예약할 수 있어요.'); end if;
+  perform pg_advisory_xact_lock(hashtext('teacher:' || t.id));
+  perform pg_advisory_xact_lock(hashtext('room:' || room.id || ':' || d));
+  begin
+    insert into public.bookings (room_id, member_id, teacher_id, day, start_min, end_min, memo)
+    values (room.id, null, t.id, d, st, en, t.name || ' 선생님') returning id into new_id;
+  exception when exclusion_violation then
+    if sqlerrm like '%bookings_no_teacher_overlap%' then return private.fail('같은 시간에 이미 다른 방을 예약하셨어요.'); end if;
+    return private.fail('그 시간에 이미 예약이 있어요. 다른 시간을 골라주세요.');
+  when deadlock_detected or lock_not_available then
+    return private.fail('예약하는 사람이 몰렸어요. 한 번 더 눌러주세요.');
+  end;
+  perform private.notify('🎤 연습실 예약' || chr(10) || t.name || ' 선생님 · ' || room.name
+    || chr(10) || private.day_label(d) || ' ' || private.hhmm(st) || '~' || private.hhmm(en));
+  return jsonb_build_object('ok', true, 'booking', jsonb_build_object(
+    'id', new_id, 'room', room.name, 'date', d, 'start', private.hhmm(st), 'end', private.hhmm(en)));
+end $$;
+
+create or replace function public.teacher_booking_cancel(p_booking bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.teachers := private.my_teacher();
+  k timestamp := private.now_kst();
+  today date := k::date;
+  now_min int := extract(hour from k)::int * 60 + extract(minute from k)::int;
+  b public.bookings;
+  room_name text;
+begin
+  if t.id is null then return private.fail('승인된 선생님만 취소할 수 있어요.'); end if;
+  select * into b from public.bookings where id = p_booking and teacher_id = t.id and status = '확정' for update;
+  if b.id is null then return private.fail('취소할 예약을 찾을 수 없습니다.'); end if;
+  if b.day < today or (b.day = today and b.start_min <= now_min) then
+    return private.fail('이미 시작한 예약은 취소할 수 없어요. 학원에 연락해주세요.');
+  end if;
+  update public.bookings set status = '취소', cancelled_at = now(), memo = coalesce(memo || ' / ', '') || '선생님 취소' where id = b.id;
+  select name into room_name from public.rooms where id = b.room_id;
+  perform private.notify('↩️ 연습실 예약 취소' || chr(10) || t.name || ' 선생님 · ' || room_name
+    || chr(10) || private.day_label(b.day) || ' ' || private.hhmm(b.start_min) || '~' || private.hhmm(b.end_min));
+  return jsonb_build_object('ok', true, 'cancelled', b.id);
+end $$;
+
+revoke all on function public.teacher_rooms(text), public.teacher_booking_create(text, text, text, integer), public.teacher_booking_cancel(bigint) from public, anon;
+grant execute on function public.teacher_rooms(text), public.teacher_booking_create(text, text, text, integer), public.teacher_booking_cancel(bigint) to authenticated;

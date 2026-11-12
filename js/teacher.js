@@ -133,6 +133,10 @@
     games.href = "games.html";
     side.appendChild(games);
     // 원장 컨설팅 (원장님 2026-11-11): 심화반 원장님 1:1 컨설팅 기록, 선생님들만 (학생 · 학부모는 못 봄)
+    // 연습실 예약 (원장님 2026-11-12): 선생님은 C홀 등에서 수업 → 학생과 달리 날짜 제한 없이 미리
+    var room = button("🏠 연습실 예약", "sys-link");
+    room.addEventListener("click", function () { roomsPage(); });
+    side.appendChild(room);
     var cons = button("🎯 원장 컨설팅", "sys-link");
     cons.addEventListener("click", consultPage);
     side.appendChild(cons);
@@ -258,6 +262,132 @@
     var rvHolder = el("div");
     app.appendChild(rvHolder);
     reviewsBox(rvHolder);
+  }
+
+  /* 선생님 연습실 예약 (원장님 2026-11-12 "선생님들은 C홀 같은 데서 수업 → 오늘~내일 조건 없이 항상 예약"):
+     오늘 ~ 1년 뒤 아무 날, 준비 중이어도 됨, 한 번 최대 시간은 학생과 같음, 시작 전이면 언제든 취소.
+     서버 teacher_rooms · teacher_booking_create · teacher_booking_cancel. 같은 bookings 표라 학생 빈 시간표에서도 막혀 보여요. */
+  var WD = ["일", "월", "화", "수", "목", "금", "토"];
+  function dayText(iso) {
+    var d = new Date(iso + "T00:00:00Z");
+    return (d.getUTCMonth() + 1) + "월 " + d.getUTCDate() + "일 (" + WD[d.getUTCDay()] + ")";
+  }
+  function addDay(iso, n) {
+    var d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function roomsPage(date) {
+    clear();
+    app.appendChild(header());
+    var back = button("← 담당 학생", "sys-link tch__back");
+    back.addEventListener("click", start);
+    app.appendChild(back);
+    app.appendChild(el("h3", "tch__name", "🏠 연습실 예약 (선생님)"));
+    app.appendChild(el("p", "sys-note", "선생님은 날짜 제한 없이 미리 예약할 수 있어요 (오늘부터 1년 안). 한 번에 최대 2시간이고, 더 필요하면 이어서 한 번 더 예약하면 돼요. 시작 전이면 언제든 직접 취소할 수 있어요."));
+    var mineBox = el("div", "tbk__mine");
+    app.appendChild(mineBox);
+    var bar = el("div", "tbk__bar");
+    var prev = button("◀", "sys-btn sys-btn--ghost tbk__step");
+    var pick = el("input", "tbk__date");
+    pick.type = "date";
+    var next = button("▶", "sys-btn sys-btn--ghost tbk__step");
+    var label = el("b", "tbk__day");
+    bar.appendChild(prev); bar.appendChild(pick); bar.appendChild(next); bar.appendChild(label);
+    app.appendChild(bar);
+    var box = el("div", "tbk__rooms");
+    app.appendChild(box);
+    var form = el("div", "tbk__form");
+    form.hidden = true;
+    app.appendChild(form);
+    var cur = null;
+    function load(d) {
+      box.textContent = "";
+      form.hidden = true;
+      box.appendChild(el("p", "sys-note", "불러오는 중…"));
+      LeeshAPI.rpc("teacher_rooms", { p_date: d || "" }).then(function (res) {
+        box.textContent = "";
+        if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", res.error || "불러오지 못했어요.")); return; }
+        cur = res;
+        pick.min = res.today; pick.max = res.last; pick.value = res.date;
+        prev.disabled = res.date <= res.today;
+        next.disabled = res.date >= res.last;
+        label.textContent = dayText(res.date) + (res.date === res.today ? " · 오늘" : "");
+        drawMine(res.mine || []);
+        res.rooms.forEach(function (r) {
+          var row = el("div", "tbk__room");
+          row.appendChild(el("p", "tbk__rname", r.name));
+          var chips = el("div", "tbk__chips");
+          if (!r.free.length) chips.appendChild(el("span", "sys-note", "빈 시간 없음"));
+          r.free.forEach(function (h) {
+            var c = button(h, "tbk__chip");
+            c.addEventListener("click", function () {
+              box.querySelectorAll(".tbk__chip.is-on").forEach(function (x) { x.classList.remove("is-on"); });
+              c.classList.add("is-on");
+              openForm(r, h);
+            });
+            chips.appendChild(c);
+          });
+          row.appendChild(chips);
+          box.appendChild(row);
+        });
+      });
+    }
+    function openForm(r, h) {
+      form.textContent = "";
+      form.hidden = false;
+      var startMin = parseInt(h, 10) * 60;
+      var hours = 1;
+      while (hours < cur.maxHours && r.free.indexOf(("0" + (startMin / 60 + hours)).slice(-2) + ":00") !== -1) hours++;
+      form.appendChild(el("p", "tbk__pick", r.name + " · " + dayText(cur.date) + " " + h + "부터"));
+      var sel = el("select", "tbk__hours");
+      for (var i = 1; i <= hours; i++) {
+        var o = el("option", null, i + "시간 (" + h + "~" + ("0" + (startMin / 60 + i)).slice(-2) + ":00)");
+        o.value = i; sel.appendChild(o);
+      }
+      sel.value = hours;
+      form.appendChild(sel);
+      var go = button("예약하기");
+      var m = el("p", "sys-msg");
+      go.addEventListener("click", function () {
+        go.disabled = true;
+        m.className = "sys-msg"; m.textContent = "예약하는 중…";
+        LeeshAPI.rpc("teacher_booking_create", { p_room: r.name, p_date: cur.date, p_start: h, p_hours: Number(sel.value) }).then(function (res) {
+          go.disabled = false;
+          if (!res.ok) { m.className = "sys-msg sys-msg--error"; m.textContent = res.error || "예약하지 못했어요."; return; }
+          load(cur.date);
+        });
+      });
+      form.appendChild(go);
+      form.appendChild(m);
+      form.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    function drawMine(list) {
+      mineBox.textContent = "";
+      mineBox.appendChild(el("p", "tbk__h", "📌 내 예약 (" + list.length + ")"));
+      if (!list.length) { mineBox.appendChild(el("p", "sys-note", "앞으로 잡힌 예약이 없어요.")); return; }
+      var ul = el("ul", "tbk__list");
+      list.forEach(function (b) {
+        var li = el("li");
+        li.appendChild(el("span", null, dayText(b.date) + " " + b.start + "~" + b.end + " · " + b.room));
+        var x = button("취소", "sys-link tbk__cancel");
+        var armed = false;
+        x.addEventListener("click", function () {
+          if (!armed) { armed = true; x.textContent = "한 번 더 누르면 취소"; setTimeout(function () { armed = false; x.textContent = "취소"; }, 4000); return; }
+          x.disabled = true;
+          LeeshAPI.rpc("teacher_booking_cancel", { p_booking: b.id }).then(function (res) {
+            if (!res.ok) { x.disabled = false; x.textContent = res.error || "취소하지 못했어요."; return; }
+            load(cur ? cur.date : "");
+          });
+        });
+        li.appendChild(x);
+        ul.appendChild(li);
+      });
+      mineBox.appendChild(ul);
+    }
+    prev.addEventListener("click", function () { if (cur) load(addDay(cur.date, -1)); });
+    next.addEventListener("click", function () { if (cur) load(addDay(cur.date, 1)); });
+    pick.addEventListener("change", function () { if (pick.value) load(pick.value); });
+    load(date || "");
   }
 
   /* 원장 컨설팅 (원장님 2026-11-11 "심화반만 하는 원장님 특별 컨설팅, 선생님들만 볼 수 있게 · 학생은 보면 안 됨 · 학생별로"):
