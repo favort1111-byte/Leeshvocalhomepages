@@ -3060,6 +3060,29 @@
         if (!s.read) top.appendChild(el("span", "adm__kakao", "새 건의"));
         li.appendChild(top);
         li.appendChild(el("p", "adm__quote", s.body));
+        // 답글 (원장님 2026-11-12): 보낸 학생 기기의 "내가 보낸 건의"에만 보임
+        var rbox = el("div", "adm__reply");
+        if (s.reply) rbox.appendChild(el("p", "sys-note", "💬 남긴 답글 · " + (s.reply_at ? new Date(s.reply_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "")));
+        var rta = el("textarea");
+        rta.rows = 2; rta.maxLength = 1000; rta.value = s.reply || "";
+        rta.placeholder = "답글 (보낸 학생 화면에만 보여요, 선택)";
+        rbox.appendChild(rta);
+        var rbtn = el("button", "sys-btn", s.reply ? "답글 고치기" : "답글 남기기");
+        rbtn.type = "button";
+        var rmsg = el("span", "sys-note");
+        rbtn.addEventListener("click", function () {
+          rbtn.disabled = true;
+          api("rpc/admin_suggest_reply", { method: "POST", body: { p_id: s.id, p_reply: rta.value } }).then(function (res) {
+            rbtn.disabled = false;
+            var d2 = res.data || {};
+            if (!res.ok || !d2.ok) { rmsg.textContent = d2.error || "저장하지 못했어요."; return; }
+            loadSuggest(); countSuggest();
+          });
+        });
+        var rrow = el("div", "adm__cardrow");
+        rrow.appendChild(rbtn); rrow.appendChild(rmsg);
+        rbox.appendChild(rrow);
+        li.appendChild(rbox);
         var row = el("div", "adm__cardrow");
         var mark = el("button", "sys-btn", s.read ? "안 읽음으로" : "읽음");
         mark.type = "button";

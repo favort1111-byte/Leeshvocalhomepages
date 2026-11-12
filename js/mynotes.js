@@ -60,6 +60,7 @@
     scene.querySelectorAll("[data-book-page]").forEach(function (p) { p.hidden = p.getAttribute("data-book-page") !== name; });
     // phones: the tab row scrolls sideways, so bring the chosen tab into view
     if (name === "msgs" && !scene.hidden) markMsgsRead();
+    if (name === "suggest") markRepliesSeen();
     var t = scene.querySelector('[data-book-tab="' + name + '"]'), row = t && t.parentNode;
     if (row && row.scrollWidth > row.clientWidth) row.scrollLeft = t.offsetLeft - row.offsetLeft - 12;
   }
@@ -699,8 +700,8 @@
     sum.appendChild(ul);
     // 원장님 2026-11-11: 답장은 못 하지만 꼭 읽는다는 안내
     var noreply = el("div", "suggest__noreply");
-    noreply.appendChild(el("p", null, "💌 누가 썼는지 모르기 때문에 학원에서 답장은 드릴 수 없어요."));
-    noreply.appendChild(el("p", null, "하지만 보내주신 건의는 실장님이 하나도 빠짐없이 꼭 읽고 있어요. 읽으면 아래 \"내가 보낸 건의\"에 ✅ 읽음으로 표시돼요."));
+    noreply.appendChild(el("p", null, "💌 누가 썼는지 모르기 때문에 학원에서 따로 연락은 드릴 수 없어요."));
+    noreply.appendChild(el("p", null, "하지만 보내주신 건의는 실장님이 하나도 빠짐없이 꼭 읽고 있어요. 읽으면 아래 \"내가 보낸 건의\"에 ✅ 읽음으로, 학원이 답글을 남기면 💬 답글로 보여요."));
     sum.appendChild(noreply);
     box.appendChild(sum);
     var sent = el("div", "suggest__sent");
@@ -720,7 +721,7 @@
     var note = el("p", "sys-msg");
     note.setAttribute("role", "status");
     f.appendChild(note);
-    f.appendChild(el("p", "sys-note", "보낸 글 내용은 다시 볼 수 없고, 이 기기에서만 주제 · 날짜 · 읽음 표시가 보여요. 답이 필요하면 카카오톡 채널로 물어봐 주세요. (하루 5번까지)"));
+    f.appendChild(el("p", "sys-note", "보낸 글 내용은 다시 볼 수 없고, 이 기기에서만 주제 · 날짜 · 읽음 · 답글이 보여요. 바로 답이 필요하면 카카오톡 채널로 물어봐 주세요. (하루 5번까지)"));
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       if (ta.value.trim().length < 2) { note.textContent = "하고 싶은 말을 적어주세요."; note.className = "sys-msg sys-msg--error"; return; }
@@ -761,13 +762,35 @@
     box.appendChild(ul);
     LeeshAPI.rpc("member_suggest_status", { p_tickets: list.map(function (x) { return x.t; }) }, "").then(function (res) {
       if (!res.ok) { Object.keys(rows).forEach(function (k) { rows[k].textContent = ""; }); return; }
+      var newest = "";
       (res.items || []).forEach(function (it) {
         var st = rows[it.t];
         if (!st) return;
-        st.textContent = it.read ? "✅ 읽음" : "⏳ 아직 안 읽음";
-        st.className = "suggest__state" + (it.read ? " suggest__state--read" : "");
+        st.textContent = it.reply ? "💬 답글" : it.read ? "✅ 읽음" : "⏳ 아직 안 읽음";
+        st.className = "suggest__state" + (it.reply ? " suggest__state--reply" : it.read ? " suggest__state--read" : "");
+        if (it.reply) {
+          var li = st.parentNode;
+          var r = el("div", "suggest__reply");
+          r.appendChild(el("p", "suggest__replyhead", "💬 학원 답글" + (it.reply_at ? " · " + dayLabel(new Date(Date.parse(it.reply_at) + 9 * 3600000).toISOString().slice(0, 10)) : "")));
+          r.appendChild(el("p", "suggest__replybody", it.reply));
+          li.appendChild(r);
+          if (String(it.reply_at || "") > newest) newest = String(it.reply_at || "");
+        }
       });
+      // 안 본 답글이 있으면 건의함 탭에 빨간 점 (이 기기 기준)
+      var seen = "";
+      try { seen = localStorage.getItem(sentKey() + ":seen") || ""; } catch (e) {}
+      var tab = scene.querySelector('[data-book-tab="suggest"]');
+      if (tab) tab.classList.toggle("book__tab--dot", !!newest && newest > seen);
+      if (newest) sentNewest = newest;
     });
+  }
+  var sentNewest = "";
+  function markRepliesSeen() {
+    if (!sentNewest || !who) return;
+    try { localStorage.setItem(sentKey() + ":seen", sentNewest); } catch (e) {}
+    var tab = scene.querySelector('[data-book-tab="suggest"]');
+    if (tab) tab.classList.remove("book__tab--dot");
   }
 
   function renderPartners(res) {

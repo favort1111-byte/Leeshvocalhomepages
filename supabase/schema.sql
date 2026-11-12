@@ -7952,3 +7952,60 @@ begin
 end $function$;
 revoke all on function public.member_visit_cancel(text, text, bigint) from public;
 grant execute on function public.member_visit_cancel(text, text, bigint) to anon, authenticated;
+
+-- ===== leesh_suggest_reply (2026-11-12) =====
+-- 건의함 답글 (원장님 2026-11-12 "댓글 같은 거라도 달 수 있게"): 학원이 건의마다 답글을 남기면
+-- 보낸 학생 기기("내가 보낸 건의", 무작위 번호로만 찾음)에만 보임. 답글도 암호화해서 저장. 누가 썼는지는 여전히 모름.
+alter table private.suggestions add column if not exists reply bytea;
+alter table private.suggestions add column if not exists reply_at timestamptz;
+
+create or replace function public.admin_suggestions()
+ returns jsonb language plpgsql security definer set search_path to ''
+as $function$
+declare k private.suggest_key;
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  select * into k from private.suggest_key where id = 1;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', s.id, 'day', s.day, 'topic', s.topic, 'read', s.is_read,
+             'body', extensions.pgp_sym_decrypt(s.body, k.k),
+             'reply', case when s.reply is null then null else extensions.pgp_sym_decrypt(s.reply, k.k) end,
+             'reply_at', s.reply_at) order by s.id desc)
+      from (select * from private.suggestions order by id desc limit 300) s), '[]'::jsonb));
+end $function$;
+
+create or replace function public.admin_suggest_reply(p_id bigint, p_reply text)
+ returns jsonb language plpgsql security definer set search_path to ''
+as $function$
+declare k private.suggest_key; v text := trim(coalesce(p_reply, ''));
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if char_length(v) > 1000 then return private.fail('답글은 1000자까지 쓸 수 있어요.'); end if;
+  select * into k from private.suggest_key where id = 1;
+  update private.suggestions
+     set reply = case when v = '' then null else extensions.pgp_sym_encrypt(v, k.k) end,
+         reply_at = case when v = '' then null else now() end,
+         is_read = true
+   where id = p_id;
+  if not found then return private.fail('건의를 찾을 수 없어요.'); end if;
+  return jsonb_build_object('ok', true);
+end $function$;
+revoke all on function public.admin_suggest_reply(bigint, text) from public;
+grant execute on function public.admin_suggest_reply(bigint, text) to authenticated;
+
+-- 로그인 없이 번호로: 읽음 + 답글
+create or replace function public.member_suggest_status(p_tickets uuid[])
+ returns jsonb language plpgsql stable security definer set search_path to ''
+as $function$
+declare k private.suggest_key;
+begin
+  select * into k from private.suggest_key where id = 1;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('t', t, 'read', coalesce(s.is_read, true),
+             'reply', case when s.reply is null then null else extensions.pgp_sym_decrypt(s.reply, k.k) end,
+             'reply_at', s.reply_at))
+    from unnest((coalesce(p_tickets, '{}'::uuid[]))[1:30]) as t
+    left join private.suggestions s on s.ticket = t), '[]'::jsonb));
+end $function$;
+revoke all on function public.member_suggest_status(uuid[]) from public;
+grant execute on function public.member_suggest_status(uuid[]) to anon, authenticated;

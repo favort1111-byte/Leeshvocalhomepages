@@ -203,3 +203,5 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__kktext textarea{width:100%;box-sizing:border-box;padding:10px;border-radius:10px;background:#FEE500;color:#3C1E1E;border:1px solid #E8D200;font:inherit;font-size:14px;line-height:1.5;}
 
 .adm__card--past{opacity:.55;}
+.adm__reply{margin:8px 0 4px;padding:8px 10px;border-radius:10px;background:#FFFBEA;border:1px solid #F0E2B0;}
+.adm__reply textarea{width:100%;box-sizing:border-box;margin:4px 0 6px;}

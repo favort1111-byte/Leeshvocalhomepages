@@ -1156,12 +1156,20 @@
       var all = db.suggestions || [];
       return { ok: true, items: (a.p_tickets || []).slice(0, 30).map(function (t) {
         var s = all.filter(function (x) { return x.ticket === t; })[0];
-        return { t: t, read: s ? !!s.read : true };
+        return { t: t, read: s ? !!s.read : true, reply: s && s.reply || null, reply_at: s && s.reply_at || null };
       }) };
     },
-    admin_suggestions: function () { return { ok: true, items: db.suggestions || [] }; },
+    admin_suggestions: function () {
+      if (!db.suggestions) { db.suggestions = [{ id: ++db.next, day: nowKst().today, topic: "연습실", body: "B3 연습실 에어컨이 너무 추워요. 온도 좀 올려 주세요! (체험 모드 예시)", read: false, ticket: "demo-seed" }]; save(); }
+      return { ok: true, items: db.suggestions };
+    },
     admin_suggest_count: function () { return (db.suggestions || []).filter(function (s) { return !s.read; }).length; },
     admin_suggest_mark: function (a) { (db.suggestions || []).forEach(function (s) { if (s.id === a.p_id) s.read = !!a.p_read; }); save(); return { ok: true }; },
+    admin_suggest_reply: function (a) {
+      var v = String(a.p_reply || "").trim();
+      (db.suggestions || []).forEach(function (s) { if (s.id === a.p_id) { s.reply = v || null; s.reply_at = v ? new Date().toISOString() : null; s.read = true; } });
+      save(); return { ok: true };
+    },
     admin_suggest_delete: function (a) { db.suggestions = (db.suggestions || []).filter(function (s) { return s.id !== a.p_id; }); save(); return { ok: true }; },
     // 텔레그램 알림 (관리자 → 설정): 체험 모드는 실제로 보내지 않고 연결된 척만
     admin_backup_status: function () { return { ok: true, connected: true, lastAt: new Date().toISOString(), last: { ok: true, file: "홈페이지백업_예시.zip", bytes: 1843200, warnings: [] } }; },
