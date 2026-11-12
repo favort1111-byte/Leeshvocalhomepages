@@ -8329,3 +8329,34 @@ begin
 end $function$;
 
 update public.audition_news set pick = 'vd' where id = 283;
+
+-- ===== leesh_usage_alert (2026-11-12) =====
+-- 무료 요금제 용량 알림 (원장님 2026-11-12 "저장용량 60% 차면 알람"): 매일 한국 오전 9시 13분 pg_cron이 DB(500MB) · 파일(1GB)을 재서
+-- 60% · 80% · 90%를 처음 넘을 때 텔레그램으로 한 번씩 (같은 단계는 다시 안 보냄, 지워서 내려가면 다시 알림 가능).
+create table if not exists private.usage_alert_state (id int primary key default 1 check (id = 1), db_level int not null default 0, file_level int not null default 0);
+insert into private.usage_alert_state (id) values (1) on conflict do nothing;
+
+create or replace function private.usage_alert() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  db_mb numeric := round(pg_database_size(current_database()) / 1048576.0, 1);
+  file_mb numeric := (select round(coalesce(sum((metadata ->> 'size')::bigint), 0) / 1048576.0, 1) from storage.objects);
+  db_pct int := floor(db_mb * 100 / 500);
+  file_pct int := floor(file_mb * 100 / 1024);
+  st private.usage_alert_state;
+  lv_db int; lv_file int;
+  msg text := '';
+begin
+  select * into st from private.usage_alert_state where id = 1;
+  lv_db := case when db_pct >= 90 then 90 when db_pct >= 80 then 80 when db_pct >= 60 then 60 else 0 end;
+  lv_file := case when file_pct >= 90 then 90 when file_pct >= 80 then 80 when file_pct >= 60 then 60 else 0 end;
+  if lv_db > st.db_level then msg := msg || chr(10) || '· 데이터: ' || db_mb || 'MB / 500MB (' || db_pct || '%)'; end if;
+  if lv_file > st.file_level then msg := msg || chr(10) || '· 파일(사진 · 음원 · 평가지): ' || file_mb || 'MB / 1024MB (' || file_pct || '%)'; end if;
+  if msg <> '' then
+    perform private.notify_send('💾 홈페이지 저장 용량 알림 (무료 요금제)' || msg || chr(10) || '정리하거나 유료(Pro)로 바꿀지 정해 주세요.');
+  end if;
+  update private.usage_alert_state set db_level = lv_db, file_level = lv_file where id = 1;
+  return jsonb_build_object('db_mb', db_mb, 'db_pct', db_pct, 'file_mb', file_mb, 'file_pct', file_pct, 'sent', msg <> '');
+end $$;
+revoke all on function private.usage_alert() from public, anon, authenticated;
+select cron.schedule('leesh_usage_alert', '13 0 * * *', 'select private.usage_alert()');
