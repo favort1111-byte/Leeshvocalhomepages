@@ -172,6 +172,12 @@ def main():
         cfg = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "js", "config.js"), encoding="utf-8").read()
         m = re.search(r"^\s*bookingOpen:\s*(true|false)", cfg, re.M)
         front = (m.group(1) == "true") if m else True
+        # 여는 시각(bookingOpenAt)이 지났으면 화면은 열린 것 (원장님 2026-11-12)
+        at = re.search(r'^\s*bookingOpenAt:\s*"([^"]+)"', cfg, re.M)
+        if not front and at:
+            from datetime import datetime, timezone
+            if datetime.now(timezone.utc) >= datetime.fromisoformat(at.group(1)):
+                front = True
     except OSError:
         front = None
     server = s.get("booking_open", True)

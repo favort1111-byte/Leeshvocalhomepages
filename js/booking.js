@@ -15,6 +15,11 @@
   // 잠깐 멈춤 (원장님 2026-11-05): 로그인 · 내 폴더 · 내 예약 보기는 그대로, 빈 시간 · 새 예약만 "준비 중"
   var paused = cfg.bookingOpen === false;
   if (paused) app.querySelector("#bookingSoon").hidden = false;
+  // 여는 시각(config bookingOpenAt)까지 이 화면을 열어 둔 학생: 그 시각이 되면 새로 고쳐서 바로 예약 (원장님 2026-11-12)
+  if (paused && cfg.bookingOpenAt) {
+    var openIn = Date.parse(cfg.bookingOpenAt) - Date.now();
+    if (openIn > 0 && openIn < 7 * 864e5) setTimeout(function () { location.reload(); }, openIn + 3000);
+  }
 
   if (!LeeshAPI.enabled()) {
     whoBox.hidden = true;

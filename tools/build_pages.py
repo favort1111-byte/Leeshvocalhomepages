@@ -443,8 +443,8 @@ BOOKING_APP = f"""  <div class="booking__inner">
       </div>
       <div class="sys-soon" id="bookingSoon" hidden>
         <p class="sys-soon__tag">준비 중</p>
-        <h2 class="sys-soon__h">연습실 예약은 곧 시작해요</h2>
-        <p>지금은 홈페이지 예약을 잠깐 멈췄어요. 시작하면 학원에서 알려드릴게요.<br>궁금한 점은 실장님께 문의해주세요.</p>
+        <h2 class="sys-soon__h">연습실 예약은 11월 16일(월) 0시에 시작해요</h2>
+        <p>그때부터 이 화면에서 바로 예약할 수 있어요. (화면을 열어 두면 0시에 저절로 바뀌어요)<br>궁금한 점은 실장님께 문의해주세요.</p>
       </div>
       <div class="sys-board" id="boardWrap">
         <h2 class="sys-h">빈 시간 보기</h2>

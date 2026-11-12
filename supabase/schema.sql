@@ -8009,3 +8009,20 @@ begin
 end $function$;
 revoke all on function public.member_suggest_status(uuid[]) from public;
 grant execute on function public.member_suggest_status(uuid[]) to anon, authenticated;
+
+-- ===== leesh_booking_open_at (2026-11-12) =====
+-- 연습실 예약 저절로 열기 (원장님 2026-11-12 "16일 월요일 00:00부터 오픈, 자동으로"):
+-- pg_cron(GMT) 2026-11-15 15:00 = 한국 11-16 00:00에 한 번 → settings.booking_open = true + 텔레그램 + 작업 스스로 지움.
+-- 화면은 js/config.js bookingOpenAt이 같은 시각에 저절로 열림.
+create or replace function private.booking_open_now()
+ returns void language plpgsql security definer set search_path to ''
+as $function$
+begin
+  if private.now_kst() < timestamp '2026-11-16 00:00' - interval '1 minute' then return; end if; -- 혹시 일찍 돌면 아무것도 안 함
+  update public.settings set booking_open = true where booking_open is distinct from true;
+  perform private.notify_send('✅ 연습실 예약을 열었어요 (' || to_char(private.now_kst(), 'MM/DD HH24:MI') || ') · 이제 학생들이 홈페이지에서 예약할 수 있어요');
+  perform cron.unschedule('leesh_booking_open');
+exception when others then
+  update public.settings set booking_open = true;  -- 알림 · 작업 지우기가 실패해도 예약은 꼭 열기
+end $function$;
+select cron.schedule('leesh_booking_open', '0 15 15 11 *', 'select private.booking_open_now()');
