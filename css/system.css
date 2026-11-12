@@ -511,3 +511,6 @@
 .cc__alertback{width:100%;}
 .cc__alertno{display:block;margin:10px auto 0;padding:6px 10px;background:none;border:0;color:#8A7A60;text-decoration:underline;font:inherit;font-size:14px;cursor:pointer;}
 .cc__bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:4px 0 10px;padding:9px 12px;border-radius:10px;background:#FDECEA;border:1px solid #F3B9B2;color:#9B2C1F;font-size:14px;font-weight:700;word-break:keep-all;}
+.apply__cancel{margin-top:18px;padding-top:14px;border-top:1px dashed #D9CDB4;}
+.apply__cancelbtn{width:100%;background:#fff;color:#9B2C1F;border:1.5px solid #E7B4AC;}
+.apply__cancelbtn[data-armed="1"]{background:#FDECEA;border-color:#C9473A;}

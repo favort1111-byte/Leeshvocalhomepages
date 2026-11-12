@@ -972,6 +972,15 @@
       save();
       return { ok: true, id: row.id };
     },
+    member_visit_cancel: function (a, uid) {
+      var who = checkReady(a.p_id, a.p_pin, uid);
+      if (!who.ok) return who;
+      var before = db.visit_applications.length;
+      db.visit_applications = db.visit_applications.filter(function (x) { return !(x.news_id === a.p_news && x.member_id === who.id); });
+      if (db.visit_applications.length === before) return fail("취소할 신청이 없어요.");
+      save();
+      return { ok: true };
+    },
     member_messages: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;

@@ -109,7 +109,7 @@
     if (a.deadline) facts.appendChild(el("span", null, "신청 마감 " + day(a.deadline)));
     if (facts.firstChild) head.appendChild(facts);
     if (a.body) head.appendChild(el("p", "apply__body", a.body));
-    if (mine) head.appendChild(el("p", "sys-msg sys-msg--ok", "신청했어요. 고칠 게 있으면 아래에서 고쳐서 다시 보내주세요."));
+    if (mine) head.appendChild(el("p", "sys-msg sys-msg--ok", "신청했어요. 고칠 게 있으면 아래에서 고쳐서 다시 보내주세요. 못 가게 됐다면 맨 아래 \"신청 취소하기\"를 눌러주세요."));
     // 지난번 신청 내용을 미리 채움 (원장님 2026-11-06): 이름 · 성별 · 출생년도 · 키/몸무게 · 지원분야
     else if (last) head.appendChild(el("p", "sys-note apply__last", "지난번에 쓴 내용(이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야)을 미리 채워 뒀어요. 바뀐 게 있으면 고쳐서 보내주세요."));
     wrap.appendChild(head);
@@ -166,6 +166,32 @@
     var msg = el("p", "sys-msg");
     msg.setAttribute("role", "status");
     f.appendChild(msg);
+
+    // 신청 취소 (원장님 2026-11-12): 신청 마감 전까지 직접, 두 번 눌러야 취소
+    if (mine) {
+      var cbox = el("div", "apply__cancel");
+      cbox.appendChild(el("p", "sys-note", "못 가게 됐다면 신청을 취소해 주세요. 신청 마감" + (a.deadline ? "(" + day(a.deadline) + ")" : "") + " 뒤에는 학원(실장님)에 연락해 주세요."));
+      var cb = el("button", "sys-btn sys-btn--ghost apply__cancelbtn", "신청 취소하기");
+      cb.type = "button";
+      var cmsg = el("p", "sys-msg");
+      cb.addEventListener("click", function () {
+        if (cb.getAttribute("data-armed") !== "1") {
+          cb.setAttribute("data-armed", "1");
+          cb.textContent = "정말 취소할까요? 한 번 더 누르면 취소돼요";
+          return;
+        }
+        cb.disabled = true;
+        LeeshAPI.rpc("member_visit_cancel", { p_id: who.id, p_pin: who.key, p_news: a.id }).then(function (res) {
+          if (!res.ok) { cb.disabled = false; say(cmsg, res.error, "error"); return; }
+          say(cmsg, "신청을 취소했어요.", "ok");
+          want = a.id;
+          setTimeout(function () { load(name); }, 1000);
+        });
+      });
+      cbox.appendChild(cb);
+      cbox.appendChild(cmsg);
+      f.appendChild(cbox);
+    }
 
     f.addEventListener("submit", function (e) {
       e.preventDefault();

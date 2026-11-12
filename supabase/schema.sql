@@ -7923,3 +7923,32 @@ as $function$
 $function$;
 revoke all on function public.member_suggest_status(uuid[]) from public;
 grant execute on function public.member_suggest_status(uuid[]) to anon, authenticated;
+
+-- ===== leesh_visit_cancel (2026-11-12) =====
+-- 내방 오디션 신청 취소 (원장님 2026-11-12 "취소하고 싶은 학생이 취소하는 칸이 없다"):
+-- 신청 마감(마감일, 없으면 오디션 하루 전)까지는 학생이 직접 취소 → 신청 지움 + 텔레그램(1시간 모아 보내기).
+-- 마감 뒤엔 학원(실장님)에 연락. 올린 음원 파일은 지우지 않음 (자동 삭제 없음).
+create or replace function public.member_visit_cancel(p_id text, p_pin text, p_news bigint)
+ returns jsonb language plpgsql security definer set search_path to ''
+as $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  n public.audition_news;
+  a public.visit_applications;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into n from public.audition_news where id = p_news and kind = '내방';
+  select * into a from public.visit_applications where news_id = p_news and member_id = mid;
+  if a.id is null then return private.fail('취소할 신청이 없어요.'); end if;
+  if n.id is not null and coalesce(n.deadline, n.event_date - 1) is not null and coalesce(n.deadline, n.event_date - 1) < today then
+    return private.fail('신청 마감이 지나서 직접 취소할 수 없어요. 학원(실장님)에 연락해주세요.');
+  end if;
+  delete from public.visit_applications where id = a.id;
+  perform private.notify('🎤 내방 오디션 신청 취소: ' || a.name || ' · ' || coalesce(a.field, '') || chr(10) || coalesce(a.audition, ''));
+  return jsonb_build_object('ok', true);
+end $function$;
+revoke all on function public.member_visit_cancel(text, text, bigint) from public;
+grant execute on function public.member_visit_cancel(text, text, bigint) to anon, authenticated;
