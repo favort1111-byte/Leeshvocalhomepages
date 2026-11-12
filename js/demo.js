@@ -143,7 +143,7 @@
         { id: 41, kind: "내방", company: "체험 엔터테인먼트", title: "다음 달 학원 내방 오디션", event_date: addDays(t, 18), deadline: addDays(t, 12),
           body: "일시 : 다음 달 금요일 오후 6시30분\n장소 : 이송희보컬레슨 C홀\n지원자격 : 남녀 04~15년생\n지원분야 : 보컬, 랩, 댄스, 라이브퍼포먼스, 연기 중 택 1\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: 44, kind: "내방", company: "샘플 뮤직", title: "학원 내방 오디션", event_date: addDays(t, 2), deadline: null,
+        { id: 44, kind: "내방", pick: "vd", company: "샘플 뮤직", title: "학원 내방 오디션", event_date: addDays(t, 2), deadline: null,
           body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 45, kind: "내방", company: "예시 엔터테인먼트", title: "학원 내방 오디션", event_date: addDays(t, -4), deadline: null,
@@ -956,7 +956,7 @@
         return n.kind === "내방" && n.published && (n.deadline || (n.event_date ? addDays(n.event_date, -1) : today)) >= today; // 마감일 없으면 하루 전까지
       }).map(function (n) {
         var mine = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0] || null;
-        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), body: n.body, image: n.image, mine: mine };
+        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), body: n.body, image: n.image, pick: n.pick || "1", mine: mine };
       }) };
     },
     member_visit_apply: function (a, uid) {
@@ -964,7 +964,10 @@
       if (!who.ok) return who;
       var n = db.audition_news.filter(function (x) { return x.id === a.p_news && x.kind === "내방"; })[0];
       if (!n) return fail("신청할 오디션을 찾을 수 없어요.");
-      if (!a.p_field) return fail("지원분야를 하나 골라주세요.");
+      if (!a.p_field) return fail("지원분야를 골라주세요.");
+      var fl = String(a.p_field).split(" + "), pk = n.pick || "1";
+      if (pk === "1" && fl.length !== 1) return fail("지원분야는 하나만 골라주세요.");
+      if (pk === "vd" && !(fl.length === 2 && fl.indexOf("댄스") !== -1 && (fl.indexOf("보컬") !== -1 || fl.indexOf("랩") !== -1))) return fail("이 오디션은 보컬 또는 랩 중 하나 + 댄스, 2개를 골라주세요.");
       var row = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0];
       if (!row) { row = { id: ++db.next, news_id: n.id, member_id: who.id, created_at: new Date().toISOString() }; db.visit_applications.push(row); }
       Object.assign(row, { audition: (n.company ? n.company + " " : "") + n.title, name: a.p_name, gender: a.p_gender, birth: a.p_birth,

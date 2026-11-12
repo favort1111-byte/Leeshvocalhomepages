@@ -1,5 +1,5 @@
 // apply.html: 학원 내방 오디션 신청서 — the same questions as the academy's Google Form (이름, 성별, 출생년도/나이,
-// 키/몸무게, 지원분야 택 1, 특이사항, 댄스 음원). 학원생만: sign in with Kakao (js/signin.js) first. Each 내방 오디션
+// 키/몸무게, 지원분야 택 1 (오디션마다 택 2도), 특이사항, 댄스 음원). 학원생만: sign in with Kakao (js/signin.js) first. Each 내방 오디션
 // the director posts in the admin page (audition_news kind 내방) takes applications until its 마감 (or the day itself);
 // sending again changes the application. apply.html?news=<id> opens that audition.
 (function () {
@@ -43,6 +43,23 @@
       box.appendChild(l);
     });
     return box;
+  }
+  function checks(name, values, on) {
+    var box = el("div", "sys-radios apply__radios");
+    values.forEach(function (v) {
+      var l = el("label"), r = el("input");
+      r.type = "checkbox";
+      r.name = name;
+      r.value = v;
+      r.checked = on.indexOf(v) !== -1;
+      l.appendChild(r);
+      l.appendChild(document.createTextNode(" " + v));
+      box.appendChild(l);
+    });
+    return box;
+  }
+  function pickedAll(form, name) {
+    return Array.prototype.map.call(form.querySelectorAll("[name=" + name + "]:checked"), function (r) { return r.value; });
   }
   function picked(form, name) { var r = form.querySelector("[name=" + name + "]:checked"); return r ? r.value : null; }
   function say(node, text, kind) { node.textContent = text || ""; node.className = "sys-msg" + (kind ? " sys-msg--" + kind : ""); }
@@ -128,8 +145,17 @@
     f.appendChild(field("키/몸무게", size, "ex) 168/48"));
     var fs = el("fieldset", "apply__set");
     fs.appendChild(el("legend", null, "지원분야"));
-    fs.appendChild(el("small", "apply__help", "*보컬, 랩, 댄스, 라이브 퍼포먼스, 연기 중 택 1만 가능"));
-    fs.appendChild(radios("field", FIELDS, (mine || last || {}).field));
+    // 오디션마다 고르는 방식 (원장님 2026-11-12): pick '1' 택 1 · '2' 2개까지 · 'vd' 보컬 또는 랩 + 댄스
+    var pick = a.pick || "1", prev = (mine || last || {}).field || "";
+    if (pick === "1") {
+      fs.appendChild(el("small", "apply__help", "*보컬, 랩, 댄스, 라이브 퍼포먼스, 연기 중 택 1만 가능"));
+      fs.appendChild(radios("field", FIELDS, prev.indexOf(" + ") === -1 ? prev : null));
+    } else {
+      fs.appendChild(el("small", "apply__help apply__pick", pick === "vd"
+        ? "*이 오디션은 택 2예요: 보컬 또는 랩 중 하나 + 댄스 (예: 보컬 + 댄스 / 랩 + 댄스)"
+        : "*이 오디션은 2개까지 고를 수 있어요"));
+      fs.appendChild(checks("field", pick === "vd" ? ["보컬", "랩", "댄스"] : FIELDS, mine ? mine.field.split(" + ") : []));
+    }
     f.appendChild(fs);
 
     // 특이사항 before 댄스음원 (원장님 2026-10-28: 이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야 · 특이사항 · 댄스음원)
@@ -195,12 +221,14 @@
 
     f.addEventListener("submit", function (e) {
       e.preventDefault();
-      var gender = picked(f, "gender"), fld = picked(f, "field"), file = music.files[0];
+      var gender = picked(f, "gender"), flds = pickedAll(f, "field"), fld = flds.join(" + "), file = music.files[0];
       if (!nm.value.trim()) { say(msg, "이름을 적어주세요.", "error"); return; }
       if (!ok.checked) { say(msg, "주요 공지 사항을 읽고 \"확인했어요\"에 체크해주세요.", "error"); return; }
       if (!gender) { say(msg, "성별을 골라주세요.", "error"); return; }
-      if (!fld) { say(msg, "지원분야를 하나 골라주세요.", "error"); return; }
-      if (fld === "댄스" && !file && !(mine && mine.music) && !bk.checked) {
+      if (!fld) { say(msg, pick === "1" ? "지원분야를 하나 골라주세요." : "지원분야를 골라주세요.", "error"); return; }
+      if (pick === "2" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
+      if (pick === "vd" && !(flds.length === 2 && flds.indexOf("댄스") !== -1)) { say(msg, "이 오디션은 보컬 또는 랩 중 하나 + 댄스, 2개를 골라주세요.", "error"); return; }
+      if (flds.indexOf("댄스") !== -1 && !file && !(mine && mine.music) && !bk.checked) {
         say(msg, "댄스 지원자는 음원을 올려주세요. 용량이 크면 \"음원은 실장님께 카톡으로 보낼게요\"를 체크해주세요.", "error");
         return;
       }

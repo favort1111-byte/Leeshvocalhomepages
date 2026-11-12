@@ -8241,3 +8241,91 @@ drop trigger if exists member_status_cancel on public.members;
 create trigger member_status_cancel after update of status on public.members
   for each row when (old.status is distinct from new.status)
   execute function private.member_status_cancel();
+
+-- ===== leesh_visit_pick (2026-11-12) =====
+-- 내방 오디션 지원분야 고르는 방식 (원장님 2026-11-12, 선생님 "이닛 내방오디션 택2인데 택1로 되어 있어요 · 보컬or랩, 댄스 중 택2"):
+-- audition_news.pick = '1' 택 1(기본) · '2' 2개까지 · 'vd' 보컬 또는 랩 + 댄스. 여러 개는 visit_applications.field에 "보컬 + 댄스".
+alter table public.audition_news add column if not exists pick text not null default '1' check (pick in ('1', '2', 'vd'));
+alter table public.visit_applications drop constraint if exists visit_applications_field_check;
+alter table public.visit_applications add constraint visit_applications_field_check check (
+  cardinality(string_to_array(field, ' + ')) between 1 and 2
+  and string_to_array(field, ' + ') <@ array['보컬', '랩', '댄스', '라이브퍼포먼스', '연기']);
+CREATE OR REPLACE FUNCTION public.member_visit_apply(p_id text, p_pin text, p_news bigint, p_name text, p_gender text DEFAULT NULL::text, p_birth text DEFAULT NULL::text, p_size text DEFAULT NULL::text, p_field text DEFAULT NULL::text, p_music jsonb DEFAULT NULL::jsonb, p_note text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  is_new boolean;
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  n public.audition_news;
+  today date := private.now_kst()::date;
+  v_name text := trim(coalesce(p_name, ''));
+  app_id bigint;
+  flds text[];
+  v_field text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into n from public.audition_news where id = p_news and kind = '내방' and published;
+  if n.id is null then return private.fail('신청할 오디션을 찾을 수 없어요.'); end if;
+  if coalesce(n.deadline, n.event_date - 1) is not null and coalesce(n.deadline, n.event_date - 1) < today then
+    return private.fail('신청이 마감됐어요. 학원에 문의해주세요.');
+  end if;
+  if v_name = '' or char_length(v_name) > 30 then return private.fail('이름을 적어주세요.'); end if;
+  if p_gender is not null and p_gender not in ('남', '여') then return private.fail('성별을 골라주세요.'); end if;
+  -- 지원분야: 오디션마다 고르는 방식 (원장님 2026-11-12, 이닛 내방 = 보컬 또는 랩 + 댄스 택 2) — 여러 개면 "보컬 + 댄스"
+  flds := array(select distinct trim(x) from unnest(string_to_array(coalesce(p_field, ''), '+')) x where trim(x) <> '');
+  if cardinality(flds) = 0 or not flds <@ array['보컬', '랩', '댄스', '라이브퍼포먼스', '연기'] then return private.fail('지원분야를 골라주세요.'); end if;
+  if coalesce(n.pick, '1') = '1' and cardinality(flds) <> 1 then return private.fail('지원분야는 하나만 골라주세요.'); end if;
+  if n.pick = '2' and cardinality(flds) > 2 then return private.fail('지원분야는 2개까지 고를 수 있어요.'); end if;
+  if n.pick = 'vd' and not (cardinality(flds) = 2 and '댄스' = any(flds) and (flds && array['보컬', '랩']) and flds <@ array['보컬', '랩', '댄스']) then
+    return private.fail('이 오디션은 보컬 또는 랩 중 하나 + 댄스, 2개를 골라주세요.');
+  end if;
+  v_field := array_to_string(array(select f from unnest(array['보컬', '랩', '댄스', '라이브퍼포먼스', '연기']) f where f = any(flds)), ' + ');
+  if char_length(coalesce(p_birth, '')) > 30 or char_length(coalesce(p_size, '')) > 30 or char_length(coalesce(p_note, '')) > 1000 then
+    return private.fail('글이 너무 길어요.');
+  end if;
+  if p_music is not null and coalesce(p_music ->> 'path', '') not like mid || '/%' then return private.fail('음원을 다시 올려주세요.'); end if;
+  insert into public.visit_applications (news_id, audition, member_id, name, gender, birth, body_size, field, music, note)
+  values (n.id, left(coalesce(n.company || ' ', '') || n.title, 120), mid, v_name, p_gender,
+          nullif(trim(coalesce(p_birth, '')), ''), nullif(trim(coalesce(p_size, '')), ''), v_field, p_music,
+          nullif(trim(coalesce(p_note, '')), ''))
+  on conflict (news_id, member_id) do update set name = excluded.name, gender = excluded.gender, birth = excluded.birth,
+    body_size = excluded.body_size, field = excluded.field, music = coalesce(excluded.music, public.visit_applications.music),
+    note = excluded.note, updated_at = now()
+  returning id, (xmax = 0) into app_id, is_new;
+  -- 알림은 처음 신청할 때만 (원장님 2026-11-05: 한 명이 고쳐서 3번 보내 텔레그램이 3번 옴)
+  if is_new then perform private.notify('🎤 내방 오디션 신청: ' || v_name || ' · ' || v_field || chr(10) || coalesce(n.company || ' ', '') || n.title); end if;
+  return jsonb_build_object('ok', true, 'id', app_id, 'new', is_new);
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.member_visit_open(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return jsonb_build_object('ok', true, 'name', who ->> 'name',
+    'last', (select jsonb_build_object('name', a.name, 'gender', a.gender, 'birth', a.birth, 'body_size', a.body_size, 'field', a.field)
+             from public.visit_applications a where a.member_id = mid order by a.updated_at desc nulls last, a.id desc limit 1),
+    'auditions', coalesce((
+    select jsonb_agg(jsonb_build_object('id', n.id, 'company', n.company, 'title', n.title, 'date', n.event_date,
+             'deadline', coalesce(n.deadline, n.event_date - 1), 'body', n.body, 'image', n.image, 'pick', coalesce(n.pick, '1'),
+             'mine', (select to_jsonb(a) - 'member_id' from public.visit_applications a where a.news_id = n.id and a.member_id = mid))
+             order by n.event_date nulls last, n.id)
+    from public.audition_news n
+    where n.kind = '내방' and n.published and coalesce(n.deadline, n.event_date - 1, today) >= today
+  ), '[]'::jsonb));
+end $function$;
+
+update public.audition_news set pick = 'vd' where id = 283;

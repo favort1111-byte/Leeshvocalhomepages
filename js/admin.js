@@ -1343,6 +1343,7 @@
       ["company", "title", "event_date", "deadline", "body", "link", "initials"].forEach(function (k) { field(f, k).value = p[k] || ""; });
       if (p.pass_type) field(f, "pass_type").value = p.pass_type;
       if (p.pass_stage) field(f, "pass_stage").value = p.pass_stage;
+      field(f, "pick").value = p.pick || "1";
     }
     $("#newsHead").textContent = p ? "소식 고치기" : "새 소식 올리기";
     $("#newsSave").textContent = p ? "고친 내용 저장" : "올리기";
@@ -1358,6 +1359,7 @@
     $("#newsDateLabel").textContent = k === "합격" ? "발표 날짜 (선택, 비우면 오늘)" : "오디션 날짜 (선택)";
     // 합격: 종류·단계·이니셜 → about 합격 실적판 (js/passboard.js); the title can be left for the form to make
     $("#passFields").hidden = k !== "합격";
+    $("#newsPickRow").hidden = k !== "내방"; // 내방 신청서 지원분야 택 1 / 택 2 (원장님 2026-11-12)
     $("#newsCompanyLabel").textContent = k === "합격" ? "회사 · 방송 · 학교 이름" : "회사 이름 (선택)";
     $("#newsTitleLabel").textContent = k === "합격" ? "제목 (비우면 \"1차 합격 (김OO)\"처럼 저절로)" : "제목";
   }
@@ -1373,6 +1375,7 @@
     body.pass_type = pass ? field(f, "pass_type").value : null;
     body.pass_stage = pass ? field(f, "pass_stage").value : null;
     body.initials = pass ? field(f, "initials").value.trim() || null : null;
+    body.pick = body.kind === "내방" ? field(f, "pick").value : "1";
     if (pass) {
       if (!body.company) { msg($("#newsMsg"), "회사 · 방송 · 학교 이름을 써주세요. 합격 실적판에 들어가요.", "error"); return; }
       if (body.initials && /^[가-힣]{2,4}$/.test(body.initials)) { msg($("#newsMsg"), "학생 이름은 이니셜로 써주세요 (예: 김OO).", "error"); return; }
@@ -1417,6 +1420,7 @@
         top.appendChild(el("span", "adm__badge adm__badge--kind", NEWS_KIND[p.kind]));
         top.appendChild(el("strong", null, (p.company ? p.company + " · " : "") + p.title));
         if (p.event_date) top.appendChild(el("span", "sys-note", p.event_date));
+        if (p.kind === "내방" && p.pick && p.pick !== "1") top.appendChild(el("span", "sys-note", p.pick === "vd" ? "택 2 (보컬/랩 + 댄스)" : "택 2"));
         if (!p.published) top.appendChild(el("span", "sys-note", "숨김"));
         li.appendChild(top);
         if (p.body) li.appendChild(el("p", "adm__quote", p.body.length > 120 ? p.body.slice(0, 120) + "…" : p.body));
