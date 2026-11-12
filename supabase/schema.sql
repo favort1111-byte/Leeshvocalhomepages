@@ -8141,3 +8141,69 @@ end $$;
 
 revoke all on function public.teacher_rooms(text), public.teacher_booking_create(text, text, text, integer), public.teacher_booking_cancel(bigint) from public, anon;
 grant execute on function public.teacher_rooms(text), public.teacher_booking_create(text, text, text, integer), public.teacher_booking_cancel(bigint) to authenticated;
+
+-- ===== leesh_fixed_blocks (2026-11-12) =====
+-- 매주 고정 막음을 끝없이 (원장님 2026-11-12 "별다른 지시 전에는 무한대로"):
+-- 규칙 표 private.fixed_blocks + 매일 0시 1분(한국) pg_cron이 "오늘 + 365일"까지 채움.
+-- 이미 채운 날(filled_until)까지는 다시 안 넣음 → 관리자가 어떤 날 막음을 지우면 그날은 그대로 비어 있음.
+-- 그 칸에 이미 다른 예약이 있으면 그 줄만 건너뛰고 텔레그램으로 알림.
+create table if not exists private.fixed_blocks (
+  id serial primary key,
+  dow int not null check (dow between 0 and 6),   -- 0 일 · 1 월 … 6 토
+  room text not null,
+  start_h int not null check (start_h between 0 and 23),
+  end_h int not null check (end_h between 1 and 24 and end_h > start_h),
+  memo text not null,
+  active boolean not null default true
+);
+create table if not exists private.fixed_blocks_state (
+  id int primary key default 1 check (id = 1),
+  filled_until date not null
+);
+insert into private.fixed_blocks (dow, room, start_h, end_h, memo)
+select * from (values
+  (1, 'B1', 0, 2, '청소 (매주 고정)'), (1, 'B2', 0, 2, '청소 (매주 고정)'), (1, 'B3', 0, 2, '청소 (매주 고정)'),
+  (1, 'B4', 0, 2, '청소 (매주 고정)'), (1, 'B5', 0, 2, '청소 (매주 고정)'), (1, 'C hall', 0, 2, '청소 (매주 고정)'),
+  (1, 'C hall', 18, 23, '댄스특강 (매주 고정)'), (3, 'C hall', 18, 23, '댄스특강 (매주 고정)'),
+  (6, 'C hall', 13, 18, '댄스특강 (매주 고정)'), (0, 'C hall', 13, 18, '댄스특강 (매주 고정)'),
+  (5, 'C hall', 18, 22, '오디션 (매주 고정)')
+) v(a, b, c, d, e)
+where not exists (select 1 from private.fixed_blocks);
+-- 2026-11-12에 넣은 1년치는 2027-11-11까지 채운 것으로
+insert into private.fixed_blocks_state (id, filled_until) values (1, date '2027-11-11') on conflict (id) do nothing;
+
+create or replace function private.fixed_blocks_fill() returns int
+language plpgsql security definer set search_path = '' as $$
+declare
+  st private.fixed_blocks_state;
+  upto date := private.now_kst()::date + 365;
+  d date;
+  r record;
+  n int := 0;
+  skipped text := '';
+begin
+  select * into st from private.fixed_blocks_state where id = 1 for update;
+  if st.filled_until >= upto then return 0; end if;
+  d := st.filled_until + 1;
+  while d <= upto loop
+    for r in select b.*, rm.id as room_id from private.fixed_blocks b join public.rooms rm on rm.name = b.room
+             where b.active and b.dow = extract(dow from d)::int loop
+      begin
+        insert into public.bookings (room_id, member_id, teacher_id, day, start_min, end_min, memo)
+        values (r.room_id, null, null, d, r.start_h * 60, r.end_h * 60, r.memo);
+        n := n + 1;
+      exception when exclusion_violation then
+        skipped := skipped || chr(10) || to_char(d, 'MM/DD') || ' ' || r.room || ' ' || r.start_h || '~' || r.end_h || '시 ' || r.memo;
+      end;
+    end loop;
+    d := d + 1;
+  end loop;
+  update private.fixed_blocks_state set filled_until = upto where id = 1;
+  if skipped <> '' then
+    perform private.notify_send('⚠️ 매주 고정 막음을 못 넣은 칸 (이미 다른 예약이 있음)' || skipped);
+  end if;
+  return n;
+end $$;
+revoke all on function private.fixed_blocks_fill() from public, anon, authenticated;
+
+select cron.schedule('leesh_fixed_blocks', '1 15 * * *', 'select private.fixed_blocks_fill()');
