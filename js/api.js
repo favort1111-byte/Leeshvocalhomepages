@@ -189,7 +189,9 @@
     signOut: function () {
       var s = kakao.session();
       kakao.save(null);
-      if (s) window.LeeshAPI.request("/auth/v1/logout", { method: "POST", headers: headers(s.access) });
+      // scope=local: 이 기기만 로그아웃. 안 붙이면 같은 카카오로 로그인한 다른 기기(부모님 계정을 같이 쓰는
+      // 학생 · 부모님 휴대폰, 학원 컴퓨터를 쓴 학생의 휴대폰)까지 1시간 안에 다 풀림.
+      if (s) window.LeeshAPI.request("/auth/v1/logout?scope=local", { method: "POST", headers: headers(s.access) });
     },
     /** The error Kakao/Supabase sent back last time, once. */
     lastError: function () {
