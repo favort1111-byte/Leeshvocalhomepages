@@ -266,7 +266,11 @@
   function maskName(n) { n = String(n || "").trim(); return n.length <= 1 ? n || "?" : n.length === 2 ? n[0] + "*" : n[0] + "*".repeat(n.length - 2) + n[n.length - 1]; }
   function demoGameEvent() {
     var d = function (days) { return new Date(Date.now() + days * 86400000).toISOString(); };
-    return { id: "demo", title: "보컬오락실 이벤트", starts: d(-1), ends: d(13), open: true, games: ["solfa", "simon", "fly"] };
+    // 실제로 맞춰 둔 기간(2026-11-15 0시 ~ 11-28 23:59)을 보여주되, 미리보기에서는 진행 중인 모습으로 (preview)
+    var real = { starts: "2026-11-14T15:00:00Z", ends: "2026-11-28T14:59:59Z" };
+    var past = Date.now() > new Date(real.ends).getTime();
+    return { id: "demo", title: "보컬오락실 이벤트", starts: past ? d(-1) : real.starts, ends: past ? d(13) : real.ends,
+      open: true, preview: true, games: ["solfa", "simon", "fly"] };
   }
   function demoGameRows(g) {
     var ago = function (h) { return new Date(Date.now() - h * 3600000).toISOString(); };
@@ -1705,4 +1709,7 @@
   fakeStorage();
   fakeKakao();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", banner); else banner();
+  // 미리보기에서는 관리자 "오락실 이벤트" 탭도 보이게 (실제 관리자 화면은 이벤트를 켤 때까지 숨김)
+  function showEventTab() { var t = document.querySelector('[data-tab="gameevent"]'); if (t) t.hidden = false; }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showEventTab); else showEventTab();
 })();

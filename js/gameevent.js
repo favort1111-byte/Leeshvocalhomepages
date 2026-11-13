@@ -45,7 +45,8 @@
     if (!box) return;
     box.textContent = "";
     if (!ev) { box.hidden = true; return; }
-    var now = Date.now(), before = now < new Date(ev.starts).getTime(), after = now > new Date(ev.ends).getTime();
+    // preview = 체험 미리보기에서만 (기간 전이어도 진행 중인 모습으로)
+    var now = Date.now(), before = !ev.preview && now < new Date(ev.starts).getTime(), after = !ev.preview && now > new Date(ev.ends).getTime();
     box.appendChild(el("h2", "arcade__evtitle", "🎮 " + (ev.title || "보컬오락실 이벤트") + " 💚"));
     box.appendChild(el("p", "arcade__evwhen", "📅 " + day(ev.starts) + " 0시 ~ " + day(ev.ends) + " 밤 11시 59분"
       + (before ? " · 곧 시작해요!" : after ? " · 끝났어요" : "")));
