@@ -274,7 +274,8 @@
   }
   function demoGameRows(g) {
     var ago = function (h) { return new Date(Date.now() - h * 3600000).toISOString(); };
-    var fake = { solfa: [["이하늘", 2915, 3], ["정다온", 2208, 9]], simon: [["정다온", 5417, 5], ["이하늘", 3862, 20]], fly: [["이하늘", 2874, 2]] }[g] || [];
+    var fake = { solfa: [["이하늘", 2915, 3], ["정다온", 2208, 9], ["최유나", 1980, 4], ["박서진", 1544, 12], ["윤하린", 1210, 7], ["강도윤", 860, 30]],
+      simon: [["정다온", 5417, 5], ["이하늘", 3862, 20], ["박서진", 3105, 6], ["최유나", 2650, 11]], fly: [["이하늘", 2874, 2], ["윤하린", 1930, 8]] }[g] || [];
     var rows = fake.map(function (f, i) {
       var m = db.members.filter(function (x) { return x.name === f[0]; })[0];
       return { id: m ? m.id : "S9" + i, name: f[0], score: f[1], at: ago(f[2]), plays: 4 + i };
@@ -837,6 +838,7 @@
       ev.games.forEach(function (g) {
         var rows = demoGameRows(g), mine = rows.filter(function (r) { return r.id === who.id; })[0];
         board[g] = { top: rows[0] ? { name: maskName(rows[0].name), score: rows[0].score } : null,
+          tops: rows.slice(0, 5).map(function (r, i) { return { rank: i + 1, name: maskName(r.name), score: r.score }; }),
           mine: mine ? mine.score : null, rank: mine ? rows.indexOf(mine) + 1 : null, players: rows.length };
       });
       return { ok: true, event: ev, board: board };

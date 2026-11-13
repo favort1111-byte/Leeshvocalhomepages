@@ -8904,3 +8904,41 @@ begin
 end $function$
 
 ;
+
+-- ===== leesh_game_board_top5 (2026-11-14) =====
+CREATE OR REPLACE FUNCTION public.member_game_board(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  ev private.game_event; mid text; out jsonb := '{}'; g text; top record; mine public.game_scores; rk int;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  ev := private.game_now();
+  if ev.id is null then return jsonb_build_object('ok', true, 'event', null); end if;
+  foreach g in array ev.games loop
+    select s.score, s.at, m.name into top from public.game_scores s join public.members m on m.id = s.member_id
+     where s.event = ev.id and s.game = g order by s.score desc, s.at limit 1;
+    select * into mine from public.game_scores where event = ev.id and member_id = mid and game = g;
+    rk := case when mine.member_id is null then null else
+      (select count(*) + 1 from public.game_scores s where s.event = ev.id and s.game = g
+        and (s.score > mine.score or (s.score = mine.score and s.at < mine.at))) end;
+    out := out || jsonb_build_object(g, jsonb_build_object(
+      'top', case when top.score is null then null else jsonb_build_object('name', private.mask_name(top.name), 'score', top.score) end,
+      -- 1~5등 (원장님 2026-11-14 "학생들도 1~5등까지, 이름 가리고"): 이름은 가려서, 같은 점수면 먼저 낸 사람이 위
+      'tops', coalesce((select jsonb_agg(jsonb_build_object('rank', x.rn, 'name', private.mask_name(x.name), 'score', x.score) order by x.rn)
+                from (select s.score, m.name, row_number() over (order by s.score desc, s.at) rn
+                      from public.game_scores s join public.members m on m.id = s.member_id
+                      where s.event = ev.id and s.game = g order by s.score desc, s.at limit 5) x), '[]'::jsonb),
+      'mine', mine.score, 'rank', rk,
+      'players', (select count(*) from public.game_scores where event = ev.id and game = g)));
+  end loop;
+  return jsonb_build_object('ok', true, 'event', jsonb_build_object('id', ev.id, 'title', ev.title, 'starts', ev.starts, 'ends', ev.ends,
+    'open', now() between ev.starts and ev.ends, 'games', to_jsonb(ev.games)), 'board', out);
+end $function$
+
+;

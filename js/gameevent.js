@@ -1,6 +1,6 @@
 // 보컬오락실 이벤트 (원장님 2026-11-10): 계이름 맞히기 · 멜로디 따라치기 · 목소리로 날아라(목소리로 한 판만)
 // 기간 안에 로그인한 학생이 게임을 끝내면 점수를 서버에 보내고(member_game_score, 학생마다 게임별 최고 점수만 남음),
-// 오락실 맨 위와 게임 카드에 게임별 1등(이름은 "이*희"처럼 가림) · 내 최고 점수 · 내 순위를 보여줘요(member_game_board).
+// 오락실 맨 위에 게임별 1~5등 · 게임 카드에 1등(이름은 "이*희"처럼 가림) · 내 최고 점수 · 내 순위를 보여줘요(member_game_board).
 // 기간 · 게임은 서버(private.game_event)가 정하고, 서버도 기간 · 점수를 다시 확인해요.
 (function () {
   var GAMES = {
@@ -9,6 +9,7 @@
     simon: { name: "멜로디 따라치기", group: "👂 귀 게임" },
     fly: { name: "목소리로 날아라", group: "🎤 목소리 게임" }
   };
+  var MEDAL = { 1: "🥇", 2: "🥈", 3: "🥉" };
   var PRIZE = "게임별로 기간 안에 가장 높은 점수를 받은 1등 친구 (총 3명)에게 올리브영 기프티콘을 드려요 🎁";
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
   var who = null, ev = null, board = {}, loading = null;
@@ -62,10 +63,22 @@
       name.type = "button";
       name.addEventListener("click", function () { location.hash = g; var c = document.querySelector('[data-game="' + g + '"]'); if (c) c.click(); });
       li.appendChild(name);
-      li.appendChild(el("span", "arcade__evtop", b.top ? "🏆 1등 " + b.top.name + " " + score(g, b.top.score)
-        : before ? "🏆 1등 · 아직 없음" : "🏆 1등 · 아직 없음, 첫 1등이 되어 보세요!"));
       li.appendChild(el("span", "arcade__evmine", b.mine != null ? "내 최고 " + score(g, b.mine) + " · " + b.rank + "위 / " + b.players + "명"
         : before ? "" : "내 기록 · 아직 없음"));
+      // 1~5등 (원장님 2026-11-14): 이름은 가려서, 내 순위면 "나"
+      var tops = b.tops || (b.top ? [{ rank: 1, name: b.top.name, score: b.top.score }] : []);
+      if (!tops.length) li.appendChild(el("p", "arcade__evtop", before ? "🏆 순위 · 아직 없음" : "🏆 순위 · 아직 없음, 첫 1등이 되어 보세요!"));
+      else {
+        var ol = el("ol", "arcade__evtops");
+        tops.forEach(function (t) {
+          var it = el("li", "arcade__evrank" + (t.rank === b.rank ? " is-me" : ""));
+          it.appendChild(el("span", "arcade__evno", MEDAL[t.rank] || t.rank + "등"));
+          it.appendChild(el("span", "arcade__evname", t.name + (t.rank === b.rank ? " (나)" : "")));
+          it.appendChild(el("span", "arcade__evscore", score(g, t.score)));
+          ol.appendChild(it);
+        });
+        li.appendChild(ol);
+      }
       ul.appendChild(li);
       var t = document.querySelector('[data-top="' + g + '"]');
       if (t) {
