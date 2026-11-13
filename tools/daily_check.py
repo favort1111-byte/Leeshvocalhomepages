@@ -241,7 +241,7 @@ def main():
     chk(dt["no_log_tables"], "관리자 작업 기록이 안 붙은 표: %s (zz_admin_log 트리거 붙이기)" % dt["no_log_tables"], "관리자 작업 기록: 모든 표에 붙어 있음")
     chk(dt["private_sheets"], "레슨 노트(학생도 봄)에 생년월일 + 주소 같은 개인정보로 보이는 일지 %s개" % dt["private_sheets"], "레슨 노트에 개인정보 일지 0 (OT 등 곡·자료는 담당 선생님 · 관리자만 봄)")
     sz = d["size"]
-    chk(sz["db_mb"] > 300 or sz["storage_mb"] > 614, "용량 60% 넘음: DB %s MB / 500 · 파일 %s MB / 1024" % (sz["db_mb"], sz["storage_mb"]),
+    chk(sz["db_mb"] > 300 or sz["storage_mb"] > 614, "용량 60%% 넘음: DB %s MB / 500 · 파일 %s MB / 1024" % (sz["db_mb"], sz["storage_mb"]),
         "용량 DB %s MB / 500 · 파일 %s MB / 1024" % (sz["db_mb"], sz["storage_mb"]))
     n24 = d["new24"]
     chk(n24["login_fails"] > 50, "로그인 실패가 24시간 %s번 (누가 계속 시도하는지 확인)" % n24["login_fails"], "로그인 실패 24시간 %s번" % n24["login_fails"])

@@ -254,8 +254,14 @@
 
   function renderGrid() {
     var s = state.settings, grid = $("#grid");
-    var rooms = state.rooms.filter(function (r) { return r.active; });
     grid.textContent = "";
+    // 설정을 못 받았으면(연결이 잠깐 끊김) 오류로 멈추지 않고 한 번 더 받아서 그림
+    if (!s) {
+      grid.appendChild(el("caption", "sys-msg", "불러오는 중이에요…"));
+      if (!state.baseRetry) { state.baseRetry = true; loadBase().then(function () { if (state.settings) renderGrid(); else { grid.textContent = ""; grid.appendChild(el("caption", "sys-msg sys-msg--error", "설정을 불러오지 못했습니다. 새로고침해 주세요.")); } state.baseRetry = false; }); }
+      return;
+    }
+    var rooms = (state.rooms || []).filter(function (r) { return r.active; });
     grid.appendChild(el("caption", "sr-only", dayLabel(state.day) + " 예약 현황"));
     var head = el("tr");
     head.appendChild(el("th", null, dayLabel(state.day)));
