@@ -395,7 +395,7 @@
           LeeshAPI.rpc("member_sheet", { p_id: who.id, p_pin: who.key, p_sid: it.id }).then(function (r) {
             slot.textContent = "";
             if (!r.ok || !r.sheet) { slot.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
-            slot.appendChild(LeeshGrid.view(r.sheet));
+            slot.appendChild(LeeshGrid.view(r.sheet, { zoom: true }));
           });
         });
         row.appendChild(b);
@@ -426,7 +426,7 @@
         var draw = function () {
           var sum = notesMode() === "sum";
           slot.textContent = "";
-          slot.appendChild(sum ? LeeshGrid.summary(n, (window.LEESH || {}).lessonFields) : LeeshGrid.view(n.sheet));
+          slot.appendChild(sum ? LeeshGrid.summary(n, (window.LEESH || {}).lessonFields) : LeeshGrid.view(n.sheet, { zoom: true }));
           if (!sum) {
             // 휴대폰에서 오른쪽 칸이 가려지면 한 줄 안내
             var hint = el("p", "lnote__hint", "← 표를 옆으로 밀면 오른쪽 칸도 보여요 →");

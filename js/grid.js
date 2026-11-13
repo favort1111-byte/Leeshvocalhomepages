@@ -3,7 +3,7 @@
 // 방향키 · Tab · Enter로 옮기기, 끌어서 여러 칸 고르기, Delete로 지우기, 구글시트에서 복사한 칸 붙여넣기(색 · 굵게 · 크기 그대로),
 // 열 · 줄 경계 끌어서 크기, 오른쪽 클릭으로 행 · 열 넣기/지우기, 확대/축소, 아래쪽 시트 탭.
 //   LeeshGrid.editor({ data, onInput, tabs }) → { node, get(), set(data), text(), over(), focus() }
-//   LeeshGrid.view(data)                      → 보기만 (쓴 곳까지만)
+//   LeeshGrid.view(data, { zoom })            → 보기만 (쓴 곳까지만), zoom = 확대 · 축소 줄 (학생 화면)
 //   LeeshGrid.summary(note, fields)           → 지난 일지를 칸 이름별로 정리해서 (저번 시간 · 지난 일지 · 관리자 · 학생)
 //   LeeshGrid.template(fields) / fromNote(note, fields) → 새 일지 / 예전 일지(칸 5개)를 표로
 // 저장 모양 (lesson_notes.sheet, 서버 private.sheet_ok가 다시 확인):
@@ -256,14 +256,75 @@
     return box;
   }
 
-  /** 보기만: 쓴 곳까지만 (열 머리 · 줄 번호는 그대로). */
-  function view(data) {
+  /* 보기 확대 · 축소 (학생 의견 2026-11-13 "휴대폰에서 일지 시트가 크게 보여서 보기 어려워요"):
+     "맞춤" = 표가 화면 너비에 다 들어오게 저절로 줄임(100%보다 크게는 안 함) · − + 로 직접. 이 기기에 기억 (leesh_view_zoom), 한 화면의 표 모두 같이. */
+  var VIEW_ZOOM_KEY = "leesh_view_zoom", VIEW_ZOOMS = [40, 50, 60, 75, 90, 100, 125, 150], viewSets = [];
+  function viewZoomGet() {
+    var v = null;
+    try { v = localStorage.getItem(VIEW_ZOOM_KEY); } catch (e) { /* private mode */ }
+    return v && v !== "fit" && Number(v) ? Number(v) : "fit";
+  }
+  function viewZoomPut(v) {
+    try { localStorage.setItem(VIEW_ZOOM_KEY, String(v)); } catch (e) { /* 이 화면 동안만 */ }
+    viewSets = viewSets.filter(function (f) { return f(); });
+  }
+
+  /** 보기만: 쓴 곳까지만 (열 머리 · 줄 번호는 그대로). opts.zoom = 확대 · 축소 줄 (학생 화면). */
+  function view(data, opts) {
+    opts = opts || {};
     var d = norm(data), u = used(d);
     var wrap = el("div", "xs xs--view");
     if (u.r < 0) { wrap.appendChild(el("p", "sys-note", "비어 있어요.")); return wrap; }
     var sc = el("div", "xs-scroll");
     // 마지막 열의 긴 글이 넘쳐 보이게 빈 열을 조금 더 (구글시트처럼)
-    sc.appendChild(table(d, u.r + 1, Math.min(COLS, Math.max(u.c + 1, 2) + 3), {}));
+    var t = table(d, u.r + 1, Math.min(COLS, Math.max(u.c + 1, 2) + 3), {});
+    sc.appendChild(t);
+    if (opts.zoom) {
+      var bar = el("div", "xs-vzoom");
+      var minus = el("button", "xs-vzoom__btn", "−"), plus = el("button", "xs-vzoom__btn", "+");
+      var lab = el("span", "xs-vzoom__lab"), fit = el("button", "xs-vzoom__fit", "화면에 맞추기");
+      [minus, plus, fit].forEach(function (b) { b.type = "button"; });
+      minus.setAttribute("aria-label", "축소");
+      plus.setAttribute("aria-label", "확대");
+      bar.appendChild(el("span", "xs-vzoom__icon", "🔍"));
+      bar.appendChild(minus);
+      bar.appendChild(lab);
+      bar.appendChild(plus);
+      bar.appendChild(fit);
+      wrap.appendChild(bar);
+      var now = 100;
+      var apply = function () {
+        if (!wrap.isConnected) return false;
+        var v = viewZoomGet(), z = v;
+        if (v === "fit") {
+          t.style.zoom = 1;
+          // 쓴 열(마지막 글이 있는 열)까지만 맞춤 — 뒤의 빈 열은 옆으로 밀면 보여요. 너무 작아 못 읽지 않게 45%까지만 줄임.
+          var hr = t.tHead ? t.tHead.rows[0] : t.rows[0], last = hr && hr.cells[Math.min(u.c + 1, hr.cells.length - 1)];
+          var tl = t.getBoundingClientRect().left, tw = last ? last.getBoundingClientRect().right - tl : t.getBoundingClientRect().width, cw = sc.clientWidth;
+          z = tw && cw ? Math.max(45, Math.min(100, Math.floor((cw - 2) / tw * 100))) : 100;
+        }
+        now = z;
+        t.style.zoom = z / 100;
+        lab.textContent = z + "%";
+        fit.classList.toggle("is-on", v === "fit");
+        return true;
+      };
+      var step = function (dir) {
+        var i, next = now;
+        if (dir > 0) { for (i = 0; i < VIEW_ZOOMS.length; i++) if (VIEW_ZOOMS[i] > now) { next = VIEW_ZOOMS[i]; break; } }
+        else { for (i = VIEW_ZOOMS.length - 1; i >= 0; i--) if (VIEW_ZOOMS[i] < now) { next = VIEW_ZOOMS[i]; break; } }
+        viewZoomPut(next);
+      };
+      minus.addEventListener("click", function () { step(-1); });
+      plus.addEventListener("click", function () { step(1); });
+      fit.addEventListener("click", function () { viewZoomPut("fit"); });
+      viewSets.push(function () { return wrap.isConnected ? (apply(), true) : !wrap._born; });
+      // 화면에 붙은 뒤에 재야 해서 (펼쳐질 때 · 화면 돌릴 때도)
+      var tries = 0;
+      var first = function () { if (wrap.isConnected && sc.clientWidth) { wrap._born = true; apply(); } else if (tries++ < 40) setTimeout(first, 100); };
+      requestAnimationFrame(first);
+      if (window.ResizeObserver) new ResizeObserver(function () { if (wrap.isConnected && sc.clientWidth && (!wrap._born || viewZoomGet() === "fit")) { wrap._born = true; apply(); } }).observe(sc);
+    }
     wrap.appendChild(sc);
     return wrap;
   }

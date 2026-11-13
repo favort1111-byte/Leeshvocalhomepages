@@ -259,6 +259,12 @@
 .xs .rs-fx{border:1px solid #C7C7C7;border-bottom:0;}
 .xs-scroll{position:relative;overflow:auto;max-height:min(72vh,760px);border:1px solid #C7C7C7;background:#fff;overscroll-behavior:contain;}
 .xs--view .xs-scroll{max-height:none;}
+.xs-vzoom{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 6px;font:13px var(--rs-font);color:#3C4043;}
+.xs-vzoom__icon{font-size:13px;}
+.sys .xs-vzoom__btn,.xs-vzoom__btn{width:32px;height:30px;min-height:0;padding:0;border:1px solid #9AA0A6;border-radius:6px;background:#fff;color:#3C4043;font:600 17px/1 var(--rs-font);cursor:pointer;}
+.xs-vzoom__lab{min-width:40px;text-align:center;font-weight:600;}
+.sys .xs-vzoom__fit,.xs-vzoom__fit{height:30px;min-height:0;padding:0 10px;border:1px solid #9AA0A6;border-radius:15px;background:#fff;color:#3C4043;font:13px var(--rs-font);cursor:pointer;}
+.xs-vzoom__fit.is-on{background:#E8F0FE;border-color:#1A73E8;color:#1A73E8;}
 .xs-table{border-collapse:separate;border-spacing:0;table-layout:fixed;font:13px/1.35 var(--rs-font);color:#000;background:#fff;}
 .xs-table th,.xs-table td{border-right:1px solid #E2E3E3;border-bottom:1px solid #E2E3E3;padding:0;}
 .xs-table thead th{position:sticky;top:0;z-index:4;height:20px;background:#F8F9FA;border-bottom-color:#C7C7C7;
