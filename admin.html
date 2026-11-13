@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=f346dca1">
-<link rel="stylesheet" href="css/admin.css?v=6056c0d0">
+<link rel="stylesheet" href="css/admin.css?v=1ae8c0ab">
 </head>
 <body class="sys adm">
 
@@ -63,6 +63,7 @@
       <button type="button" role="tab" data-tab="feedback" aria-selected="false">컨설팅 신청</button>
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="cctv" aria-selected="false">CCTV 동의 <span class="adm__badge" id="cctvBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="suggest" aria-selected="false">건의함 <span class="adm__badge" id="suggestBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="kakao" aria-selected="false">카톡 자동발송</button>
       <button type="button" role="tab" data-tab="gameevent" aria-selected="false">오락실 이벤트</button>
@@ -603,6 +604,26 @@
     </section>
 
     <!-- 보컬오락실 이벤트 (원장님 2026-11-10): 게임별 1~10등. 학생 화면엔 1등만 "이*희"처럼 가려서 -->
+    <!-- CCTV 영상정보 수집 동의 (원장님 2026-11-13 "누가 동의했고 안 했는지 확인"): 학생이 내 폴더를 처음 열 때 받는 동의서 -->
+    <section class="sys-card" data-panel="cctv" hidden>
+      <h3 class="sys-h">CCTV 동의</h3>
+      <p class="sys-note">학생이 카카오로 로그인해서 <b>내 폴더를 열면</b> 동의서가 먼저 떠요 (이미 가입한 학생도 다음에 열 때 한 번). 한 번 답하면 다시 안 떠요. "동의하지 않음"을 누르면 바로 텔레그램 알림이 오고, 그 학생 폴더 맨 위에는 "지금 동의하기" 띠가 계속 보여요.</p>
+      <div class="cv__switch" id="cctvSwitch"></div>
+      <div class="cv__sum" id="cctvSum"></div>
+      <div class="adm__bar">
+        <input type="search" id="cctvFind" placeholder="학생 이름 · 수강 ID로 찾기" aria-label="학생 찾기">
+        <select id="cctvState" aria-label="동의 상태">
+          <option value="">상태 전체</option><option value="yes">✅ 동의함</option><option value="no">❌ 동의 안 함</option><option value="wait">⏳ 아직</option>
+        </select>
+        <select id="cctvTeacher" aria-label="담당 선생님"><option value="">담당 선생님 전체</option></select>
+        <select id="cctvStatus" aria-label="수강 상태"><option value="">재원 · 외부</option><option value="휴원">휴원</option><option value="all">전체</option></select>
+        <button type="button" class="sys-btn sys-btn--ghost" id="cctvCopy">표로 복사</button>
+      </div>
+      <p class="sys-note" id="cctvCount"></p>
+      <div class="adm__tablewrap"><table class="adm__table cv__table" id="cctvTable"></table></div>
+      <p class="sys-note">"다시 받기" = 그 학생 동의 기록을 지우고, 다음에 내 폴더를 열 때 동의서를 다시 받아요 (보호자 이름을 잘못 적었을 때 등). 휴원 학생은 로그인이 막혀 있어서 동의서를 못 봐요.</p>
+    </section>
+
     <section class="sys-card" data-panel="gameevent" hidden>
       <h3 class="sys-h">보컬오락실 이벤트 순위</h3>
       <p class="sys-note" id="gameEventWhen"></p>
@@ -705,6 +726,6 @@
 <script src="js/grid.js?v=0d2fce05"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
 <script src="js/photos.js?v=a00ab1e5"></script>
-<script src="js/admin.js?v=8d46ab70"></script>
+<script src="js/admin.js?v=eac73953"></script>
 </body>
 </html>

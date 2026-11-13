@@ -8711,3 +8711,196 @@ begin
   return jsonb_build_object('ok', true, 'event', true, 'best', best);
 end $function$
 ;
+
+-- ===== leesh_cctv_consent (2026-11-13) =====
+
+-- CCTV 영상정보 수집 동의 기록 (원장님 2026-11-13): 학생 한 명당 한 줄, 다시 답하면 예전 답은 history에
+alter table public.settings add column if not exists cctv_consent boolean not null default false;
+
+create table if not exists public.cctv_consents (
+  member_id  text primary key references public.members(id) on delete cascade,
+  agree      boolean not null,
+  minor      boolean not null default false,
+  guardian   text check (guardian is null or char_length(guardian) between 1 and 30),
+  relation   text check (relation is null or char_length(relation) between 1 and 20),
+  signer     text,
+  doc        text not null default '2026-11',
+  user_id    uuid,
+  agreed_at  timestamptz not null default now(),
+  first_at   timestamptz not null default now(),
+  history    jsonb not null default '[]'::jsonb
+);
+alter table public.cctv_consents enable row level security;
+revoke all on public.cctv_consents from anon, authenticated;
+drop trigger if exists zz_admin_log on public.cctv_consents;
+create trigger zz_admin_log after insert or update or delete on public.cctv_consents
+  for each row execute function private.log_change();
+
+create or replace function public.member_cctv_consent(p_id text, p_pin text, p_agree boolean, p_minor boolean default false,
+                                                     p_guardian text default null, p_relation text default null)
+returns jsonb language plpgsql security definer set search_path to '' as $$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text; v_name text; g text := nullif(btrim(coalesce(p_guardian, '')), ''); r text := nullif(btrim(coalesce(p_relation, '')), '');
+  prev public.cctv_consents%rowtype;
+  v_agree boolean := coalesce(p_agree, true); v_minor boolean := coalesce(p_minor, false);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if v_agree and v_minor and (g is null or char_length(g) < 2 or r is null) then
+    return private.fail('보호자 성함과 관계를 적어주세요.');
+  end if;
+  if char_length(coalesce(g, '')) > 30 or char_length(coalesce(r, '')) > 20 then return private.fail('보호자 성함 · 관계가 너무 길어요.'); end if;
+  if not v_minor then g := null; r := null; end if;
+  select name into v_name from public.members where id = mid;
+  select * into prev from public.cctv_consents where member_id = mid;
+  if found then
+    update public.cctv_consents set agree = v_agree, minor = v_minor, guardian = g, relation = r, signer = v_name,
+      user_id = auth.uid(), agreed_at = now(),
+      history = (history || jsonb_build_array(jsonb_build_object('agree', prev.agree, 'minor', prev.minor, 'guardian', prev.guardian,
+                  'relation', prev.relation, 'at', prev.agreed_at)))
+    where member_id = mid;
+  else
+    insert into public.cctv_consents (member_id, agree, minor, guardian, relation, signer, user_id)
+    values (mid, v_agree, v_minor, g, r, v_name, auth.uid());
+  end if;
+  if not v_agree then
+    perform private.notify('📹 CCTV 동의 안 함 · ' || coalesce(v_name, mid) || ' (' || mid || ')');
+  elsif prev.member_id is not null and prev.agree = false then
+    perform private.notify('📹 CCTV 동의함 (전에 동의 안 함) · ' || coalesce(v_name, mid) || ' (' || mid || ')');
+  end if;
+  return jsonb_build_object('ok', true);
+end $$;
+revoke all on function public.member_cctv_consent(text, text, boolean, boolean, text, text) from public;
+grant execute on function public.member_cctv_consent(text, text, boolean, boolean, text, text) to anon, authenticated;
+
+-- 관리자: 학생마다 동의 · 동의 안 함 · 아직 (재원 · 휴원 · 외부, 체험용 DEMO 빼고)
+create or replace function public.admin_cctv()
+returns jsonb language plpgsql stable security definer set search_path to '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true,
+    'on', coalesce((select cctv_consent from public.settings where id = 1), false),
+    'items', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'member', m.id, 'name', m.name, 'status', m.status,
+        'teacher', substring(m.memo from '담당\s*([^\s·,]+)'),
+        'kakao', m.kakao_user is not null,
+        'agree', c.agree, 'at', c.agreed_at, 'first', c.first_at, 'minor', c.minor,
+        'guardian', c.guardian, 'relation', c.relation, 'changes', jsonb_array_length(coalesce(c.history, '[]'::jsonb))
+      ) order by m.name, m.id)
+      from public.members m left join public.cctv_consents c on c.member_id = m.id
+      where m.id <> 'DEMO' and (m.status in ('재원', '휴원', '외부') or c.member_id is not null)), '[]'::jsonb));
+end $$;
+revoke all on function public.admin_cctv() from public;
+grant execute on function public.admin_cctv() to authenticated;
+
+-- 관리자: 동의서 켜기/끄기 · 한 학생 다시 받기(기록 지움 → 다음에 내 폴더를 열면 동의서가 다시)
+create or replace function public.admin_cctv_set(p_on boolean)
+returns jsonb language plpgsql security definer set search_path to '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  update public.settings set cctv_consent = coalesce(p_on, false) where id = 1;
+  return jsonb_build_object('ok', true, 'on', coalesce(p_on, false));
+end $$;
+revoke all on function public.admin_cctv_set(boolean) from public;
+grant execute on function public.admin_cctv_set(boolean) to authenticated;
+
+create or replace function public.admin_cctv_reset(p_member text)
+returns jsonb language plpgsql security definer set search_path to '' as $$
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  delete from public.cctv_consents where member_id = p_member;
+  if not found then return private.fail('그 학생의 동의 기록이 없어요.'); end if;
+  return jsonb_build_object('ok', true);
+end $$;
+revoke all on function public.admin_cctv_reset(text) from public;
+grant execute on function public.admin_cctv_reset(text) to authenticated;
+
+CREATE OR REPLACE FUNCTION public.member_notebook(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return private.with_token(who, jsonb_build_object(
+    'ok', true,
+    'id', mid,
+    'name', who ->> 'name',
+    -- 레슨 노트는 settings.student_notes가 켜져 있을 때만 학생에게 (원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김)
+    'notes', case when not coalesce((select st.student_notes from public.settings st where st.id = 1), false) then '[]'::jsonb else coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', n.id, 'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'practice', n.practice,
+        'songs', n.songs, 'audition', n.audition, 'recommend', n.recommend, 'rich', n.rich, 'sheet', n.sheet   -- 선생님 메모(memo)는 학생에게 안 보냄
+      ) order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = mid
+              and private.note_for_student(coalesce(title, src_title), sheet)   -- OT · 개인정보 일지는 학생에게 안 보냄 (원장님 2026-11-13)
+            order by lesson_date desc, id desc limit 30) n
+    ), '[]'::jsonb) end,
+    'reports', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(r.month, 'YYYY-MM'), 'pages', r.pages, 'song', r.song, 'teacher', r.teacher,
+        'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
+        'total', r.total, 'stage', r.stage
+      ) order by r.month desc)
+      from (select * from public.eval_reports where member_id = mid order by month desc limit 12) r
+    ), '[]'::jsonb),
+    -- 내 예약: 오늘부터의 예약 + 이번 달 연습실 이용
+    'bookings', coalesce((
+      select jsonb_agg(jsonb_build_object('room', rm.name, 'date', b.day,
+               'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min)) order by b.day, b.start_min)
+      from public.bookings b join public.rooms rm on rm.id = b.room_id
+      where b.member_id = mid and b.status = '확정' and b.day >= today
+    ), '[]'::jsonb),
+    'month', (select jsonb_build_object('count', count(*), 'minutes', coalesce(sum(b.end_min - b.start_min), 0))
+              from public.bookings b
+              where b.member_id = mid and b.status = '확정' and b.day >= date_trunc('month', today)::date and b.day <= today),
+    -- 공지 + 다가오는 학원 내방 오디션
+    'notices', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'title', n.title, 'body', n.body, 'start', n.start_date,
+               'end', n.end_date, 'pinned', n.pinned, 'at', n.created_at) order by n.pinned desc, coalesce(n.start_date, n.created_at::date) desc)
+      from (select * from public.notices where published and (end_date is null or end_date >= today)
+            order by pinned desc, created_at desc limit 20) n
+    ), '[]'::jsonb),
+    'visits', coalesce((
+      select jsonb_agg(jsonb_build_object('title', a.title, 'company', a.company, 'date', a.event_date, 'deadline', a.deadline)
+               order by a.event_date)
+      from (select * from public.audition_news where published and kind = '내방' and event_date >= today
+            order by event_date limit 6) a
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'title', r.title, 'artist', r.artist, 'purpose', r.purpose,
+               'status', r.status, 'memo', r.memo,
+               'minutes', (select coalesce(sum(l.minutes), 0) from public.practice_logs l where l.member_id = mid and l.song = r.title))
+               order by (r.status = '준비 중') desc, r.updated_at desc)
+      from public.repertoire r where r.member_id = mid
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did)
+               order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = mid order by day desc, id desc limit 60) l
+    ), '[]'::jsonb),
+    -- 노래 추천 (원장님이 올린 것) + 아직 답을 못 받은 내 신청
+    'recs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', s.id, 'date', s.made_on, 'summary', s.summary, 'songs', s.songs, 'note', s.note)
+               order by s.made_on desc, s.id desc)
+      from (select * from public.song_recs where member_id = mid and published order by made_on desc, id desc limit 5) s
+    ), '[]'::jsonb),
+    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo, 'files', q.files)
+                from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
+  ) || jsonb_build_object(
+    -- CCTV 영상정보 수집 동의 (원장님 2026-11-13 "모두 받을 수 있게"): 켜져 있고 기록이 없으면 내 폴더를 열 때 동의서가 먼저
+    'cctv_required', coalesce((select st.cctv_consent from public.settings st where st.id = 1), false) and mid <> 'DEMO',
+    'cctv', (select jsonb_build_object('agree', c.agree, 'at', c.agreed_at, 'minor', c.minor) from public.cctv_consents c where c.member_id = mid),
+    'guardian', exists (select 1 from public.link_requests l where l.member_id = mid and l.status = '승인' and l.guardian)
+  ));
+end $function$
+
+;

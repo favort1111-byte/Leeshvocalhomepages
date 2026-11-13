@@ -563,7 +563,7 @@
       var lr = (db.link_requests || []).filter(function (r) { return r.member_id === who.id; })[0];
       return withToken(who, {
         ok: true, id: who.id, name: who.name,
-        cctv_required: true, cctv: (db.cctv || {})[who.id] || null, guardian: !!(lr && lr.guardian),
+        cctv_required: db.cctv_on !== false, cctv: (db.cctv || {})[who.id] || null, guardian: !!(lr && lr.guardian),
         notes: db.lesson_notes.filter(function (n) { return n.member_id === who.id; })
           .sort(function (x, y) { return x.lesson_date < y.lesson_date ? 1 : x.lesson_date > y.lesson_date ? -1 : y.id - x.id; })
           .slice(0, 30)
@@ -937,6 +937,29 @@
         var m = db.members.filter(function (x) { return x.id === r.member_id; })[0] || {};
         var o = rvJson(r); o.member = r.member_id; o.name = m.name; o.teacher = ((m.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null; return o;
       }) };
+    },
+    // CCTV 동의 (관리자 탭 체험): 다른 가짜 학생 몇 명은 미리 답해 둠, 김시우는 직접 해 보게 비워 둠
+    admin_cctv: function () {
+      db.cctv = db.cctv || {};
+      if (!db.cctv_seeded) {
+        db.cctv_seeded = true;
+        var ago = function (h) { return new Date(Date.now() - h * 3600000).toISOString(); };
+        db.members.filter(function (m) { return m.status === "재원" && m.id !== "DEMO" && m.name !== "김시우"; }).slice(0, 3).forEach(function (m, i) {
+          if (db.cctv[m.id]) return;
+          db.cctv[m.id] = i === 1 ? { agree: false, at: ago(5), minor: false } : i === 2 ? { agree: true, at: ago(20), minor: true, guardian: "박은영", relation: "어머니" } : { agree: true, at: ago(30 + i) };
+        });
+        save();
+      }
+      return { ok: true, on: db.cctv_on !== false, items: db.members.filter(function (m) { return m.id !== "DEMO" && ["재원", "휴원", "외부"].indexOf(m.status) !== -1; }).map(function (m) {
+        var c = db.cctv[m.id] || {};
+        return { member: m.id, name: m.name, status: m.status, teacher: ((m.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null, kakao: !!m.kakao_user || !!c.at,
+          agree: c.agree === undefined ? null : c.agree, at: c.at || null, minor: !!c.minor, guardian: c.guardian || null, relation: c.relation || null, changes: 0 };
+      }).sort(function (x, y) { return String(x.name).localeCompare(String(y.name)); }) };
+    },
+    admin_cctv_set: function (a) { db.cctv_on = !!a.p_on; save(); return { ok: true, on: db.cctv_on }; },
+    admin_cctv_reset: function (a) {
+      if (!db.cctv || !db.cctv[a.p_member]) return fail("그 학생의 동의 기록이 없어요.");
+      delete db.cctv[a.p_member]; save(); return { ok: true };
     },
     member_song_request: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);

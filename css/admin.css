@@ -205,3 +205,20 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__card--past{opacity:.55;}
 .adm__reply{margin:8px 0 4px;padding:8px 10px;border-radius:10px;background:#FFFBEA;border:1px solid #F0E2B0;}
 .adm__reply textarea{width:100%;box-sizing:border-box;margin:4px 0 6px;}
+
+/* CCTV 동의 (2026-11-13) */
+.cv__switch{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0 12px;padding:10px 12px;border:1px solid var(--sys-line);border-radius:10px;background:#FAF7F4;}
+.cv__switch.is-on{background:#EAF5EC;border-color:#9FCFA8;}
+.cv__state{font-weight:600;font-size:14px;}
+.cv__switch.is-on .cv__state{color:#1E6B34;}
+.cv__sum{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;}
+.cv__chip{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--sys-line);border-radius:999px;background:#fff;font:inherit;font-size:14px;cursor:pointer;}
+.cv__chip b{font-size:17px;}
+.cv__chip--yes b{color:#1E6B34;}.cv__chip--no b{color:#B3261E;}.cv__chip--wait b{color:#8A6A00;}
+.cv__chip.is-on{border-color:#3C2A21;box-shadow:inset 0 0 0 1px #3C2A21;}
+.cv__hint{font-size:13px;color:var(--sys-muted);}
+.cv__table{min-width:640px;}
+.cv__id{font-size:12px;color:var(--sys-muted);}
+.cv__tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:13px;white-space:nowrap;}
+.cv__tag--yes{background:#EAF5EC;color:#1E6B34;}.cv__tag--no{background:#FDECEA;color:#B3261E;font-weight:600;}.cv__tag--wait{background:#FFF6D6;color:#7A5C00;}
+.cv__row--no td{background:#FFF7F6;}

@@ -169,6 +169,7 @@
     if (name === "records") loadRecords();
     if (name === "settings") renderSettings();
     if (name === "suggest") loadSuggest();
+    if (name === "cctv") loadCctv();
     if (name === "messages") loadMessages();
     if (name === "parents") loadParents();
   }
@@ -224,6 +225,7 @@
     countParents();
     countInbox();
     countSuggest();
+    countCctv();
     countNew();
   }
   setInterval(countAll, 120000);
@@ -2638,6 +2640,144 @@
   $("#reviewFind").addEventListener("input", drawReviews);
   $("#reviewTeacher").addEventListener("change", drawReviews);
 
+  /* ---------------- CCTV 동의 (원장님 2026-11-13): 누가 동의 · 동의 안 함 · 아직인지 (rpc admin_cctv) ---------------- */
+  var cctvItems = [], cctvOn = false;
+  function cctvKind(r) { return r.agree === true ? "yes" : r.agree === false ? "no" : "wait"; }
+  function cctvWhen(iso) { return iso ? String(iso).slice(0, 16).replace("T", " ") : ""; }
+  function cctvKst(iso) {
+    if (!iso) return "";
+    var k = new Date(new Date(iso).getTime() + 9 * 3600000);
+    return (k.getUTCMonth() + 1) + "/" + k.getUTCDate() + " " + k.getUTCHours() + ":" + (k.getUTCMinutes() < 10 ? "0" : "") + k.getUTCMinutes();
+  }
+  function countCctv() {
+    api("rpc/admin_cctv", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) return;
+      setBadge("#cctvBadge", (d.items || []).filter(function (r) { return r.agree === false && r.status !== "휴원"; }).length);
+    });
+  }
+  function loadCctv() {
+    var t = $("#cctvTable");
+    t.textContent = "";
+    t.appendChild(el("caption", "sys-empty", "불러오는 중…"));
+    api("rpc/admin_cctv", { method: "POST", body: {} }).then(function (res) {
+      var d = res.data || {};
+      if (!res.ok || !d.ok) { t.textContent = ""; t.appendChild(el("caption", "sys-msg sys-msg--error", d.error || friendly(res, "불러오지 못했어요."))); return; }
+      cctvItems = d.items || [];
+      cctvOn = !!d.on;
+      var sel = $("#cctvTeacher"), keep = sel.value;
+      sel.length = 1;
+      cctvItems.map(function (r) { return r.teacher; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; }).sort()
+        .forEach(function (x) { var o = el("option", null, x); o.value = x; sel.appendChild(o); });
+      sel.value = keep;
+      setBadge("#cctvBadge", cctvItems.filter(function (r) { return r.agree === false && r.status !== "휴원"; }).length);
+      drawCctvSwitch();
+      drawCctv();
+    });
+  }
+  function drawCctvSwitch() {
+    var box = $("#cctvSwitch");
+    box.textContent = "";
+    box.className = "cv__switch" + (cctvOn ? " is-on" : "");
+    box.appendChild(el("span", "cv__state", cctvOn ? "● 학생 내 폴더에 동의서 띄우는 중" : "○ 꺼져 있어요 (학생에게 안 보여요)"));
+    var b = el("button", cctvOn ? "sys-btn sys-btn--ghost" : "sys-btn", cctvOn ? "끄기" : "켜기 (학생에게 띄우기)");
+    b.type = "button";
+    var m = el("span", "sys-msg");
+    b.addEventListener("click", function () {
+      if (b.getAttribute("data-armed") !== "1") {
+        b.setAttribute("data-armed", "1");
+        b.textContent = cctvOn ? "한 번 더 누르면 꺼요" : "한 번 더 누르면 모든 학생에게 떠요";
+        return;
+      }
+      b.disabled = true;
+      api("rpc/admin_cctv_set", { method: "POST", body: { p_on: !cctvOn } }).then(function (res) {
+        var d = res.data || {};
+        if (!res.ok || !d.ok) { b.disabled = false; m.textContent = d.error || friendly(res, "바꾸지 못했어요."); m.className = "sys-msg sys-msg--error"; return; }
+        cctvOn = !!d.on;
+        drawCctvSwitch();
+      });
+    });
+    box.appendChild(b);
+    box.appendChild(m);
+  }
+  function cctvHit() {
+    var q = $("#cctvFind").value.trim(), st = $("#cctvState").value, tc = $("#cctvTeacher").value, ms = $("#cctvStatus").value;
+    return cctvItems.filter(function (r) {
+      if (ms === "all") { /* 모두 */ } else if (ms) { if (r.status !== ms) return false; } else if (r.status === "휴원") return false;
+      if (st && cctvKind(r) !== st) return false;
+      if (tc && r.teacher !== tc) return false;
+      return !q || [r.name, r.member].some(function (v) { return v && String(v).indexOf(q) !== -1; });
+    });
+  }
+  function drawCctv() {
+    var base = cctvItems.filter(function (r) { return r.status !== "휴원"; });
+    var n = { yes: 0, no: 0, wait: 0 }, noKakao = 0;
+    base.forEach(function (r) { n[cctvKind(r)]++; if (cctvKind(r) === "wait" && !r.kakao) noKakao++; });
+    var sum = $("#cctvSum");
+    sum.textContent = "";
+    [["yes", "✅ 동의함", n.yes], ["no", "❌ 동의 안 함", n.no], ["wait", "⏳ 아직", n.wait]].forEach(function (c) {
+      var b = el("button", "cv__chip cv__chip--" + c[0] + ($("#cctvState").value === c[0] ? " is-on" : ""));
+      b.type = "button";
+      b.appendChild(el("span", null, c[1]));
+      b.appendChild(el("b", null, String(c[2])));
+      b.addEventListener("click", function () { $("#cctvState").value = $("#cctvState").value === c[0] ? "" : c[0]; drawCctv(); });
+      sum.appendChild(b);
+    });
+    if (noKakao) sum.appendChild(el("span", "cv__hint", "아직 " + n.wait + "명 중 " + noKakao + "명은 카카오 연결 전이에요 (연결하고 내 폴더를 열면 동의서가 떠요)."));
+    var hit = cctvHit(), t = $("#cctvTable");
+    $("#cctvCount").textContent = "재원 · 외부 " + base.length + "명" + (hit.length !== base.length ? " · 보이는 학생 " + hit.length + "명" : "");
+    t.textContent = "";
+    var hd = el("thead"), tr = el("tr");
+    ["학생", "담당", "동의", "답한 때", "14세 미만 · 보호자", ""].forEach(function (h) { tr.appendChild(el("th", null, h)); });
+    hd.appendChild(tr);
+    t.appendChild(hd);
+    var tb = el("tbody");
+    if (!hit.length) { var e = el("tr"), td = el("td", "sys-empty", "해당하는 학생이 없어요."); td.colSpan = 6; e.appendChild(td); tb.appendChild(e); }
+    hit.forEach(function (r) {
+      var k = cctvKind(r), row = el("tr", "cv__row cv__row--" + k);
+      var who = el("td");
+      who.appendChild(el("b", null, r.name || r.member));
+      who.appendChild(el("span", "cv__id", " " + r.member + (r.status !== "재원" ? " · " + r.status : "")));
+      row.appendChild(who);
+      row.appendChild(el("td", null, r.teacher || ""));
+      var s = el("td");
+      s.appendChild(el("span", "cv__tag cv__tag--" + k, k === "yes" ? "✅ 동의함" : k === "no" ? "❌ 동의 안 함" : (r.kakao ? "⏳ 아직" : "⏳ 아직 (카카오 연결 전)")));
+      if (r.changes) s.appendChild(el("span", "cv__id", " · 답 바꿈 " + r.changes + "번"));
+      row.appendChild(s);
+      row.appendChild(el("td", null, cctvKst(r.at)));
+      row.appendChild(el("td", null, r.minor ? "만 14세 미만" + (r.guardian ? " · " + r.guardian + (r.relation ? " (" + r.relation + ")" : "") : "") : (k === "wait" ? "" : "-")));
+      var act = el("td");
+      if (k !== "wait") {
+        var re = el("button", "sys-link", "다시 받기");
+        re.type = "button";
+        re.addEventListener("click", function () {
+          if (re.getAttribute("data-armed") !== "1") { re.setAttribute("data-armed", "1"); re.textContent = "한 번 더 누르면 다시 받기"; return; }
+          re.disabled = true;
+          api("rpc/admin_cctv_reset", { method: "POST", body: { p_member: r.member } }).then(function (res) {
+            var d = res.data || {};
+            if (!res.ok || !d.ok) { re.disabled = false; re.textContent = d.error || "못 했어요"; return; }
+            loadCctv();
+          });
+        });
+        act.appendChild(re);
+      }
+      row.appendChild(act);
+      tb.appendChild(row);
+    });
+    t.appendChild(tb);
+  }
+  ["#cctvFind"].forEach(function (s) { $(s).addEventListener("input", drawCctv); });
+  ["#cctvState", "#cctvTeacher", "#cctvStatus"].forEach(function (s) { $(s).addEventListener("change", drawCctv); });
+  $("#cctvCopy").addEventListener("click", function () {
+    var rows = [["수강 ID", "이름", "수강 상태", "담당", "동의", "답한 때", "만 14세 미만", "보호자 성함", "관계"].join("\t")];
+    cctvHit().forEach(function (r) {
+      var k = cctvKind(r);
+      rows.push([r.member, r.name || "", r.status || "", r.teacher || "", k === "yes" ? "동의" : k === "no" ? "동의 안 함" : "아직",
+        cctvKst(r.at), r.minor ? "예" : (k === "wait" ? "" : "아니요"), r.guardian || "", r.relation || ""].join("\t"));
+    });
+    copyText(rows.join("\n"), $("#cctvCopy"));
+  });
+
   /* ---------------- 관리자 작업 기록 (원장님 2026-11-10, 서버 private.admin_log · rpc admin_log) ---------------- */
   var LOG_TBL = {
     members: "수강 ID", link_requests: "카카오 연결 요청", teachers: "선생님", teacher_requests: "선생님 연결 요청",
@@ -2647,13 +2787,13 @@
     visit_applications: "내방 신청", lesson_notes: "레슨 노트", lesson_sheets: "곡 · 자료", lesson_photos: "레슨 사진",
     lesson_sources: "레슨 시트 가져오기", eval_reports: "월말평가", monthly_evals: "월말평가 (예전)", song_requests: "노래 추천 신청",
     song_recs: "노래 추천", partners: "제휴 업체", partner_requests: "제휴 신청", consults: "상담 신청",
-    practice_logs: "연습 일지", repertoire: "레퍼토리", audition_reviews: "오디션 후기"
+    practice_logs: "연습 일지", repertoire: "레퍼토리", audition_reviews: "오디션 후기", cctv_consents: "CCTV 동의"
   };
   var LOG_COL = {
     name: "이름", status: "상태", memo: "메모", phone: "전화번호", kakao_user: "카카오 연결", title: "제목", body: "내용",
     published: "공개", hidden: "숨기기", active: "사용", pinned: "고정", start_date: "시작일", end_date: "종료일", event_date: "일시",
     deadline: "마감", company: "회사", kind: "종류", image: "사진", link: "링크", member_id: "학생", teacher_id: "선생님",
-    sheet: "시트 내용", lesson_date: "수업 날짜", booking_open: "연습실 예약 열기", student_notes: "학생 레슨 노트", song_recs: "학생 노래 추천",
+    sheet: "시트 내용", lesson_date: "수업 날짜", booking_open: "연습실 예약 열기", cctv_consent: "CCTV 동의서 띄우기", agree: "동의", student_notes: "학생 레슨 노트", song_recs: "학생 노래 추천",
     max_minutes: "한 번 최대 시간", daily_max_minutes: "하루 최대 시간", max_days: "예약 가능 날짜", cancel_minutes: "취소 가능 시간",
     expires_on: "만료일", reply: "학생에게 보낼 말", info: "안내", category: "종류", sort: "순서", read_at: "읽음", tab_pos: "탭 순서",
     pass_type: "합격 종류", pass_stage: "합격 단계", initials: "이니셜", kind_fixed: "칸 고정", pages: "평가지 쪽 수", total: "총점", stage: "단계"
