@@ -466,6 +466,8 @@
 .suggest__state{flex:none;font-weight:700;color:#8A7A60;}
 .suggest__state--read{color:#1D7A4C;}
 .book__open--consent .book__tabs,.book__open--consent .book__page{display:none !important;}
+/* 동의서가 폴더보다 길어서 아래 '동의하고 시작하기'까지 못 내려가던 것 (원장님 2026-11-13): 폴더 안에서 스크롤 */
+.book__open--consent{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:22px;}
 .cc{margin:6px 0 20px;padding:18px 16px;border-radius:16px;background:#FFFDF6;border:1px solid #EADFC8;line-height:1.6;word-break:keep-all;}
 .cc__kicker{margin:0;font-size:13px;color:#B8651B;font-weight:700;}
 .cc__title{margin:2px 0 6px;font-size:20px;}
