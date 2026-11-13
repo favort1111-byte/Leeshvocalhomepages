@@ -8628,3 +8628,46 @@ end $$;
 revoke all on function private.notify_retry() from public, anon, authenticated;
 
 select cron.schedule('leesh_notify_retry', '*/5 * * * *', 'select private.notify_retry()');
+
+-- ===== leesh_game_event_auto (2026-11-13) =====
+-- 보컬오락실 이벤트 저절로 시작 · 끝 (원장님 2026-11-13 "15일 0시에 자동으로 시작, 28일 토요일 밤 11시 59분에 자동으로 종료"):
+-- 시작 = pg_cron leesh_game_event_start (GMT 11/14 15:00 = 한국 11/15 0시) → enabled = true + 텔레그램 + 작업 스스로 지움.
+-- 끝 = 서버가 원래 기간(starts ~ ends)으로 점수를 받고 막음 (11/28 23:59:59 뒤엔 안 받음, 화면은 7일 동안 "끝났어요").
+--      pg_cron leesh_game_event_end (GMT 11/28 15:01 = 한국 11/29 0시 1분) → 게임별 1등을 텔레그램으로 + 작업 스스로 지움.
+create or replace function private.game_event_start() returns void
+language plpgsql security definer set search_path = '' as $$
+declare ev private.game_event;
+begin
+  select * into ev from private.game_event where id = '2026-11';
+  if ev.id is null or now() < ev.starts - interval '2 minutes' then return; end if;  -- 일찍 돌면 아무것도 안 함
+  if not ev.enabled then
+    update private.game_event set enabled = true where id = ev.id;
+    perform private.notify_send('🎮 보컬오락실 이벤트를 시작했어요' || chr(10)
+      || '11월 15일(일) 0시 ~ 11월 28일(토) 밤 11시 59분 · 계이름 맞히기 · 멜로디 따라치기 · 목소리로 날아라');
+  end if;
+  perform cron.unschedule('leesh_game_event_start');
+end $$;
+revoke all on function private.game_event_start() from public, anon, authenticated;
+
+create or replace function private.game_event_end() returns void
+language plpgsql security definer set search_path = '' as $$
+declare ev private.game_event; g text; r record; lines text := ''; nm text;
+begin
+  select * into ev from private.game_event where id = '2026-11';
+  if ev.id is null or now() < ev.ends then return; end if;
+  foreach g in array ev.games loop
+    nm := case g when 'solfa' then '계이름 맞히기' when 'simon' then '멜로디 따라치기' when 'fly' then '목소리로 날아라' else g end;
+    select s.member_id, m.name, s.score, s.at into r from public.game_scores s join public.members m on m.id = s.member_id
+     where s.event = ev.id and s.game = g order by s.score desc, s.at limit 1;
+    lines := lines || chr(10) || '• ' || nm || ': ' || coalesce(r.name || ' (' || r.member_id || ') ' || to_char(r.score, 'FM999,999,999') || '점', '참여 없음');
+  end loop;
+  if ev.enabled then
+    perform private.notify_send('🏁 보컬오락실 이벤트가 끝났어요 · 게임별 1등' || lines || chr(10)
+      || '참여 ' || (select count(distinct member_id) from public.game_scores where event = ev.id) || '명 · 관리자 → 오락실 이벤트에서 1~10등 확인');
+  end if;
+  perform cron.unschedule('leesh_game_event_end');
+end $$;
+revoke all on function private.game_event_end() from public, anon, authenticated;
+
+select cron.schedule('leesh_game_event_start', '0 15 14 11 *', 'select private.game_event_start()');
+select cron.schedule('leesh_game_event_end', '1 15 28 11 *', 'select private.game_event_end()');
