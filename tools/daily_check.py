@@ -59,6 +59,11 @@ select jsonb_build_object(
             from private.telegram where id = 1),
   'outbound', (select jsonb_build_object('total', count(*), 'bad', count(*) filter (where status_code >= 400 or error_msg is not null or timed_out))
             from net._http_response where created > now() - interval '24 hours'),
+  'notify', (select jsonb_build_object('total', count(*), 'failed', count(*) filter (where status = '실패'),
+            'retried', count(*) filter (where status = '성공' and tries > 1),
+            'stuck', count(*) filter (where status = '보냄' and created_at < now() - interval '2 hours'))
+            from private.notify_log where created_at > now() - interval '24 hours'),
+  'notify_cron', (select count(*) from cron.job where jobname = 'leesh_notify_retry' and active),
   'waiting', jsonb_build_object(
      'kakao_link', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.link_requests where status = '대기'),
      'teacher_link', (select jsonb_build_object('n', count(*), 'oldest', min(created_at)) from public.teacher_requests where status = '대기'),
@@ -103,7 +108,9 @@ select jsonb_build_object(
   'data', jsonb_build_object(
      'bad_note_sheets', (select count(*) from public.lesson_notes where sheet is not null and not private.sheet_ok(sheet)),
      'bad_lesson_sheets', (select count(*) from public.lesson_sheets where not private.sheet_ok(sheet)),
-     'private_sheets', (select count(*) from public.lesson_notes where sheet is not null and private.lesson_private(sheet)),
+     'private_sheets', (select count(*) from public.lesson_notes where sheet is not null and private.lesson_private(sheet)
+                         and private.note_for_student(coalesce(title, src_title), sheet)),
+     'hidden_notes', (select count(*) from public.lesson_notes where not private.note_for_student(coalesce(title, src_title), sheet)),
      'no_log_tables', (select coalesce(string_agg(c.relname, ', '), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
                         where n.nspname = 'public' and c.relkind = 'r'
                           and not exists (select 1 from pg_trigger t where t.tgrelid = c.oid and t.tgname = 'zz_admin_log'))),
@@ -216,8 +223,11 @@ def main():
     tg = d["telegram"] or {}
     chk(not tg.get("on") or not tg.get("chats"), "텔레그램 알림이 꺼져 있거나 받는 사람이 없어요", "텔레그램 알림 켜짐 (받는 곳 %s)" % tg.get("chats"))
     ob = d["outbound"] or {}
-    chk((ob.get("bad") or 0) > 0, "바깥으로 보낸 요청(텔레그램 · 인스타) 24시간 %s개 중 실패 %s개" % (ob.get("total"), ob.get("bad")),
-        "바깥 요청 24시간 %s개 실패 0" % ob.get("total"))
+    # 텔레그램 알림은 실패하면 5분마다 저절로 다시 보냄 (2026-11-13) → 끝내 못 간 것만 확인할 것
+    nt = d.get("notify") or {}
+    chk((nt.get("failed") or 0) > 0 or (nt.get("stuck") or 0) > 0 or not d.get("notify_cron"),
+        "텔레그램 알림 24시간 %s통 중 끝내 못 간 것 %s · 멈춰 있는 것 %s%s" % (nt.get("total"), nt.get("failed"), nt.get("stuck"), "" if d.get("notify_cron") else " · 다시 보내기 작업이 꺼져 있음"),
+        "텔레그램 알림 24시간 %s통 · 다시 보내서 간 것 %s · 못 간 것 0 (연결 오류 %s번은 저절로 다시 보냄)" % (nt.get("total"), nt.get("retried") or 0, ob.get("bad") or 0))
     if runs is None:
         bad.append("GitHub Actions 상태를 못 읽었어요 (github.com 연결)")
     else:
@@ -239,7 +249,8 @@ def main():
     dt = d["data"]
     chk(dt["bad_note_sheets"] or dt["bad_lesson_sheets"], "검사에 안 맞는 표가 있어요 (일지 %s · 곡·자료 %s)" % (dt["bad_note_sheets"], dt["bad_lesson_sheets"]), "일지 · 곡·자료 표 모두 정상")
     chk(dt["no_log_tables"], "관리자 작업 기록이 안 붙은 표: %s (zz_admin_log 트리거 붙이기)" % dt["no_log_tables"], "관리자 작업 기록: 모든 표에 붙어 있음")
-    chk(dt["private_sheets"], "레슨 노트(학생도 봄)에 생년월일 + 주소 같은 개인정보로 보이는 일지 %s개" % dt["private_sheets"], "레슨 노트에 개인정보 일지 0 (OT 등 곡·자료는 담당 선생님 · 관리자만 봄)")
+    chk(dt["private_sheets"], "레슨 노트(학생도 봄)에 생년월일 + 주소 같은 개인정보로 보이는 일지 %s개" % dt["private_sheets"],
+        "학생에게 보이는 레슨 노트에 개인정보 일지 0 (OT · 개인정보 일지 %s개는 학생에게 숨김)" % dt.get("hidden_notes"))
     sz = d["size"]
     chk(sz["db_mb"] > 300 or sz["storage_mb"] > 614, "용량 60%% 넘음: DB %s MB / 500 · 파일 %s MB / 1024" % (sz["db_mb"], sz["storage_mb"]),
         "용량 DB %s MB / 500 · 파일 %s MB / 1024" % (sz["db_mb"], sz["storage_mb"]))

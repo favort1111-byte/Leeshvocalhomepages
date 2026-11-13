@@ -8427,3 +8427,204 @@ join public.members m on m.id = l.member_id
 left join auth.users u on u.id = l.user_id
 where l.guardian and l.status = '승인' and l.member_id is not null
 on conflict (request_id) do nothing;
+
+-- ===== leesh_notes_hide_ot (2026-11-13) =====
+-- OT는 학생에게 보이지 않게 (원장님 2026-11-13 "OT는 학생에게 보이지 않게끔 해줘"):
+-- 레슨 노트(일지) 중 제목이 OT · 오티 · 상담 · 신상 · 개인정보이거나, 생년월일 + 사는 곳/주소/학교가 같이 적힌 것은
+-- 학생 내 폴더(member_notebook) · 레슨 노트 사진(member_photos)에 안 보냄. 선생님 · 관리자 화면은 그대로.
+create or replace function private.note_for_student(p_title text, p_sheet jsonb) returns boolean
+language sql stable set search_path = '' as $$
+  select coalesce(p_title, '') !~ '(^|[^A-Za-z])(OT|ot|Ot)([^A-Za-z]|$)'
+     and coalesce(p_title, '') !~ '오티|상담|신상|개인정보'
+     and not coalesce(private.lesson_private(p_sheet), false);
+$$;
+revoke all on function private.note_for_student(text, jsonb) from public, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.member_notebook(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  today date := private.now_kst()::date;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  return private.with_token(who, jsonb_build_object(
+    'ok', true,
+    'id', mid,
+    'name', who ->> 'name',
+    -- 레슨 노트는 settings.student_notes가 켜져 있을 때만 학생에게 (원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김)
+    'notes', case when not coalesce((select st.student_notes from public.settings st where st.id = 1), false) then '[]'::jsonb else coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', n.id, 'date', n.lesson_date, 'teacher', n.teacher, 'did', n.did, 'practice', n.practice,
+        'songs', n.songs, 'audition', n.audition, 'recommend', n.recommend, 'rich', n.rich, 'sheet', n.sheet   -- 선생님 메모(memo)는 학생에게 안 보냄
+      ) order by n.lesson_date desc, n.id desc)
+      from (select * from public.lesson_notes where member_id = mid
+              and private.note_for_student(coalesce(title, src_title), sheet)   -- OT · 개인정보 일지는 학생에게 안 보냄 (원장님 2026-11-13)
+            order by lesson_date desc, id desc limit 30) n
+    ), '[]'::jsonb) end,
+    'reports', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'month', to_char(r.month, 'YYYY-MM'), 'pages', r.pages, 'song', r.song, 'teacher', r.teacher,
+        'basic', r.basic, 'technique', r.technique, 'acting', r.acting, 'styling', r.styling,
+        'total', r.total, 'stage', r.stage
+      ) order by r.month desc)
+      from (select * from public.eval_reports where member_id = mid order by month desc limit 12) r
+    ), '[]'::jsonb),
+    -- 내 예약: 오늘부터의 예약 + 이번 달 연습실 이용
+    'bookings', coalesce((
+      select jsonb_agg(jsonb_build_object('room', rm.name, 'date', b.day,
+               'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min)) order by b.day, b.start_min)
+      from public.bookings b join public.rooms rm on rm.id = b.room_id
+      where b.member_id = mid and b.status = '확정' and b.day >= today
+    ), '[]'::jsonb),
+    'month', (select jsonb_build_object('count', count(*), 'minutes', coalesce(sum(b.end_min - b.start_min), 0))
+              from public.bookings b
+              where b.member_id = mid and b.status = '확정' and b.day >= date_trunc('month', today)::date and b.day <= today),
+    -- 공지 + 다가오는 학원 내방 오디션
+    'notices', coalesce((
+      select jsonb_agg(jsonb_build_object('id', n.id, 'title', n.title, 'body', n.body, 'start', n.start_date,
+               'end', n.end_date, 'pinned', n.pinned, 'at', n.created_at) order by n.pinned desc, coalesce(n.start_date, n.created_at::date) desc)
+      from (select * from public.notices where published and (end_date is null or end_date >= today)
+            order by pinned desc, created_at desc limit 20) n
+    ), '[]'::jsonb),
+    'visits', coalesce((
+      select jsonb_agg(jsonb_build_object('title', a.title, 'company', a.company, 'date', a.event_date, 'deadline', a.deadline)
+               order by a.event_date)
+      from (select * from public.audition_news where published and kind = '내방' and event_date >= today
+            order by event_date limit 6) a
+    ), '[]'::jsonb),
+    'repertoire', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'title', r.title, 'artist', r.artist, 'purpose', r.purpose,
+               'status', r.status, 'memo', r.memo,
+               'minutes', (select coalesce(sum(l.minutes), 0) from public.practice_logs l where l.member_id = mid and l.song = r.title))
+               order by (r.status = '준비 중') desc, r.updated_at desc)
+      from public.repertoire r where r.member_id = mid
+    ), '[]'::jsonb),
+    'logs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', l.id, 'day', l.day, 'minutes', l.minutes, 'song', l.song, 'did', l.did)
+               order by l.day desc, l.id desc)
+      from (select * from public.practice_logs where member_id = mid order by day desc, id desc limit 60) l
+    ), '[]'::jsonb),
+    -- 노래 추천 (원장님이 올린 것) + 아직 답을 못 받은 내 신청
+    'recs', coalesce((
+      select jsonb_agg(jsonb_build_object('id', s.id, 'date', s.made_on, 'summary', s.summary, 'songs', s.songs, 'note', s.note)
+               order by s.made_on desc, s.id desc)
+      from (select * from public.song_recs where member_id = mid and published order by made_on desc, id desc limit 5) s
+    ), '[]'::jsonb),
+    'request', (select jsonb_build_object('at', q.created_at, 'likes', q.likes, 'goal', q.goal, 'memo', q.memo, 'files', q.files)
+                from public.song_requests q where q.member_id = mid and q.status = '접수' order by q.id desc limit 1)
+  ));
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.member_photos(p_id text, p_pin text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
+declare who jsonb := private.check_ready(p_id, p_pin);
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  if not coalesce((select st.student_notes from public.settings st where st.id = 1), false) then return jsonb_build_object('ok', true, 'items', '[]'::jsonb); end if;
+  return jsonb_build_object('ok', true, 'items', coalesce((
+    select jsonb_agg(jsonb_build_object('id', p.id, 'note', p.note_id, 'path', p.path, 'w', p.w, 'h', p.h) order by p.created_at)
+    from public.lesson_photos p join public.lesson_notes n on n.id = p.note_id
+    where p.member_id = who ->> 'id' and private.note_for_student(coalesce(n.title, n.src_title), n.sheet)), '[]'::jsonb));
+end $function$;
+
+-- ===== leesh_notify_retry (2026-11-13) =====
+-- 텔레그램 알림이 실패하면 저절로 다시 보내기 (원장님 2026-11-13, 11/12 밤 연결 오류로 1통이 못 갔음):
+-- 보낸 알림을 private.notify_log에 적어 두고, 5분마다 결과를 봐서 실패(연결 오류 · 시간 초과 · 서버 오류 · 응답 없음)면 다시 보냄.
+-- 1 · 5 · 10 · 20분 간격으로 4번까지 더 (모두 5번), 그래도 안 되면 '실패'로 남김(매일 점검이 알려줌). 성공한 기록은 7일 뒤 지움.
+create table if not exists private.notify_log (
+  id bigserial primary key,
+  chat_id text not null,
+  msg text not null,
+  request_id bigint,
+  tries int not null default 1,
+  status text not null default '보냄' check (status in ('보냄', '성공', '실패')),
+  last_error text,
+  created_at timestamptz not null default now(),
+  sent_at timestamptz not null default now(),
+  done_at timestamptz
+);
+create index if not exists notify_log_open on private.notify_log (sent_at) where status = '보냄';
+revoke all on private.notify_log from public, anon, authenticated;
+
+create or replace function private.notify_post(p_chat text, p_msg text) returns bigint
+language plpgsql security definer set search_path = '' as $$
+declare tok text; rid bigint;
+begin
+  select bot_token into tok from private.telegram where id = 1;
+  if coalesce(tok, '') = '' then return null; end if;
+  select net.http_post(url := 'https://api.telegram.org/bot' || tok || '/sendMessage', timeout_milliseconds := 15000,
+    body := jsonb_build_object('chat_id', p_chat, 'text', p_msg, 'disable_web_page_preview', true)) into rid;
+  return rid;
+end $$;
+revoke all on function private.notify_post(text, text) from public, anon, authenticated;
+
+create or replace function private.notify_send(msg text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare t record; c text; body text; rid bigint;
+begin
+  select bot_token, chat_ids into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' or cardinality(t.chat_ids) = 0 then return; end if;
+  body := msg || chr(10) || chr(10) || '👉 https://leeshlesson.com/admin.html';
+  foreach c in array t.chat_ids loop
+    begin
+      rid := private.notify_post(c, body);
+      insert into private.notify_log (chat_id, msg, request_id) values (c, body, rid);
+    exception when others then
+      null; -- 알림 실패가 신청을 막으면 안 됩니다
+    end;
+  end loop;
+end $$;
+revoke all on function private.notify_send(text) from public, anon, authenticated;
+
+create or replace function private.notify_retry() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  l record; r record;
+  ok int := 0; again int := 0; dead int := 0;
+  wait_min int;
+begin
+  if not pg_try_advisory_xact_lock(hashtext('leesh_notify_retry')) then return null; end if;
+  for l in select * from private.notify_log where status = '보냄' and sent_at < now() - interval '50 seconds' order by id for update loop
+    select * into r from net._http_response where id = l.request_id;
+    if found and r.status_code between 200 and 299 then
+      update private.notify_log set status = '성공', done_at = now() where id = l.id;
+      ok := ok + 1;
+      continue;
+    end if;
+    -- 400 · 401 · 403 · 404: 다시 보내도 똑같음 (방이 없어짐 · 열쇠가 바뀜) → 바로 실패로
+    if found and r.status_code in (400, 401, 403, 404) then
+      update private.notify_log set status = '실패', done_at = now(), last_error = r.status_code || ' ' || left(coalesce(r.content, ''), 200) where id = l.id;
+      dead := dead + 1;
+      continue;
+    end if;
+    -- 아직 응답이 없으면 3분은 기다림
+    if not found and l.sent_at > now() - interval '3 minutes' then continue; end if;
+    wait_min := (array[1, 5, 10, 20])[least(l.tries, 4)];
+    if l.sent_at > now() - make_interval(mins => wait_min) then continue; end if;
+    if l.tries >= 5 then
+      update private.notify_log set status = '실패', done_at = now(),
+        last_error = case when found then coalesce(r.error_msg, r.status_code::text, '시간 초과') else '응답 없음' end where id = l.id;
+      dead := dead + 1;
+      continue;
+    end if;
+    update private.notify_log set request_id = private.notify_post(l.chat_id, l.msg), tries = l.tries + 1, sent_at = now(),
+      last_error = case when found then coalesce(r.error_msg, r.status_code::text, '시간 초과') else '응답 없음' end where id = l.id;
+    again := again + 1;
+  end loop;
+  delete from private.notify_log where status = '성공' and done_at < now() - interval '7 days';
+  delete from private.notify_log where status = '실패' and done_at < now() - interval '60 days';
+  return jsonb_build_object('ok', ok, 'again', again, 'dead', dead);
+end $$;
+revoke all on function private.notify_retry() from public, anon, authenticated;
+
+select cron.schedule('leesh_notify_retry', '*/5 * * * *', 'select private.notify_retry()');
