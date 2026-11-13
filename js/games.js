@@ -306,7 +306,7 @@
         if (r.st != null && r.st > 36 && r.st < 90) got.push(r.st);
         msg.textContent = got.length ? "좋아요! 그대로 '아~' … " + Math.min(100, Math.round(got.length / 45 * 100)) + "%" : "편한 소리로 '아~' 해 보세요";
         if (got.length >= 45) return play(median(got), true);
-        if (performance.now() - t0 > 12000) { msg.textContent = "소리가 잘 안 들려요. 마이크 가까이에서 다시 해 보거나 터치로 해 보세요."; return; }
+        if (performance.now() - t0 > 12000) { closeMic(); raf = 0; msg.textContent = "소리가 잘 안 들려요. 마이크 가까이에서 다시 해 보거나 터치로 해 보세요."; return; }
         raf = requestAnimationFrame(tick);
       })();
     }
@@ -334,7 +334,12 @@
         over.hidden = false;
         msg.textContent = "🎤 목소리로: 높은 소리 = 위로, 낮은 소리 = 아래로 · 👆 터치로: 누르고 있으면 위로";
       },
-      stop: function () { cancelAnimationFrame(raf); raf = 0; if (s && s.pipes.length) { over.hidden = false; msg.textContent = "멈췄어요. 다시 시작해 볼까요?"; } closeMic(); }
+      // 날고 있는 중에 창을 닫거나 다른 앱으로 넘어가면 (2026-11-14 점검): 그때까지 점수를 저장 · 이벤트에도 보냄
+      stop: function () {
+        var flying = raf && s && s.pts !== undefined;
+        if (flying) { end(); msg.textContent = "멈춰서 여기까지 기록했어요 · " + s.score + "점"; }
+        cancelAnimationFrame(raf); raf = 0; closeMic();
+      }
     };
   })();
 
@@ -342,7 +347,7 @@
   games.pitch = (function () {
     var panel = $('[data-panel="pitch"]');
     var status = $(".pitch__status", panel), lives = $(".pitch__lives", panel), choices = panel.querySelectorAll("[data-answer]");
-    var q = null, st = null;
+    var q = null, st = null, timers = [];
 
     function render() {
       lives.textContent = "♥".repeat(st.lives) + "♡".repeat(3 - st.lives);
@@ -359,11 +364,11 @@
       var a = audio(), t = a.currentTime + 0.15;
       tone(q.a, t, 0.7); tone(q.b, t + 0.95, 0.7);
       flash(0, 150); flash(1, 1100);
-      setTimeout(function () {
+      timers.push(setTimeout(function () {
         q.locked = false;
         choices.forEach(function (c) { c.disabled = false; });
         status.textContent = "어느 소리가 더 높았나요?";
-      }, 1900);
+      }, 1900));
     }
     function flash(i, ms) {
       setTimeout(function () { choices[i].classList.add("is-on"); setTimeout(function () { choices[i].classList.remove("is-on"); }, 650); }, ms);
@@ -386,8 +391,8 @@
         status.textContent = "아쉬워요. " + (q.answer === 1 ? "첫 번째" : "두 번째") + " 소리가 더 높았어요.";
       }
       render();
-      if (st.lives <= 0) return setTimeout(end, 900);
-      setTimeout(ask, 1300);
+      if (st.lives <= 0) return timers.push(setTimeout(end, 900));
+      timers.push(setTimeout(ask, 1300));
     }
     function end() {
       var lv = st.level - 1, b = best("pitch");
@@ -411,7 +416,7 @@
     choices.forEach(function (c) { c.addEventListener("click", function () { answer(Number(c.getAttribute("data-answer"))); }); });
     return {
       show: function () { if (!st) { status.textContent = "소리 두 개를 들려줄게요. 더 높은 쪽을 고르세요. 맞힐수록 차이가 작아져요."; lives.textContent = "♥♥♥"; } },
-      stop: function () { if (q) q.locked = true; }
+      stop: function () { timers.forEach(clearTimeout); timers = []; if (q) q.locked = true; if (st && $("[data-start]", panel).hidden) { $("[data-start]", panel).hidden = false; status.textContent = "멈췄어요. 다시 시작해 볼까요?"; } }
     };
   })();
 

@@ -84,6 +84,7 @@
       b.type = "button";
       b.disabled = true;
       b.addEventListener("pointerdown", function (e) { e.preventDefault(); press(i); });
+      b.addEventListener("click", function (e) { if (e.detail === 0) press(i); }); // 키보드(Tab → Enter/스페이스)로도
       keys.appendChild(b);
     });
     f.box.appendChild(keys);
@@ -115,10 +116,10 @@
       pos++;
       if (pos === seq.length) { setLock(true); f.status.textContent = "정답!"; timers.push(setTimeout(round, 800)); }
     }
-    function end() {
+    function end(stopped) {
       setLock(true);
       var sc = seq.length - 1, nb = record("simon", sc);
-      f.status.textContent = "틀렸어요! 정답은 " + seq.map(function (k) { return KEYS[k][1]; }).join(" ") + "였어요.";
+      f.status.textContent = stopped ? "멈춰서 여기까지 기록했어요." : "틀렸어요! 정답은 " + seq.map(function (k) { return KEYS[k][1]; }).join(" ") + "였어요.";
       go.hidden = false;
       A.result(f.panel, [sc + "음까지 성공" + (nb && sc ? " · 새 기록!" : ""), sc >= 8 ? "기억력과 음감이 대단해요!" : "계이름을 속으로 따라 부르면 더 잘 외워져요."],
         "멜로디 따라치기 " + sc + "음 성공! 너도 해볼래?");
@@ -127,7 +128,8 @@
     go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); seq = []; pts = 0; round(); });
     return {
       bestText: function (v) { return v + "음"; },
-      stop: function () { timers.forEach(clearTimeout); timers = []; setLock(true); go.hidden = false; }
+      // 게임 중에 창을 닫거나 다른 앱으로 넘어가면 (2026-11-14 점검): 그때까지 점수를 저장 · 이벤트에도 보냄
+      stop: function () { var playing = go.hidden && seq.length > 0; timers.forEach(clearTimeout); timers = []; setLock(true); go.hidden = false; if (playing) end(true); }
     };
   })());
 
@@ -173,16 +175,17 @@
       // 이벤트 점수 (2026-11-10): 맞히면 100 + 음이 많을수록 10씩 + 빨리 답할수록 최대 100 (다시 듣기로 시간이 다시 가지 않음). 평소 화면엔 안 보임
       if (ok) st.pts += 100 + 10 * (st.n - 3) + Math.max(0, 100 - Math.floor((performance.now() - (q.t || performance.now())) / 30));
       if (ok) { st.score++; st.streak++; } else { st.lives--; st.streak = 0; }
-      f.status.textContent = ok ? "정답! " + name(q.m) + "였어요." : "아쉬워요. " + name(q.m) + "였어요.";
+      var qn = POOL.filter(function (p) { return p[0] === q.m; })[0][1]; // "높은 도"도 그대로
+      f.status.textContent = ok ? "정답! " + qn + "였어요." : "아쉬워요. " + qn + "였어요.";
       if (ok && st.streak >= 3 && st.n < POOL.length) { st.n++; st.streak = 0; f.status.textContent += " 새 음 '" + POOL[st.n - 1][1] + "'이 늘었어요!"; build(); }
       lives();
       if (st.lives <= 0) return timers.push(setTimeout(end, 900));
       timers.push(setTimeout(ask, 1300));
     }
-    function end() {
+    function end(stopped) {
       var nb = record("solfa", st.score);
       go.hidden = false;
-      f.status.textContent = "끝!";
+      f.status.textContent = stopped ? "멈춰서 여기까지 기록했어요." : "끝!";
       A.result(f.panel, [st.score + "개 맞힘" + (nb && st.score ? " · 새 기록!" : ""), "음 " + st.n + "개까지 왔어요. 도에서 몇 칸 떨어졌는지 느껴 보는 게 비결이에요."],
         "계이름 맞히기 " + st.score + "개! 너는 몇 개?");
       if (window.LeeshGameEvent) LeeshGameEvent.submit("solfa", st.pts, f.panel); // 보컬오락실 이벤트 (2026-11-10)
@@ -191,7 +194,7 @@
     again.addEventListener("click", function () { if (q && !q.lock) { q.lock = true; play(); } });
     return {
       bestText: function (v) { return v + "개"; },
-      stop: function () { timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; go.hidden = false; }
+      stop: function () { var playing = st && go.hidden; timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; go.hidden = false; if (playing) end(true); }
     };
   })());
 
@@ -734,6 +737,7 @@
       setTimeout(function () { if (st) round(); }, 1400);
     }
     function end() {
+      if (!st) return; // 창을 닫은 뒤에 남은 타이머
       var lv = st.level - 1, nb = record("echo", lv);
       go.hidden = false;
       A.result(f.panel, [lv + "단계 통과" + (nb && lv ? " · 새 기록!" : ""), "리듬을 속으로 '쿵 따 쿵'처럼 소리 내어 외우면 쉬워져요."], "리듬 메아리 " + lv + "단계! 🥁");
