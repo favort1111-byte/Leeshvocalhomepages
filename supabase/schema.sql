@@ -8671,3 +8671,43 @@ revoke all on function private.game_event_end() from public, anon, authenticated
 
 select cron.schedule('leesh_game_event_start', '0 15 14 11 *', 'select private.game_event_start()');
 select cron.schedule('leesh_game_event_end', '1 15 28 11 *', 'select private.game_event_end()');
+
+-- ===== leesh_game_event_no_staff (2026-11-13) =====
+-- 보컬오락실 이벤트: 선생님 · 원장님 계정은 점수 안 받음 (원장님 2026-11-13 "선생님은 참여 안 하는 걸로")
+CREATE OR REPLACE FUNCTION public.member_game_score(p_id text, p_pin text, p_game text, p_score integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  ev private.game_event; mid text; old public.game_scores; best boolean := false;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  -- 선생님 · 원장님은 이벤트에 안 들어감 (원장님 2026-11-13 확인): 선생님 카카오와 같은 계정으로 연결된 학생(원장님 E129 등) · 체험학생 DEMO는 점수를 안 받음
+  if mid = 'DEMO' or exists (select 1 from public.members m join public.teachers t on t.kakao_user = m.kakao_user where m.id = mid) then
+    return jsonb_build_object('ok', true, 'event', false, 'staff', true);
+  end if;
+  select * into ev from private.game_event where enabled and now() between starts and ends order by starts limit 1;
+  if ev.id is null then return jsonb_build_object('ok', true, 'event', false); end if;
+  if not (p_game = any (ev.games)) then return private.fail('이벤트 게임이 아니에요.'); end if;
+  if p_score is null or p_score < 0 or p_score > coalesce((ev.max_score ->> p_game)::int, 1000) then
+    return private.fail('점수를 확인할 수 없어요.');
+  end if;
+  select * into old from public.game_scores where event = ev.id and member_id = mid and game = p_game for update;
+  if old.member_id is null then
+    insert into public.game_scores (event, member_id, game, score) values (ev.id, mid, p_game, p_score);
+    best := true;
+  else
+    if old.last_at > now() - interval '1 second' then return private.fail('너무 빨라요. 잠시 뒤에 다시 해주세요.'); end if;
+    if old.plays >= 2000 then return private.fail('오늘은 그만! 내일 다시 도전해요.'); end if;
+    best := p_score > old.score;
+    update public.game_scores set plays = plays + 1, last_at = now(),
+      score = greatest(score, p_score), at = case when p_score > score then now() else at end
+    where event = ev.id and member_id = mid and game = p_game;
+  end if;
+  return jsonb_build_object('ok', true, 'event', true, 'best', best);
+end $function$
+;

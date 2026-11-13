@@ -101,6 +101,7 @@
     note(panel, "🎮 이벤트 점수 보내는 중…");
     LeeshAPI.rpc("member_game_score", { p_id: who.id, p_pin: who.key, p_game: game, p_score: value }).then(function (res) {
       if (!res.ok) { note(panel, "🎮 이벤트 점수를 못 보냈어요. " + (res.error || "") , "is-off"); return; }
+      if (res.staff) { note(panel, "🎮 선생님 · 원장님 계정은 이벤트 점수에 안 들어가요.", "is-off"); return; }
       if (!res.event) { note(panel, ""); return; }
       load().then(function () {
         var b = board[game] || {};
