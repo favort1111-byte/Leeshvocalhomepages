@@ -8987,3 +8987,110 @@ end $function$
 -- REST로는 원래 쓸 수 없는 권한이지만 RLS가 막아 주지 않는 권한이라 닫아 둠. 화면 · 함수는 쓰지 않음.
 revoke truncate, references, trigger, maintain on all tables in schema public from anon, authenticated;
 alter default privileges in schema public revoke truncate, references, trigger, maintain on tables from anon, authenticated;
+
+-- ===== leesh_notify_quiet_hours (2026-11-14) =====
+-- 텔레그램 밤 시간 알림 멈춤 (원장님 2026-11-14 "12시부터 7시 사이에는 안 오게"):
+-- 한국 시간 0시 ~ 7시에는 텔레그램을 보내지 않고 모아 두었다가, 아침 7시에 "🌙 밤사이 알림" 한 통으로 보냄.
+alter table private.telegram add column if not exists quiet_from int not null default 0;  -- 이 시(한국 시간)부터
+alter table private.telegram add column if not exists quiet_to   int not null default 7;  -- 이 시 전까지 안 보냄 (같으면 끔)
+
+create or replace function private.notify_quiet() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select case when t.quiet_from = t.quiet_to then false
+              when t.quiet_from < t.quiet_to then h >= t.quiet_from and h < t.quiet_to
+              else h >= t.quiet_from or h < t.quiet_to end
+  from private.telegram t, (select extract(hour from private.now_kst())::int h) x where t.id = 1;
+$$;
+revoke all on function private.notify_quiet() from public, anon, authenticated;
+
+create or replace function private.notify_send(msg text) returns void
+language plpgsql security definer set search_path = '' as $function$
+declare t record; c text; body text; rid bigint;
+begin
+  select bot_token, chat_ids into t from private.telegram where id = 1;
+  if coalesce(t.bot_token, '') = '' or cardinality(t.chat_ids) = 0 then return; end if;
+  -- 밤 시간: 보내지 않고 모아 둠 → 아침 첫 모아 보내기(notify_digest)가 한 통으로
+  if coalesce(private.notify_quiet(), false) and msg not like '🌙 밤사이 알림%' and msg not like '⏰ 지난 1시간 알림%' then
+    insert into private.notify_queue (msg) values (msg);
+    return;
+  end if;
+  body := msg || chr(10) || chr(10) || '👉 https://leeshlesson.com/admin.html';
+  foreach c in array t.chat_ids loop
+    begin
+      rid := private.notify_post(c, body);
+      insert into private.notify_log (chat_id, msg, request_id) values (c, body, rid);
+    exception when others then
+      null; -- 알림 실패가 신청을 막으면 안 됩니다
+    end;
+  end loop;
+end $function$;
+
+create or replace function private.notify_digest() returns void
+language plpgsql security definer set search_path = '' as $function$
+declare
+  ids bigint[];
+  n int;
+  oldest timestamptz;
+  lines text;
+  txt text;
+begin
+  -- 같은 때 두 번 돌지 않게
+  if not pg_try_advisory_xact_lock(hashtext('leesh_notify_digest')) then return; end if;
+  -- 밤 시간에는 보내지 않고 그대로 쌓아 둠
+  if coalesce(private.notify_quiet(), false) then return; end if;
+  select array_agg(id order by id), count(*), min(created_at) into ids, n, oldest from private.notify_queue;
+  if coalesce(n, 0) = 0 then return; end if;
+  select string_agg('• ' || to_char(q.created_at at time zone 'Asia/Seoul', 'HH24:MI') || ' ' || left(replace(q.msg, chr(10), ' · '), 300), chr(10) order by q.id)
+    into lines
+    from (select * from private.notify_queue where id = any (ids) order by id limit 40) q;
+  txt := case when oldest < now() - interval '75 minutes'
+              then '🌙 밤사이 알림 ' || n || '건 (밤 12시 ~ 아침 7시에는 모아 두었다가 보내요)'
+              else '⏰ 지난 1시간 알림 ' || n || '건 (연습실 예약 · 내방 오디션)' end
+         || chr(10) || chr(10) || lines
+         || case when n > 40 then chr(10) || '… 외 ' || (n - 40) || '건 (관리자 화면에서 확인)' else '' end;
+  perform private.notify_send(left(txt, 3800));
+  delete from private.notify_queue where id = any (ids);
+end $function$;
+
+create or replace function private.notify_retry() returns jsonb
+language plpgsql security definer set search_path = '' as $function$
+declare
+  l record; r record;
+  ok int := 0; again int := 0; dead int := 0;
+  wait_min int;
+  quiet boolean := coalesce(private.notify_quiet(), false);
+begin
+  if not pg_try_advisory_xact_lock(hashtext('leesh_notify_retry')) then return null; end if;
+  for l in select * from private.notify_log where status = '보냄' and sent_at < now() - interval '50 seconds' order by id for update loop
+    select * into r from net._http_response where id = l.request_id;
+    if found and r.status_code between 200 and 299 then
+      update private.notify_log set status = '성공', done_at = now() where id = l.id;
+      ok := ok + 1;
+      continue;
+    end if;
+    -- 400 · 401 · 403 · 404: 다시 보내도 똑같음 (방이 없어짐 · 열쇠가 바뀜) → 바로 실패로
+    if found and r.status_code in (400, 401, 403, 404) then
+      update private.notify_log set status = '실패', done_at = now(), last_error = r.status_code || ' ' || left(coalesce(r.content, ''), 200) where id = l.id;
+      dead := dead + 1;
+      continue;
+    end if;
+    -- 밤 시간에는 다시 보내기도 쉼 (아침에 이어서)
+    if quiet then continue; end if;
+    -- 아직 응답이 없으면 3분은 기다림
+    if not found and l.sent_at > now() - interval '3 minutes' then continue; end if;
+    wait_min := (array[1, 5, 10, 20])[least(l.tries, 4)];
+    if l.sent_at > now() - make_interval(mins => wait_min) then continue; end if;
+    if l.tries >= 5 then
+      update private.notify_log set status = '실패', done_at = now(),
+        last_error = case when found then coalesce(r.error_msg, r.status_code::text, '시간 초과') else '응답 없음' end where id = l.id;
+      dead := dead + 1;
+      continue;
+    end if;
+    update private.notify_log set request_id = private.notify_post(l.chat_id, l.msg), tries = l.tries + 1, sent_at = now(),
+      last_error = case when found then coalesce(r.error_msg, r.status_code::text, '시간 초과') else '응답 없음' end where id = l.id;
+    again := again + 1;
+  end loop;
+  delete from private.notify_log where status = '성공' and done_at < now() - interval '7 days';
+  delete from private.notify_log where status = '실패' and done_at < now() - interval '60 days';
+  return jsonb_build_object('ok', ok, 'again', again, 'dead', dead);
+end $function$;
