@@ -1428,7 +1428,7 @@
         top.appendChild(el("span", "adm__badge adm__badge--kind", NEWS_KIND[p.kind]));
         top.appendChild(el("strong", null, (p.company ? p.company + " · " : "") + p.title));
         if (p.event_date) top.appendChild(el("span", "sys-note", p.event_date));
-        if (p.kind === "내방" && p.pick && p.pick !== "1") top.appendChild(el("span", "sys-note", p.pick === "vd" ? "택 2 (보컬/랩 + 댄스)" : "택 2"));
+        if (p.kind === "내방" && p.pick && p.pick !== "1") top.appendChild(el("span", "sys-note", p.pick === "vd" ? "2개까지 (보컬 · 랩 · 댄스)" : "2개까지"));
         if (!p.published) top.appendChild(el("span", "sys-note", "숨김"));
         li.appendChild(top);
         if (p.body) li.appendChild(el("p", "adm__quote", p.body.length > 120 ? p.body.slice(0, 120) + "…" : p.body));

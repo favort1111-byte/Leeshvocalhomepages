@@ -996,7 +996,7 @@
       if (!a.p_field) return fail("지원분야를 골라주세요.");
       var fl = String(a.p_field).split(" + "), pk = n.pick || "1";
       if (pk === "1" && fl.length !== 1) return fail("지원분야는 하나만 골라주세요.");
-      if (pk === "vd" && !(fl.length === 2 && fl.indexOf("댄스") !== -1 && (fl.indexOf("보컬") !== -1 || fl.indexOf("랩") !== -1))) return fail("이 오디션은 보컬 또는 랩 중 하나 + 댄스, 2개를 골라주세요.");
+      if (pk === "vd" && !(fl.length >= 1 && fl.length <= 2 && fl.every(function (x) { return ["보컬", "랩", "댄스"].indexOf(x) !== -1; }))) return fail("이 오디션은 보컬 · 랩 · 댄스 중에서 1~2개를 골라주세요.");
       var row = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0];
       if (!row) { row = { id: ++db.next, news_id: n.id, member_id: who.id, created_at: new Date().toISOString() }; db.visit_applications.push(row); }
       Object.assign(row, { audition: (n.company ? n.company + " " : "") + n.title, name: a.p_name, gender: a.p_gender, birth: a.p_birth,

@@ -145,14 +145,14 @@
     f.appendChild(field("키/몸무게", size, "ex) 168/48"));
     var fs = el("fieldset", "apply__set");
     fs.appendChild(el("legend", null, "지원분야"));
-    // 오디션마다 고르는 방식 (원장님 2026-11-12): pick '1' 택 1 · '2' 2개까지 · 'vd' 보컬 또는 랩 + 댄스
+    // 오디션마다 고르는 방식 (원장님 2026-11-12): pick '1' 택 1 · '2' 2개까지 · 'vd' 보컬 · 랩 · 댄스 중 1~2개 (2026-11-14: 꼭 2개가 아니라 하나만도 됨)
     var pick = a.pick || "1", prev = (mine || last || {}).field || "";
     if (pick === "1") {
       fs.appendChild(el("small", "apply__help", "*보컬, 랩, 댄스, 라이브 퍼포먼스, 연기 중 택 1만 가능"));
       fs.appendChild(radios("field", FIELDS, prev.indexOf(" + ") === -1 ? prev : null));
     } else {
       fs.appendChild(el("small", "apply__help apply__pick", pick === "vd"
-        ? "*이 오디션은 택 2예요: 보컬 또는 랩 중 하나 + 댄스 (예: 보컬 + 댄스 / 랩 + 댄스)"
+        ? "*이 오디션은 보컬 · 랩 · 댄스 중에서 2개까지 고를 수 있어요 (하나만 골라도 돼요)"
         : "*이 오디션은 2개까지 고를 수 있어요"));
       fs.appendChild(checks("field", pick === "vd" ? ["보컬", "랩", "댄스"] : FIELDS, mine ? mine.field.split(" + ") : []));
     }
@@ -227,7 +227,7 @@
       if (!gender) { say(msg, "성별을 골라주세요.", "error"); return; }
       if (!fld) { say(msg, pick === "1" ? "지원분야를 하나 골라주세요." : "지원분야를 골라주세요.", "error"); return; }
       if (pick === "2" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
-      if (pick === "vd" && !(flds.length === 2 && flds.indexOf("댄스") !== -1)) { say(msg, "이 오디션은 보컬 또는 랩 중 하나 + 댄스, 2개를 골라주세요.", "error"); return; }
+      if (pick === "vd" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
       if (flds.indexOf("댄스") !== -1 && !file && !(mine && mine.music) && !bk.checked) {
         say(msg, "댄스 지원자는 음원을 올려주세요. 용량이 크면 \"음원은 실장님께 카톡으로 보낼게요\"를 체크해주세요.", "error");
         return;
