@@ -1,0 +1,451 @@
+<title>학생 기능 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* layout: one column of three try-it-yourself mockups; each = the real "내 폴더" manila folder (or a phone card) on the left, decisions on the right */
+@font-face{font-family:"Gmarket Sans";font-weight:500;font-display:swap;src:url("__GMARKET__") format("woff")}
+:root{
+  color-scheme:light;
+  --paper:#EDE8E0;      /* page ground, same as the site's folder scene */
+  --ink:#2B2522;
+  --sub:#6F645D;
+  --brown:#6E3B28;      /* the site's accent */
+  --line:#D6CCBF;
+  --card:#FBF8F2;
+  --stamp:#C8402F;      /* school "참 잘했어요" stamp ink */
+  --stamp-room:#1D6A5A;
+  --gold:#D49A1E;
+  --f:"Gmarket Sans","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:500 15px/1.6 var(--f);-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:anywhere}
+h1,h2,h3,p,ul,ol{margin:0}
+h1,h2,h3{text-wrap:balance;line-height:1.25}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brown);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:44px}
+.top{display:grid;gap:12px}
+.top h1{font-size:clamp(26px,5vw,38px);font-weight:700;letter-spacing:-.01em}
+.top p{color:var(--sub);max-width:60ch}
+.jump{display:flex;flex-wrap:wrap;gap:8px}
+.jump a{padding:8px 14px;border:1px solid var(--ink);border-radius:999px;color:var(--ink);text-decoration:none;font-size:14px}
+.jump a:hover{background:rgba(43,37,34,.07)}
+
+.sec{display:grid;gap:18px;border-top:1px solid var(--line);padding-top:26px;scroll-margin-top:12px}
+.sec__head{display:grid;gap:4px}
+.sec__no{font-size:12.5px;letter-spacing:.12em;color:var(--brown)}
+.sec__head h2{font-size:24px;font-weight:700}
+.sec__head p{color:var(--sub);max-width:60ch}
+.sec__body{display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.sec__body{grid-template-columns:minmax(0,1fr)}}
+.notes{display:grid;gap:16px;min-width:0}
+.notes h3{font-size:14px;font-weight:700;color:var(--brown)}
+.notes ul{padding-left:18px;display:grid;gap:5px;font-size:14.5px}
+.notes .ask li::marker{content:"？ ";color:var(--brown)}
+.notes .ask{padding-left:22px}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:#E7DCCB;color:#5A4636;margin-left:4px;vertical-align:1px}
+
+/* ---------- the folder (same shape as the real 내 폴더) ---------- */
+.folder{--f1:#F1E1B9;--f2:#E6CF9E;--fi:#3E2A1E;--fs:#5A4636;--ft:#FBF3E4;--fl:rgba(62,42,30,.35);
+  position:relative;min-width:0;margin-top:22px;padding:20px 18px 18px;border-radius:4px 12px 12px 12px;
+  background:linear-gradient(175deg,var(--f1),var(--f2));color:var(--fi);box-shadow:0 16px 34px rgba(60,40,20,.2);transition:background .3s}
+.folder::before{content:"";position:absolute;left:0;top:-20px;width:150px;height:22px;background:var(--f1);border-radius:10px 10px 0 0}
+.folder[data-skin="berry"]{--f1:#FBE3E6;--f2:#F2B7C1;--fi:#5A2030;--fs:#7A4352;--ft:#FFF1F3;--fl:rgba(90,32,48,.35)}
+.folder[data-skin="mint"]{--f1:#DFF4EB;--f2:#A6DAC6;--fi:#1D4948;--fs:#3A6360;--ft:#EEFBF5;--fl:rgba(29,73,72,.35)}
+.folder[data-skin="sky"]{--f1:#E2EFFC;--f2:#ABCDF0;--fi:#1F3557;--fs:#41587A;--ft:#F0F7FF;--fl:rgba(31,53,87,.35)}
+.folder[data-skin="lavender"]{--f1:#EEE6FB;--f2:#C7B5EC;--fi:#3A2A66;--fs:#5B4C86;--ft:#F6F1FF;--fl:rgba(58,42,102,.35)}
+.folder[data-skin="night"]{--f1:#2C3466;--f2:#141B3A;--fi:#FFF3D6;--fs:#C9CDEA;--ft:#141B3A;--fl:rgba(255,243,214,.45);
+  background:radial-gradient(1.5px 1.5px at 12% 18%,#fff 60%,transparent),radial-gradient(1.5px 1.5px at 78% 9%,#FFE9A8 60%,transparent),radial-gradient(1px 1px at 55% 30%,#fff 60%,transparent),radial-gradient(1px 1px at 90% 44%,#fff 60%,transparent),radial-gradient(1.5px 1.5px at 33% 6%,#fff 60%,transparent),linear-gradient(175deg,var(--f1),var(--f2))}
+.folder__head{display:grid;gap:2px;padding-right:96px;min-height:52px}
+.folder__title{font-size:27px;font-weight:500;line-height:1.15}
+.folder__say{font-size:13px;color:var(--fs);min-height:1.3em;overflow-wrap:anywhere}
+.folder__stickers{position:absolute;right:12px;top:10px;display:flex;gap:2px;font-size:30px;line-height:1;pointer-events:none}
+.folder__stickers span{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));animation:pop .35s cubic-bezier(.34,1.56,.64,1) both}
+.folder__stickers span:nth-child(1){rotate:-10deg}.folder__stickers span:nth-child(2){rotate:7deg;translate:0 5px}.folder__stickers span:nth-child(3){rotate:-4deg}
+.folder__tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 14px}
+.folder__tabs span{padding:6px 13px;border:1px solid var(--fl);border-radius:999px;background:rgba(255,255,255,.4);font-size:13px;white-space:nowrap}
+.folder[data-skin="night"] .folder__tabs span:not(.on){background:rgba(255,255,255,.08)}
+.folder__tabs .on{background:var(--fi);border-color:var(--fi);color:var(--ft)}
+.panel{background:var(--card);color:var(--ink);border-radius:10px;padding:16px;display:grid;gap:14px;min-width:0}
+@keyframes pop{from{scale:.2;opacity:0}to{scale:1;opacity:1}}
+
+/* ---------- 1. stamps ---------- */
+.streak{display:flex;align-items:center;gap:12px}
+.streak__fire{font-size:38px;line-height:1}
+.streak__n{font-size:30px;font-weight:700;line-height:1.1}
+.streak__n small{font-size:15px;font-weight:500}
+.streak__sub{font-size:13px;color:var(--sub)}
+.cal{display:grid;gap:6px}
+.cal__title{display:flex;justify-content:space-between;align-items:baseline;font-size:14px}
+.cal__title b{font-size:16px}
+.cal__grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal__dow{font-size:11.5px;color:var(--sub);text-align:center;padding-bottom:2px}
+.day{position:relative;aspect-ratio:1;border-radius:8px;background:#F1EADF;display:grid;place-items:center;font-size:11px;color:#8A7D72;font-variant-numeric:tabular-nums}
+.day i{position:absolute;left:4px;top:2px;font-style:normal;z-index:1;line-height:1.2}
+.day.is-future{background:transparent;border:1px dashed var(--line)}
+.day.is-today{outline:2px solid var(--brown);outline-offset:-2px;background:#FFF6DF}
+.stamp{width:66%;translate:9% 11%;aspect-ratio:1;border-radius:50%;border:2.5px solid var(--c);color:var(--c);display:grid;place-items:center;font-size:clamp(13px,3.6vw,19px);font-weight:700;rotate:var(--r);opacity:.9;
+  box-shadow:inset 0 0 0 1.5px var(--card),inset 0 0 0 2.5px var(--c)}
+.stamp--log{--c:var(--stamp)}.stamp--room{--c:var(--stamp-room)}.stamp--both{--c:var(--gold);background:#FFF3C9}
+.stamp.is-new{animation:slam .5s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes slam{0%{scale:2.6;opacity:0}60%{scale:.86;opacity:1}100%{scale:1}}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--sub)}
+.legend b{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;border:2px solid var(--c);color:var(--c);font-size:10px;margin-right:4px;vertical-align:-3px}
+.goal{display:grid;gap:8px}
+.goal__text{font-size:13.5px}
+.goal__track{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.goal__step{border-radius:8px;border:1px solid var(--line);padding:7px 6px;text-align:center;font-size:11.5px;color:var(--sub);display:grid;gap:1px;background:#fff}
+.goal__step b{font-size:14px;color:var(--ink)}
+.goal__step.is-done{background:#FFF3C9;border-color:var(--gold);color:#6A4A08}
+.btn{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid #3E2A1E;background:#3E2A1E;color:#FBF3E4;font-size:15px}
+.btn:hover{background:#2B1C13}
+.btn[disabled]{background:#CFC4B6;border-color:#CFC4B6;color:#fff;cursor:default}
+.btn--ghost{background:transparent;color:#3E2A1E}
+.btn--ghost:hover{background:rgba(62,42,30,.08)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hint{font-size:12.5px;color:var(--sub)}
+
+/* ---------- 2. vocal type test ---------- */
+.phone{min-width:0;background:#fff;border-radius:22px;border:1px solid var(--line);box-shadow:0 16px 34px rgba(60,40,20,.14);padding:20px 18px;display:grid;gap:16px}
+.quiz__bar{height:6px;border-radius:999px;background:#EDE5DA;overflow:hidden}
+.quiz__bar i{display:block;height:100%;width:0;background:var(--brown);border-radius:999px;transition:width .3s}
+.quiz__count{font-size:12.5px;color:var(--sub)}
+.quiz__q{font-size:20px;font-weight:700}
+.quiz__opts{display:grid;gap:8px}
+.quiz__opts button{text-align:left;min-height:50px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:15px}
+.quiz__opts button:hover{border-color:var(--brown);background:#FFF6E8}
+.intro{display:grid;gap:12px;text-align:center;justify-items:center;padding-block:10px}
+.intro__emoji{font-size:44px;line-height:1;letter-spacing:.1em}
+.intro h3{font-size:22px;font-weight:700}
+.intro p{color:var(--sub);font-size:14px;max-width:30ch}
+.result{display:grid;gap:14px}
+.rcard{border-radius:18px;padding:22px 18px 16px;color:#fff;display:grid;gap:12px;background:linear-gradient(160deg,var(--a),var(--b));animation:pop .4s ease-out both}
+.rcard__kicker{font-size:12px;letter-spacing:.14em;opacity:.85}
+.rcard__emoji{font-size:54px;line-height:1}
+.rcard__name{font-size:27px;font-weight:700;line-height:1.15}
+.rcard__line{font-size:15px;opacity:.95}
+.rcard__chips{display:flex;flex-wrap:wrap;gap:6px}
+.rcard__chips span{font-size:12.5px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.22)}
+.rcard__box{background:rgba(255,255,255,.16);border-radius:12px;padding:10px 12px;font-size:13.5px;display:grid;gap:2px}
+.rcard__box b{font-size:12px;letter-spacing:.06em;opacity:.85}
+.rcard__foot{display:flex;justify-content:space-between;font-size:11.5px;opacity:.8;padding-top:2px}
+.bars{display:grid;gap:5px;font-size:12.5px}
+.bars div{display:grid;grid-template-columns:8.8em minmax(0,1fr) 1.6em;gap:8px;align-items:center}
+.bars i{display:block;height:8px;border-radius:999px;background:#EDE5DA;overflow:hidden}
+.bars i b{display:block;height:100%;background:var(--brown);border-radius:999px}
+.bars span:last-child{text-align:right;color:var(--sub);font-variant-numeric:tabular-nums}
+
+/* ---------- 3. decorate ---------- */
+.deco{display:grid;gap:14px}
+.deco h4{margin:0;font-size:13.5px;font-weight:700}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.swatch{position:relative;width:52px;display:grid;gap:3px;justify-items:center;border:0;background:none;padding:0;font-size:11.5px;color:var(--sub)}
+.swatch i{width:44px;height:36px;border-radius:3px 9px 9px 9px;background:linear-gradient(175deg,var(--a),var(--b));border:2px solid transparent;box-shadow:0 2px 5px rgba(0,0,0,.14);display:grid;place-items:center;font-style:normal;font-size:15px}
+.swatch[aria-pressed="true"] i{border-color:var(--ink)}
+.swatch[aria-pressed="true"]{color:var(--ink)}
+.stickers{display:flex;flex-wrap:wrap;gap:6px}
+.stickers button{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:22px;line-height:1;padding:0}
+.stickers button[aria-pressed="true"]{border-color:var(--ink);background:#FFF3C9}
+.say{display:grid;gap:4px}
+.say input{width:100%;min-height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:#fff}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));translate:-50% 0;max-width:min(92vw,420px);padding:11px 16px;border-radius:12px;background:#2B2522;color:#FBF3E4;font-size:14px;text-align:center;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:20;animation:pop .25s ease-out both}
+footer{color:var(--sub);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <h1>학생들이 좋아할 기능 시안 3가지</h1>
+    <p>직접 눌러 볼 수 있는 시안이에요. 이름과 기록은 모두 가짜이고, 실제 홈페이지에는 아직 넣지 않았어요. 마음에 드는 것만 골라서 넣을 수 있어요.</p>
+    <nav class="jump" aria-label="시안 바로 가기">
+      <a href="#stamp">① 연습 도장</a>
+      <a href="#test">② 보컬 유형 테스트</a>
+      <a href="#deco">③ 내 폴더 꾸미기</a>
+    </nav>
+  </header>
+
+  <!-- ===== 1 ===== -->
+  <section class="sec" id="stamp">
+    <div class="sec__head">
+      <span class="sec__no">시안 ①</span>
+      <h2>연습 도장 · 연속 기록</h2>
+      <p>연습한 날마다 달력에 도장이 찍히고, 며칠째 이어서 연습 중인지 보여줘요. 아래 버튼으로 오늘 도장을 찍어 보세요.</p>
+    </div>
+    <div class="sec__body">
+      <div class="folder" data-skin="manila">
+        <div class="folder__stickers" aria-hidden="true"></div>
+        <div class="folder__head"><h3 class="folder__title">김시우의 폴더</h3><p class="folder__say"></p></div>
+        <div class="folder__tabs" aria-hidden="true"><span>레슨 노트</span><span>메시지</span><span>내 예약</span><span class="on">연습 도장</span><span>연습 일지</span></div>
+        <div class="panel">
+          <div class="streak">
+            <span class="streak__fire" aria-hidden="true">🔥</span>
+            <div>
+              <p class="streak__n"><span id="st-n">6</span><small>일 연속 연습 중</small></p>
+              <p class="streak__sub">이번 달 <b id="st-month">10</b>일 · 내 최고 기록 <b id="st-best">9</b>일</p>
+            </div>
+          </div>
+          <div class="cal">
+            <p class="cal__title"><b>2026년 11월</b><span class="hint">오늘 11월 14일(토)</span></p>
+            <div class="cal__grid" id="cal"></div>
+            <p class="legend"><span><b style="--c:var(--stamp)">✎</b>연습 일지 쓴 날</span><span><b style="--c:var(--stamp-room)">♪</b>연습실 쓴 날</span><span><b style="--c:var(--gold)">★</b>둘 다 한 날</span></p>
+          </div>
+          <div class="goal">
+            <p class="goal__text" id="goal-text"></p>
+            <div class="goal__track" id="goal-track"></div>
+          </div>
+          <div class="row">
+            <button type="button" class="btn" id="btn-stamp">오늘 도장 찍어 보기</button>
+            <button type="button" class="btn btn--ghost" id="btn-stamp-reset" hidden>처음으로</button>
+          </div>
+          <p class="hint">실제로는 버튼 없이, 연습 일지를 쓰거나 예약한 연습실 시간이 지나면 저절로 찍혀요.</p>
+        </div>
+      </div>
+      <div class="notes">
+        <div>
+          <h3>어디에 생기나</h3>
+          <ul><li>내 폴더에 "연습 도장" 탭 하나</li><li>바탕화면 내 폴더 아이콘 옆에 작게 "🔥 6"</li></ul>
+        </div>
+        <div>
+          <h3>어떻게 움직이나</h3>
+          <ul>
+            <li>이미 쌓이고 있는 연습 일지 · 연습실 예약 기록으로 계산해요. 학생이 따로 할 일이 없어요.</li>
+            <li>3일 · 7일 · 14일 · 30일을 채우면 폴더 테마나 스티커가 열려요. 돈이 드는 선물은 없어요.</li>
+            <li>다른 학생의 기록은 서로 안 보여요. 담당 선생님과 관리자는 볼 수 있어요.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>원장님이 정할 것</h3>
+          <ul class="ask">
+            <li>도장 기준: 연습 일지나 연습실 중 하나만 해도 찍기 <span class="tag">추천</span> / 연습 일지를 써야만 찍기</li>
+            <li>하루 빠지면: 한 달에 2번까지는 봐주기 <span class="tag">추천</span> / 바로 0일로</li>
+            <li>30일 연속을 채운 학생을 학원에서 따로 칭찬할지 (예: 선생님 화면에 표시)</li>
+          </ul>
+        </div>
+        <p class="hint">알아 둘 점: 연습실은 예약 기록으로 세기 때문에, 예약만 하고 안 온 날도 도장이 찍혀요.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2 ===== -->
+  <section class="sec" id="test">
+    <div class="sec__head">
+      <span class="sec__no">시안 ②</span>
+      <h2>보컬 유형 테스트</h2>
+      <p>질문 8개에 답하면 "나는 ○○형 보컬" 결과 카드가 나와요. 로그인 없이 누구나 할 수 있어서, 학생이 친구에게 보내면 학원 홍보가 돼요.</p>
+    </div>
+    <div class="sec__body">
+      <div class="phone" id="quiz" aria-live="polite"></div>
+      <div class="notes">
+        <div>
+          <h3>어디에 생기나</h3>
+          <ul><li>첫 화면 아이콘 하나 (예: test.jpg)와 보컬 오락실 안</li><li>결과 화면 아래에 "내 유형에 맞는 레슨이 궁금하다면 → 카카오톡 상담"</li></ul>
+        </div>
+        <div>
+          <h3>어떻게 움직이나</h3>
+          <ul>
+            <li>유형은 6가지예요: 파워 디바 · 감성 발라더 · 그루브 리듬 · 무대 퍼포머 · 음색 요정 · 완벽 테크니션.</li>
+            <li>결과 카드를 그림으로 저장하거나 링크를 복사해서 인스타 스토리 · 카톡에 올릴 수 있어요.</li>
+            <li>답은 저장하지 않아요. 개인정보를 받지 않아요.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>원장님이 정할 것</h3>
+          <ul class="ask">
+            <li>유형 이름 · 설명 · 연습 팁: 지금 글은 제가 쓴 초안이에요. 원장님 말로 고쳐 주시면 훨씬 좋아져요.</li>
+            <li>질문 8개도 초안이에요. 빼거나 바꿀 질문이 있는지.</li>
+            <li>결과에 원포인트 레슨 영상을 유형마다 하나씩 붙일지.</li>
+          </ul>
+        </div>
+        <p class="hint">재미로 하는 테스트라서 결과 화면에 "재미로 보는 테스트예요"를 작게 적어 둘게요.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3 ===== -->
+  <section class="sec" id="deco">
+    <div class="sec__head">
+      <span class="sec__no">시안 ③</span>
+      <h2>내 폴더 꾸미기</h2>
+      <p>폴더 색과 스티커, 한마디를 골라서 내 폴더를 꾸며요. 여기서 고르면 위 ① 시안의 폴더도 같이 바뀌어요.</p>
+    </div>
+    <div class="sec__body">
+      <div class="folder" data-skin="manila">
+        <div class="folder__stickers" aria-hidden="true"></div>
+        <div class="folder__head"><h3 class="folder__title">김시우의 폴더</h3><p class="folder__say"></p></div>
+        <div class="folder__tabs" aria-hidden="true"><span>레슨 노트</span><span>메시지</span><span>내 예약</span><span>연습 도장</span><span class="on">꾸미기</span></div>
+        <div class="panel deco">
+          <div class="deco__group">
+            <h4>폴더 색</h4>
+            <div class="swatches" id="swatches" role="group" aria-label="폴더 색"></div>
+            <p class="hint" id="lock-hint">🔒 밤하늘은 7일 연속 연습하면 열려요. ①에서 오늘 도장을 찍어 보세요.</p>
+          </div>
+          <div class="deco__group">
+            <h4>스티커 (3개까지)</h4>
+            <div class="stickers" id="stickers" role="group" aria-label="스티커"></div>
+          </div>
+          <div class="say">
+            <h4><label for="say-input">한마디 (20자)</label></h4>
+            <input id="say-input" type="text" maxlength="20" placeholder="예: 오늘도 고음 뿌시기" autocomplete="off">
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <div>
+          <h3>어디에 생기나</h3>
+          <ul><li>내 폴더에 "꾸미기" 탭 하나</li><li>고른 색 · 스티커는 내 폴더를 열 때마다, 다른 기기에서도 그대로</li></ul>
+        </div>
+        <div>
+          <h3>어떻게 움직이나</h3>
+          <ul>
+            <li>기본 색 5가지는 처음부터 쓸 수 있고, 특별한 색은 연습 도장을 모으면 열려요.</li>
+            <li>꾸민 폴더는 본인만 봐요. 다른 학생에게는 안 보여요.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>원장님이 정할 것</h3>
+          <ul class="ask">
+            <li>한마디 칸을 넣을지. 본인만 보지만 글을 쓰는 칸이라 빼도 돼요.</li>
+            <li>잠긴 색을 몇 개 둘지 (지금은 밤하늘 1개).</li>
+            <li>크리스마스 기간 한정 색 · 스티커를 넣을지.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>이송희보컬레슨 · 2026-11-14 시안 · 글꼴과 폴더 모양은 실제 홈페이지와 같게 그렸어요.</footer>
+</main>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var toastEl=null, toastT=0;
+  function toast(msg){
+    if(toastEl) toastEl.remove();
+    toastEl=document.createElement('p'); toastEl.className='toast'; toastEl.setAttribute('role','status'); toastEl.textContent=msg;
+    document.body.appendChild(toastEl); clearTimeout(toastT); toastT=setTimeout(function(){ if(toastEl){toastEl.remove(); toastEl=null;} },3600);
+  }
+  var folders=[].slice.call(document.querySelectorAll('.folder'));
+
+  /* ===== 1. stamps ===== */
+  var TODAY=14, DAYS=30, BEST0=9;
+  var BASE={2:'log',3:'both',5:'room',6:'log',8:'both',9:'log',10:'room',11:'both',12:'log',13:'room'};
+  var stamps={}, fresh=0, nightOpen=false;
+  var GOALS=[[3,'새싹 스티커'],[7,'밤하늘 색'],[14,'스티커 5종'],[30,'황금 폴더']];
+  var GLYPH={log:'✎',room:'♪',both:'★'};
+  function streak(){var n=0,d=stamps[TODAY]?TODAY:TODAY-1; while(d>=1 && stamps[d]){n++; d--;} return n;}
+  function drawCal(){
+    var h='', i, d;
+    ['일','월','화','수','목','금','토'].forEach(function(w){h+='<span class="cal__dow">'+w+'</span>';});
+    for(d=1;d<=DAYS;d++){ /* 2026-11-01 is a Sunday, so no leading blanks */
+      var cls='day'+(d>TODAY?' is-future':'')+(d===TODAY?' is-today':''), s=stamps[d];
+      h+='<span class="'+cls+'"><i>'+d+'</i>'+(s?'<span class="stamp stamp--'+s+(d===fresh?' is-new':'')+'" style="--r:'+(((d*37)%25)-12)+'deg">'+GLYPH[s]+'</span>':'')+'</span>';
+    }
+    $('cal').innerHTML=h;
+    var n=streak(), month=Object.keys(stamps).length;
+    $('st-n').textContent=n; $('st-month').textContent=month; $('st-best').textContent=Math.max(BEST0,n);
+    var next=null; h='';
+    GOALS.forEach(function(g){ var done=n>=g[0]; if(!done && !next) next=g; h+='<span class="goal__step'+(done?' is-done':'')+'"><b>'+g[0]+'일</b>'+(done?'✓ ':'')+g[1]+'</span>'; });
+    $('goal-track').innerHTML=h;
+    $('goal-text').textContent=next?('다음 목표 '+next[0]+'일까지 '+(next[0]-n)+'일 남았어요 → '+next[1]):'모든 목표를 채웠어요!';
+  }
+  function resetStamps(){stamps={}; for(var k in BASE) stamps[k]=BASE[k]; fresh=0;}
+  $('btn-stamp').addEventListener('click',function(){
+    stamps[TODAY]='log'; fresh=TODAY; drawCal();
+    this.disabled=true; this.textContent='오늘 도장 완료 ✓'; $('btn-stamp-reset').hidden=false;
+    if(streak()>=7 && !nightOpen){ nightOpen=true; drawSwatches(); toast('🎉 7일 연속! 밤하늘 폴더 색이 열렸어요. ③ 꾸미기에서 골라 보세요.'); }
+    else toast('도장 쾅! '+streak()+'일 연속이에요.');
+  });
+  $('btn-stamp-reset').addEventListener('click',function(){
+    resetStamps(); drawCal(); nightOpen=false; if(skin==='night') setSkin('manila'); drawSwatches();
+    var b=$('btn-stamp'); b.disabled=false; b.textContent='오늘 도장 찍어 보기'; this.hidden=true;
+  });
+
+  /* ===== 3. decorate ===== */
+  var SKINS=[['manila','기본','#F1E1B9','#E6CF9E'],['berry','딸기우유','#FBE3E6','#F2B7C1'],['mint','민트','#DFF4EB','#A6DAC6'],['sky','하늘','#E2EFFC','#ABCDF0'],['lavender','라벤더','#EEE6FB','#C7B5EC'],['night','밤하늘','#2C3466','#141B3A']];
+  var STICK=['🎤','🎧','⭐','🌙','🍓','🐰','🎀','🔥','💿','🌱'];
+  var skin='manila', picked=[];
+  function setSkin(id){skin=id; folders.forEach(function(f){f.dataset.skin=id;}); drawSwatches();}
+  function drawSwatches(){
+    var box=$('swatches'); box.innerHTML='';
+    SKINS.forEach(function(s){
+      var locked=s[0]==='night' && !nightOpen, b=document.createElement('button');
+      b.type='button'; b.className='swatch'; b.setAttribute('aria-pressed',skin===s[0]?'true':'false');
+      b.innerHTML='<i style="--a:'+s[2]+';--b:'+s[3]+'">'+(locked?'🔒':'')+'</i>'+s[1];
+      b.addEventListener('click',function(){ if(locked){toast('밤하늘은 7일 연속 연습하면 열려요. ①에서 오늘 도장을 찍어 보세요.'); return;} setSkin(s[0]); });
+      box.appendChild(b);
+    });
+    $('lock-hint').textContent=nightOpen?'🎉 밤하늘 색이 열렸어요.':'🔒 밤하늘은 7일 연속 연습하면 열려요. ①에서 오늘 도장을 찍어 보세요.';
+  }
+  function drawStickers(){
+    var box=$('stickers'); box.innerHTML='';
+    STICK.forEach(function(e){
+      var b=document.createElement('button'); b.type='button'; b.textContent=e; b.setAttribute('aria-label','스티커 '+e);
+      b.setAttribute('aria-pressed',picked.indexOf(e)>=0?'true':'false');
+      b.addEventListener('click',function(){
+        var i=picked.indexOf(e);
+        if(i>=0) picked.splice(i,1); else if(picked.length>=3){toast('스티커는 3개까지 붙일 수 있어요. 하나를 떼고 골라 주세요.'); return;} else picked.push(e);
+        drawStickers();
+      });
+      box.appendChild(b);
+    });
+    folders.forEach(function(f){ f.querySelector('.folder__stickers').innerHTML=picked.map(function(e){return '<span>'+e+'</span>';}).join(''); });
+  }
+  $('say-input').addEventListener('input',function(){ var v=this.value; folders.forEach(function(f){f.querySelector('.folder__say').textContent=v;}); });
+
+  /* ===== 2. vocal type test ===== */
+  var TYPES={
+    P:{e:'🔥',n:'파워 디바형',a:'#E4572E',b:'#A3243B',line:'한 소절로 분위기를 바꾸는 시원한 고음.',good:['성량','고음','존재감'],tip:'고음 전에 낮은 음을 편하게 내는 연습을 해 보세요. 힘을 뺄수록 더 멀리 나가요.',pal:'E'},
+    E:{e:'🌙',n:'감성 발라더형',a:'#5B6CC9',b:'#2E2A66',line:'가사를 말하듯 전해서 듣는 사람을 멈추게 해요.',good:['감정 전달','가사 표현','여린 소리'],tip:'호흡을 길게 쓰는 연습과, 리듬이 있는 곡에도 한 번 도전해 보세요.',pal:'G'},
+    G:{e:'🎧',n:'그루브 리듬형',a:'#1F9E8A',b:'#14524F',line:'박자를 가지고 놀 줄 아는 사람.',good:['리듬감','박자 타기','자연스러운 몸'],tip:'긴 음을 흔들림 없이 끄는 연습을 더하면 발라드도 내 것이 돼요.',pal:'T'},
+    S:{e:'⚡',n:'무대 퍼포머형',a:'#F2A31B',b:'#D9480F',line:'무대에 올라가는 순간 눈빛이 바뀌어요.',good:['에너지','표정','춤과 노래'],tip:'움직이면서도 흔들리지 않는 호흡을 연습해 보세요. 걸으면서 부르기부터.',pal:'K'},
+    T:{e:'✨',n:'음색 요정형',a:'#C86FC9',b:'#6B3FA0',line:'한 마디만 들어도 누군지 아는 목소리.',good:['개성','분위기','속삭이는 소리'],tip:'내 음색을 지키면서 성량과 음역을 조금씩 넓혀 보세요.',pal:'P'},
+    K:{e:'🎼',n:'완벽 테크니션형',a:'#3D7DD8',b:'#1F3557',line:'라이브가 음원처럼 들리는 안정감.',good:['음정','박자','안정감'],tip:'틀려도 괜찮으니 감정을 일부러 크게 표현해 보는 연습을 해 보세요.',pal:'S'}
+  };
+  var QS=[
+    ['노래방에 가면 제일 먼저 부르는 곡은?',[['고음이 시원하게 터지는 곡','P'],['가사가 마음에 남는 발라드','E'],['리듬 타기 좋은 곡','G'],['춤까지 같이 추는 곡','S']]],
+    ['친구들이 내 노래를 듣고 자주 하는 말은?',[['"목소리 듣자마자 너인 줄 알았어"','T'],['"와, 고음 뭐야"','P'],['"듣는데 울컥했어"','E'],['"음정이 진짜 정확해"','K']]],
+    ['연습할 때 나는?',[['될 때까지 같은 구간만 반복해요','K'],['기분 따라 여러 곡을 불러 봐요','T'],['거울 보며 표정과 동작까지 해요','S'],['박자를 쪼개서 리듬부터 맞춰요','G']]],
+    ['무대에 서기 직전 내 머릿속은?',[['"첫 소절 감정을 잘 잡아야지"','E'],['"고음 구간만 넘기면 돼"','P'],['"빨리 올라가서 놀고 싶다"','S'],['"실수 없이 완벽하게"','K']]],
+    ['좋아하는 노래에서 먼저 들리는 것은?',[['가사','E'],['드럼과 베이스','G'],['가수의 음색','T'],['애드리브와 고음','P']]],
+    ['오디션에서 한 곡만 부를 수 있다면?',[['내 음색이 잘 들리는 잔잔한 곡','T'],['퍼포먼스까지 보여줄 수 있는 곡','S'],['고음으로 한 방 보여주는 곡','P'],['리듬감이 살아 있는 곡','G']]],
+    ['녹음한 내 노래를 들으면?',[['음정 · 박자 틀린 곳부터 찾아요','K'],['감정이 전달되는지 들어요','E'],['목소리 색이 마음에 드는지 들어요','T'],['그루브가 사는지 들어요','G']]],
+    ['내가 되고 싶은 가수는?',[['한 소절만 불러도 소름 돋는 가수','P'],['듣는 사람을 울리는 가수','E'],['무대를 찢는 가수','S'],['라이브가 음원 같은 가수','K']]]
+  ];
+  var qi=-1, score={}, lastPick='';
+  var quiz=$('quiz');
+  function quizIntro(){
+    qi=-1;
+    quiz.innerHTML='<div class="intro"><p class="intro__emoji" aria-hidden="true">🔥🌙🎧</p><h3>나는 어떤 보컬일까?</h3><p>질문 8개 · 1분이면 끝나요. 재미로 보는 테스트예요.</p><button type="button" class="btn" id="q-start">시작하기</button></div>';
+    $('q-start').addEventListener('click',function(){ score={P:0,E:0,G:0,S:0,T:0,K:0}; qi=0; quizAsk(); });
+  }
+  function quizAsk(){
+    var q=QS[qi], h='<div class="quiz__bar"><i style="width:'+(qi/QS.length*100)+'%"></i></div><p class="quiz__count">'+(qi+1)+' / '+QS.length+'</p><h3 class="quiz__q">'+q[0]+'</h3><div class="quiz__opts">';
+    q[1].forEach(function(o,i){h+='<button type="button" data-t="'+o[1]+'">'+o[0]+'</button>';});
+    quiz.innerHTML=h+'</div>';
+    [].forEach.call(quiz.querySelectorAll('.quiz__opts button'),function(b){
+      b.addEventListener('click',function(){ lastPick=b.dataset.t; score[lastPick]++; qi++; if(qi<QS.length) quizAsk(); else quizResult(); });
+    });
+    var first=quiz.querySelector('.quiz__q'); first.tabIndex=-1;
+  }
+  function quizResult(){
+    var keys=Object.keys(TYPES), top=keys[0];
+    keys.forEach(function(k){ if(score[k]>score[top] || (score[k]===score[top] && k===lastPick)) top=k; });
+    var t=TYPES[top], pal=TYPES[t.pal], max=Math.max.apply(null,keys.map(function(k){return score[k];}));
+    var h='<div class="result"><div class="rcard" style="--a:'+t.a+';--b:'+t.b+'"><span class="rcard__kicker">나의 보컬 유형</span><span class="rcard__emoji" aria-hidden="true">'+t.e+'</span><h3 class="rcard__name">'+t.n+'</h3><p class="rcard__line">'+t.line+'</p>'
+      +'<div class="rcard__chips">'+t.good.map(function(g){return '<span>'+g+'</span>';}).join('')+'</div>'
+      +'<div class="rcard__box"><b>연습 팁</b>'+t.tip+'</div>'
+      +'<div class="rcard__box"><b>같이 부르면 좋은 유형</b>'+pal.e+' '+pal.n+'</div>'
+      +'<div class="rcard__foot"><span>이송희보컬레슨</span><span>leeshlesson.com</span></div></div>'
+      +'<div class="bars">'+keys.map(function(k){return '<div><span>'+TYPES[k].e+' '+TYPES[k].n.replace('형','')+'</span><i><b style="width:'+(score[k]/max*100)+'%"></b></i><span>'+score[k]+'</span></div>';}).join('')+'</div>'
+      +'<div class="row"><button type="button" class="btn" id="q-share">결과 카드 공유하기</button><button type="button" class="btn btn--ghost" id="q-again">다시 하기</button></div>'
+      +'<p class="hint">재미로 보는 테스트예요. 유형 이름과 설명은 초안이에요.</p></div>';
+    quiz.innerHTML=h;
+    $('q-share').addEventListener('click',function(){toast('실제 홈페이지에서는 이 카드가 그림으로 저장되고, 테스트 링크가 복사돼요.');});
+    $('q-again').addEventListener('click',quizIntro);
+  }
+
+  resetStamps(); drawCal(); drawSwatches(); drawStickers(); quizIntro();
+})();
+</script>
