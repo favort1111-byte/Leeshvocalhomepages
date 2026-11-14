@@ -8981,3 +8981,9 @@ begin
   return jsonb_build_object('ok', true, 'event', true, 'best', best);
 end $function$
 ;
+
+-- ===== leesh_revoke_truncate (2026-11-14) =====
+-- 표 비우기(TRUNCATE) · REFERENCES · TRIGGER · MAINTAIN 권한을 로그인 전(anon) · 로그인한 사람(authenticated)에게서 회수.
+-- REST로는 원래 쓸 수 없는 권한이지만 RLS가 막아 주지 않는 권한이라 닫아 둠. 화면 · 함수는 쓰지 않음.
+revoke truncate, references, trigger, maintain on all tables in schema public from anon, authenticated;
+alter default privileges in schema public revoke truncate, references, trigger, maintain on tables from anon, authenticated;
