@@ -1,0 +1,662 @@
+<title>크리스마스 홈페이지 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: the real home screen in a browser frame, turned into a winter night stage (glowing tree, neon greeting, snow); notes below. One committed warm look, same as leeshlesson.com. */
+@font-face{font-family:"Gmarket Sans";font-weight:500;font-style:normal;font-display:swap;src:url("__GMARKET__") format("woff")}
+:root{
+  color-scheme:light;
+  --paper:#EDE8E0;      /* site page ground */
+  --ink:#2B2522;        /* site text */
+  --taupe:#6F645D;
+  --cream:#F6EBDD;
+  --line:#D6CEC3;
+  --snow:#FBF8F3;
+  --night:#141B3A;      /* winter night over the wall photo */
+  --plum:#3A2146;
+  --gold:#FFD98A;       /* light bulbs, star */
+  --neon:#FF6B81;       /* neon greeting glow */
+  --mint:#8FE3C0;
+  --berry:#B8483E;      /* muted christmas red used on the notes */
+  --pine:#3D6650;
+  --f-sans:"Gmarket Sans","Noto Sans KR",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:28px}
+
+/* ---------- page head ---------- */
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.head h1{margin:0;font-size:clamp(24px,4vw,34px);font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.head p{margin:4px 0 0;color:var(--taupe);font-size:14px}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px}
+.ctrls button{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.ctrls button:hover{background:rgba(43,37,34,.06)}
+.ctrls button[aria-pressed="true"]{background:var(--ink);color:var(--cream)}
+.ctrls button:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+
+/* ---------- browser frame ---------- */
+.frame{border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 18px 50px -20px rgba(43,37,34,.45),0 0 0 1px rgba(43,37,34,.12)}
+.frame__bar{display:flex;align-items:center;gap:10px;padding:9px 14px;background:#E3DCD2;font-size:12px;color:var(--taupe)}
+.frame__dots{display:flex;gap:6px}
+.frame__dots i{width:10px;height:10px;border-radius:50%;background:#C9BFB3}
+.frame__url{flex:1;min-width:0;background:#F3EEE7;border-radius:999px;padding:3px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- home screen (same geometry as leeshlesson.com: 800-unit canvas) ---------- */
+.home{position:relative;container-type:inline-size;overflow:hidden;background:#B8938B}
+.wall{--s:calc(100cqw / 800);position:relative;aspect-ratio:800/450;width:100%;background:#B8938B url("img/00.webp") center/cover no-repeat;overflow:hidden;touch-action:manipulation}
+/* night falls over the photo; everything that glows sits above it */
+.night{position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:multiply;
+  background:linear-gradient(180deg,rgba(20,27,58,.86) 0%,rgba(58,33,70,.62) 54%,rgba(30,22,48,.80) 100%)}
+.night::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 46%,transparent 38%,rgba(8,8,22,.55) 100%)}
+.moon{position:absolute;z-index:2;left:calc(34 * var(--s));top:calc(86 * var(--s));width:calc(46 * var(--s));aspect-ratio:1;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 38% 36%,#FFFDF4 0%,#FBEFCB 55%,#EED9A6 100%);
+  box-shadow:0 0 calc(18 * var(--s)) calc(6 * var(--s)) rgba(255,236,190,.38),0 0 calc(70 * var(--s)) calc(26 * var(--s)) rgba(255,226,170,.16)}
+.moon::after{content:"";position:absolute;left:54%;top:22%;width:18%;aspect-ratio:1;border-radius:50%;background:rgba(214,190,140,.45);box-shadow:calc(-9 * var(--s)) calc(13 * var(--s)) 0 calc(-1 * var(--s)) rgba(214,190,140,.35)}
+.home.is-day .night,.home.is-day .moon{display:none}
+
+.nav{position:absolute;z-index:20;top:calc(29 * var(--s));left:0;right:0;display:flex;justify-content:center;gap:calc(13 * var(--s))}
+.nav span{width:calc(77 * var(--s));height:calc(22 * var(--s));display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(247,238,234,.9);border-radius:999px;color:#F7EEEA;font-size:calc(12.5 * var(--s));
+  text-decoration:underline;text-underline-offset:calc(2.5 * var(--s))}
+.nav span.on{background:rgba(236,205,196,.85);color:#A07A6F;text-decoration:none}
+
+.icon{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;color:#fff;
+  animation:icon-float calc(5s + var(--i) * .37s) ease-in-out calc(var(--i) * -.9s) infinite alternate}
+.icon__img{position:relative;display:block;width:100%;box-shadow:0 0 calc(12 * var(--s)) rgba(255,224,170,.30)}
+.home.is-day .icon__img{box-shadow:none}
+.icon__img img{display:block;width:100%;height:100%;object-fit:cover}
+.icon__img::before{ /* a little snow cap on every icon */
+  content:"";position:absolute;z-index:1;left:-8%;right:-8%;top:calc(-3.5 * var(--s));height:calc(7 * var(--s));
+  background:var(--snow);border-radius:50% 50% 45% 45% / 90% 90% 35% 35%;
+  box-shadow:0 calc(1 * var(--s)) calc(1.5 * var(--s)) rgba(60,40,30,.18)}
+.icon__img.is-hit{animation:icon-hit .7s cubic-bezier(.34,1.56,.64,1)}
+@keyframes icon-hit{0%{transform:none}30%{transform:scale(1.14,.9)}60%{transform:scale(.95,1.08)}100%{transform:none}}
+.icon__label{margin-top:calc(5 * var(--s));white-space:nowrap;font-weight:500;font-size:calc(11 * var(--s));
+  text-shadow:0 0 calc(3 * var(--s)) rgba(0,0,0,.55),0 calc(1 * var(--s)) calc(2 * var(--s)) rgba(0,0,0,.45)}
+@keyframes icon-float{from{translate:0 0}to{translate:0 calc(-4 * var(--s))}}
+
+/* string lights hung under the nav: the script runs a little light show on them */
+.garland{position:absolute;z-index:15;left:0;top:calc(46 * var(--s));width:100%;height:calc(48 * var(--s));pointer-events:none;overflow:visible}
+.garland path{fill:none;stroke:#1C1716;stroke-width:1.2;vector-effect:non-scaling-stroke;opacity:.9}
+.gb{transition:opacity .14s linear}
+.bulb{animation:twinkle 1.8s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.38}to{opacity:1}}
+
+/* everything that is made of light is drawn here: stars, the tree, sparks */
+#fx{position:absolute;inset:0;z-index:14;width:100%;height:100%;pointer-events:none}
+
+/* neon greeting, lower left */
+.hello{position:absolute;z-index:12;left:calc(60 * var(--s));top:calc(387 * var(--s));margin:0;pointer-events:none}
+.hello__big{display:block;font-weight:700;font-size:calc(31 * var(--s));line-height:1;letter-spacing:-.01em;color:#FFF6EC;
+  text-shadow:0 0 calc(2 * var(--s)) #fff,0 0 calc(7 * var(--s)) var(--neon),0 0 calc(16 * var(--s)) var(--neon),0 0 calc(34 * var(--s)) rgba(255,107,129,.65)}
+.hello__big span{display:inline-block}
+.home.is-day .hello__big{color:var(--cream);text-shadow:0 calc(1 * var(--s)) calc(6 * var(--s)) rgba(40,25,20,.45)}
+.dday{position:absolute;z-index:12;left:calc(60 * var(--s));top:calc(422 * var(--s));margin:0;display:inline-flex;align-items:center;gap:calc(5 * var(--s));
+  padding:calc(2.5 * var(--s)) calc(9 * var(--s));border-radius:999px;background:rgba(20,27,58,.86);color:var(--gold);
+  font-size:calc(10.5 * var(--s));font-weight:500;letter-spacing:.04em;white-space:nowrap;pointer-events:none;box-shadow:0 0 calc(8 * var(--s)) rgba(255,217,138,.35)}
+.dday b{color:#fff;font-weight:700}
+
+/* snow piling up along the bottom edge */
+.drift{position:absolute;z-index:10;left:0;bottom:-1px;width:100%;height:calc(34 * var(--s));pointer-events:none;transform-origin:50% 100%}
+.drift path{fill:#E9EAF4}
+.drift path.back{fill:#C9CBE0}
+.home.is-day .drift path{fill:var(--snow)}
+.home.is-day .drift path.back{fill:#EDE6DD}
+
+/* little pines standing in the snow, behind the tree of light */
+.forest{position:absolute;z-index:9;left:0;bottom:0;width:100%;height:calc(130 * var(--s));pointer-events:none;overflow:visible;filter:brightness(.74) saturate(.9)}
+.home.is-day .forest{filter:none}
+.tree{transform-box:fill-box;transform-origin:50% 100%}
+
+/* Santa's sleigh, pulled by Rudolph, visiting each icon */
+.santa{position:absolute;left:0;top:0;z-index:25;width:calc(92 * var(--s));pointer-events:none;opacity:0;will-change:transform;transition:opacity .6s}
+.santa.is-on{opacity:1}
+.santa svg{display:block;width:100%;height:auto;overflow:visible}
+.santa .leg{transform-box:fill-box;transform-origin:50% 0;animation:gallop .32s ease-in-out infinite alternate}
+.santa .leg--b{animation-direction:alternate-reverse}
+.santa .nose{animation:nose 1s ease-in-out infinite alternate}
+.santa .pom{transform-box:fill-box;transform-origin:50% 0;animation:pom .5s ease-in-out infinite alternate}
+@keyframes gallop{from{transform:rotate(-28deg)}to{transform:rotate(22deg)}}
+@keyframes nose{from{opacity:.75}to{opacity:1}}
+@keyframes pom{from{transform:rotate(-8deg)}to{transform:rotate(10deg)}}
+.spark{position:absolute;z-index:24;pointer-events:none;border-radius:50%;background:#FFE7A6;box-shadow:0 0 6px 2px rgba(255,214,120,.8);animation:spark-fade .9s ease-out forwards}
+@keyframes spark-fade{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(var(--dy)) scale(.2)}}
+.gift{position:absolute;z-index:24;pointer-events:none;animation:gift-fall .55s cubic-bezier(.5,0,.75,0) forwards}
+.gift svg{display:block;width:100%;height:auto}
+.gift.is-pop{animation:gift-pop .45s ease-out forwards}
+@keyframes gift-fall{from{transform:translateY(0) rotate(-12deg)}to{transform:translateY(var(--fall)) rotate(6deg)}}
+@keyframes gift-pop{from{transform:translateY(var(--fall)) scale(1);opacity:1}to{transform:translateY(var(--fall)) scale(1.7);opacity:0}}
+.twinkle{position:absolute;z-index:24;pointer-events:none;color:#FFE08A;line-height:1;text-shadow:0 0 6px rgba(255,214,120,.9);animation:twinkle-out .8s ease-out forwards}
+@keyframes twinkle-out{from{opacity:1;transform:translate(0,0) scale(.6)}to{opacity:0;transform:translate(var(--tx),var(--ty)) scale(1.1)}}
+
+/* ---------- intro: lights gather into a tree, the star switches on, then they scatter into the page ---------- */
+.boot{position:absolute;inset:0;z-index:30;background:radial-gradient(ellipse at 50% 40%,#231A33 0%,#120E1E 62%,#07060D 100%);cursor:pointer;overflow:hidden}
+.boot canvas{position:absolute;inset:0;width:100%;height:100%}
+.boot__text{position:absolute;left:0;right:0;bottom:9%;display:grid;justify-items:center;gap:clamp(2px,.9cqw,8px);text-align:center;pointer-events:none}
+.boot__en{margin:0;font-size:clamp(8px,1.5cqw,12px);letter-spacing:.42em;color:var(--gold);opacity:0}
+.boot__ko{margin:0;font-weight:700;font-size:clamp(20px,5cqw,50px);line-height:1.15;color:#FFF6EC;letter-spacing:.06em;opacity:0;
+  text-shadow:0 0 6px rgba(255,255,255,.6),0 0 22px rgba(255,107,129,.75)}
+.boot__sub{margin:0;font-size:clamp(8px,1.5cqw,12px);letter-spacing:.2em;color:rgba(246,235,221,.62);opacity:0}
+.boot__skip{position:absolute;right:14px;top:10px;margin:0;font-size:11px;letter-spacing:.08em;color:rgba(246,235,221,.42)}
+.boot.is-run .boot__en{animation:boot-rise .7s ease 1.55s forwards}
+.boot.is-run .boot__ko{animation:boot-name .9s cubic-bezier(.2,.7,.2,1) 1.7s forwards}
+.boot.is-run .boot__sub{animation:boot-rise .7s ease 2.2s forwards}
+.boot.is-out{animation:boot-out .6s cubic-bezier(.6,0,.4,1) forwards}
+@keyframes boot-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes boot-name{from{opacity:0;letter-spacing:.5em;filter:blur(6px)}to{opacity:1;letter-spacing:.06em;filter:blur(0)}}
+@keyframes boot-out{0%{opacity:1}100%{opacity:0;visibility:hidden}}
+/* the desktop arrives once the lights scatter */
+.home.is-live .nav{animation:boot-rise .6s ease .15s both}
+.home.is-live .icon{animation:icon-pop .55s cubic-bezier(.34,1.56,.64,1) calc(.2s + var(--i) * 75ms) both,
+  icon-float calc(5s + var(--i) * .37s) ease-in-out calc(var(--i) * -.9s) infinite alternate}
+.home.is-live .garland{animation:fade-in 1s ease .25s both}
+.home.is-live .drift{animation:drift-up 2.2s cubic-bezier(.2,.7,.2,1) .3s both}
+.home.is-live .tree{animation:tree-up .9s cubic-bezier(.34,1.56,.64,1) calc(.4s + var(--d)) both}
+.home.is-live .hello__big span{animation:neon-on .9s steps(1,end) calc(.9s + var(--n) * 70ms) both}
+.home.is-live .dday{animation:boot-rise .6s ease 2.2s both}
+.home.is-live .moon{animation:fade-in 1.6s ease .2s both}
+@keyframes icon-pop{from{opacity:0;scale:.4}to{opacity:1;scale:1}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+@keyframes drift-up{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes tree-up{from{transform:scale(.2,0)}to{transform:none}}
+@keyframes neon-on{0%{opacity:0}12%{opacity:1}20%{opacity:.2}34%{opacity:1}46%{opacity:.35}60%,100%{opacity:1}}
+
+/* page-wide snow */
+#snow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
+
+/* ---------- notes ---------- */
+.parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px}
+.part{min-width:0;background:#F6F2EC;border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:grid;gap:6px;align-content:start}
+.part h2{margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.part h2 i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+.part p,.part ul{margin:0;font-size:14px;color:#4A413B}
+.part ul{padding-left:18px}
+.part small{color:var(--taupe);font-size:12.5px}
+.part .new{font-size:11px;font-weight:700;color:#fff;background:var(--berry);border-radius:999px;padding:1px 8px;margin-left:auto}
+.part .tap{font-size:11px;font-weight:700;color:#3A2A10;background:var(--gold);border-radius:999px;padding:1px 8px}
+.note{margin:0;font-size:13.5px;color:var(--taupe);max-width:70ch}
+.note b{color:var(--ink);font-weight:500}
+
+@media (prefers-reduced-motion:reduce){
+  .boot{display:none}
+  .icon,.home.is-live .icon,.bulb,.home.is-live .hello__big span,.home.is-live .dday,.home.is-live .drift,.home.is-live .nav,.home.is-live .garland,
+  .home.is-live .tree,.home.is-live .moon{animation:none!important;opacity:1}
+  .santa{display:none}
+}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>크리스마스 홈페이지 시안</h1>
+      <p>이송희보컬레슨 · 4차 저장본 (2026-11-14) · 겨울밤 버전 · 선물 상자는 뺐어요. 실제 홈페이지에는 아직 넣지 않았어요.</p>
+    </div>
+    <div class="ctrls" role="group" aria-label="미리보기 조작">
+      <button type="button" id="btn-intro">인트로 다시 보기</button>
+      <button type="button" id="btn-snow" aria-pressed="true">눈 내리기 켜짐</button>
+    </div>
+  </header>
+
+  <section class="frame" aria-label="홈 화면 미리보기">
+    <div class="frame__bar"><span class="frame__dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="frame__url">leeshlesson.com</span></div>
+
+    <div class="home" id="home">
+      <div class="boot" id="boot" aria-hidden="true">
+        <canvas id="boot-cv"></canvas>
+        <div class="boot__text">
+          <p class="boot__en">MERRY CHRISTMAS</p>
+          <p class="boot__ko">이송희보컬레슨</p>
+          <p class="boot__sub">&amp; HAPPY NEW YEAR</p>
+        </div>
+        <p class="boot__skip">탭하면 넘어가요</p>
+      </div>
+
+      <div class="wall" id="wall">
+        <div class="night" aria-hidden="true"></div>
+        <div class="moon" aria-hidden="true"></div>
+        <div class="nav" aria-hidden="true"><span class="on">home</span><span>about</span><span>audition</span><span>school</span><span>contact</span><span>consult</span><span>booking</span></div>
+        <svg class="garland" id="garland" viewBox="0 0 800 48" preserveAspectRatio="none" aria-hidden="true"></svg>
+
+        <div class="icon" data-name="stage" style="--i:2;left:calc(228.5 * var(--s));top:calc(136 * var(--s));width:calc(37 * var(--s))"><span class="icon__img" style="height:calc(37 * var(--s))"><img src="img/01.webp" alt=""></span><span class="icon__label">stage.jpg</span></div>
+        <div class="icon" data-name="lesson" style="--i:3;left:calc(285.5 * var(--s));top:calc(216 * var(--s));width:calc(37 * var(--s))"><span class="icon__img" style="height:calc(37 * var(--s))"><img src="img/02.webp" alt=""></span><span class="icon__label">lesson.jpg</span></div>
+        <div class="icon" data-name="practice" style="--i:4;left:calc(169 * var(--s));top:calc(263.5 * var(--s));width:calc(37 * var(--s))"><span class="icon__img" style="height:calc(38 * var(--s))"><img src="img/03.webp" alt=""></span><span class="icon__label">practice room.jpg</span></div>
+        <div class="icon" data-name="audition" style="--i:5;left:calc(90 * var(--s));top:calc(296 * var(--s));width:calc(49 * var(--s))"><span class="icon__img" style="height:calc(68 * var(--s))"><img src="img/04.webp" alt=""></span><span class="icon__label">audition.jpg</span></div>
+        <div class="icon" data-name="results" style="--i:6;left:calc(319 * var(--s));top:calc(324 * var(--s));width:calc(37 * var(--s))"><span class="icon__img" style="height:calc(37 * var(--s))"><img src="img/05.webp" alt=""></span><span class="icon__label">results.jpg</span></div>
+        <div class="icon" data-name="vocal" style="--i:7;left:calc(464 * var(--s));top:calc(349.5 * var(--s));width:calc(83.5 * var(--s))"><span class="icon__img" style="height:calc(46.5 * var(--s))"><img src="img/07.webp" alt=""></span><span class="icon__label">vocal.jpg</span></div>
+        <div class="icon" data-name="hobby" style="--i:9;left:calc(563 * var(--s));top:calc(256.5 * var(--s));width:calc(61.5 * var(--s))"><span class="icon__img" style="height:calc(47.5 * var(--s))"><img src="img/06.webp" alt=""></span><span class="icon__label">hobby.jpg</span></div>
+        <div class="icon" data-name="school" style="--i:10;left:calc(637.5 * var(--s));top:calc(119.5 * var(--s));width:calc(73.5 * var(--s))"><span class="icon__img" style="height:calc(43 * var(--s))"><img src="img/09.webp" alt=""></span><span class="icon__label">school.jpg</span></div>
+        <div class="icon" data-name="debut" style="--i:11;left:calc(699 * var(--s));top:calc(150 * var(--s));width:calc(43.5 * var(--s))"><span class="icon__img" style="height:calc(49 * var(--s))"><img src="img/08.webp" alt=""></span><span class="icon__label">debut.jpg</span></div>
+
+        <svg class="forest" id="forest" viewBox="0 0 800 130" preserveAspectRatio="none" aria-hidden="true"></svg>
+
+        <p class="hello"><span class="hello__big" id="hello-big" aria-label="Merry Christmas">Merry Christmas</span></p>
+        <p class="dday" id="dday"></p>
+
+        <svg class="drift" viewBox="0 0 800 34" preserveAspectRatio="none" aria-hidden="true">
+          <path class="back" d="M0 14 C60 6 110 18 170 11 S290 3 350 12 S470 20 540 10 S680 2 740 12 S790 15 800 10 V34 H0Z"/>
+          <path d="M0 22 C70 14 130 26 200 19 S330 12 400 21 S520 27 600 18 S730 13 800 20 V34 H0Z"/>
+        </svg>
+
+        <canvas id="fx" aria-hidden="true"></canvas>
+
+      </div>
+
+    </div>
+  </section>
+
+  <section class="parts" aria-label="시안 구성">
+    <article class="part" style="--c:#FFD98A">
+      <h2><i></i>인트로<span class="new">NEW</span></h2>
+      <p>어두운 화면에 불빛들이 모여 트리가 되고, 꼭대기 별이 켜지면서 학원 이름이 떠요. 그다음 불빛이 사방으로 흩어지며 홈 화면이 나와요.</p>
+      <small>약 3초 · 탭하면 넘어감 · 움직임 줄이기 설정이면 건너뜀</small>
+    </article>
+    <article class="part" style="--c:#141B3A">
+      <h2><i></i>겨울밤 장면<span class="new">NEW</span></h2>
+      <ul>
+        <li>사진 위로 밤이 내려서 불빛이 훨씬 예쁘게 빛나요</li>
+        <li>달 · 반짝이는 별 · 가끔 지나가는 별똥별</li>
+        <li>"Merry Christmas"는 네온사인처럼 깜빡이며 켜져요</li>
+        <li>크리스마스까지 남은 날 (D-day) 표시</li>
+      </ul>
+      <small>원장님이 밤 버전으로 정했어요 (2026-11-14)</small>
+    </article>
+    <article class="part" style="--c:#8FE3C0">
+      <h2><i></i>빛나는 트리<span class="tap">눌러 보기</span><span class="new">NEW</span></h2>
+      <p>오른쪽 아래에 불빛으로 만든 트리가 천천히 돌아요. 트리를 누르면 불빛 쇼가 시작되고 별에서 불꽃이 터져요.</p>
+    </article>
+    <article class="part" style="--c:#FF6B81">
+      <h2><i></i>전구 줄 · 눈<span class="new">NEW</span></h2>
+      <ul>
+        <li>전구가 5초마다 다른 모양으로 반짝여요 (물결 · 달리기 · 번갈아)</li>
+        <li>눈이 멀고 가까운 3겹으로 내려요. 사이사이 ♪ 음표도 떨어져요</li>
+        <li>마우스를 움직이면 눈이 비켜 가고, 화면을 누르면 별이 터져요</li>
+      </ul>
+    </article>
+    <article class="part" style="--c:#B8483E">
+      <h2><i></i>산타 썰매</h2>
+      <p>루돌프가 끄는 산타 썰매가 메뉴 아이콘을 하나씩 찾아가 선물을 떨어뜨려요. 지난번 그대로예요.</p>
+      <small>나중에 산타를 누르면 영상이 나오게 할 수 있어요</small>
+    </article>
+  </section>
+
+  <p class="note"><b>정할 것:</b> 켜는 기간(예: 12월 1일 ~ 1월 1일 자동으로 켜고 끄기), 인트로를 매번 보여줄지 하루 한 번만 보여줄지. 마음에 드는 것만 골라서 실제 홈페이지에 넣을 수 있어요.</p>
+</div>
+
+<canvas id="snow" aria-hidden="true"></canvas>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var NS = 'http://www.w3.org/2000/svg';
+  var PAL = ['#FFD98A','#FF6B81','#8FE3C0','#FFFFFF','#9CC9FF'];
+  var home = document.getElementById('home'), wall = document.getElementById('wall'), boot = document.getElementById('boot');
+  var T = 0, night = true, live = false;
+  function el(tag, attrs, parent){var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e;}
+  function clamp(v,a,b){return v<a?a:v>b?b:v;}
+  function hexA(h,a){var n=parseInt(h.slice(1),16); return 'rgba('+(n>>16)+','+((n>>8)&255)+','+(n&255)+','+a+')';}
+
+  /* ---------- soft glow dots, drawn once per color and reused ---------- */
+  var sprites = {};
+  function sprite(c){
+    if(sprites[c]) return sprites[c];
+    var s=document.createElement('canvas'); s.width=s.height=64; var g=s.getContext('2d');
+    var rg=g.createRadialGradient(32,32,0,32,32,32);
+    rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(.16,c); rg.addColorStop(.42,hexA(c,.38)); rg.addColorStop(1,hexA(c,0));
+    g.fillStyle=rg; g.fillRect(0,0,64,64); return sprites[c]=s;
+  }
+  function dot(ctx,x,y,r,c,a){ if(a<=0.01) return; ctx.globalAlpha=a>1?1:a; ctx.drawImage(sprite(c),x-r,y-r,r*2,r*2); }
+  function starPath(ctx,x,y,r,rot){ctx.beginPath(); for(var i=0;i<10;i++){var a=rot-Math.PI/2+i*Math.PI/5, rr=i%2?r*0.46:r; if(i) ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); else ctx.moveTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);} ctx.closePath();}
+  function fit(cv,w,h){var d=Math.min(2,window.devicePixelRatio||1), W=Math.round(w*d), H=Math.round(h*d); if(cv.width!==W||cv.height!==H){cv.width=W; cv.height=H;} return d;}
+
+  /* ---------- the tree of light: two strings winding up a cone, plus ornaments ---------- */
+  var seed=11; function rnd(){seed=(seed*16807)%2147483647; return seed/2147483647;}
+  var TREE=(function(){
+    var P=[],i,n=92,t;
+    for(i=0;i<n;i++){t=0.05+0.95*i/(n-1); P.push({t:t,a:t*32.6,c:PAL[0],s:1,p:i*1.7,q:1});}
+    for(i=0;i<n;i++){t=0.07+0.93*i/(n-1); P.push({t:t,a:t*32.6+Math.PI,c:PAL[1+i%4],s:1.2,p:i*2.3,q:1});}
+    for(i=0;i<64;i++){t=0.1+0.9*Math.pow(rnd(),0.6); P.push({t:t,a:rnd()*6.283,c:PAL[(i*3)%5],s:0.55+rnd()*0.5,p:rnd()*20,q:0.5+rnd()*0.45});}
+    P.forEach(function(p){p.sx=rnd(); p.sy=rnd(); p.ex=rnd()*6.283;});
+    return P;
+  })();
+  /* where one light sits right now: screen x, y, size, brightness */
+  function place(p,cx,top,H,R,rot,time,out){
+    var ang=p.a+rot, rr=R*p.t*p.q, z=Math.sin(ang), f=(z+1)/2;
+    out.x=cx+Math.cos(ang)*rr; out.y=top+p.t*H+z*rr*0.17;
+    out.r=(2.5+2.1*f)*p.s*(H/190); out.a=(0.28+0.72*f)*(0.62+0.38*Math.sin(time*3.1+p.p));
+  }
+  function cone(ctx,cx,top,H,R){
+    var g=ctx.createLinearGradient(0,top,0,top+H); g.addColorStop(0,'rgba(34,84,62,.55)'); g.addColorStop(1,'rgba(14,40,34,.82)');
+    ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1; ctx.fillStyle=g;
+    ctx.beginPath(); ctx.moveTo(cx,top-H*0.02); ctx.quadraticCurveTo(cx+R*0.5,top+H*0.55,cx+R*1.08,top+H*1.03);
+    ctx.quadraticCurveTo(cx,top+H*1.12,cx-R*1.08,top+H*1.03); ctx.quadraticCurveTo(cx-R*0.5,top+H*0.55,cx,top-H*0.02); ctx.fill();
+  }
+  function topStar(ctx,x,y,r,time,boost){
+    ctx.globalCompositeOperation='lighter';
+    var pulse=0.75+0.25*Math.sin(time*2.6);
+    dot(ctx,x,y,r*(5.2+boost*4)*pulse,PAL[0],0.55+boost*0.3);
+    ctx.globalAlpha=0.5*pulse+boost*0.3; ctx.strokeStyle='#FFF1B8'; ctx.lineWidth=r*0.14; ctx.lineCap='round';
+    var L=r*(3.2+boost*3); ctx.beginPath(); ctx.moveTo(x-L,y); ctx.lineTo(x+L,y); ctx.moveTo(x,y-L); ctx.lineTo(x,y+L); ctx.stroke();
+    ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1; ctx.fillStyle='#FFF4C4'; starPath(ctx,x,y,r,Math.sin(time*0.9)*0.12); ctx.fill();
+  }
+
+  /* ---------- string of lights under the nav ---------- */
+  var COLORS=['#FF6B81','#FFD98A','#8FE3C0','#FFF4E0'], gb=[];
+  (function(svg){
+    var hooks=[0,135,270,400,530,665,800], sag=14, step=27, r=3.9, d='', pts=[];
+    for(var k=0;k<hooks.length-1;k++){
+      var x0=hooks[k], x1=hooks[k+1]; d+=(k?' ':'M'+x0+' 2 ')+'Q'+((x0+x1)/2)+' '+(2+sag*2)+' '+x1+' 2';
+      var n=Math.max(2,Math.round((x1-x0)/step));
+      for(var j=1;j<n;j++){var t=j/n; pts.push([x0+(x1-x0)*t, 2+(1-(2*t-1)*(2*t-1))*sag]);}
+    }
+    el('path',{d:d},svg);
+    pts.forEach(function(q,i){
+      var g=el('g',{'class':'gb'},svg), c=COLORS[i%COLORS.length];
+      el('rect',{x:q[0]-r*0.45,y:q[1],width:r*0.9,height:r*0.7,fill:'#2A2320'},g);
+      el('ellipse',{cx:q[0],cy:q[1]+r*1.55,rx:r*0.85,ry:r*1.15,fill:c,style:'filter:drop-shadow(0 0 '+(r*1.1)+'px '+c+') drop-shadow(0 0 '+(r*3)+'px '+c+')'},g);
+      gb.push(g);
+    });
+  })(document.getElementById('garland'));
+  var gLast=0;
+  function garlandFrame(){
+    if(T-gLast<0.04) return; gLast=T;
+    var mode=Math.floor(T/5)%4, n=gb.length, v, i, d;
+    for(i=0;i<n;i++){
+      if(mode===0) v=0.7+0.3*Math.sin(T*3+i*1.9);
+      else if(mode===1){d=((i-T*10)%n+n)%n; v=d<6?1-d*0.1:0.42;}
+      else if(mode===2) v=0.68+0.32*Math.sin(T*4-i*0.55);
+      else v=(Math.floor(T*2.2)+i)%2?1:0.42;
+      gb[i].style.opacity=v.toFixed(2);
+    }
+  }
+
+  /* ---------- small pines in the snow (the big one is the tree of light) ---------- */
+  (function(svg){
+    var BASE=124, PINES=[['#2C5641','#3A6B52'],['#335E48','#45775B'],['#28503D','#36654D']];
+    var TREES=[[10,36,.25],[28,24,.4],[322,28,.5],[342,38,.35],[366,26,.55],[426,34,.45],[448,24,.6],
+      [566,40,.5],[592,58,.35],[618,76,.2],[776,64,.3],[797,84,.15]];
+    TREES.forEach(function(t,ti){
+      var cx=t[0], h=t[1], w=h*0.66, col=PINES[ti%3], g=el('g',{'class':'tree',style:'--d:'+t[2]+'s'},svg);
+      el('rect',{x:cx-w*0.06,y:BASE-h*0.14,width:w*0.12,height:h*0.14,fill:'#5A3E2E'},g);
+      [[0.12,0.52,1],[0.38,0.77,0.78],[0.62,1,0.54]].forEach(function(tr,k){
+        var yb=BASE-h*tr[0], yt=BASE-h*tr[1], hw=w/2*tr[2], dip=hw*0.16;
+        el('path',{d:'M'+cx+' '+yt+' L'+(cx+hw)+' '+yb+' Q'+cx+' '+(yb+dip)+' '+(cx-hw)+' '+yb+'Z',fill:col[0]},g);
+        el('path',{d:'M'+cx+' '+yt+' L'+(cx+hw)+' '+yb+' Q'+(cx+hw*0.5)+' '+(yb+dip*0.8)+' '+cx+' '+(yb+dip)+'Z',fill:col[1]},g);
+        var sh=(yb-yt)*0.42, sw=hw*0.42, sy=yt+sh;
+        el('path',{d:'M'+cx+' '+yt+' L'+(cx+sw)+' '+sy+' Q'+(cx+sw*0.55)+' '+(sy+sh*0.32)+' '+(cx+sw*0.2)+' '+(sy-sh*0.02)+
+          ' Q'+(cx-sw*0.15)+' '+(sy+sh*0.36)+' '+(cx-sw*0.45)+' '+(sy+sh*0.02)+' Q'+(cx-sw*0.8)+' '+(sy+sh*0.25)+' '+(cx-sw)+' '+sy+'Z',fill:'#FBF8F3'},g);
+        var nb=Math.max(1,Math.round(hw/9));
+        for(var b=0;b<nb;b++){
+          var f=(b+0.5)/nb, bx=cx-hw*0.78+hw*1.56*f, by=yb-(yb-yt)*0.18, c=COLORS[(ti+k+b)%3];
+          el('circle',{'class':'bulb',cx:bx,cy:by,r:Math.max(1.3,h*0.024),fill:c,style:'animation-delay:'+(-((ti*7+k*3+b)*0.41)%1.8).toFixed(2)+'s;filter:drop-shadow(0 0 2px '+c+')'},g);
+        }
+      });
+    });
+  })(document.getElementById('forest'));
+
+  /* greeting letters + days left */
+  (function(){
+    var big=document.getElementById('hello-big'), txt=big.textContent; big.textContent='';
+    for(var i=0;i<txt.length;i++){var s=document.createElement('span'); s.setAttribute('aria-hidden','true'); s.style.setProperty('--n',i); s.textContent=txt[i]===' '?' ':txt[i]; big.appendChild(s);}
+    var k=new Date(Date.now()+9*3600000), y=k.getUTCFullYear(), today=Date.UTC(y,k.getUTCMonth(),k.getUTCDate()), x=Date.UTC(y,11,25);
+    var left=Math.round((x-today)/86400000), dd=document.getElementById('dday');
+    if(left>0) dd.innerHTML='크리스마스까지 <b>D-'+left+'</b>';
+    else if(left===0) dd.innerHTML='<b>오늘은 크리스마스!</b>';
+    else dd.innerHTML='<b>HAPPY NEW YEAR</b>';
+  })();
+
+  /* ---------- everything drawn in light on the wall (wall units: 800 x 450) ---------- */
+  var fx=document.getElementById('fx'), fc=fx.getContext('2d');
+  var TR={cx:713,top:250,H:184,R:62}, showUntil=-1, rot=0;
+  var STARS=[]; (function(){for(var i=0;i<54;i++) STARS.push({x:rnd()*800,y:8+rnd()*rnd()*230,r:0.7+rnd()*1.3,p:rnd()*6.283,v:1+rnd()*2.2,c:PAL[i%7===0?4:i%5===0?0:3]});})();
+  var parts=[], shoot=null, shootAt=4, tmp={};
+  function burst(x,y,n,o){
+    o=o||{};
+    for(var i=0;i<n;i++){
+      var a=rnd()*6.283, sp=(o.speed||90)*(0.35+rnd()*0.9);
+      parts.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-(o.up||0),g:o.g==null?120:o.g,life:0,max:(o.life||0.9)*(0.6+rnd()*0.7),
+        c:o.colors?o.colors[i%o.colors.length]:PAL[i%PAL.length],s:(o.size||2.4)*(0.6+rnd()*0.9),k:o.star&&i%3===0?1:0,sp:rnd()*6});
+    }
+  }
+  function fxFrame(dt){
+    var w=wall.clientWidth, h=wall.clientHeight; if(!w) return;
+    var d=fit(fx,w,h), u=w/800, i, p;
+    fc.setTransform(d*u,0,0,d*u,0,0); fc.clearRect(0,0,800,450);
+    fc.globalCompositeOperation='lighter';
+    if(night){
+      for(i=0;i<STARS.length;i++){p=STARS[i]; dot(fc,p.x,p.y,p.r*2.6,p.c,0.25+0.6*(0.5+0.5*Math.sin(T*p.v+p.p)));}
+      if(!shoot && T>shootAt){shoot={t:0,x:60+rnd()*420,y:20+rnd()*70,dx:260+rnd()*120,dy:70+rnd()*50,dur:0.9};}
+      if(shoot){
+        shoot.t+=dt; var e=shoot.t/shoot.dur, hx=shoot.x+shoot.dx*e, hy=shoot.y+shoot.dy*e;
+        if(e>=1){shoot=null; shootAt=T+5+rnd()*6;}
+        else{var gr=fc.createLinearGradient(hx,hy,hx-shoot.dx*0.22,hy-shoot.dy*0.22); gr.addColorStop(0,'rgba(255,255,255,'+(0.9*Math.sin(e*Math.PI))+')'); gr.addColorStop(1,'rgba(255,255,255,0)');
+          fc.globalAlpha=1; fc.strokeStyle=gr; fc.lineWidth=1.4; fc.lineCap='round'; fc.beginPath(); fc.moveTo(hx,hy); fc.lineTo(hx-shoot.dx*0.22,hy-shoot.dy*0.22); fc.stroke();
+          dot(fc,hx,hy,5,PAL[3],Math.sin(e*Math.PI));}
+      }
+    }
+    /* the tree */
+    var show=T<showUntil, k=show?clamp((showUntil-T)/0.5,0,1)*clamp((T-(showUntil-2.8))/0.3,0,1):0;
+    rot+=dt*(0.55+k*4.2);
+    cone(fc,TR.cx,TR.top,TR.H,TR.R);
+    fc.globalCompositeOperation='lighter';
+    dot(fc,TR.cx,TR.top+TR.H*0.62,TR.R*(2.5+k*0.6),PAL[0],0.16+k*0.14);
+    dot(fc,TR.cx,TR.top+TR.H+2,TR.R*1.5,PAL[0],0.2);
+    for(i=0;i<TREE.length;i++){
+      p=TREE[i]; place(p,TR.cx,TR.top,TR.H,TR.R,rot,T,tmp);
+      var c=k>0.02?PAL[(Math.floor(p.t*9-T*7)%5+5)%5]:p.c;
+      dot(fc,tmp.x,tmp.y,tmp.r*(1+k*0.5),c,tmp.a*(1+k*0.5));
+    }
+    topStar(fc,TR.cx,TR.top-7,8.5,T,k);
+    if(show && rnd()<0.5) burst(TR.cx,TR.top-7,2,{speed:120,life:0.9,size:2.2,star:true,g:90});
+    /* sparks */
+    fc.globalCompositeOperation='lighter';
+    for(i=parts.length-1;i>=0;i--){
+      p=parts[i]; p.life+=dt; if(p.life>=p.max){parts.splice(i,1); continue;}
+      p.vy+=p.g*dt; p.vx*=0.985; p.x+=p.vx*dt; p.y+=p.vy*dt;
+      var a=1-p.life/p.max;
+      if(p.k){fc.globalAlpha=a; fc.fillStyle=p.c; starPath(fc,p.x,p.y,p.s*1.7,p.sp+p.life*4); fc.fill(); dot(fc,p.x,p.y,p.s*3,p.c,a*0.5);}
+      else dot(fc,p.x,p.y,p.s*2.6,p.c,a);
+    }
+    if(parts.length>420) parts.splice(0,parts.length-420);
+    fc.globalAlpha=1; fc.globalCompositeOperation='source-over';
+  }
+  function wallPoint(e){var r=wall.getBoundingClientRect(), u=r.width/800; return {x:(e.clientX-r.left)/u,y:(e.clientY-r.top)/u};}
+  function inTree(q){return q.x>TR.cx-TR.R-8 && q.x<TR.cx+TR.R+8 && q.y>TR.top-22 && q.y<TR.top+TR.H+6;}
+  wall.addEventListener('pointerdown',function(e){
+    if(!live) return;
+    var q=wallPoint(e);
+    if(inTree(q)){showUntil=T+2.8; burst(TR.cx,TR.top-7,46,{speed:170,life:1.2,size:2.8,star:true,g:110});}
+    else burst(q.x,q.y,16,{speed:95,life:0.8,size:2.2,star:true,g:70});
+  });
+  var trailAt=0;
+  wall.addEventListener('pointermove',function(e){
+    if(!live || e.pointerType!=='mouse' || T-trailAt<0.035) return; trailAt=T;
+    var q=wallPoint(e); parts.push({x:q.x+(rnd()*6-3),y:q.y+(rnd()*6-3),vx:rnd()*20-10,vy:10+rnd()*14,g:30,life:0,max:0.55+rnd()*0.35,c:PAL[rnd()<0.7?0:3],s:1.5+rnd()*1.1,k:0,sp:0});
+  });
+
+  /* ---------- Santa + Rudolph visiting the icons (unchanged from the last version) ---------- */
+  var SLEIGH = '<svg viewBox="0 0 130 64" aria-hidden="true">'
+    + '<path d="M44 26 Q74 30 108 24" fill="none" stroke="#6B4430" stroke-width="1"/>'
+    + '<g class="leg leg--b"><rect x="88" y="36" width="2.6" height="13" rx="1.3" fill="#6E4630"/></g>'
+    + '<g class="leg"><rect x="104" y="36" width="2.6" height="13" rx="1.3" fill="#6E4630"/></g>'
+    + '<path d="M80 31 q-6 -3 -7 2 q4 1 7 1z" fill="#F3E6D6"/>'
+    + '<ellipse cx="96" cy="34" rx="16" ry="7.5" fill="#9A6542"/>'
+    + '<ellipse cx="97" cy="37.5" rx="10" ry="3" fill="#B98563"/>'
+    + '<g class="leg"><rect x="84" y="37" width="2.8" height="13" rx="1.4" fill="#87583A"/></g>'
+    + '<g class="leg leg--b"><rect x="100" y="37" width="2.8" height="13" rx="1.4" fill="#87583A"/></g>'
+    + '<path d="M104 31 L111 18 L117 20 L111 34Z" fill="#9A6542"/>'
+    + '<path d="M106 32 q5 -1 6 -4" fill="none" stroke="#B8483E" stroke-width="2.4" stroke-linecap="round"/>'
+    + '<circle cx="110.5" cy="30.5" r="1.7" fill="#E8C27A"/>'
+    + '<path d="M112 12 L109 4 M110.4 8 L106.5 6.5 M109 4 L106.8 1.2 M109 4 L111.6 1.4 M116 12 L118 4 M117.3 7 L121 5.6 M118 4 L116.6 1 M118 4 L121 2" fill="none" stroke="#6E4630" stroke-width="1.5" stroke-linecap="round"/>'
+    + '<path d="M110.5 14.5 q-4 -1 -5 2 q3 1 5 0z" fill="#87583A"/>'
+    + '<ellipse cx="117" cy="18" rx="7.2" ry="5.2" fill="#9A6542"/>'
+    + '<ellipse cx="121.5" cy="20" rx="3.6" ry="2.6" fill="#B98563"/>'
+    + '<circle cx="116.4" cy="16.2" r="1" fill="#2B2522"/>'
+    + '<circle class="nose" cx="125.2" cy="19.6" r="2.8" fill="#E8352B" style="filter:drop-shadow(0 0 3px #FF4D3D)"/>'
+    + '<path d="M8 32 Q4 14 16 12 Q26 11 25 30Z" fill="#3D6650"/>'
+    + '<path d="M13 13 q3 -4 7 -1" fill="none" stroke="#D9B26A" stroke-width="1.6" stroke-linecap="round"/>'
+    + '<path d="M28 34 Q27 17 38 17 Q48 17 47 34Z" fill="#C8342B"/>'
+    + '<path d="M36.5 18 v16" stroke="#FBF8F3" stroke-width="2.4"/>'
+    + '<path d="M44 22 q6 0 9 3" fill="none" stroke="#C8342B" stroke-width="3.4" stroke-linecap="round"/>'
+    + '<circle cx="53.2" cy="25.6" r="1.8" fill="#2B2522"/>'
+    + '<circle cx="39" cy="12" r="5.4" fill="#F3C9A8"/>'
+    + '<path d="M34 12.5 Q35 22 40 21 Q45 22 44.6 12.5 Q42 15.5 39.3 15 Q36.5 15.5 34 12.5Z" fill="#FBF8F3"/>'
+    + '<circle cx="41.6" cy="11" r=".9" fill="#2B2522"/>'
+    + '<circle cx="43.6" cy="13" r="1.3" fill="#E9A08C"/>'
+    + '<path d="M33.2 9.6 Q36 1 44 4 Q46 6 45 9.6Z" fill="#C8342B"/>'
+    + '<path d="M33 9.8 h12.6" stroke="#FBF8F3" stroke-width="2.6" stroke-linecap="round"/>'
+    + '<g class="pom"><path d="M36 3.5 Q31 3 29.5 8" fill="none" stroke="#C8342B" stroke-width="3" stroke-linecap="round"/><circle cx="29.4" cy="8.8" r="2.3" fill="#FBF8F3"/></g>'
+    + '<path d="M4 29 H56 Q66 29 64 37 Q62 46 52 46 H14 Q4 46 4 38Z" fill="#B8483E"/>'
+    + '<path d="M6 33 H61" stroke="#D9B26A" stroke-width="1.6"/>'
+    + '<path d="M4 29 Q-1 26 2 22 Q5 20 6 24" fill="none" stroke="#B8483E" stroke-width="3" stroke-linecap="round"/>'
+    + '<path d="M14 46 v7 M50 46 v7" stroke="#D9B26A" stroke-width="2"/>'
+    + '<path d="M2 53 H56 Q66 53 67 46" fill="none" stroke="#D9B26A" stroke-width="2.6" stroke-linecap="round"/>'
+    + '</svg>';
+  var GIFT_COLORS=[['#B8483E','#E8C27A'],['#3D6650','#F6EBDD'],['#E8C27A','#B8483E'],['#7FB08F','#B8483E']];
+  function giftSvg(n){var c=GIFT_COLORS[n%GIFT_COLORS.length];
+    return '<svg viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="12" rx="1.5" fill="'+c[0]+'"/><rect x="1" y="5" width="18" height="4" rx="1" fill="'+c[0]+'" style="filter:brightness(1.12)"/>'
+      +'<rect x="8.5" y="5" width="3" height="14" fill="'+c[1]+'"/><path d="M10 5 Q5 0 4 3 Q4 5.5 10 5 Q16 5.5 16 3 Q15 0 10 5Z" fill="none" stroke="'+c[1]+'" stroke-width="1.6"/></svg>';}
+  var ROUTE=['audition','practice','stage','lesson','results','vocal','hobby','school','debut'];
+  var SW=92, AX=35/130, AY=53/64, santaRaf=0, santaTimer=0;
+  function santa(delay){
+    cancelAnimationFrame(santaRaf); clearTimeout(santaTimer);
+    wall.querySelectorAll('.santa,.gift,.spark,.twinkle').forEach(function(n){n.remove();});
+    if(reduce) return;
+    var box=document.createElement('div'); box.className='santa'; box.setAttribute('aria-hidden','true'); box.innerHTML=SLEIGH; wall.appendChild(box);
+    var queue=[], act=null, t=0, last=0, dir=1, clock=0, sparkT=0, giftN=0, pos={x:-80,y:110};
+    function unit(){return wall.clientWidth/800;}
+    function iconPoint(name){var ic=wall.querySelector('.icon[data-name="'+name+'"]'), u=unit();
+      return {icon:ic, x:(ic.offsetLeft+ic.offsetWidth/2)/u, top:ic.offsetTop/u, y:ic.offsetTop/u-30};}
+    function plan(){
+      queue=[]; var from={x:-90,y:104};   /* comes in across the moon */
+      ROUTE.forEach(function(n){var p=iconPoint(n); queue.push({k:'fly',a:from,b:p}); queue.push({k:'stop',p:p,dur:1.5}); from=p;});
+      queue.push({k:'fly',a:from,b:{x:900,y:20}}); queue.push({k:'wait',dur:2.5});
+      queue.forEach(function(q){ if(q.k==='fly'){var dx=q.b.x-q.a.x, dy=q.b.y-q.a.y, dist=Math.sqrt(dx*dx+dy*dy);
+        q.c={x:(q.a.x+q.b.x)/2, y:Math.min(q.a.y,q.b.y)-(26+dist*0.18)}; q.dur=Math.min(2.8,Math.max(1.2,dist/150));}});
+    }
+    function ease(p){return p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;}
+    function bez(a,c,b,e){var m=1-e; return {x:m*m*a.x+2*m*e*c.x+e*e*b.x, y:m*m*a.y+2*m*e*c.y+e*e*b.y, dx:2*m*(c.x-a.x)+2*e*(b.x-c.x), dy:2*m*(c.y-a.y)+2*e*(b.y-c.y)};}
+    function spawn(cls, x, y, size, extra){var u=unit(), n=document.createElement('div'); n.className=cls;
+      n.style.left=(x*u-size*u/2)+'px'; n.style.top=(y*u-size*u/2)+'px'; n.style.width=n.style.height=(size*u)+'px';
+      if(extra) extra(n,u); wall.appendChild(n); if(cls!=='gift') setTimeout(function(){n.remove();},1000); return n;}
+    function drop(p){
+      var g=spawn('gift', pos.x, pos.y+3, 11, function(n,u){n.innerHTML=giftSvg(giftN++); n.style.setProperty('--fall',((p.top-4-pos.y-3)*u)+'px');});
+      setTimeout(function(){
+        g.classList.add('is-pop');
+        var img=p.icon.querySelector('.icon__img'); img.classList.remove('is-hit'); void img.offsetWidth; img.classList.add('is-hit');
+        burst(p.x,p.top-2,12,{speed:70,life:0.7,size:2,star:true,g:60});
+        setTimeout(function(){g.remove();},500);
+      },560);
+    }
+    function frame(now){
+      var dt=Math.min(0.05,(now-last)/1000||0); last=now; clock+=dt;
+      if(!box.isConnected) return;
+      if(!act){ if(!queue.length) plan(); act=queue.shift(); t=0; act.fired=false; }
+      t+=dt; var p=Math.min(1,t/act.dur), ang=0, bob=0;
+      if(act.k==='fly'){
+        var q=bez(act.a,act.c,act.b,ease(p)); pos={x:q.x,y:q.y};
+        if(Math.abs(q.dx)>2) dir=q.dx>0?1:-1;
+        ang=Math.max(-20,Math.min(20,Math.atan2(q.dy,Math.abs(q.dx)+1)*180/Math.PI*0.55))*dir;
+        bob=Math.sin(clock*7)*1.2;
+        sparkT+=dt; if(sparkT>0.06 && pos.x>-40 && pos.x<840){sparkT=0;
+          spawn('spark', pos.x-dir*SW*AX*0.9+(Math.random()*4-2), pos.y-6+Math.random()*4, 2+Math.random()*2.2, function(n,u){n.style.setProperty('--dy',(6+Math.random()*8)*u+'px');});}
+      }else if(act.k==='stop'){
+        pos={x:act.p.x,y:act.p.y}; bob=Math.sin(clock*4)*1.6 - Math.sin(Math.min(1,t/0.35)*Math.PI)*3;
+        if(!act.fired && t>0.3){act.fired=true; drop(act.p);}
+      }
+      if(p>=1){ act=null; }
+      var u=unit(), w=SW*u, h=w*64/130, ox=w*AX, oy=h*AY;
+      box.style.transformOrigin=ox+'px '+oy+'px';
+      box.style.transform='translate('+(pos.x*u-ox)+'px,'+((pos.y+bob)*u-oy)+'px) rotate('+ang.toFixed(2)+'deg) scaleX('+dir+')';
+      if(!box.classList.contains('is-on')) box.classList.add('is-on');
+      santaRaf=requestAnimationFrame(frame);
+    }
+    santaTimer=setTimeout(function(){ plan(); last=performance.now(); santaRaf=requestAnimationFrame(frame); }, delay);
+  }
+
+  /* ---------- intro: the same lights, gathering ---------- */
+  var bcv=document.getElementById('boot-cv'), bc=bcv.getContext('2d'), intro=null;
+  function startIntro(){
+    live=false; home.classList.remove('is-live');
+    cancelAnimationFrame(santaRaf); clearTimeout(santaTimer); wall.querySelectorAll('.santa,.gift,.spark,.twinkle').forEach(function(n){n.remove();});
+    boot.hidden=false; boot.classList.remove('is-out','is-run'); void boot.offsetWidth; boot.classList.add('is-run');
+    intro={t:0,out:false,at:0};
+  }
+  function goLive(){
+    if(!intro || intro.out) return;
+    intro.out=true; intro.at=intro.t; boot.classList.add('is-out');
+    live=true; home.classList.add('is-live'); parts.length=0; santa(1600);
+  }
+  function introFrame(dt){
+    if(!intro) return;
+    intro.t+=dt; var t=intro.t, w=boot.clientWidth, h=boot.clientHeight; if(!w) return;
+    var d=fit(bcv,w,h); bc.setTransform(d,0,0,d,0,0); bc.clearRect(0,0,w,h);
+    var H=h*0.52, R=H*0.34, cx=w/2, top=h*0.1, k=intro.out?clamp((t-intro.at)/0.55,0,1):0, i, p;
+    bc.globalCompositeOperation='lighter';
+    dot(bc,cx,top+H*0.6,R*3.2,PAL[0],0.12*clamp((t-0.9)/0.8,0,1)*(1-k));
+    for(i=0;i<TREE.length;i++){
+      p=TREE[i]; place(p,cx,top,H,R,t*0.9,t,tmp);
+      var e=clamp((t-0.25-(1-p.t)*0.55)/0.95,0,1); e=1-Math.pow(1-e,3);
+      var x=p.sx*w+(tmp.x-p.sx*w)*e, y=p.sy*h+(tmp.y-p.sy*h)*e, a=tmp.a*(0.35+0.65*e);
+      if(k>0){var far=k*k*Math.max(w,h)*0.75; x+=Math.cos(p.ex)*far; y+=Math.sin(p.ex)*far; a*=1-k;}
+      dot(bc,x,y,tmp.r*(0.7+0.3*e),p.c,a);
+    }
+    var sk=clamp((t-1.45)/0.35,0,1);
+    if(sk>0 && k<1){bc.globalAlpha=1; topStar(bc,cx,top-H*0.03,H*0.05*(0.3+0.7*sk)*(1-k*0.6),t,(1-sk)*1.6+k);}
+    bc.globalAlpha=1; bc.globalCompositeOperation='source-over';
+    if(!intro.out && t>3.15) goLive();
+    if(intro.out && t-intro.at>0.7){boot.hidden=true; intro=null;}
+  }
+  boot.addEventListener('click',goLive);
+
+  /* ---------- page-wide snow: three depths, a little wind, a few falling notes ---------- */
+  var cv=document.getElementById('snow'), cx2=cv.getContext('2d'), flakes=[], W=0, H2=0, snowOn=!reduce, mouse={x:-999,y:-999};
+  function make(any){
+    var q=Math.random(), l=q<0.5?0:q<0.93?1:2, r=l===0?0.6+Math.random()*0.7:l===1?1.3+Math.random()*1.2:5+Math.random()*4;
+    return {x:Math.random()*W, y:any?Math.random()*H2:-12, r:r, l:l, v:(l===0?0.3:l===1?0.6:1.15)+Math.random()*0.4, a:Math.random()*6.28, w:Math.random()*0.012+0.004,
+      o:l===0?0.35+Math.random()*0.25:l===1?0.6+Math.random()*0.35:0.14+Math.random()*0.12, n:l===1&&Math.random()<0.045?(Math.random()<0.5?'♪':'♫'):''};
+  }
+  function sizeSnow(){var d=fit(cv,innerWidth,innerHeight); W=innerWidth; H2=innerHeight; cx2.setTransform(d,0,0,d,0,0);
+    var want=Math.min(190,Math.round(W*H2/8000)); while(flakes.length<want) flakes.push(make(true)); flakes.length=want;}
+  function snowFrame(dt){
+    var s=dt*60, wind=Math.sin(T*0.25)*0.35, i, f, dx, dy, dd;
+    cx2.clearRect(0,0,W,H2);
+    for(i=0;i<flakes.length;i++){
+      f=flakes[i]; f.a+=f.w*s; f.y+=f.v*s; f.x+=(Math.sin(f.a)*0.45+wind*(0.5+f.l*0.5))*s;
+      dx=f.x-mouse.x; dy=f.y-mouse.y; dd=dx*dx+dy*dy;
+      if(dd<8100 && dd>1){dd=Math.sqrt(dd); f.x+=dx/dd*(90-dd)*0.05*s; f.y+=dy/dd*(90-dd)*0.02*s;}
+      if(f.y>H2+14 || f.x<-20 || f.x>W+20){flakes[i]=make(false); if(f.x<-20||f.x>W+20) flakes[i].y=Math.random()*H2; continue;}
+      if(f.n){cx2.globalAlpha=0.8; cx2.fillStyle='#FFD98A'; cx2.font='700 '+(10+f.r*2.2)+'px sans-serif'; cx2.save(); cx2.translate(f.x,f.y); cx2.rotate(Math.sin(f.a)*0.35); cx2.fillText(f.n,0,0); cx2.restore();}
+      else if(f.l===2){cx2.globalAlpha=f.o; cx2.drawImage(sprite(PAL[3]),f.x-f.r*2,f.y-f.r*2,f.r*4,f.r*4);}
+      else{cx2.globalAlpha=f.o; cx2.fillStyle='#FFFFFF'; cx2.beginPath(); cx2.arc(f.x,f.y,f.r,0,6.283); cx2.fill();}
+    }
+    cx2.globalAlpha=1;
+  }
+  addEventListener('pointermove',function(e){mouse.x=e.clientX; mouse.y=e.clientY;},{passive:true});
+  addEventListener('pointerleave',function(){mouse.x=mouse.y=-999;});
+  sizeSnow(); addEventListener('resize',sizeSnow);
+
+  /* ---------- one clock for everything ---------- */
+  var raf=0, last=0;
+  function loop(now){
+    var dt=Math.min(0.05,(now-last)/1000||0.016); last=now; T+=dt;
+    introFrame(dt); fxFrame(dt); garlandFrame(); if(snowOn) snowFrame(dt);
+    raf=requestAnimationFrame(loop);
+  }
+  function start(){if(!raf && !reduce){last=performance.now(); raf=requestAnimationFrame(loop);}}
+  function stop(){cancelAnimationFrame(raf); raf=0;}
+  document.addEventListener('visibilitychange',function(){ if(document.hidden) stop(); else start(); });
+
+  /* controls */
+  var bSnow=document.getElementById('btn-snow');
+  bSnow.addEventListener('click',function(){snowOn=!snowOn; if(!snowOn) cx2.clearRect(0,0,W,H2);
+    bSnow.setAttribute('aria-pressed',snowOn?'true':'false'); bSnow.textContent=snowOn?'눈 내리기 켜짐':'눈 내리기 꺼짐';});
+  document.getElementById('btn-intro').addEventListener('click',function(){ if(reduce) return; startIntro(); home.scrollIntoView({block:'nearest',behavior:'smooth'}); });
+
+  if(reduce){ boot.hidden=true; live=true; home.classList.add('is-live'); T=1; fxFrame(0); bSnow.setAttribute('aria-pressed','false'); bSnow.textContent='눈 내리기 꺼짐'; addEventListener('resize',function(){fxFrame(0);}); }
+  else { startIntro(); start(); }
+})();
+</script>
