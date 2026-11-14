@@ -99,6 +99,14 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
   padding:calc(2.5 * var(--s)) calc(9 * var(--s));border-radius:999px;background:rgba(20,27,58,.86);color:var(--gold);
   font-size:calc(10.5 * var(--s));font-weight:500;letter-spacing:.04em;white-space:nowrap;pointer-events:none;box-shadow:0 0 calc(8 * var(--s)) rgba(255,217,138,.35)}
 .dday b{color:#fff;font-weight:700}
+/* carol switch: sits above the light canvas so it can be pressed */
+.carol{position:absolute;z-index:16;left:calc(212 * var(--s));bottom:calc(8 * var(--s));display:inline-flex;align-items:center;gap:.4em;margin:0;
+  font:inherit;font-weight:700;font-size:max(11px,calc(10.5 * var(--s)));line-height:1.2;padding:.42em 1em;border-radius:999px;cursor:pointer;white-space:nowrap;
+  border:1px solid rgba(255,217,138,.75);background:rgba(20,27,58,.92);color:var(--gold);box-shadow:0 0 calc(10 * var(--s)) rgba(255,217,138,.45)}
+.carol:hover{background:#1D2752}
+.carol[aria-pressed="true"]{background:var(--gold);color:#2A1E0C;border-color:#fff}
+.carol:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.home.is-live .carol{animation:boot-rise .6s ease 2.4s both}
 
 /* snow piling up along the bottom edge */
 .drift{position:absolute;z-index:10;left:0;bottom:-1px;width:100%;height:calc(34 * var(--s));pointer-events:none;transform-origin:50% 100%}
@@ -184,7 +192,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
 @media (prefers-reduced-motion:reduce){
   .boot{display:none}
   .icon,.home.is-live .icon,.bulb,.home.is-live .hello__big span,.home.is-live .dday,.home.is-live .drift,.home.is-live .nav,.home.is-live .garland,
-  .home.is-live .tree,.home.is-live .moon{animation:none!important;opacity:1}
+  .home.is-live .tree,.home.is-live .moon,.home.is-live .carol{animation:none!important;opacity:1}
   .santa{display:none}
 }
 </style>
@@ -193,7 +201,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
   <header class="head">
     <div>
       <h1>크리스마스 홈페이지 시안</h1>
-      <p>이송희보컬레슨 · 4차 저장본 (2026-11-14) · 겨울밤 버전 · 선물 상자는 뺐어요. 실제 홈페이지에는 아직 넣지 않았어요.</p>
+      <p>이송희보컬레슨 · 5차 저장본 (2026-11-14) · 겨울밤 버전 · 오르골 캐럴을 넣었어요. 실제 홈페이지에는 아직 넣지 않았어요.</p>
     </div>
     <div class="ctrls" role="group" aria-label="미리보기 조작">
       <button type="button" id="btn-intro">인트로 다시 보기</button>
@@ -235,6 +243,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
 
         <p class="hello"><span class="hello__big" id="hello-big" aria-label="Merry Christmas">Merry Christmas</span></p>
         <p class="dday" id="dday"></p>
+        <button type="button" class="carol" id="btn-carol" aria-pressed="false"><span aria-hidden="true">🎵</span><span id="carol-name">캐럴 듣기</span></button>
 
         <svg class="drift" viewBox="0 0 800 34" preserveAspectRatio="none" aria-hidden="true">
           <path class="back" d="M0 14 C60 6 110 18 170 11 S290 3 350 12 S470 20 540 10 S680 2 740 12 S790 15 800 10 V34 H0Z"/>
@@ -276,6 +285,11 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
         <li>마우스를 움직이면 눈이 비켜 가고, 화면을 누르면 별이 터져요</li>
       </ul>
     </article>
+    <article class="part" style="--c:#9CC9FF">
+      <h2><i></i>캐럴 오르골<span class="tap">눌러 보기</span><span class="new">NEW</span></h2>
+      <p>왼쪽 아래 "캐럴 듣기"를 누르면 오르골 소리로 징글벨 → 위 위시 유 어 메리 크리스마스 → 고요한 밤이 이어서 나와요. 음에 맞춰 트리가 반짝여요.</p>
+      <small>음원 파일 없이 홈페이지가 직접 연주 · 저작권이 끝난 옛 캐럴만 · 저절로 나오지 않고 눌러야 나옴</small>
+    </article>
     <article class="part" style="--c:#B8483E">
       <h2><i></i>산타 썰매</h2>
       <p>루돌프가 끄는 산타 썰매가 메뉴 아이콘을 하나씩 찾아가 선물을 떨어뜨려요. 지난번 그대로예요.</p>
@@ -283,7 +297,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
     </article>
   </section>
 
-  <p class="note"><b>정할 것:</b> 켜는 기간(예: 12월 1일 ~ 1월 1일 자동으로 켜고 끄기), 인트로를 매번 보여줄지 하루 한 번만 보여줄지. 마음에 드는 것만 골라서 실제 홈페이지에 넣을 수 있어요.</p>
+  <p class="note"><b>정할 것:</b> 켜는 기간(예: 12월 1일 ~ 1월 1일 자동으로 켜고 끄기), 인트로를 매번 보여줄지 하루 한 번만 보여줄지, 캐럴을 오르골 그대로 둘지 학원에서 직접 부른 녹음으로 바꿀지. 마음에 드는 것만 골라서 실제 홈페이지에 넣을 수 있어요.</p>
 </div>
 
 <canvas id="snow" aria-hidden="true"></canvas>
@@ -639,11 +653,119 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
   addEventListener('pointerleave',function(){mouse.x=mouse.y=-999;});
   sizeSnow(); addEventListener('resize',sizeSnow);
 
+  /* ---------- carol: a music box the page plays itself (no audio file, public-domain tunes only) ---------- */
+  /*SONGS*/
+  var JC='E5 E5 E5:2 | E5 E5 E5:2 | E5 G5 C5:1.5 D5:.5 | E5:4 | F5 F5 F5:1.5 F5:.5 | F5 E5 E5 E5:.5 E5:.5 | ';
+  var JCB='C4:2 G3:2 | C4:2 G3:2 | C4:2 G3:2 | C4:2 G3:2 | F3:2 C4:2 | C4:2 G3:2 | ';
+  var WW='C5 C5:.5 D5:.5 C5:.5 B4:.5 | A4 A4 A4 | D5 D5:.5 E5:.5 D5:.5 C5:.5 | B4 G4 G4 | E5 E5:.5 F5:.5 E5:.5 D5:.5 | C5 A4 G4:.5 G4:.5 | A4 D5 B4 | ';
+  var WB='C3 E3 G3 | F2 A2 C3 | D3 F#3 A3 | G2 B2 D3 | E3 B2 E3 | A2 C3 E3 | F2 A2 G2 | ';
+  var CC='C3 E3 G3 | ', GG='G2 B2 D3 | ', FF='F2 A2 C3 | ';
+  var SONGS=[
+    {name:'징글벨', bpm:184, tr:7, bar:4, pick:0,
+     m: JC+'E5 D5 D5 E5 | D5:2 G5:2 | '+JC+'G5 G5 F5 D5 | C5:4 | '
+       +'G4 E5 D5 C5 | G4:3 G4:.5 G4:.5 | G4 E5 D5 C5 | A4:4 | A4 F5 E5 D5 | B4:4 | G5 G5 F5 D5 | E5:4 | '
+       +'G4 E5 D5 C5 | G4:4 | G4 E5 D5 C5 | A4:3 A4 | A4 F5 E5 D5 | G5 G5 G5 G5 | A5 G5 F5 D5 | C5:3 -:1 | '
+       +JC+'E5 D5 D5 E5 | D5:2 G5:2 | '+JC+'G5 G5 F5 D5 | C5:4',
+     b: JCB+'D4:2 A3:2 | G3:2 D4:2 | '+JCB+'G3:2 D4:2 | C4:4 | '
+       +'C4:2 G3:2 | C4:2 G3:2 | C4:2 G3:2 | F3:2 C4:2 | F3:2 A3:2 | G3:2 D4:2 | G3:2 D4:2 | C4:2 G3:2 | '
+       +'C4:2 G3:2 | C4:2 G3:2 | C4:2 G3:2 | F3:2 C4:2 | F3:2 A3:2 | C4:2 G3:2 | G3:2 D4:2 | C4:4 | '
+       +JCB+'D4:2 A3:2 | G3:2 D4:2 | '+JCB+'G3:2 D4:2 | C4:4'},
+    {name:'위 위시 유 어 메리 크리스마스', bpm:160, tr:12, bar:3, pick:1,
+     m:'G4 | '+WW+'C5:2 G4 | '+WW+'C5:3',
+     b:'-:1 | '+WB+'C3:2 -:1 | '+WB+'C3:3'},
+    {name:'고요한 밤 거룩한 밤', bpm:92, tr:12, bar:3, pick:0,
+     m:'G4:1.5 A4:.5 G4 | E4:3 | G4:1.5 A4:.5 G4 | E4:3 | D5:2 D5 | B4:3 | C5:2 C5 | G4:3 | '
+      +'A4:2 A4 | C5:1.5 B4:.5 A4 | G4:1.5 A4:.5 G4 | E4:3 | A4:2 A4 | C5:1.5 B4:.5 A4 | G4:1.5 A4:.5 G4 | E4:3 | '
+      +'D5:2 D5 | F5:1.5 D5:.5 B4 | C5:3 | E5:3 | C5:1.5 G4:.5 E4 | G4:1.5 F4:.5 D4 | C4:3 | -:3',
+     b: CC+CC+CC+CC+GG+GG+CC+CC + FF+FF+CC+CC+FF+FF+CC+CC + GG+GG+CC+CC+CC+GG+CC+'C4:3'}
+  ];
+  /*END*/
+  var SEMI={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+  function hz(n,tr){var m=/^([A-G])(#?)(\d)$/.exec(n); return 440*Math.pow(2,(SEMI[m[1]]+(m[2]?1:0)+(m[3]-4)*12-9+tr)/12);}
+  function voice(s){return s.replace(/\|/g,' ').trim().split(/\s+/).map(function(t){var p=t.split(':'); return [p[0],p[1]?+p[1]:1];});}
+  SONGS.forEach(function(s){s.m=voice(s.m); s.b=voice(s.b);});
+
+  var bCarol=document.getElementById('btn-carol'), cName=document.getElementById('carol-name');
+  var ac=null, master=null, sess=null, playing=false, tickId=0, cur=null, songI=0, mi=0, bi=0, mt=0, bt=0, mbeat=0, cues=[];
+  function initAudio(){
+    var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false;
+    ac=new AC();
+    var comp=ac.createDynamicsCompressor(); comp.connect(ac.destination);
+    master=ac.createGain(); master.gain.value=0.24; master.connect(comp);
+    return true;
+  }
+  function newSession(){
+    /* each play gets its own bus, so the tails of a stopped play can never come back */
+    sess=ac.createGain(); sess.connect(master);
+    var d=ac.createDelay(1), fb=ac.createGain(), wet=ac.createGain();
+    d.delayTime.value=0.27; fb.gain.value=0.3; wet.gain.value=0.2;
+    sess.connect(d); d.connect(fb); fb.connect(d); d.connect(wet); wet.connect(master);
+    sess._wet=wet;
+  }
+  function tone(t,f,peak,decay,rise){
+    var o=ac.createOscillator(), g=ac.createGain();
+    o.type='sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+rise); g.gain.exponentialRampToValueAtTime(0.0001,t+decay);
+    o.connect(g); g.connect(sess); o.start(t); o.stop(t+decay+0.05);
+  }
+  function pluck(t,f,v,ring){
+    tone(t,f,v,ring,0.006);                      /* the note */
+    tone(t,f*2,v*0.3,ring*0.45,0.004);           /* a little shine above it */
+    if(f*5.4<9000) tone(t,f*5.4,v*0.1,0.09,0.002); /* the tick of the comb */
+  }
+  function loadSong(i,t0){
+    songI=i%SONGS.length; cur=SONGS[songI]; mi=bi=0; mt=bt=t0; mbeat=0;
+    cues.push({t:t0,name:cur.name});
+  }
+  function tick(){
+    if(!playing) return;
+    var horizon=ac.currentTime+0.4, spb=60/cur.bpm, n;
+    while(mi<cur.m.length && mt<horizon){
+      n=cur.m[mi++];
+      if(n[0]!=='-'){ pluck(mt,hz(n[0],cur.tr),0.5,1.7); cues.push({t:mt,acc:((mbeat-cur.pick)%cur.bar)===0}); }
+      mt+=n[1]*spb; mbeat+=n[1];
+    }
+    while(bi<cur.b.length && bt<horizon){
+      n=cur.b[bi++];
+      if(n[0]!=='-') pluck(bt,hz(n[0],cur.tr),0.2,1.3);
+      bt+=n[1]*spb;
+    }
+    if(mi>=cur.m.length && bi>=cur.b.length) loadSong(songI+1,Math.max(mt,bt)+1.5);
+    carolCues();
+  }
+  function carolCues(){
+    if(!ac || !playing) return;
+    while(cues.length && cues[0].t<=ac.currentTime){
+      var e=cues.shift();
+      if(e.name){ cName.textContent=e.name+' · 끄기'; continue; }
+      if(live && !reduce){
+        burst(TR.cx,TR.top-7,e.acc?9:3,{speed:e.acc?120:70,life:0.7,size:2.2,star:true,g:90});
+        if(e.acc) showUntil=Math.max(showUntil,T+0.7);
+      }
+    }
+  }
+  function carolOn(){
+    if(!ac && !initAudio()){ cName.textContent='이 브라우저는 소리를 못 내요'; bCarol.disabled=true; return; }
+    ac.resume(); newSession(); playing=true; cues.length=0;
+    bCarol.setAttribute('aria-pressed','true'); cName.textContent='캐럴 준비 중';
+    loadSong(0,ac.currentTime+0.12); clearInterval(tickId); tickId=setInterval(tick,90); tick();
+  }
+  function carolOff(){
+    playing=false; clearInterval(tickId); cues.length=0;
+    var old=sess, now=ac.currentTime;
+    old.gain.setTargetAtTime(0,now,0.06); old._wet.gain.setTargetAtTime(0,now,0.06);
+    setTimeout(function(){ old.disconnect(); old._wet.disconnect(); if(!playing) ac.suspend(); },500);
+    bCarol.setAttribute('aria-pressed','false'); cName.textContent='캐럴 듣기';
+  }
+  bCarol.addEventListener('pointerdown',function(e){e.stopPropagation();});
+  bCarol.addEventListener('click',function(){ if(playing) carolOff(); else carolOn(); });
+  document.addEventListener('visibilitychange',function(){ if(ac && playing){ if(document.hidden) ac.suspend(); else ac.resume(); } });
+
   /* ---------- one clock for everything ---------- */
   var raf=0, last=0;
   function loop(now){
     var dt=Math.min(0.05,(now-last)/1000||0.016); last=now; T+=dt;
-    introFrame(dt); fxFrame(dt); garlandFrame(); if(snowOn) snowFrame(dt);
+    introFrame(dt); carolCues(); fxFrame(dt); garlandFrame(); if(snowOn) snowFrame(dt);
     raf=requestAnimationFrame(loop);
   }
   function start(){if(!raf && !reduce){last=performance.now(); raf=requestAnimationFrame(loop);}}
