@@ -261,6 +261,7 @@ footer{color:var(--sub);font-size:13px;border-top:1px solid var(--line);padding-
             <li>영역마다 5문항이고, 더 많이 고른 쪽 글자가 붙어요. 5문항이라 동점이 없어요.</li>
             <li>네 글자를 모으면 유형이 돼요. 예: PMEL = 파워 디바. 모두 16가지예요.</li>
             <li>결과에는 영역마다 어느 쪽으로 얼마나 기울었는지와, 기운 쪽을 보완하는 연습 팁이 나와요.</li>
+            <li>유형마다 떠오르는 한국 가수 3명이 나와요. 이름만 쓰고 사진은 쓰지 않아요.</li>
             <li>결과 카드를 그림으로 저장하거나 링크를 복사해서 인스타 스토리 · 카톡에 올릴 수 있어요.</li>
             <li>답은 저장하지 않아요. 개인정보를 받지 않아요.</li>
           </ul>
@@ -269,6 +270,7 @@ footer{color:var(--sub);font-size:13px;border-top:1px solid var(--line);padding-
           <h3>원장님이 정할 것</h3>
           <ul class="ask">
             <li>문항 20개와 16유형 이름 · 설명 · 연습 팁은 제가 쓴 초안이에요. 보컬 용어(진성 · 가성 · 호흡 · 박자 밀고 당기기)가 맞게 쓰였는지 원장님이 봐 주세요.</li>
+            <li>유형별 가수 48명은 제가 고른 예시예요. 어울리지 않는 가수나 빼고 싶은 가수가 있는지 봐 주세요.</li>
             <li>4개 영역 나누는 기준이 학원에서 가르치는 방식과 맞는지. 월말평가 4항목(기본기 · 보컬 테크닉 · 액팅 · 스타일링)에 맞춰 다시 짤 수도 있어요.</li>
             <li>결과에 원포인트 레슨 영상을 유형마다 하나씩 붙일지.</li>
           </ul>
@@ -437,6 +439,13 @@ footer{color:var(--sub);font-size:13px;border-top:1px solid var(--line);padding-
     SGEL:['무드 메이커','힘을 빼고도 분위기를 바꾸는 사람'],SGER:['플레이리스트 보컬','자꾸 다시 듣게 되는 편안한 그루브'],
     SGCL:['올라운더','노래 · 리듬 · 무대를 고르게 해내는 사람'],SGCR:['디테일 그루버','작은 리듬 하나도 놓치지 않는 사람']
   };
+  /* singers who come to mind for each type: a draft list for the director to check, names only */
+  var SING={
+    PMEL:'거미 · 에일리 · 박정현',PMER:'김범수 · 이해리 (다비치) · 백지영',PMCL:'박효신 · 태연 · 하현우 (국카스텐)',PMCR:'나얼 · 소향 · 웬디 (레드벨벳)',
+    PGEL:'윤미래 · 화사 · 싸이',PGER:'이하이 · 정인 · 김조한',PGCL:'정국 (BTS) · 태양 (빅뱅) · 청하',PGCR:'박재범 · 이영지 · 로꼬',
+    SMEL:'성시경 · 폴킴 · 정승환',SMER:'백예린 · 최유리 · 권진아',SMCL:'아이유 · 김연우 · 규현',SMCR:'안지영 (볼빨간사춘기) · 달총 (치즈) · 로제 (블랙핑크)',
+    SGEL:'장범준 · 권정열 (10CM) · 최정훈 (잔나비)',SGER:'딘 (DEAN) · 헤이즈 · 자이언티',SGCL:'태민 (샤이니) · 제니 (블랙핑크) · 지민 (BTS)',SGCR:'크러쉬 · 콜드 (Colde) · 죠지'
+  };
   var LOOK={PM:['🔥','#E4572E','#A3243B'],PG:['⚡','#F2A31B','#C8420F'],SM:['🌙','#7A6BD8','#2E2A66'],SG:['🎧','#1F9E8A','#14524F']};
   /* [area, question, [choice, letter], [choice, letter]] : areas take turns so the same topic never comes twice in a row */
   var QS=[
@@ -493,6 +502,7 @@ footer{color:var(--sub);font-size:13px;border-top:1px solid var(--line);padding-
     var h='<div class="result"><div class="rcard" style="--a:'+look[1]+';--b:'+look[2]+'"><span class="rcard__kicker">나의 보컬 유형</span>'
       +'<span class="rcard__emoji" aria-hidden="true">'+look[0]+'</span><span class="rcard__code">'+code+'</span><h3 class="rcard__name">'+nm[0]+'</h3><p class="rcard__line">'+nm[1]+'</p>'
       +'<div class="rcard__chips">'+code.split('').map(function(c){return '<span>'+c+' '+LET[c].n+'</span>';}).join('')+'</div>'
+      +'<div class="rcard__box"><b>이 유형 하면 떠오르는 가수</b>'+SING[code]+'</div>'
       +'<div class="rcard__box"><b>연습 팁</b>'+tips.map(function(t){return '<span>· '+LET[t.win].tip+'</span>';}).join('')+'</div>'
       +'<div class="rcard__box"><b>같이 부르면 좋은 유형</b>'+pal+' '+NAMES[pal][0]+'</div>'
       +'<div class="rcard__foot"><span>이송희보컬레슨</span><span>leeshlesson.com</span></div></div>'
