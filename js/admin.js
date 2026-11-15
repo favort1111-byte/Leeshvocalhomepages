@@ -2969,7 +2969,7 @@
       kk.texts = d.texts || {};
       kkDrawTexts();
       kkPreview();
-      $("#kkState").textContent = (d.connected ? "✅ 솔라피 연결됨 (" + d.key_tail + (d.sender ? " · 발신 " + d.sender : " · 발신번호 없음") + (d.pf_id ? "" : " · 채널 pfId 없음") + ")" : "⚠️ 솔라피 연결 전 — 아래 설정에서 연결해 주세요")
+      $("#kkState").textContent = (d.connected ? "✅ 솔라피 연결됨 (" + d.key_tail + (d.sender ? " · 발신 " + d.sender : " · 카카오 채널로 보냄") + (d.pf_id ? "" : " · 채널 pfId 없음") + ")" : "⚠️ 솔라피 연결 전 — 아래 설정에서 연결해 주세요")
         + " · " + (d.enabled ? "자동 발송 켜짐 (전날 " + d.send_hour + "시)" : "자동 발송 꺼짐") + (missing.length ? " · 템플릿 ID 없음: " + missing.join(", ") : "")
         + " · 시트에서 받은 번호 " + d.contacts + "명" + (d.last_note ? " · 마지막 발송 " + stamp(d.last_run_at) + " " + d.last_note : "");
       var rows = $("#kkTplRows");
