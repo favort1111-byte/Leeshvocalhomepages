@@ -193,7 +193,63 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
 .note{margin:0;font-size:13.5px;color:var(--taupe);max-width:70ch}
 .note b{color:var(--ink);font-weight:500}
 
+
+/* ---------- my folder, christmas edition ---------- */
+.fhead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.fhead h2{margin:0;font-size:22px;font-weight:700}
+.fhead p{margin:2px 0 0;color:var(--taupe);font-size:14px}
+.fscene{position:relative;overflow:hidden;padding-block:46px 30px;padding-inline:clamp(12px,4vw,48px);
+  background:radial-gradient(1.5px 1.5px at 8% 14%,#fff 60%,transparent),radial-gradient(1px 1px at 22% 40%,#fff 60%,transparent),
+  radial-gradient(1.5px 1.5px at 86% 12%,#FFE9A8 60%,transparent),radial-gradient(1px 1px at 70% 30%,#fff 60%,transparent),
+  radial-gradient(1px 1px at 94% 52%,#fff 60%,transparent),radial-gradient(1.5px 1.5px at 4% 70%,#fff 60%,transparent),
+  linear-gradient(180deg,#141B3A,#2A2150 70%,#3A2146);transition:background .4s}
+.fscene[data-look="plain"]{background:#EDE8E0}
+.xbook{--f1:#2F6E52;--f2:#1C4A37;--fi:#FFF6E3;--fs:#E9D9B0;--fl:rgba(255,246,227,.45);
+  position:relative;max-width:680px;margin:0 auto;padding:26px 20px 20px;border-radius:4px 14px 14px 14px;color:var(--fi);
+  background:linear-gradient(175deg,var(--f1),var(--f2));box-shadow:0 18px 40px rgba(0,0,0,.35),inset 0 0 0 6px var(--f2),inset 0 0 0 7.5px rgba(255,217,138,.75)}
+.xbook::before{content:"";position:absolute;left:0;top:-22px;width:170px;height:24px;border-radius:10px 10px 0 0;
+  background:linear-gradient(90deg,#C8352E,#E0473B);box-shadow:inset 0 -3px 0 rgba(0,0,0,.12)}
+.xbook__bow{position:absolute;left:150px;top:-34px;font-size:30px;line-height:1;transform:rotate(12deg);filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.xbook__lights{position:absolute;left:10px;right:10px;top:-6px;height:26px;pointer-events:none}
+.xbook__lights svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.xbook__lights path{fill:none;stroke:#5A3E22;stroke-width:1.4}
+.xbulb{position:absolute;width:9px;height:13px;margin-left:-4.5px;border-radius:45% 45% 50% 50%;background:var(--c);
+  box-shadow:0 0 8px 2px var(--c);animation:xbulb 1.6s ease-in-out infinite alternate;animation-delay:var(--d)}
+.xbulb::before{content:"";position:absolute;left:2px;top:-3px;width:5px;height:4px;border-radius:1px;background:#6B5A43}
+@keyframes xbulb{from{opacity:.35;box-shadow:0 0 2px 0 var(--c)}to{opacity:1;box-shadow:0 0 10px 3px var(--c)}}
+.xbook__stickers{position:absolute;right:14px;top:16px;display:flex;gap:2px;font-size:30px;line-height:1;pointer-events:none}
+.xbook__stickers span{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+.xbook__stickers span:nth-child(1){rotate:-10deg}.xbook__stickers span:nth-child(2){rotate:6deg;translate:0 6px}.xbook__stickers span:nth-child(3){rotate:-4deg}
+.xbook__head{display:grid;gap:4px;padding-right:110px}
+.xbook__title{margin:0;font-size:clamp(26px,5vw,34px);font-weight:500;line-height:1.15}
+.xbook__dday{justify-self:start;font-size:12.5px;padding:3px 10px;border-radius:999px;background:rgba(255,217,138,.18);color:#FFD98A;border:1px solid rgba(255,217,138,.5)}
+.xbook__tabs{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 14px}
+.xbook__tabs span{min-height:34px;display:inline-flex;align-items:center;padding:0 14px;border-radius:999px;font-size:13.5px;white-space:nowrap;
+  border:1px solid var(--fl);background:rgba(255,255,255,.1)}
+.xbook__tabs .on{background:#C8352E;border-color:#FFD98A;color:#fff;box-shadow:0 0 0 2px rgba(255,217,138,.25)}
+.xpanel{background:#FFFDF8;color:var(--ink);border-radius:10px;padding:16px;display:grid;gap:12px;
+  background-image:repeating-linear-gradient(90deg,#C8352E 0 14px,#FFFDF8 14px 28px,#2F6E52 28px 42px,#FFFDF8 42px 56px);background-size:100% 5px;background-repeat:no-repeat;background-position:0 0;padding-top:20px}
+.xpanel h4{margin:0;font-size:15px;font-weight:700}
+.xpanel ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.xpanel li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 12px;border-radius:8px;background:#F6F1E8;border-left:4px solid var(--c)}
+.xpanel li b{font-weight:700}
+.xpanel li .room{font-size:12.5px;padding:2px 9px;border-radius:999px;background:#fff;border:1px solid #E1D7C8}
+.xpanel li .cx{margin-left:auto;font-size:12.5px;color:var(--taupe);text-decoration:underline}
+.xpanel .sum{margin:0;font-size:13.5px;color:var(--taupe)}
+.xpanel .newbtn{justify-self:start;min-height:40px;padding:0 16px;border-radius:999px;border:0;background:#C8352E;color:#fff;font:inherit;font-size:14px}
+/* the folder as it looks today, for comparing */
+.fscene[data-look="plain"] .xbook{--f1:#F1E1B9;--f2:#E6CF9E;--fi:#3E2A1E;--fs:#5A4636;--fl:rgba(62,42,30,.35);box-shadow:0 18px 40px rgba(60,40,20,.22)}
+.fscene[data-look="plain"] .xbook::before{background:#F1E1B9;box-shadow:none}
+.fscene[data-look="plain"] .xbook__bow,.fscene[data-look="plain"] .xbook__lights,.fscene[data-look="plain"] .xbook__stickers,.fscene[data-look="plain"] .xbook__dday{display:none}
+.fscene[data-look="plain"] .xbook__tabs span{background:rgba(255,255,255,.5)}
+.fscene[data-look="plain"] .xbook__tabs .on{background:#3E2A1E;border-color:#3E2A1E;color:#FBF3E4;box-shadow:none}
+.fscene[data-look="plain"] .xpanel{background-image:none;padding-top:16px;background:#FBF8F2}
+.fscene[data-look="plain"] .xpanel li{border-left-color:#C9B48C}
+.fscene[data-look="plain"] .xpanel .newbtn{background:#3E2A1E}
+@media (max-width:520px){.xbook__head{padding-right:0;padding-top:30px}.xbook__stickers{top:8px;font-size:24px}}
+
 @media (prefers-reduced-motion:reduce){
+  .xbulb{animation:none!important;opacity:1}
   .boot{display:none}
   .icon,.home.is-live .icon,.bulb,.home.is-live .hello__big span,.home.is-live .dday,.home.is-live .drift,.home.is-live .nav,.home.is-live .garland,
   .home.is-live .tree,.home.is-live .moon,.home.is-live .carol{animation:none!important;opacity:1}
@@ -205,7 +261,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
   <header class="head">
     <div>
       <h1>크리스마스 홈페이지 시안</h1>
-      <p>이송희보컬레슨 · 6차 저장본 (2026-11-14) · 겨울밤 버전 · 오르골 캐럴 5곡. 실제 홈페이지에는 아직 넣지 않았어요.</p>
+      <p>이송희보컬레슨 · 7차 저장본 (2026-11-15) · 겨울밤 버전 · 오르골 캐럴 5곡 · 내 폴더 크리스마스. 실제 홈페이지에는 아직 넣지 않았어요.</p>
     </div>
     <div class="ctrls" role="group" aria-label="미리보기 조작">
       <button type="button" id="btn-intro">인트로 다시 보기</button>
@@ -264,6 +320,42 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
     </div>
   </section>
 
+  <section class="fhead" aria-label="내 폴더 설명">
+    <div>
+      <h2>내 폴더도 크리스마스로</h2>
+      <p>학생이 로그인해서 여는 내 폴더예요. 폴더 색이 초록 · 빨강 · 금색으로 바뀌고, 전구 줄과 스티커가 붙어요. 눈도 같이 내려요.</p>
+    </div>
+    <div class="ctrls" role="group" aria-label="폴더 비교">
+      <button type="button" id="btn-look" aria-pressed="true">크리스마스 폴더</button>
+    </div>
+  </section>
+
+  <section class="frame" aria-label="내 폴더 미리보기">
+    <div class="frame__bar"><span class="frame__dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="frame__url">leeshlesson.com · my folder</span></div>
+    <div class="fscene" id="fscene" data-look="xmas">
+      <div class="xbook">
+        <span class="xbook__bow" aria-hidden="true">🎀</span>
+        <div class="xbook__lights" id="xlights" aria-hidden="true"></div>
+        <div class="xbook__stickers" aria-hidden="true"><span>🎄</span><span>⛄</span><span>🦌</span></div>
+        <div class="xbook__head">
+          <h3 class="xbook__title">김시우의 폴더</h3>
+          <span class="xbook__dday" id="xdday">🎄 크리스마스까지 D-40</span>
+        </div>
+        <div class="xbook__tabs" aria-hidden="true"><span>레슨 노트</span><span>메시지</span><span class="on">내 예약</span><span>일정</span><span>공지</span><span>월말평가</span><span>연습 일지</span></div>
+        <div class="xpanel">
+          <h4>📌 내 연습실 예약</h4>
+          <ul>
+            <li style="--c:#C8352E"><b>11월 18일 (화)</b> 오후 7시 ~ 9시 <span class="room">B2</span><span class="cx">취소</span></li>
+            <li style="--c:#2F6E52"><b>11월 20일 (목)</b> 오후 8시 ~ 9시 <span class="room">C hall</span><span class="cx">취소</span></li>
+            <li style="--c:#D49A1E"><b>11월 22일 (토)</b> 오전 10시 ~ 12시 <span class="room">B5</span><span class="cx">취소</span></li>
+          </ul>
+          <p class="sum">이번 달 연습실 사용 6시간</p>
+          <button type="button" class="newbtn" tabindex="-1">+ 새 예약하기</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="parts" aria-label="시안 구성">
     <article class="part" style="--c:#FFD98A">
       <h2><i></i>인트로<span class="new">NEW</span></h2>
@@ -297,6 +389,15 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
       <p>왼쪽 아래 "캐럴 듣기"를 누르면 오르골 소리로 징글벨 → 캐럴 오브 더 벨스 → 위 위시 유 어 메리 크리스마스 → 사탕 요정의 춤 → 고요한 밤이 이어서 나와요. 음에 맞춰 트리가 반짝여요. 켜면 옆에 "다음 곡 ▶"이 나와서 곡을 넘길 수 있어요.</p>
       <small>음원 파일 없이 홈페이지가 직접 연주 · 저작권이 끝난 옛 캐럴만 · 저절로 나오지 않고 눌러야 나옴</small>
     </article>
+    <article class="part" style="--c:#2F6E52">
+      <h2><i></i>내 폴더<span class="new">NEW</span></h2>
+      <ul>
+        <li>폴더 색이 초록 바탕 · 금색 테두리 · 빨간 손잡이로 바뀌어요</li>
+        <li>위쪽에 반짝이는 전구 줄, 오른쪽 위에 트리 · 눈사람 · 루돌프 스티커</li>
+        <li>지금 보고 있는 탭은 빨간색, 폴더 안에 크리스마스까지 D-day</li>
+      </ul>
+      <small>내용(예약 · 레슨 노트 등)은 그대로라 읽고 쓰는 데 방해가 없어요</small>
+    </article>
     <article class="part" style="--c:#B8483E">
       <h2><i></i>산타 썰매</h2>
       <p>루돌프가 끄는 산타 썰매가 메뉴 아이콘을 하나씩 찾아가 선물을 떨어뜨려요. 지난번 그대로예요.</p>
@@ -304,7 +405,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
     </article>
   </section>
 
-  <p class="note"><b>정할 것:</b> 켜는 기간(예: 12월 1일 ~ 1월 1일 자동으로 켜고 끄기), 인트로를 매번 보여줄지 하루 한 번만 보여줄지, 캐럴을 오르골 그대로 둘지 학원에서 직접 부른 녹음으로 바꿀지. 마음에 드는 것만 골라서 실제 홈페이지에 넣을 수 있어요.</p>
+  <p class="note"><b>정할 것:</b> 켜는 기간(예: 12월 1일 ~ 1월 1일 자동으로 켜고 끄기), 인트로를 매번 보여줄지 하루 한 번만 보여줄지, 내 폴더 말고 예약 · 오락실 화면에도 눈을 내릴지. 마음에 드는 것만 골라서 실제 홈페이지에 넣을 수 있어요.</p>
 </div>
 
 <canvas id="snow" aria-hidden="true"></canvas>
@@ -427,6 +528,23 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
     if(left>0) dd.innerHTML='크리스마스까지 <b>D-'+left+'</b>';
     else if(left===0) dd.innerHTML='<b>오늘은 크리스마스!</b>';
     else dd.innerHTML='<b>HAPPY NEW YEAR</b>';
+  })();
+
+
+  /* ---------- my folder: bulbs on a sagging wire + compare button ---------- */
+  (function(){
+    var box=document.getElementById('xlights'), cols=['#FF6B6B','#FFD98A','#8FE3C0','#9CC9FF','#FF9ED2'], n=15, h='';
+    var path='M0 4 '; for(var i=0;i<n;i++){var x0=i/n*100, x1=(i+1)/n*100; path+='Q'+((x0+x1)/2)+' 18 '+x1+' 4 ';}
+    h+='<svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d="'+path+'" vector-effect="non-scaling-stroke"/></svg>';
+    for(i=0;i<n;i++){var x=(i+.5)/n*100; h+='<span class="xbulb" style="left:'+x+'%;top:10px;--c:'+cols[i%cols.length]+';--d:'+(-(i*0.37)%1.6).toFixed(2)+'s"></span>';}
+    box.innerHTML=h;
+    var dd=document.getElementById('dday'), xd=document.getElementById('xdday');
+    if(dd && xd) xd.textContent='🎄 '+dd.textContent;
+    var sc=document.getElementById('fscene'), b=document.getElementById('btn-look');
+    b.addEventListener('click',function(){
+      var x=sc.dataset.look!=='xmas'; sc.dataset.look=x?'xmas':'plain';
+      b.setAttribute('aria-pressed',x?'true':'false'); b.textContent=x?'크리스마스 폴더':'지금 폴더 (비교)';
+    });
   })();
 
   /* ---------- everything drawn in light on the wall (wall units: 800 x 450) ---------- */
