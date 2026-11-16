@@ -36,6 +36,9 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
 .ctrls button{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
 .ctrls button:hover{background:rgba(43,37,34,.06)}
 .ctrls button[aria-pressed="true"]{background:var(--ink);color:var(--cream)}
+.ctrls a.swap{font:inherit;font-size:13px;padding:7px 14px;border-radius:999px;border:1px solid #0F2A24;background:#0F2A24;color:#F6E3AE;text-decoration:none;line-height:1.5}
+.ctrls a.swap:hover{background:#16362F}
+.ctrls a.swap:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
 .ctrls button:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
 
 /* ---------- browser frame ---------- */
@@ -264,6 +267,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-sans);font-siz
       <p>이송희보컬레슨 · 7차 저장본 (2026-11-15) · 겨울밤 버전 · 오르골 캐럴 5곡 · 내 폴더 크리스마스. 실제 홈페이지에는 아직 넣지 않았어요.</p>
     </div>
     <div class="ctrls" role="group" aria-label="미리보기 조작">
+      <a class="swap" href="luxe.html">백화점 고급 버전 보기 →</a>
       <button type="button" id="btn-intro">인트로 다시 보기</button>
       <button type="button" id="btn-snow" aria-pressed="true">눈 내리기 켜짐</button>
     </div>
