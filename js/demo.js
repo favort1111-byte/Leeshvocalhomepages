@@ -918,6 +918,24 @@
         return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, open: x.open, until: x.until, booking: b ? b.id : null, member: b ? b.member : null, name: b ? nm(b.member) : null, teacher: b ? "원장님" : null, kind: b ? b.kind : null, note: b ? b.note : null };
       }), members: db.fb.members.map(function (id) { return { member: id, name: nm(id), track: "평일", slot: "A", teacher: "원장님", status: "재원", kakao: true }; }) };
     },
+    // 원장님 컨설팅 신청 현황 (체험): 명단 + 가짜 학생 몇 명, 신청은 db.fb.bookings
+    director_feedback: function (a, uid) {
+      if (uid && (myTeacher(uid) || {}).name !== "원장님") return fail("원장님 · 관리자만 볼 수 있어요.");
+      fbSeed();
+      var nm = function (id) { return (db.members.filter(function (m) { return m.id === id; })[0] || {}).name; };
+      var roster = db.fb.members.map(function (id) { return { member: id, name: nm(id) || id, track: "평일", slot: "A", teacher: "안유정", status: "재원", kakao: true }; })
+        .concat([{ member: "S900", name: "박하늘", track: "평일", slot: "A", teacher: "이수빈", status: "재원", kakao: true },
+          { member: "S901", name: "이하늘", track: "평일", slot: "B", teacher: "이수빈", status: "재원", kakao: true },
+          { member: "S902", name: "정다온", track: "주말", slot: "A", teacher: "최홍주", status: "재원", kakao: false },
+          { member: "S903", name: "최유나", track: "주말", slot: "B", teacher: "안유정", status: "재원", kakao: true }]);
+      roster.forEach(function (m) {
+        m.bookings = db.fb.bookings.filter(function (y) { return y.member === m.member; }).map(function (y) {
+          var sl = db.fb.slots.filter(function (x) { return x.id === y.slot; })[0];
+          return { at: sl.at, when: fbWhen(sl.at), kind: y.kind, note: y.note, past: new Date(sl.at).getTime() < Date.now() };
+        });
+      });
+      return { ok: true, month: "2026-11", months: ["2026-11"], slots: db.fb.slots.length, until: "2026-11-15T23:59:59+09:00", members: roster, others: [] };
+    },
     admin_feedback_cancel: function (a) { db.fb.bookings = db.fb.bookings.filter(function (y) { return y.id !== a.p_booking; }); save(); return { ok: true }; },
     admin_feedback_slot: function (a) {
       fbSeed();

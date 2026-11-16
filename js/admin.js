@@ -2508,6 +2508,10 @@
   }
   function loadFeedback() {
     var list = $("#fbSlots"), mem = $("#fbMembers");
+    // 신청 현황: 심화반 명단 대비 신청 · 미신청 (원장님 2026-11-16)
+    if (window.LeeshFbStatus) LeeshFbStatus.render($("#fbStatus"), function (m) {
+      return api("rpc/director_feedback", { method: "POST", body: { p_month: m } }).then(function (r) { return r.ok ? r.data : { ok: false, error: (r.data && r.data.error) || friendly(r, "불러오지 못했어요.") }; });
+    });
     list.textContent = "";
     list.appendChild(el("li", "sys-empty", "불러오는 중…"));
     api("rpc/admin_feedback", { method: "POST", body: {} }).then(function (res) {

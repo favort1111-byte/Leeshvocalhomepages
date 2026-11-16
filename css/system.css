@@ -419,6 +419,32 @@
 .cs__pick{display:block;max-width:520px;margin:8px 0;}
 .cs__pick select{width:100%;max-width:100%;}
 .cs__card .rv__text{word-break:break-word;}
+/* 원장님 컨설팅 신청 현황 (2026-11-16, js/fbstatus.js) */
+.fbs{margin:14px 0 22px;padding:14px 16px;border-radius:14px;background:#FFFDF6;border:1px solid #EADFC8;}
+.fbs__head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;}
+.fbs__title{font-size:17px;}
+.fbs .fbs__month{width:auto;flex:0 1 auto;max-width:100%;margin:0;}
+.fbs__reload{margin-left:auto;}
+.fbs__sum{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:10px 0 6px;}
+.fbs__num{font-size:15px;}
+.fbs__num b{font-size:24px;margin-right:2px;}
+.fbs__num--yes b{color:var(--sys-ok);}
+.fbs__num--no b{color:var(--sys-error);}
+.fbs__of{font-size:13px;color:var(--sys-muted);}
+.fbs__bar{height:8px;border-radius:99px;background:#F3D9D2;overflow:hidden;margin:2px 0 8px;}
+.fbs__bar i{display:block;height:100%;background:var(--sys-ok);border-radius:99px;}
+.fbs__cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin-top:10px;}
+.fbs__label{font-weight:700;margin:0 0 6px;}
+.fbs__list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.fbs__row{padding:8px 10px;border-radius:10px;background:#fff;border:1px solid #EADFC8;border-left:4px solid var(--sys-ok);min-width:0;}
+.fbs__row.is-no{border-left-color:var(--sys-error);}
+.fbs__who{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;}
+.fbs__who span{font-size:13px;color:var(--sys-muted);}
+.fbs__tag{font-style:normal;font-size:12px;padding:1px 7px;border-radius:99px;background:var(--sys-accent-soft);color:var(--sys-accent);}
+.fbs__when{display:flex;flex-direction:column;gap:2px;margin-top:4px;font-size:13px;}
+.fbs__when .is-past{color:var(--sys-muted);}
+.fbs__when small{color:var(--sys-muted);word-break:break-word;}
+.fbs__copy{margin-top:12px;}
 .tch__rvbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;}
 .tch__rvbar .tch__find{flex:1 1 220px;margin:0;}
 .tch__rvmine{white-space:nowrap;font-size:14px;}

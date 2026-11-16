@@ -409,6 +409,14 @@
       if (!res.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", res.error || "불러오지 못했어요.")); return; }
       var items = res.items || [];
       if (res.synced) note.textContent += " 원장님 시트에서 1시간마다 저절로 들어와요 (마지막 " + msgTime(res.synced) + ").";
+
+      // 원장님 · 관리자: 맨 위에 이번 달 컨설팅 신청 현황 (원장님 2026-11-16 "누가 신청했고 누가 미신청했는지")
+      if (res.director && window.LeeshFbStatus) {
+        var fbs = el("div");
+        box.appendChild(fbs);
+        LeeshFbStatus.render(fbs, function (m) { return LeeshAPI.rpc("director_feedback", { p_month: m }); });
+        box.appendChild(el("p", "rv__label", "📒 컨설팅 기록 (원장님 시트)"));
+      }
       if (!items.length) { box.appendChild(el("p", "book__empty", res.director ? "아직 컨설팅 기록이 없어요." : "담당 학생 중 원장님 컨설팅을 받은 학생이 아직 없어요.")); return; }
       // 원장님은 모든 선생님 학생이 다 보여서 너무 많음 → 선생님별로 묶은 드롭다운 하나 (원장님 2026-11-11)
       if (res.director) {
