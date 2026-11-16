@@ -445,6 +445,22 @@
 .fbs__when .is-past{color:var(--sys-muted);}
 .fbs__when small{color:var(--sys-muted);word-break:break-word;}
 .fbs__copy{margin-top:12px;}
+.fbs__write{align-self:flex-start;margin-top:2px;font-size:13px;}
+.fbs__pad:empty{display:none;}
+.fbs__pad{margin-top:8px;}
+/* 원장님 컨설팅 결과 쓰기 (2026-11-16, js/consultnote.js) */
+.cn{margin:12px 0 18px;}
+.cn__head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 6px;}
+.cn__head strong{font-size:16px;}
+.cn__add{margin-left:auto;}
+.cn__day input{max-width:100%;}
+.cn__edit{padding:12px;border-radius:12px;background:#fff;border:1px solid #EADFC8;min-width:0;}
+.cn__acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:10px;}
+.cn__del{margin-left:auto;color:var(--sys-error);}
+.cn__card{margin:10px 0;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid #EADFC8;min-width:0;}
+.cn__cardhead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 0 8px;}
+.cn__pad:empty{display:none;}
+.cn__pad{margin:8px 0;}
 .tch__rvbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;}
 .tch__rvbar .tch__find{flex:1 1 220px;margin:0;}
 .tch__rvmine{white-space:nowrap;font-size:14px;}

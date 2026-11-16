@@ -1,6 +1,7 @@
 /* 원장님 컨설팅 신청 현황 (원장님 2026-11-16 "전체 인원 대비 누가 신청했고 누가 미신청했는지, 원장님 선생님 화면 · 관리자 둘 다")
    심화반 명단 한 명 한 명이 그 달 컨설팅 시간에 신청했는지 보여줘요. 서버 director_feedback (관리자 · 선생님 "원장님"만).
-   LeeshFbStatus.render(box, load) — load(month) 는 서버 결과({ ok, month, months, members, ... })를 돌려주는 Promise. */
+   LeeshFbStatus.render(box, load, month, call) — load(month) 는 서버 결과({ ok, month, months, members, ... })를 돌려주는 Promise.
+   call(fn, args) 를 주면 신청한 학생마다 "결과 쓰기 / 결과 고치기" (js/consultnote.js, 2026-11-16). */
 (function () {
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -29,7 +30,7 @@
     }
   }
 
-  function render(box, load, month) {
+  function render(box, load, month, call) {
     box.textContent = "";
     box.classList.add("fbs");
     box.appendChild(el("p", "sys-note", "불러오는 중…"));
@@ -45,12 +46,12 @@
         var sel = el("select", "fbs__month");
         sel.setAttribute("aria-label", "컨설팅 달 고르기");
         d.months.forEach(function (m) { var o = el("option", null, m.replace("-", "년 ") + "월"); o.value = m; if (m === d.month) o.selected = true; sel.appendChild(o); });
-        sel.addEventListener("change", function () { render(box, load, sel.value); });
+        sel.addEventListener("change", function () { render(box, load, sel.value, call); });
         head.appendChild(sel);
       }
       var again = el("button", "sys-link fbs__reload", "새로 고침");
       again.type = "button";
-      again.addEventListener("click", function () { render(box, load, d.month); });
+      again.addEventListener("click", function () { render(box, load, d.month, call); });
       head.appendChild(again);
       box.appendChild(head);
 
@@ -85,12 +86,29 @@
           li.appendChild(who);
           if (yesList) {
             var when = el("div", "fbs__when");
+            var pad = el("div", "fbs__pad");
             m.bookings.forEach(function (x) {
               var t = el("span", x.past ? "is-past" : null, "🎤 " + x.when + " · " + (x.kind || "보컬") + (x.past ? " (지남)" : ""));
               when.appendChild(t);
               if (x.note) when.appendChild(el("small", null, "남긴 말: " + x.note));
+              if (call && window.LeeshConsultNote && x.id) {
+                var w = el("button", "sys-link fbs__write", x.result ? "📝 결과 보기 · 고치기" : "✍️ 결과 쓰기");
+                w.type = "button";
+                w.addEventListener("click", function () {
+                  var done = function (changed) { pad.textContent = ""; if (changed) render(box, load, d.month, call); };
+                  if (!x.result) { LeeshConsultNote.edit(pad, { call: call, member: m.member, name: m.name, booking: x, onDone: done }); return; }
+                  pad.textContent = "불러오는 중…";
+                  call("consult_notes_of", { p_member: m.member }).then(function (r) {
+                    var n = r && r.ok && (r.items || []).filter(function (y) { return y.id === x.result; })[0];
+                    if (!n) { pad.textContent = (r && r.error) || "결과를 찾지 못했어요."; return; }
+                    LeeshConsultNote.edit(pad, { call: call, member: m.member, name: m.name, note: n, booking: x, onDone: done });
+                  });
+                });
+                when.appendChild(w);
+              }
             });
             li.appendChild(when);
+            li.appendChild(pad);
           }
           ul.appendChild(li);
         });

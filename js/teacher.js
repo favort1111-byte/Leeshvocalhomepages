@@ -414,7 +414,7 @@
       if (res.director && window.LeeshFbStatus) {
         var fbs = el("div");
         box.appendChild(fbs);
-        LeeshFbStatus.render(fbs, function (m) { return LeeshAPI.rpc("director_feedback", { p_month: m }); });
+        LeeshFbStatus.render(fbs, function (m) { return LeeshAPI.rpc("director_feedback", { p_month: m }); }, null, function (fn, args) { return LeeshAPI.rpc(fn, args); });
         box.appendChild(el("p", "rv__label", "📒 컨설팅 기록 (원장님 시트)"));
       }
       if (!items.length) { box.appendChild(el("p", "book__empty", res.director ? "아직 컨설팅 기록이 없어요." : "담당 학생 중 원장님 컨설팅을 받은 학생이 아직 없어요.")); return; }
@@ -496,6 +496,13 @@
       detail.textContent = "";
       if (!r.ok) { detail.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
       detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 컨설팅 " + (r.rows || []).length + "회"));
+      // 홈페이지에서 쓴 컨설팅 결과 (원장님 2026-11-16) — 원장님은 쓰기 · 고치기, 담당 선생님은 보기만
+      if (r.member && window.LeeshConsultNote) {
+        var cn = el("div");
+        detail.appendChild(cn);
+        LeeshConsultNote.list(cn, { call: function (fn, args) { return LeeshAPI.rpc(fn, args); }, member: r.member, name: r.name });
+        detail.appendChild(el("p", "rv__label", "📒 원장님 시트 기록"));
+      }
       if (!(r.rows || []).length) detail.appendChild(el("p", "book__empty", "아직 적힌 컨설팅이 없어요."));
       (r.rows || []).forEach(function (row, i) {
         var c = el("article", "rv tch__rv cs__card");

@@ -2447,6 +2447,10 @@
   /* 원장 컨설팅 (원장님 2026-11-11 "관리자도 넣어줘" · "원장님은 드롭다운으로"): 선생님 화면과 같은 서버 함수
      (teacher_consults · teacher_consult, 관리자도 됨). 선생님별로 묶은 학생 드롭다운 하나, 그만둔 선생님은 맨 아래 "(퇴사)". */
   var dc = { items: [] };
+  // 서버 함수 하나 부르기 → { ok, ... } (원장님 컨설팅 신청 현황 · 결과 쓰기가 같이 씀)
+  function rpcCall(fn, args) {
+    return api("rpc/" + fn, { method: "POST", body: args || {} }).then(function (r) { return r.ok ? r.data : { ok: false, error: (r.data && r.data.error) || friendly(r, "불러오지 못했어요.") }; });
+  }
   function loadDirector() {
     var sel = $("#dcPick");
     sel.length = 1;
@@ -2481,6 +2485,12 @@
       box.textContent = "";
       if (!res.ok || !r.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", r.error || friendly(res, "불러오지 못했어요."))); return; }
       box.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 컨설팅 " + (r.rows || []).length + "회"));
+      if (r.member && window.LeeshConsultNote) {
+        var cn = el("div");
+        box.appendChild(cn);
+        LeeshConsultNote.list(cn, { call: rpcCall, member: r.member, name: r.name });
+        box.appendChild(el("p", "rv__label", "📒 원장님 시트 기록"));
+      }
       (r.rows || []).forEach(function (row, i) {
         var c = el("article", "rv tch__rv cs__card");
         var h = el("p", "rv__head");
@@ -2509,9 +2519,7 @@
   function loadFeedback() {
     var list = $("#fbSlots"), mem = $("#fbMembers");
     // 신청 현황: 심화반 명단 대비 신청 · 미신청 (원장님 2026-11-16)
-    if (window.LeeshFbStatus) LeeshFbStatus.render($("#fbStatus"), function (m) {
-      return api("rpc/director_feedback", { method: "POST", body: { p_month: m } }).then(function (r) { return r.ok ? r.data : { ok: false, error: (r.data && r.data.error) || friendly(r, "불러오지 못했어요.") }; });
-    });
+    if (window.LeeshFbStatus) LeeshFbStatus.render($("#fbStatus"), function (m) { return rpcCall("director_feedback", { p_month: m }); }, null, rpcCall);
     list.textContent = "";
     list.appendChild(el("li", "sys-empty", "불러오는 중…"));
     api("rpc/admin_feedback", { method: "POST", body: {} }).then(function (res) {

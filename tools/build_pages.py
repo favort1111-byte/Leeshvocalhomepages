@@ -534,7 +534,7 @@ teacher_page = (head("선생님 | 이송희보컬레슨", "이송희보컬레슨
                 + '<main class="stage booking">\n'
                 + nav("teacher", "dark") + "\n"
                 + TEACHER_APP
-                + "</main>\n" + foot("richtext", "grid", "photos", "fbstatus", "teacher"))
+                + "</main>\n" + foot("richtext", "grid", "photos", "fbstatus", "consultnote", "teacher"))
 
 # ---------- PARENT: 학부모 화면 (js/parent.js; 원장님 2026-11-05, 부모님 카카오 → 학원 승인 → 자녀 월말평가 · 일정·공지 · 메시지 보기만) ----------
 PARENT_APP = """  <div class="booking__inner">
