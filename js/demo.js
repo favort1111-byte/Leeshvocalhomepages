@@ -292,7 +292,7 @@
     return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일(" + wd[k.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시";
   }
   function fbSeed() {
-    if (db.fb && db.fb.v === 6) return;
+    if (db.fb && db.fb.v === 7) return;
     // 실제 서버와 같은 2026년 11월 시간 (원장님 2026-11-11)
     var id = 9000, slots = [];
     [["16", [18, 19, 20], "보컬"], ["17", [19, 20], "보컬·댄스"], ["19", [17, 18], "보컬·댄스"], ["19", [19, 20], "보컬"], ["20", [17, 18, 19, 20], "보컬"],
@@ -301,7 +301,10 @@
       g[1].forEach(function (h) { var at = "2026-11-" + g[0] + "T" + h + ":00:00+09:00", ev = +g[0] >= 19; slots.push({ id: ++id, at: at, kinds: g[2], open: true, everyone: ev, until: ev ? "2026-11-" + (+g[0] - 2) + "T23:59:59+09:00" : "2026-11-15T23:59:59+09:00" }); });
     });
     slots.sort(function (x, y) { return x.at < y.at ? -1 : 1; });
-    db.fb = { v: 6, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
+    // 일반 학생 신청 하나 (원장님 2026-11-17 일반 학생에게 열기 · 결과 쓰기 체험용)
+    var ev = slots.filter(function (x) { return x.everyone; });
+    db.fb = { v: 7, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null },
+      { id: 9101, slot: ev[ev.length - 1].id, member: "S904", kind: "보컬", note: "오디션 곡 고민이에요" }] };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();
@@ -935,7 +938,14 @@
           return { id: y.id, at: sl.at, when: fbWhen(sl.at), kind: y.kind, note: y.note, past: new Date(sl.at).getTime() < Date.now(), result: cn ? cn.id : null };
         });
       });
-      return { ok: true, month: "2026-11", months: ["2026-11"], slots: db.fb.slots.length, until: "2026-11-15T23:59:59+09:00", members: roster, others: [] };
+      var inRoster = roster.map(function (m) { return m.member; });
+      var others = db.fb.bookings.filter(function (y) { return inRoster.indexOf(y.member) < 0; }).map(function (y) {
+        var sl = db.fb.slots.filter(function (x) { return x.id === y.slot; })[0];
+        var cn = (db.cnotes || []).filter(function (n) { return n.booking === y.id; })[0];
+        return { member: y.member, name: nm(y.member) || (y.member === "S904" ? "한서윤" : y.member), when: fbWhen(sl.at), kind: y.kind, id: y.id, at: sl.at, note: y.note,
+          past: new Date(sl.at).getTime() < Date.now(), result: cn ? cn.id : null, teacher: "안유정", status: "재원" };
+      });
+      return { ok: true, month: "2026-11", months: ["2026-11"], slots: db.fb.slots.length, until: "2026-11-15T23:59:59+09:00", members: roster, others: others };
     },
     // 원장님 컨설팅 결과 쓰기 (체험): 이 브라우저에만 저장
     consult_notes_of: function (a, uid) {

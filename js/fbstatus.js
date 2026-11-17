@@ -1,5 +1,5 @@
 /* 원장님 컨설팅 신청 현황 (원장님 2026-11-16 "전체 인원 대비 누가 신청했고 누가 미신청했는지, 원장님 선생님 화면 · 관리자 둘 다")
-   심화반 명단 한 명 한 명이 그 달 컨설팅 시간에 신청했는지 보여줘요. 서버 director_feedback (관리자 · 선생님 "원장님"만).
+   심화반 명단 한 명 한 명이 그 달 컨설팅 시간에 신청했는지 보여줘요. 일반 학생 신청(2026-11-17~)도 아래에 같은 줄 모양 + 결과 쓰기. 서버 director_feedback (관리자 · 선생님 "원장님"만).
    LeeshFbStatus.render(box, load, month, call) — load(month) 는 서버 결과({ ok, month, months, members, ... })를 돌려주는 Promise.
    call(fn, args) 를 주면 신청한 학생마다 "결과 쓰기 / 결과 고치기" (js/consultnote.js, 2026-11-16). */
 (function () {
@@ -38,6 +38,13 @@
       box.textContent = "";
       if (!d || !d.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", (d && d.error) || "불러오지 못했어요.")); return; }
       var ms = d.members || [], yes = ms.filter(function (m) { return (m.bookings || []).length; }), no = ms.filter(function (m) { return !(m.bookings || []).length; });
+      // 일반 학생(심화반 명단 밖) 신청을 학생별로 묶어 심화반과 같은 줄 모양으로 (원장님 2026-11-17 "일반 학생도 결과 쓰기")
+      var gen = [], genBy = {};
+      (d.others || []).forEach(function (o) {
+        var g = genBy[o.member];
+        if (!g) { g = genBy[o.member] = { member: o.member, name: o.name, teacher: o.teacher, status: o.status, kakao: true, bookings: [] }; gen.push(g); }
+        g.bookings.push(o);
+      });
 
       var head = el("div", "fbs__head");
       var title = el("strong", "fbs__title", "📋 " + monthName(d.month) + " 컨설팅 신청 현황");
@@ -60,7 +67,7 @@
       var b = el("span", "fbs__num fbs__num--no"); b.appendChild(el("b", null, String(no.length))); b.appendChild(document.createTextNode(" 미신청"));
       sum.appendChild(a);
       sum.appendChild(b);
-      sum.appendChild(el("span", "fbs__of", "심화반 " + ms.length + "명 · 컨설팅 시간 " + (d.slots || 0) + "개"));
+      sum.appendChild(el("span", "fbs__of", "심화반 " + ms.length + "명" + (gen.length ? " + 일반 학생 " + gen.length + "명" : "") + " · 컨설팅 시간 " + (d.slots || 0) + "개"));
       box.appendChild(sum);
       if (ms.length) {
         var bar = el("div", "fbs__bar");
@@ -71,10 +78,10 @@
       }
       if (d.until) box.appendChild(el("p", "sys-note", "신청 마감 " + stamp(d.until) + (new Date(d.until).getTime() < Date.now() ? " (지났어요 · 학생은 이제 신청 · 취소를 못 해요)" : "")));
 
-      function list(label, rows, yesList) {
+      function list(label, rows, yesList, empty) {
         var sec = el("div", "fbs__sec");
         sec.appendChild(el("p", "fbs__label", label + " " + rows.length + "명"));
-        if (!rows.length) { sec.appendChild(el("p", "sys-note", yesList ? "아직 신청한 학생이 없어요." : "모두 신청했어요 🎉")); return sec; }
+        if (!rows.length) { sec.appendChild(el("p", "sys-note", empty || (yesList ? "아직 신청한 학생이 없어요." : "모두 신청했어요 🎉"))); return sec; }
         var ul = el("ul", "fbs__list");
         rows.forEach(function (m) {
           var li = el("li", "fbs__row" + (yesList ? " is-yes" : " is-no"));
@@ -120,16 +127,16 @@
       cols.appendChild(list("⏳ 미신청", no, false));
       box.appendChild(cols);
 
-      (d.others || []).forEach(function (o) { box.appendChild(el("p", "sys-note", "일반 학생 신청: " + (o.name || o.member) + " · " + o.when + " · " + (o.kind || ""))); });
+      if (gen.length) box.appendChild(list("🙋 일반 학생 신청", gen, true));
       if (!(d.slots || 0) && !ms.length) box.appendChild(el("p", "sys-note", "심화반 명단과 컨설팅 시간이 아직 없어요."));
 
       var cp = el("button", "sys-btn sys-btn--ghost fbs__copy", "표로 복사 (구글시트에 붙여넣기)");
       cp.type = "button";
       cp.addEventListener("click", function () {
         var lines = [["이름", "수강 ID", "반", "담당", "신청", "컨설팅 시간", "종류"].join("\t")];
-        yes.concat(no).forEach(function (m) {
+        yes.concat(no).concat(gen).forEach(function (m) {
           var bk = m.bookings || [];
-          lines.push([m.name, m.member, klass(m), m.teacher || "", bk.length ? "신청" : "미신청",
+          lines.push([m.name, m.member, m.track ? klass(m) : "일반", m.teacher || "", bk.length ? "신청" : "미신청",
             bk.map(function (x) { return x.when; }).join(", "), bk.map(function (x) { return x.kind || ""; }).join(", ")].join("\t"));
         });
         copyText(lines.join("\n"), cp);
