@@ -398,7 +398,24 @@
           LeeshAPI.rpc("member_sheet", { p_id: who.id, p_pin: who.key, p_sid: it.id }).then(function (r) {
             slot.textContent = "";
             if (!r.ok || !r.sheet) { slot.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
-            slot.appendChild(LeeshGrid.view(r.sheet, { zoom: true }));
+            // 레슨 노트와 같은 보기 방식 (휴대폰은 처음에 정리해서 = 글로, 학생 의견 2026-11-17) + 바꾸기
+            var tg = el("button", "sys-link lsheets__toggle");
+            tg.type = "button";
+            var body = el("div");
+            var draw = function () {
+              var sum = notesMode() === "sum";
+              body.textContent = "";
+              body.appendChild(sum ? LeeshGrid.summary({ sheet: r.sheet }, []) : LeeshGrid.view(r.sheet, { zoom: true }));
+              tg.textContent = sum ? "시트 모양으로 보기" : "정리해서 보기";
+            };
+            tg.addEventListener("click", function () {
+              notesMode(notesMode() === "sum" ? "grid" : "sum");
+              scene.querySelectorAll(".lnote__toggle, .lsheets__toggle").forEach(function (x) { if (x._draw) x._draw(); });
+            });
+            tg._draw = draw;
+            slot.appendChild(tg);
+            slot.appendChild(body);
+            draw();
           });
         });
         row.appendChild(b);
@@ -450,7 +467,7 @@
         };
         tg.addEventListener("click", function () {
           notesMode(notesMode() === "sum" ? "grid" : "sum");
-          box.querySelectorAll(".lnote__toggle").forEach(function (b) { if (b._draw) b._draw(); });
+          box.querySelectorAll(".lnote__toggle, .lsheets__toggle").forEach(function (b) { if (b._draw) b._draw(); });
         });
         fold.addEventListener("click", function () { opened = !opened; draw(); });
         tg._draw = draw;

@@ -422,6 +422,7 @@ img{display:block;}
 .lnote:has(.lnote__sheet){transform:none;}
 .lnote__toggle{margin-left:auto;font-size:13px;font-weight:400;}
 .lnote__fold{font-size:13px;font-weight:400;}
+.lsheets__toggle{display:block;margin:6px 0 6px auto;font-size:13px;}
 .lnote.is-folded .lnote__fold{margin-left:auto;}
 .lnote__more{margin:0 0 8px !important;}
 .lnote__sheet{margin-top:8px;min-width:0;max-width:100%;}
