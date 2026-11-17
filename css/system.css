@@ -480,6 +480,7 @@
 .fb__time.is-mine{background:#FFE14D;border-color:#C9A800;color:#3A2E00;}
 .fb__time:disabled:not(.is-taken):not(.is-mine){opacity:.45;cursor:default;}
 .fb__mine{background:#FFFBE6;border:1px solid #F0D96A;}
+.fb__cancel{margin:8px 0;padding:10px 12px;border:2px solid #E0A100;border-radius:10px;background:#FFF3C4;color:#B3261E;font-weight:700;text-align:center;word-break:keep-all;}
 .fb__minehead{margin:0;font-weight:700;}
 .fb__minewhen{margin:4px 0;font-weight:700;font-size:15px;}
 .fb__form{margin:12px 0;}
