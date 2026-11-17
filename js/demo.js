@@ -292,16 +292,16 @@
     return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일(" + wd[k.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시";
   }
   function fbSeed() {
-    if (db.fb && db.fb.v === 5) return;
+    if (db.fb && db.fb.v === 6) return;
     // 실제 서버와 같은 2026년 11월 시간 (원장님 2026-11-11)
     var id = 9000, slots = [];
     [["16", [18, 19, 20], "보컬"], ["17", [19, 20], "보컬·댄스"], ["19", [17, 18], "보컬·댄스"], ["19", [19, 20], "보컬"], ["20", [17, 18, 19, 20], "보컬"],
      ["23", [18, 19, 20], "보컬"], ["24", [19, 20], "보컬"], ["27", [15, 16, 17, 18, 19, 20], "보컬"]].forEach(function (g) {
-      // 19일부터는 모든 학생에게 (원장님 2026-11-17): 신청 · 취소는 컨설팅 전날까지
-      g[1].forEach(function (h) { var at = "2026-11-" + g[0] + "T" + h + ":00:00+09:00", ev = +g[0] >= 19; slots.push({ id: ++id, at: at, kinds: g[2], open: true, everyone: ev, until: ev ? "2026-11-" + (+g[0] - 1) + "T23:59:59+09:00" : "2026-11-15T23:59:59+09:00" }); });
+      // 19일부터는 모든 학생에게 (원장님 2026-11-17): 신청은 컨설팅 2일 전까지
+      g[1].forEach(function (h) { var at = "2026-11-" + g[0] + "T" + h + ":00:00+09:00", ev = +g[0] >= 19; slots.push({ id: ++id, at: at, kinds: g[2], open: true, everyone: ev, until: ev ? "2026-11-" + (+g[0] - 2) + "T23:59:59+09:00" : "2026-11-15T23:59:59+09:00" }); });
     });
     slots.sort(function (x, y) { return x.at < y.at ? -1 : 1; });
-    db.fb = { v: 5, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
+    db.fb = { v: 6, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();

@@ -1384,7 +1384,7 @@
 
   /* 원장님 컨설팅 신청 (원장님 2026-11-11, 처음 이름 "원장님 피드백" → "원장님 컨설팅"): 심화반 학생에게만 탭이 보여요.
      2026-11-17 원장님 "신청이 다 안 돼서 일반 학생에게도": 서버가 everyone 시간(11/19~)이 남아 있으면 재원생 모두에게 탭을 보여줌(open_all),
-     신청은 컨설팅 전날 23:59까지(book_until), 취소 · 변경은 실장님만(학생 직접 취소 없음, 원장님 2026-11-17), 한 사람은 한 달에 한 번(1타임)만. 정해 둔 시간 중 하나, 한 타임에 한 명(먼저 신청한 사람),
+     신청은 컨설팅 2일 전 23:59까지(book_until, 원장님 2026-11-17), 취소 · 변경은 실장님만(학생 직접 취소 없음, 원장님 2026-11-17), 한 사람은 한 달에 한 번(1타임)만. 정해 둔 시간 중 하나, 한 타임에 한 명(먼저 신청한 사람),
      한 사람은 남은 신청 하나만 (바꾸려면 취소 후 다시). 서버 member_feedback · member_feedback_book · member_feedback_cancel. */
   function loadFeedback() {
     var tab = scene.querySelector('[data-book-tab="feedback"]');
@@ -1481,7 +1481,7 @@
     w.appendChild(e);
     return w;
   }
-  // 모든 학생에게 연 뒤의 예약 안내 (원장님 2026-11-17): 심화반 우선 예약 → 남은 시간을 재원생 모두에게, 컨설팅 전날까지 신청
+  // 모든 학생에게 연 뒤의 예약 안내 (원장님 2026-11-17): 심화반 우선 예약 → 남은 시간을 재원생 모두에게, 컨설팅 2일 전까지 신청
   function consultIntroAll(slots) {
     var ev = slots.filter(function (x) { return x.everyone; });
     var day = function (x) { return x.when.replace(/\) .*$/, ")"); };
@@ -1492,7 +1492,7 @@
     if (ev.length) c1.appendChild(el("p", "ci__date", day(ev[0]) + " ~ " + day(ev[ev.length - 1])));
     [
       "심화반 우선 예약이 끝나서, 남은 시간은 **모든 수강생**이 신청할 수 있어요.",
-      "지금부터 **컨설팅 전날 밤 12시 전까지** 신청할 수 있어요. 컨설팅 당일에는 신청할 수 없어요.",
+      "지금부터 **컨설팅 2일 전 밤 12시 전까지** 신청할 수 있어요. 컨설팅 전날 · 당일에는 신청할 수 없어요.",
       "한 타임에 한 명 · **한 사람은 한 번(1타임)만** 신청할 수 있어요."
     ].forEach(function (t) { c1.appendChild(hiText(el("p", "ci__p"), t)); });
     w.appendChild(c1);
@@ -1522,7 +1522,7 @@
     sum.appendChild(el("p", "sys-note", res.open_all
       ? "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 취소 · 변경은 학원(실장님)께 연락해 주세요."
       : "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 예약 기간 안에는 내 신청을 취소하고 다시 고를 수 있어요."));
-    if (slots.length && !open.length) sum.appendChild(el("p", "sys-msg sys-msg--error", res.open_all ? "신청 기간이 모두 끝났어요. (컨설팅 전날까지 신청)" : "예약 기간이 끝났어요. 이번 달에 신청하지 못했다면 다음 달 컨설팅으로 넘어가요. 일정 변경은 학원(실장님)에 연락해주세요."));
+    if (slots.length && !open.length) sum.appendChild(el("p", "sys-msg sys-msg--error", res.open_all ? "신청 기간이 모두 끝났어요. (컨설팅 2일 전까지 신청)" : "예약 기간이 끝났어요. 이번 달에 신청하지 못했다면 다음 달 컨설팅으로 넘어가요. 일정 변경은 학원(실장님)에 연락해주세요."));
     box.appendChild(sum);
     var msgEl = el("p", "sys-msg");
     var mine = slots.filter(function (x) { return x.mine; })[0];
