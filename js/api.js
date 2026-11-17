@@ -186,6 +186,12 @@
       });
       return refreshing;
     },
+    /** 로그인 열쇠가 곧(sec초 안에) 끝나면 미리 새로 받아 둠 — 예약 버튼을 누른 순간에 새로 받느라 늦어지지 않게 (학생 의견 2026-11-17). */
+    fresh: function (sec) {
+      var s = kakao.session();
+      if (s && s.expires - (sec || 600) < Date.now() / 1000) return kakao.token(true);
+      return Promise.resolve(s ? s.access : null);
+    },
     signOut: function () {
       var s = kakao.session();
       kakao.save(null);

@@ -421,6 +421,9 @@ img{display:block;}
 /* 학생 레슨 노트: 선생님이 쓴 시트 모양 그대로 (2026-11-07) */
 .lnote:has(.lnote__sheet){transform:none;}
 .lnote__toggle{margin-left:auto;font-size:13px;font-weight:400;}
+.lnote__fold{font-size:13px;font-weight:400;}
+.lnote.is-folded .lnote__fold{margin-left:auto;}
+.lnote__more{margin:0 0 8px !important;}
 .lnote__sheet{margin-top:8px;min-width:0;max-width:100%;}
 .lnote__sheet .xs-scroll{max-height:70vh;}
 .lsheets{margin:0 0 12px;padding:10px 12px;border:1px solid rgba(110,59,40,.25);border-radius:12px;background:#FFFDF8;}

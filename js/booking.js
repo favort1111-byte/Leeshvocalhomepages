@@ -152,8 +152,41 @@
       if ($("#hours").querySelector('option[value="' + hours + '"]')) $("#hours").value = hours;
     });
   }
-  setInterval(refresh, 60000);
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
+  function keepFresh() { if (state.who && LeeshAPI.kakao && LeeshAPI.kakao.fresh) LeeshAPI.kakao.fresh(900); }
+  setInterval(function () { refresh(); keepFresh(); }, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { refresh(); keepFresh(); } });
+
+  /* 밤 12시 정각에 새 날짜 열기 (학생 의견 2026-11-17 "예약하기 누르면 로딩이 길어서 다른 학생에게 자리를 뺏겨요"):
+     예전엔 1분마다만 새로 고쳐서 12시가 지나도 최대 1분 동안 새 날짜가 안 보였고, 그래서 새로고침하느라 늦었음 (11/17 0시 첫 예약이 8초 뒤).
+     이제 12시가 되는 순간 바로 새 날짜를 불러오고, "내일"을 보고 있었으면 새로 열린 날을 바로 보여줘요. 기기 시계가 조금 빨라도 되게 몇 번 다시 물어봄. */
+  var DAY = 86400000, KST = 9 * 3600000;
+  function plusDay(d) { return new Date(Date.parse(d + "T00:00:00Z") + DAY).toISOString().slice(0, 10); }
+  function openNewDay(tries, old) {
+    if (!state.who || !state.rooms || paused) return;
+    old = old || { days: state.rooms.days, last: state.date === state.rooms.days[state.rooms.days.length - 1] };
+    if (state.rooms.days[0] !== old.days[0]) return; // 이미 바뀜 (1분 새로 고침이 먼저 함)
+    var want = old.last ? plusDay(old.days[old.days.length - 1]) : (old.days[1] || plusDay(old.days[0]));
+    LeeshAPI.rpc("rooms_day", { p_date: want }).then(function (res) {
+      if (!res.ok || res.days[0] === old.days[0]) {
+        if (tries < 12) setTimeout(function () { openNewDay(tries + 1, old); }, 500);
+        return;
+      }
+      state.date = res.date;
+      state.rooms = res;
+      state.pick = null;
+      renderDays(res.days, res.date);
+      renderBoard(res);
+      renderRooms(res);
+      updatePick();
+      msg($("#bookMsg"), "밤 12시가 지나서 " + dayLabel(res.days[res.days.length - 1]) + " 예약이 열렸어요.", "ok");
+    });
+  }
+  function armMidnight() {
+    var left = DAY - ((Date.now() + KST) % DAY);
+    if (left > 50000) setTimeout(keepFresh, left - 45000);   // 12시 45초 전에 로그인 열쇠를 미리 새로
+    setTimeout(function () { if (!document.hidden) openNewDay(0); armMidnight(); }, left + 120);
+  }
+  armMidnight();
 
   function renderDays(days, current) {
     var wrap = $("#days");

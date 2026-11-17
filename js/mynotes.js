@@ -340,8 +340,11 @@
   function notesMode(v) {
     if (v) { noteView = v; try { localStorage.setItem("leesh_note_view", v); } catch (e) { /* 이 화면 동안만 */ } }
     if (!noteView) { try { noteView = localStorage.getItem("leesh_note_view"); } catch (e) { /* ignore */ } }
-    return noteView || "grid";
+    // 고른 적이 없으면: 휴대폰은 정리해서(글로), 컴퓨터 · 태블릿은 시트 모양 (학생 의견 2026-11-17 "폰에서 시트가 찌그러지고 가로로 너무 길어요")
+    return noteView || (window.matchMedia && window.matchMedia("(max-width: 700px)").matches ? "sum" : "grid");
   }
+  // 처음엔 최근 2장만 펼침 (학생 의견 2026-11-17 "내 폴더에 들어가면 렉 걸리고 카카오톡까지 튕겨요": 30장을 표로 한꺼번에 그려서 휴대폰이 못 버팀)
+  var NOTES_OPEN = 2;
 
   /* 레슨 사진 (2026-11-07): 선생님이 레슨 노트에 붙인 사진을 그 일지 아래에 (보기만, js/photos.js) */
   var photoUrls = {};
@@ -411,21 +414,30 @@
     var cards = {};
     if (window.LeeshGrid && who) renderSheets(box);
     if (!notes.length) { box.appendChild(el("p", "book__empty", "아직 적힌 레슨 노트가 없어요. 수업이 끝나면 선생님이 적어줘요.")); return; }
-    notes.forEach(function (n) {
+    if (notes.length > NOTES_OPEN) box.appendChild(el("p", "sys-note lnote__more", "최근 " + NOTES_OPEN + "개만 펼쳐 두었어요. 지난 노트는 \"펼쳐 보기\"를 누르면 보여요."));
+    notes.forEach(function (n, idx) {
       var card = el("article", "lnote");
       if (n.id) cards[n.id] = card;
       var head = el("p", "lnote__date", dayLabel(n.date));
       if (n.teacher) head.appendChild(el("span", "lnote__teacher", n.teacher + " 선생님"));
       card.appendChild(head);
       // 표로 쓴 일지 (js/grid.js, 2026-10-30~)
-      // 학생에게는 선생님이 쓴 시트 모양 그대로 (선생님 의견 2026-11-07 "A·B·C 열로 쓴 게 다 붙어서 나와요") + "정리해서 보기"로 바꾸기 (이 기기에 기억)
+      // 시트 모양 그대로 (선생님 의견 2026-11-07) 또는 "정리해서 보기" (이 기기에 기억, 휴대폰은 처음에 정리해서)
       if (n.sheet && window.LeeshGrid) {
         var slot = el("div", "lnote__sheet");
         var tg = el("button", "sys-link lnote__toggle");
         tg.type = "button";
+        var fold = el("button", "sys-link lnote__fold");
+        fold.type = "button";
+        var opened = idx < NOTES_OPEN;
         var draw = function () {
-          var sum = notesMode() === "sum";
           slot.textContent = "";
+          slot.hidden = !opened;
+          tg.hidden = !opened;
+          fold.textContent = opened ? "접기 ▴" : "펼쳐 보기 ▾";
+          card.classList.toggle("is-folded", !opened);
+          if (!opened) return;   // 접힌 노트는 그리지 않아요 (펼칠 때 그림)
+          var sum = notesMode() === "sum";
           slot.appendChild(sum ? LeeshGrid.summary(n, (window.LEESH || {}).lessonFields) : LeeshGrid.view(n.sheet, { zoom: true }));
           if (!sum) {
             // 휴대폰에서 오른쪽 칸이 가려지면 한 줄 안내
@@ -440,10 +452,12 @@
           notesMode(notesMode() === "sum" ? "grid" : "sum");
           box.querySelectorAll(".lnote__toggle").forEach(function (b) { if (b._draw) b._draw(); });
         });
+        fold.addEventListener("click", function () { opened = !opened; draw(); });
         tg._draw = draw;
-        draw();
         head.appendChild(tg);
+        head.appendChild(fold);
         card.appendChild(slot);
+        draw();
         box.appendChild(card);
         return;
       }
