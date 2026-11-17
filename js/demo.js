@@ -890,7 +890,7 @@
       }).map(function (x) {
         var b = db.fb.bookings.filter(function (y) { return y.slot === x.id; })[0], mine = b && b.member === who.id;
         return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, taken: !!b, mine: !!mine, booking: mine ? b.id : null, kind: mine ? b.kind : null, note: mine ? b.note : null, everyone: !!x.everyone,
-          cancel: new Date(x.at).getTime() - 3600000 > Date.now() && new Date(x.until).getTime() > Date.now(), until: x.until, closed: new Date(x.until).getTime() <= Date.now() };
+          cancel: false, until: x.until, closed: new Date(x.until).getTime() <= Date.now() };
       }) };
     },
     member_feedback_book: function (a, uid) {
@@ -902,19 +902,14 @@
       if (db.fb.members.indexOf(who.id) < 0 && !x.everyone) return fail("심화반 학생만 신청할 수 있는 시간이에요.");
       if (new Date(x.until).getTime() <= Date.now()) return fail("예약 기간이 끝났어요. 학원(실장님)에 연락해주세요.");
       if (a.p_kind === "댄스" && x.kinds !== "보컬·댄스") return fail("이 시간은 보컬 컨설팅만 할 수 있어요.");
-      if (db.fb.bookings.some(function (y) { return y.member === who.id; })) return fail("이미 신청한 시간이 있어요. 바꾸려면 먼저 취소해주세요.");
+      if (db.fb.bookings.some(function (y) { return y.member === who.id; })) return fail("이미 신청한 시간이 있어요. 바꾸려면 학원(실장님)에 연락해주세요.");
       if (db.fb.bookings.some(function (y) { return y.slot === x.id; })) return fail("방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.");
       db.fb.bookings.push({ id: ++db.next, slot: x.id, member: who.id, kind: a.p_kind || "보컬", note: a.p_note || null });
       save();
       return { ok: true };
     },
-    member_feedback_cancel: function (a, uid) {
-      var who = checkReady(a.p_id, a.p_pin, uid);
-      if (!who.ok) return who;
-      db.fb.bookings = db.fb.bookings.filter(function (y) { return !(y.id === a.p_booking && y.member === who.id); });
-      save();
-      return { ok: true };
-    },
+    // 원장님 2026-11-17: 컨설팅 취소 · 변경은 실장님만
+    member_feedback_cancel: function () { return fail("컨설팅 취소 · 변경은 학원(실장님)에 연락해주세요."); },
     admin_feedback: function () {
       fbSeed();
       var nm = function (id) { return (db.members.filter(function (m) { return m.id === id; })[0] || { name: "박하늘" }).name; };

@@ -1384,7 +1384,7 @@
 
   /* 원장님 컨설팅 신청 (원장님 2026-11-11, 처음 이름 "원장님 피드백" → "원장님 컨설팅"): 심화반 학생에게만 탭이 보여요.
      2026-11-17 원장님 "신청이 다 안 돼서 일반 학생에게도": 서버가 everyone 시간(11/19~)이 남아 있으면 재원생 모두에게 탭을 보여줌(open_all),
-     신청 · 취소는 컨설팅 전날 23:59까지(book_until), 한 사람은 한 달에 한 번(1타임)만. 정해 둔 시간 중 하나, 한 타임에 한 명(먼저 신청한 사람),
+     신청은 컨설팅 전날 23:59까지(book_until), 취소 · 변경은 실장님만(학생 직접 취소 없음, 원장님 2026-11-17), 한 사람은 한 달에 한 번(1타임)만. 정해 둔 시간 중 하나, 한 타임에 한 명(먼저 신청한 사람),
      한 사람은 남은 신청 하나만 (바꾸려면 취소 후 다시). 서버 member_feedback · member_feedback_book · member_feedback_cancel. */
   function loadFeedback() {
     var tab = scene.querySelector('[data-book-tab="feedback"]');
@@ -1501,7 +1501,7 @@
     var ul = el("ul", "ci__ul ci__ul--note");
     [
       "개인 일정을 충분히 확인하신 후 **신중하게 선택**해 주세요.",
-      "취소도 **컨설팅 전날까지** 직접 할 수 있어요. 당일에는 학원(실장님)에 연락해 주세요."
+      "신청한 뒤 **취소 · 변경은 반드시 학원(실장님)께** 연락해 주세요. 홈페이지에서 직접 취소할 수 없어요."
     ].forEach(function (t) { ul.appendChild(hiText(el("li"), t)); });
     c2.appendChild(ul);
     w.appendChild(c2);
@@ -1520,7 +1520,7 @@
     var sum = el("div", "fold__sum");
     sum.appendChild(el("p", null, "아래 시간 중 하나를 골라 신청해요."));
     sum.appendChild(el("p", "sys-note", res.open_all
-      ? "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 컨설팅 전날까지는 내 신청을 취소하고 다시 고를 수 있어요."
+      ? "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 취소 · 변경은 학원(실장님)께 연락해 주세요."
       : "한 타임에 한 명만 (먼저 신청한 사람) · 한 사람은 한 번만 신청할 수 있어요. 예약 기간 안에는 내 신청을 취소하고 다시 고를 수 있어요."));
     if (slots.length && !open.length) sum.appendChild(el("p", "sys-msg sys-msg--error", res.open_all ? "신청 기간이 모두 끝났어요. (컨설팅 전날까지 신청)" : "예약 기간이 끝났어요. 이번 달에 신청하지 못했다면 다음 달 컨설팅으로 넘어가요. 일정 변경은 학원(실장님)에 연락해주세요."));
     box.appendChild(sum);
@@ -1543,7 +1543,7 @@
           });
         });
         card.appendChild(c);
-      } else card.appendChild(el("p", "sys-note", (mine.closed ? (res.open_all ? "신청 · 취소는 컨설팅 전날까지라" : "예약 기간이 끝나서") : "시작 1시간 전이라") + " 바꾸려면 학원(실장님)에 연락해주세요."));
+      } else card.appendChild(el("p", "sys-note", "취소 · 변경은 학원(실장님)께 연락해 주세요."));
       box.appendChild(card);
     }
     if (!slots.length) { box.appendChild(el("p", "book__empty", "지금 신청할 수 있는 시간이 없어요.")); return; }
@@ -1578,7 +1578,7 @@
       });
       box.appendChild(sec);
     });
-    if (mine) box.appendChild(el("p", "sys-note", "이미 신청한 시간이 있어서 다른 시간은 고를 수 없어요."));
+    if (mine) box.appendChild(el("p", "sys-note", "이미 신청한 시간이 있어서 다른 시간은 고를 수 없어요. 바꾸려면 학원(실장님)께 연락해 주세요."));
     box.appendChild(form);
     box.appendChild(msgEl);
     function drawForm() {
@@ -1603,6 +1603,7 @@
       ta.placeholder = "원장님께 남길 말 (선택) · 예) 준비하는 곡, 궁금한 점";
       ta.setAttribute("aria-label", "원장님께 남길 말");
       form.appendChild(ta);
+      form.appendChild(el("p", "sys-note", "⚠️ 신청한 뒤에는 홈페이지에서 취소할 수 없어요. 취소 · 변경은 학원(실장님)께 연락해 주세요."));
       var go = el("button", "sys-btn", "이 시간으로 신청하기");
       go.type = "button";
       go.addEventListener("click", function () {
