@@ -67,7 +67,7 @@
 
   function load() {
     if (!who) return Promise.resolve();
-    return LeeshAPI.rpc("member_notebook", { p_id: who.id, p_pin: who.key }).then(function (res) {
+    return LeeshAPI.rpc("member_notebook", { p_id: who.id, p_pin: who.key }, undefined, { retry: 1 }).then(function (res) {
       if (!res.ok) {
         // signed out elsewhere, PIN changed, link removed: ask again
         showLogin();
@@ -335,6 +335,13 @@
     LeeshAPI.rpc("member_message_read", { p_id: who.id, p_pin: who.key, p_ids: ids });
   }
 
+  // "19:00" → "오후 7시" (예약 화면 js/booking.js와 같은 말: 0~5시 새벽 · 6~11시 오전 · 12시 낮 · 13~23시 오후 · 24:00 밤 12시)
+  function ampm(t) {
+    var p = String(t || "").split(":"), h = +p[0], mi = +p[1] || 0;
+    if (isNaN(h)) return t;
+    if (h === 24 && !mi) return "밤 12시";
+    return (h < 6 ? "새벽 " : h < 12 ? "오전 " : h === 12 ? "낮 " : "오후 ") + (h % 12 || 12) + (mi ? ":" + (mi < 10 ? "0" : "") + mi : "시");
+  }
   // 레슨 노트 보는 모양: "grid" 시트 그대로(기본) · "sum" 정리해서
   var noteView = null;
   function notesMode(v) {
@@ -589,7 +596,7 @@
     list.forEach(function (b) {
       var c = el("article", "fold__card");
       c.appendChild(el("p", "fold__date", dayLabel(b.date) + (b.date === todayKst() ? " · 오늘" : "")));
-      c.appendChild(el("p", "fold__main", b.room + " · " + b.start + "~" + b.end));
+      c.appendChild(el("p", "fold__main", b.room + " · " + ampm(b.start) + " ~ " + ampm(b.end)));
       box.appendChild(c);
     });
     if ((window.LEESH || {}).bookingOpen === false) { box.appendChild(el("p", "book__empty", "연습실 예약은 11월 16일(월) 0시에 시작해요.")); return; }

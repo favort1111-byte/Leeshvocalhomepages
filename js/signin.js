@@ -52,6 +52,13 @@
     function choose(note, kind) {
       head();
       var kakaoOk = LeeshAPI.kakao && LeeshAPI.kakao.available();
+      // 인터넷이 잠깐 끊겼을 뿐이면 다시 로그인할 필요 없이 "다시 시도" (정밀 점검 2026-11-17: 예전엔 로그인 화면만 보여서 로그인이 풀린 줄 앎)
+      if (note === LeeshAPI.NETWORK_ERROR && LeeshAPI.kakao && LeeshAPI.kakao.session()) {
+        box.appendChild(el("p", "sys-msg sys-msg--error", "인터넷 연결이 잠깐 끊겼어요. 로그인은 그대로예요."));
+        var again = button("다시 시도", "sys-btn signin__retry");
+        again.addEventListener("click", function () { again.disabled = true; box.textContent = ""; start(); });
+        box.appendChild(again);
+      }
       if (kakaoOk) {
         var k = button("", "signin__kakao");
         k.innerHTML = KAKAO_ICON + "<span>카카오로 로그인</span>";
@@ -154,7 +161,7 @@
       return b;
     }
     function kakaoCheck() {
-      return LeeshAPI.rpc("member_login", { p_id: "", p_pin: "" }).then(function (res) {
+      return LeeshAPI.rpc("member_login", { p_id: "", p_pin: "" }, undefined, { retry: 1 }).then(function (res) {
         if (res.ok) return done(res, { id: res.id, key: "", kakao: true });
         if (res.code !== "not_linked") {
           if (res.error === LeeshAPI.NETWORK_ERROR) return choose(res.error, "error");

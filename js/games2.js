@@ -67,7 +67,7 @@
         requestAnimationFrame(tick);
       })();
     }, function () {
-      status.textContent = "마이크를 쓸 수 없어요. 실제 홈페이지에서 '마이크 허용'을 누르면 할 수 있어요.";
+      status.textContent = LeeshArcade.micHelp();
     });
   }
   function micNote() { return el("p", "game__note", "목소리는 이 기기 안에서만 쓰이고, 녹음되거나 어디로 보내지지 않아요. 이어폰을 끼면 더 잘 돼요."); }
@@ -675,7 +675,7 @@
         s = { phase: "max", peak: -100, t0: performance.now(), trace: [], n: 0, hit: 0, v: 0 };
         f.status.textContent = "먼저 2초 동안 제일 큰 소리로 '아!' (크기를 맞춰요)";
         raf = requestAnimationFrame(tick);
-      }, function () { go.hidden = false; f.status.textContent = "마이크를 쓸 수 없어요. 실제 홈페이지에서 '마이크 허용'을 누르면 할 수 있어요."; });
+      }, function () { go.hidden = false; f.status.textContent = LeeshArcade.micHelp(); });
     });
     return {
       show: function () { c.d.fit(); draw(null); },

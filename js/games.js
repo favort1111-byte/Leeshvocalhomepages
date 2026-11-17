@@ -315,7 +315,7 @@
       audio();
       msg.textContent = "마이크를 켜는 중…";
       openMic().then(calibrate, function () {
-        msg.textContent = "마이크를 쓸 수 없어요. 👆 터치로 해 볼까요? (실제 홈페이지에서는 마이크 허용을 눌러 주세요)";
+        msg.textContent = "" + LeeshArcade.micHelp() + " 👆 터치로 해 볼까요?";
       });
     });
     $("[data-start=tap]", panel).addEventListener("click", function () { closeMic(); play(60, false); });
@@ -590,7 +590,7 @@
         raf = requestAnimationFrame(tick);
       }, function () {
         btn.disabled = false;
-        status.textContent = "마이크를 쓸 수 없어요. 실제 홈페이지에서 '마이크 허용'을 누르면 할 수 있어요.";
+        status.textContent = LeeshArcade.micHelp();
       });
     });
     return {
@@ -600,7 +600,14 @@
   })();
 
   // for js/games2.js
+  // 마이크가 안 될 때 안내 (정밀 점검 2026-11-17): 카카오톡 · 인스타 안에서 연 화면은 마이크를 막는 일이 많아서 다른 브라우저로 열라고 알려줌
+  function micHelp() {
+    var ua = navigator.userAgent || "";
+    if (/KAKAOTALK|Instagram|NAVER\(inapp|FBAN|FBAV|Line\//i.test(ua)) return "마이크를 쓸 수 없어요. 카카오톡 · 인스타 안에서 열면 마이크가 막혀요. 오른쪽 위 ⋮(또는 공유) → '다른 브라우저로 열기'로 크롬 · 사파리에서 열어 주세요.";
+    return "마이크를 쓸 수 없어요. 주소창의 🔒를 눌러 마이크를 '허용'으로 바꾼 뒤 다시 눌러 주세요.";
+  }
   window.LeeshArcade = {
+    micHelp: micHelp,
     $: $, audio: audio, tone: tone, click: click, openMic: openMic, closeMic: closeMic, listen: listen, best: best, setBest: setBest,
     result: result, noteName: noteName, median: median, current: function () { return current; },
     register: function (name, g) { games[name] = g; }

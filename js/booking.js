@@ -44,6 +44,18 @@
     return (dt.getUTCMonth() + 1) + "/" + dt.getUTCDate() + "(" + WD[dt.getUTCDay()] + ")";
   }
   function toMin(t) { var p = t.split(":"); return +p[0] * 60 + +p[1]; }
+  // "19:00" → "오후 7시", "07:30" → "오전 7:30", 분으로도 (1140 → "오후 7시", 1440 → "밤 12시")
+  function ampm(t) {
+    var m = typeof t === "number" ? t : toMin(t), h = Math.floor(m / 60), mi = m % 60;
+    if (h === 24 && !mi) return "밤 12시";
+    var h12 = h % 12 || 12;
+    // 0~5시 새벽 · 6~11시 오전 · 12시 낮 · 13~23시 오후 ("오전 12시"가 낮인지 밤인지 헷갈리지 않게)
+    return (h < 6 ? "새벽 " : h < 12 ? "오전 " : h === 12 ? "낮 " : "오후 ") + h12 + (mi ? ":" + (mi < 10 ? "0" : "") + mi : "시");
+  }
+  function dayWord(d) {
+    var days = (state.rooms && state.rooms.days) || [], i = days.indexOf(d);
+    return (days.length === 2 && i >= 0 ? (i ? "내일 " : "오늘 ") : "") + dayLabel(d);
+  }
   function busy(btn, on) { btn.disabled = on; btn.setAttribute("aria-busy", on ? "true" : "false"); }
 
 
@@ -85,7 +97,7 @@
     if (!list.length) { ul.appendChild(el("li", "sys-empty", "예약된 연습실이 없습니다.")); return; }
     list.forEach(function (b) {
       var li = el("li", "sys-item");
-      li.appendChild(el("span", "sys-item__main", dayLabel(b.date) + " " + b.start + "~" + b.end + " · " + b.room));
+      li.appendChild(el("span", "sys-item__main", dayLabel(b.date) + " " + ampm(b.start) + " ~ " + ampm(b.end) + " · " + b.room));
       if (b.cancellable) {
         // Two taps instead of confirm(): dialogs are blocked in some embedded viewers.
         var btn = el("button", "sys-link", "취소");
@@ -150,6 +162,7 @@
       renderRooms(res);
       updatePick();
       if ($("#hours").querySelector('option[value="' + hours + '"]')) $("#hours").value = hours;
+      pickText();
     });
   }
   function keepFresh() { if (state.who && LeeshAPI.kakao && LeeshAPI.kakao.fresh) LeeshAPI.kakao.fresh(900); }
@@ -168,7 +181,8 @@
     var want = old.last ? plusDay(old.days[old.days.length - 1]) : (old.days[1] || plusDay(old.days[0]));
     LeeshAPI.rpc("rooms_day", { p_date: want }).then(function (res) {
       if (!res.ok || res.days[0] === old.days[0]) {
-        if (tries < 12) setTimeout(function () { openNewDay(tries + 1, old); }, 500);
+        // 기기 시계가 서버보다 빠를 수 있어서: 처음 6초는 0.5초마다, 그 뒤 1분까지 2초마다 다시 물어봄
+        if (tries < 40) setTimeout(function () { openNewDay(tries + 1, old); }, tries < 12 ? 500 : 2000);
         return;
       }
       state.date = res.date;
@@ -305,7 +319,7 @@
     var slots = el("div", "sys-slots");
     if (!room.free.length) slots.appendChild(el("span", "sys-note", "이날은 남은 시간이 없습니다. 다른 방이나 날짜를 골라주세요."));
     room.free.forEach(function (t) {
-      var b = el("button", "sys-slot", t);
+      var b = el("button", "sys-slot", ampm(t));   // "오후 7시" (07:00과 19:00을 헷갈려 잘못 잡고 취소하는 일이 많았음)
       b.type = "button";
       b.setAttribute("aria-pressed", state.pick && state.pick.start === t ? "true" : "false");
       b.addEventListener("click", function () {
@@ -343,8 +357,15 @@
     }
     sel.disabled = false;
     btn.disabled = false;
-    $("#pickLabel").textContent = dayLabel(state.date) + " " + state.pick.start + " · " + state.pick.room;
+    pickText();
   }
+  // 예약하기 전에 무엇을 잡는지 한 줄로 (정밀 점검 2026-11-17: 예약의 19%가 5분 안에 취소 = 날짜 · 오전/오후 · 시간 수를 잘못 잡음)
+  function pickText() {
+    if (!state.pick) return;
+    var start = toMin(state.pick.start), h = Number($("#hours").value) || 1;
+    $("#pickLabel").textContent = dayWord(state.date) + " · " + state.pick.room + " · " + ampm(start) + " ~ " + ampm(start + h * 60) + " (" + h + "시간)";
+  }
+  $("#hours").addEventListener("change", pickText);
 
   $("#bookBtn").addEventListener("click", function () {
     var btn = this;
@@ -356,7 +377,7 @@
       busy(btn, false);
       if (!res.ok) { msg($("#bookMsg"), res.error, "error"); loadDay(state.date); return; }
       var b = res.booking;
-      msg($("#bookMsg"), "예약했습니다 · " + dayLabel(b.date) + " " + b.start + "~" + b.end + " " + b.room, "ok");
+      msg($("#bookMsg"), "예약했습니다 · " + dayWord(b.date) + " " + ampm(b.start) + " ~ " + ampm(b.end) + " · " + b.room, "ok");
       refreshMine();
       loadDay(state.date);
     });
