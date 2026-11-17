@@ -120,7 +120,7 @@
       cols.appendChild(list("⏳ 미신청", no, false));
       box.appendChild(cols);
 
-      (d.others || []).forEach(function (o) { box.appendChild(el("p", "sys-note", "명단 밖 신청: " + (o.name || o.member) + " · " + o.when + " · " + (o.kind || ""))); });
+      (d.others || []).forEach(function (o) { box.appendChild(el("p", "sys-note", "일반 학생 신청: " + (o.name || o.member) + " · " + o.when + " · " + (o.kind || ""))); });
       if (!(d.slots || 0) && !ms.length) box.appendChild(el("p", "sys-note", "심화반 명단과 컨설팅 시간이 아직 없어요."));
 
       var cp = el("button", "sys-btn sys-btn--ghost fbs__copy", "표로 복사 (구글시트에 붙여넣기)");

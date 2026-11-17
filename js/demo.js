@@ -292,15 +292,16 @@
     return (k.getUTCMonth() + 1) + "월 " + k.getUTCDate() + "일(" + wd[k.getUTCDay()] + ") " + (h < 12 ? "오전 " : "오후 ") + (h % 12 || 12) + "시";
   }
   function fbSeed() {
-    if (db.fb && db.fb.v === 3) return;
+    if (db.fb && db.fb.v === 4) return;
     // 실제 서버와 같은 2026년 11월 시간 (원장님 2026-11-11)
     var id = 9000, slots = [];
     [["16", [18, 19, 20], "보컬"], ["17", [19, 20], "보컬·댄스"], ["19", [17, 18], "보컬·댄스"], ["19", [19, 20], "보컬"], ["20", [17, 18, 19, 20], "보컬"],
      ["23", [18, 19, 20], "보컬"], ["24", [19, 20], "보컬"], ["27", [15, 16, 17, 18, 19, 20], "보컬"]].forEach(function (g) {
-      g[1].forEach(function (h) { slots.push({ id: ++id, at: "2026-11-" + g[0] + "T" + h + ":00:00+09:00", kinds: g[2], open: true, until: "2026-11-15T23:59:59+09:00" }); });
+      // 19일부터는 모든 학생에게 (원장님 2026-11-17): 신청은 그 시간 시작 전까지
+      g[1].forEach(function (h) { var at = "2026-11-" + g[0] + "T" + h + ":00:00+09:00", ev = +g[0] >= 19; slots.push({ id: ++id, at: at, kinds: g[2], open: true, everyone: ev, until: ev ? at : "2026-11-15T23:59:59+09:00" }); });
     });
     slots.sort(function (x, y) { return x.at < y.at ? -1 : 1; });
-    db.fb = { v: 3, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
+    db.fb = { v: 4, members: ["S001"], slots: slots, bookings: [{ id: 9100, slot: slots[1].id, member: "S900", kind: "보컬", note: null }] };
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { /* memory only */ } }
   load();
@@ -882,10 +883,13 @@
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       fbSeed();
-      if (db.fb.members.indexOf(who.id) < 0) return { ok: true, eligible: false };
-      return { ok: true, eligible: true, track: "평일", slot: "A", slots: db.fb.slots.filter(function (x) { return x.open && new Date(x.at).getTime() > Date.now() - 3 * 3600000; }).map(function (x) {
+      var isMem = db.fb.members.indexOf(who.id) >= 0, all = db.fb.slots.some(function (x) { return x.open && x.everyone && new Date(x.at).getTime() > Date.now(); });
+      if (!isMem && !all) return { ok: true, eligible: false };
+      return { ok: true, eligible: true, member: isMem, open_all: all, track: "평일", slot: "A", slots: db.fb.slots.filter(function (x) {
+        return x.open && new Date(x.at).getTime() > Date.now() - 3 * 3600000 && (isMem || x.everyone || db.fb.bookings.some(function (y) { return y.slot === x.id && y.member === who.id; }));
+      }).map(function (x) {
         var b = db.fb.bookings.filter(function (y) { return y.slot === x.id; })[0], mine = b && b.member === who.id;
-        return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, taken: !!b, mine: !!mine, booking: mine ? b.id : null, kind: mine ? b.kind : null, note: mine ? b.note : null,
+        return { id: x.id, at: x.at, when: fbWhen(x.at), kinds: x.kinds, taken: !!b, mine: !!mine, booking: mine ? b.id : null, kind: mine ? b.kind : null, note: mine ? b.note : null, everyone: !!x.everyone,
           cancel: new Date(x.at).getTime() - 3600000 > Date.now() && new Date(x.until).getTime() > Date.now(), until: x.until, closed: new Date(x.until).getTime() <= Date.now() };
       }) };
     },
@@ -893,9 +897,10 @@
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       fbSeed();
-      if (db.fb.members.indexOf(who.id) < 0) return fail("심화반 학생만 신청할 수 있어요.");
       var x = db.fb.slots.filter(function (y) { return y.id === a.p_slot; })[0];
       if (!x) return fail("신청할 수 없는 시간이에요.");
+      if (db.fb.members.indexOf(who.id) < 0 && !x.everyone) return fail("심화반 학생만 신청할 수 있는 시간이에요.");
+      if (new Date(x.until).getTime() <= Date.now()) return fail("예약 기간이 끝났어요. 학원(실장님)에 연락해주세요.");
       if (a.p_kind === "댄스" && x.kinds !== "보컬·댄스") return fail("이 시간은 보컬 컨설팅만 할 수 있어요.");
       if (db.fb.bookings.some(function (y) { return y.member === who.id; })) return fail("이미 신청한 시간이 있어요. 바꾸려면 먼저 취소해주세요.");
       if (db.fb.bookings.some(function (y) { return y.slot === x.id; })) return fail("방금 다른 학생이 신청했어요. 다른 시간을 골라주세요.");
