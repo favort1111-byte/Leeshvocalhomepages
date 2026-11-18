@@ -62,20 +62,33 @@
       head.appendChild(again);
       box.appendChild(head);
 
+      // 맨 위 숫자 (원장님 2026-11-18 "헷갈려요 → 심화반 몇 명 + 일반 학생 몇 명 = 총 결과로"): 총 신청 = 심화반 + 일반, 그 밑에 심화반 미신청 · 남은 시간
+      var total = yes.length + gen.length, taken = 0;
+      yes.concat(gen).forEach(function (m) { taken += (m.bookings || []).length; });
       var sum = el("div", "fbs__sum");
-      var a = el("span", "fbs__num fbs__num--yes"); a.appendChild(el("b", null, String(yes.length))); a.appendChild(document.createTextNode(" 신청"));
-      var b = el("span", "fbs__num fbs__num--no"); b.appendChild(el("b", null, String(no.length))); b.appendChild(document.createTextNode(" 미신청"));
+      var t = el("span", "fbs__num fbs__num--total"); t.appendChild(document.createTextNode("총 신청 ")); t.appendChild(el("b", null, String(total))); t.appendChild(document.createTextNode("명"));
+      sum.appendChild(t);
+      sum.appendChild(el("span", "fbs__eq", "="));
+      var a = el("span", "fbs__num fbs__num--yes"); a.appendChild(document.createTextNode("심화반 ")); a.appendChild(el("b", null, String(yes.length))); a.appendChild(document.createTextNode("명"));
       sum.appendChild(a);
-      sum.appendChild(b);
-      sum.appendChild(el("span", "fbs__of", "심화반 " + ms.length + "명" + (gen.length ? " + 일반 학생 " + gen.length + "명" : "") + " · 컨설팅 시간 " + (d.slots || 0) + "개"));
+      sum.appendChild(el("span", "fbs__eq", "+"));
+      var g = el("span", "fbs__num fbs__num--gen"); g.appendChild(document.createTextNode("일반 학생 ")); g.appendChild(el("b", null, String(gen.length))); g.appendChild(document.createTextNode("명"));
+      sum.appendChild(g);
       box.appendChild(sum);
       if (ms.length) {
+        var adv = el("p", "fbs__line");
+        adv.appendChild(document.createTextNode("심화반 " + ms.length + "명 중 "));
+        adv.appendChild(el("b", "fbs__ok", yes.length + "명 신청"));
+        adv.appendChild(document.createTextNode(" · "));
+        adv.appendChild(el("b", no.length ? "fbs__bad" : "fbs__ok", no.length ? no.length + "명 미신청" : "모두 신청"));
+        box.appendChild(adv);
         var bar = el("div", "fbs__bar");
         var fill = el("i");
         fill.style.width = Math.round(yes.length * 100 / ms.length) + "%";
         bar.appendChild(fill);
         box.appendChild(bar);
       }
+      if (d.slots) box.appendChild(el("p", "fbs__line", "컨설팅 시간 " + d.slots + "개 중 " + taken + "개 신청됨 · " + Math.max(0, d.slots - taken) + "개 남음"));
       if (d.until) box.appendChild(el("p", "sys-note", "신청 마감 " + stamp(d.until) + (new Date(d.until).getTime() < Date.now() ? " (지났어요 · 학생은 이제 신청 · 취소를 못 해요)" : "")));
 
       function list(label, rows, yesList, empty) {
@@ -123,8 +136,8 @@
         return sec;
       }
       var cols = el("div", "fbs__cols");
-      cols.appendChild(list("✅ 신청함", yes, true));
-      cols.appendChild(list("⏳ 미신청", no, false));
+      cols.appendChild(list("✅ 심화반 신청", yes, true));
+      cols.appendChild(list("⏳ 심화반 미신청", no, false));
       box.appendChild(cols);
 
       if (gen.length) box.appendChild(list("🙋 일반 학생 신청", gen, true));

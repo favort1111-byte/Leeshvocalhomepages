@@ -431,6 +431,13 @@
 .fbs__num--yes b{color:var(--sys-ok);}
 .fbs__num--no b{color:var(--sys-error);}
 .fbs__of{font-size:13px;color:var(--sys-muted);}
+.fbs__num--total{font-weight:700;}
+.fbs__num--total b{font-size:28px;color:var(--sys-ink,#1F1A14);}
+.fbs__num--gen b{color:#8A5A00;}
+.fbs__eq{font-size:18px;color:var(--sys-muted);}
+.fbs__line{margin:2px 0 4px;font-size:14px;}
+.fbs__ok{color:var(--sys-ok);}
+.fbs__bad{color:var(--sys-error);}
 .fbs__bar{height:8px;border-radius:99px;background:#F3D9D2;overflow:hidden;margin:2px 0 8px;}
 .fbs__bar i{display:block;height:100%;background:var(--sys-ok);border-radius:99px;}
 .fbs__cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin-top:10px;}
