@@ -451,7 +451,9 @@
 .fbs__when{display:flex;flex-direction:column;gap:2px;margin-top:4px;font-size:13px;}
 .fbs__when .is-past{color:var(--sys-muted);}
 .fbs__when small{color:var(--sys-muted);word-break:break-word;}
-.fbs__copy{margin-top:12px;}
+.fbs__copies{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;}
+.fbs__copylabel{font-size:13px;color:var(--sys-muted);flex:1 1 100%;}
+.fbs__copy{margin:0;}
 .fbs__write{align-self:flex-start;margin-top:2px;font-size:13px;}
 .fbs__pad:empty{display:none;}
 .fbs__pad{margin-top:8px;}

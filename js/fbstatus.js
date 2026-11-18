@@ -143,18 +143,28 @@
       if (gen.length) box.appendChild(list("🙋 일반 학생 신청", gen, true));
       if (!(d.slots || 0) && !ms.length) box.appendChild(el("p", "sys-note", "심화반 명단과 컨설팅 시간이 아직 없어요."));
 
-      var cp = el("button", "sys-btn sys-btn--ghost fbs__copy", "표로 복사 (구글시트에 붙여넣기)");
-      cp.type = "button";
-      cp.addEventListener("click", function () {
-        var lines = [["이름", "수강 ID", "반", "담당", "신청", "컨설팅 시간", "종류"].join("\t")];
-        yes.concat(no).concat(gen).forEach(function (m) {
-          var bk = m.bookings || [];
-          lines.push([m.name, m.member, m.track ? klass(m) : "일반", m.teacher || "", bk.length ? "신청" : "미신청",
-            bk.map(function (x) { return x.when; }).join(", "), bk.map(function (x) { return x.kind || ""; }).join(", ")].join("\t"));
+      // 표로 복사 (원장님 2026-11-18 "심화반 말고 다른 친구들도"): 전체 · 심화반만 · 일반 학생만 따로
+      function copyBtn(label, rows) {
+        var cp = el("button", "sys-btn sys-btn--ghost fbs__copy", label);
+        cp.type = "button";
+        cp.addEventListener("click", function () {
+          var lines = [["이름", "수강 ID", "반", "담당", "신청", "컨설팅 시간", "종류", "남긴 말"].join("\t")];
+          rows.forEach(function (m) {
+            var bk = m.bookings || [];
+            lines.push([m.name, m.member, m.track ? klass(m) : "일반", m.teacher || "", bk.length ? "신청" : "미신청",
+              bk.map(function (x) { return x.when; }).join(", "), bk.map(function (x) { return x.kind || ""; }).join(", "),
+              bk.map(function (x) { return String(x.note || "").replace(/\s+/g, " "); }).filter(Boolean).join(" / ")].join("\t"));
+          });
+          copyText(lines.join("\n"), cp);
         });
-        copyText(lines.join("\n"), cp);
-      });
-      box.appendChild(cp);
+        return cp;
+      }
+      var copies = el("div", "fbs__copies");
+      copies.appendChild(el("span", "fbs__copylabel", "표로 복사 (구글시트에 붙여넣기)"));
+      copies.appendChild(copyBtn("전체 (심화반 + 일반 학생)", yes.concat(no).concat(gen)));
+      copies.appendChild(copyBtn("심화반만", yes.concat(no)));
+      if (gen.length) copies.appendChild(copyBtn("일반 학생만", gen));
+      box.appendChild(copies);
     }, function () {
       box.textContent = "";
       box.appendChild(el("p", "sys-msg sys-msg--error", "불러오지 못했어요. 잠시 뒤 다시 열어 주세요."));
