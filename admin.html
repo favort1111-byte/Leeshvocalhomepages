@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/system.css?v=e941e0be">
-<link rel="stylesheet" href="css/admin.css?v=1ae8c0ab">
+<link rel="stylesheet" href="css/admin.css?v=e0d55c24">
 </head>
 <body class="sys adm">
 
@@ -130,8 +130,10 @@
         <select id="memberFilter" aria-label="상태">
           <option value="!종료" selected>종료 빼고</option><option value="">전체 (종료 포함)</option><option>재원</option><option>외부</option><option>휴원</option><option>종료</option>
         </select>
+        <label class="sys-keep adm__nophone"><input type="checkbox" id="memberNoPhone"> 전화번호 빈 학생만<span id="memberNoPhoneN"></span></label>
         <button type="button" class="sys-btn" id="memberAdd">새 수강 ID</button>
       </div>
+      <p class="sys-note">맨 오른쪽 <b>전화번호</b> 칸은 카톡 자동발송(전날 안내)에 쓰는 번호예요. 칸을 눌러 번호를 적고 Enter를 누르거나 다른 곳을 누르면 바로 저장돼요. 지우려면 칸을 비우세요. 노란 칸은 아직 번호가 없는 학생이에요.</p>
 
       <form id="memberForm" class="adm__drawer" hidden>
         <h3 class="sys-h" id="memberTitle">새 수강 ID</h3>
@@ -140,7 +142,7 @@
           <label class="sys-field"><span>이름</span><input name="name" required maxlength="30"></label>
         </div>
         <div class="sys-row">
-          <label class="sys-field"><span>전화번호</span><input name="phone" type="tel" maxlength="20"></label>
+          <input name="phone" type="hidden">
           <label class="sys-field"><span>상태</span>
             <select name="status"><option>재원</option><option>외부</option><option>휴원</option><option>종료</option></select>
           </label>
@@ -731,6 +733,6 @@
 <script src="js/photos.js?v=a00ab1e5"></script>
 <script src="js/fbstatus.js?v=b4b7c0d6"></script>
 <script src="js/consultnote.js?v=62128afb"></script>
-<script src="js/admin.js?v=aad5fc26"></script>
+<script src="js/admin.js?v=0dc3de1c"></script>
 </body>
 </html>

@@ -412,7 +412,60 @@
       state.members = res.data;
       renderMembers();
       loadLinks();
+      loadContacts();
     });
+  }
+  /* 전화번호 칸 (원장님 2026-11-18): 카톡 자동발송이 쓰는 번호(private.member_contacts)를 목록 맨 오른쪽에서 보고 고쳐요. */
+  function loadContacts() {
+    token().then(function (t) { return LeeshAPI.rpc("admin_member_contacts", {}, t); }).then(function (r) {
+      if (!r || !r.ok) return;
+      state.contacts = r.items || {};
+      renderMembers();
+    });
+  }
+  function telText(d) {
+    d = String(d || "").replace(/\D/g, "");
+    return d.length === 11 ? d.slice(0, 3) + "-" + d.slice(3, 7) + "-" + d.slice(7) : d.length === 10 ? d.slice(0, 3) + "-" + d.slice(3, 6) + "-" + d.slice(6) : d;
+  }
+  function phoneCell(m) {
+    var td = el("td", "adm__tel"), inp = el("input"), note = el("small", "adm__telnote");
+    var cur = (state.contacts || {})[m.id] || "";
+    inp.type = "tel";
+    inp.inputMode = "tel";
+    inp.maxLength = 20;
+    inp.placeholder = "번호 넣기";
+    inp.value = telText(cur);
+    inp.setAttribute("aria-label", m.name + " 전화번호");
+    if (!cur) td.classList.add("is-empty");
+    function save() {
+      var want = inp.value.replace(/\D/g, "");
+      if (want === cur) { inp.value = telText(cur); return; }
+      note.textContent = "저장 중…";
+      note.className = "adm__telnote";
+      token().then(function (t) { return LeeshAPI.rpc("admin_member_contact_set", { p_member: m.id, p_phone: inp.value }, t); }).then(function (r) {
+        if (!r || !r.ok) { note.textContent = (r && r.error) || "저장하지 못했어요."; note.className = "adm__telnote is-bad"; return; }
+        cur = r.phone || "";
+        state.contacts = state.contacts || {};
+        if (cur) state.contacts[m.id] = cur; else delete state.contacts[m.id];
+        inp.value = telText(cur);
+        td.classList.toggle("is-empty", !cur);
+        note.textContent = cur ? "저장됨 ✓" : "지웠어요";
+        note.className = "adm__telnote is-ok";
+        setTimeout(function () { if (note.className.indexOf("is-ok") !== -1) note.textContent = ""; }, 2500);
+        countNoPhone();
+      });
+    }
+    inp.addEventListener("change", save);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+    td.appendChild(inp);
+    td.appendChild(note);
+    return td;
+  }
+  function countNoPhone() {
+    var lab = $("#memberNoPhoneN");
+    if (!lab || !state.contacts) return;
+    var n = state.members.filter(function (m) { return (m.status === "재원" || m.status === "외부") && m.id !== "DEMO" && !state.contacts[m.id]; }).length;
+    lab.textContent = n ? " (" + n + "명)" : "";
   }
 
   /* 카카오 연결 요청: a student signed in with Kakao and said who they are; pick the 수강 ID and approve. */
@@ -573,14 +626,18 @@
   function renderMembers() {
     var q = $("#memberSearch").value.trim().toLowerCase();
     var st = $("#memberFilter").value;
+    var noPhone = $("#memberNoPhone") && $("#memberNoPhone").checked;
     var rows = state.members.filter(function (m) {
       if (st === "!종료" ? m.status === "종료" : st && m.status !== st) return false; // 원장님 2026-11-10: 처음엔 종료 숨김
-      return !q || [m.id, m.name, m.phone || ""].join(" ").toLowerCase().indexOf(q) !== -1;
+      if (noPhone && ((state.contacts || {})[m.id] || m.id === "DEMO")) return false;
+      var tel = (state.contacts || {})[m.id] || "";
+      return !q || [m.id, m.name, tel, telText(tel)].join(" ").toLowerCase().indexOf(q) !== -1;
     });
+    countNoPhone();
     var t = $("#memberTable");
     t.textContent = "";
     var head = el("tr");
-    ["수강 ID", "이름", "전화번호", "상태", "기한", "메모", "로그인", ""].forEach(function (h) { head.appendChild(el("th", null, h)); });
+    ["수강 ID", "이름", "상태", "기한", "메모", "로그인", "", "전화번호"].forEach(function (h) { head.appendChild(el("th", null, h)); });
     t.appendChild(el("thead")).appendChild(head);
     var body = t.appendChild(el("tbody"));
     if (!rows.length) {
@@ -591,8 +648,8 @@
     }
     rows.forEach(function (m) {
       var tr = el("tr");
-      [m.id, m.name, m.phone || "", m.status, m.expires_on || "", m.memo || ""].forEach(function (v, i) {
-        var td = el("td", i === 3 ? "adm__status adm__status--" + m.status : null, v);
+      [m.id, m.name, m.status, m.expires_on || "", m.memo || ""].forEach(function (v, i) {
+        var td = el("td", i === 2 ? "adm__status adm__status--" + m.status : null, v);
         tr.appendChild(td);
       });
       tr.appendChild(el("td", m.kakao_user ? "adm__kakao" : "sys-note", m.kakao_user ? "카카오" : "카카오 연결 전"));
@@ -611,6 +668,7 @@
         td.appendChild(u);
       }
       tr.appendChild(td);
+      tr.appendChild(state.contacts ? phoneCell(m) : el("td", "sys-note", "…"));
       body.appendChild(tr);
     });
   }
@@ -646,6 +704,7 @@
   $("#memberClose").addEventListener("click", function () { $("#memberForm").hidden = true; });
   $("#memberSearch").addEventListener("input", renderMembers);
   $("#memberFilter").addEventListener("change", renderMembers);
+  if ($("#memberNoPhone")) $("#memberNoPhone").addEventListener("change", renderMembers);
 
   $("#memberForm").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -2804,7 +2863,7 @@
     admin_inbox: "선생님이 보낸 메시지", audition_news: "오디션 소식", ig_posts: "인스타그램 글", interviews: "합격자 인터뷰",
     visit_applications: "내방 신청", lesson_notes: "레슨 노트", lesson_sheets: "곡 · 자료", lesson_photos: "레슨 사진",
     lesson_sources: "레슨 시트 가져오기", eval_reports: "월말평가", monthly_evals: "월말평가 (예전)", song_requests: "노래 추천 신청",
-    song_recs: "노래 추천", partners: "제휴 업체", partner_requests: "제휴 신청", consults: "상담 신청",
+    song_recs: "노래 추천", member_contacts: "전화번호", partners: "제휴 업체", partner_requests: "제휴 신청", consults: "상담 신청",
     practice_logs: "연습 일지", repertoire: "레퍼토리", audition_reviews: "오디션 후기", cctv_consents: "CCTV 동의"
   };
   var LOG_COL = {

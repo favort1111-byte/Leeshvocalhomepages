@@ -805,6 +805,16 @@
     admin_solapi_set: function () { return fail("체험 모드에서는 솔라피에 연결하지 않아요."); },
     admin_solapi_options: function () { return fail("체험 모드에서는 저장하지 않아요."); },
     admin_solapi_off: function () { return { ok: true }; },
+    admin_member_contacts: function () { db.contacts = db.contacts || { S001: "01012345678", S002: "01023456789" }; return { ok: true, items: Object.assign({}, db.contacts) }; },
+    admin_member_contact_set: function (a) {
+      db.contacts = db.contacts || { S001: "01012345678", S002: "01023456789" };
+      var d = String(a.p_phone || "").replace(/\D/g, "");
+      if (!d) { delete db.contacts[a.p_member]; return { ok: true, phone: null }; }
+      if (d.indexOf("82") === 0) d = "0" + d.slice(2);
+      if (!/^01[016789]\d{7,8}$/.test(d)) return fail("휴대폰 번호를 확인해주세요. (예: 010-1234-5678)");
+      db.contacts[a.p_member] = d;
+      return { ok: true, phone: d };
+    },
     admin_member_phones: function (a) { var o = {}; (a.p_ids || []).forEach(function (id) { if (id === "S001") o[id] = "010-****-5678"; }); return { ok: true, items: o }; },
     admin_reminders: function () {
       var wd = ["일", "월", "화", "수", "목", "금", "토"];

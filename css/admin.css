@@ -222,3 +222,12 @@ video.adm__player{height:auto;max-height:240px;}
 .cv__tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:13px;white-space:nowrap;}
 .cv__tag--yes{background:#EAF5EC;color:#1E6B34;}.cv__tag--no{background:#FDECEA;color:#B3261E;font-weight:600;}.cv__tag--wait{background:#FFF6D6;color:#7A5C00;}
 .cv__row--no td{background:#FFF7F6;}
+
+/* 수강 ID 목록 맨 오른쪽 전화번호 칸 (2026-11-18) */
+.adm__tel{white-space:nowrap;min-width:150px;}
+.adm__table td.adm__tel input{width:150px;max-width:150px;font-variant-numeric:tabular-nums;}
+.adm__table td.adm__tel.is-empty input{background:#FFF6D6;border-color:#E0A100;}
+.adm__telnote{display:block;min-height:0;font-size:12px;color:var(--sys-muted);}
+.adm__telnote.is-ok{color:var(--sys-ok);}
+.adm__telnote.is-bad{color:var(--sys-error);white-space:normal;max-width:150px;}
+.adm__nophone{margin:0;white-space:nowrap;}
