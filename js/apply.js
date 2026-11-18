@@ -151,10 +151,24 @@
       fs.appendChild(el("small", "apply__help", "*보컬, 랩, 댄스, 라이브 퍼포먼스, 연기 중 택 1만 가능"));
       fs.appendChild(radios("field", FIELDS, prev.indexOf(" + ") === -1 ? prev : null));
     } else {
-      fs.appendChild(el("small", "apply__help apply__pick", pick === "vd"
-        ? "*이 오디션은 보컬 · 랩 · 댄스 중에서 2개까지 고를 수 있어요 (하나만 골라도 돼요)"
-        : "*이 오디션은 2개까지 고를 수 있어요"));
-      fs.appendChild(checks("field", pick === "vd" ? ["보컬", "랩", "댄스"] : FIELDS, mine ? mine.field.split(" + ") : []));
+      // 원장님 2026-11-18 "꼭 2개를 골라야 신청된다고 함" → 실제로는 1개만 골라도 되는데(11/14부터) 작은 회색 글씨라 안 보였음
+      // → 초록 상자로 크게 + 고를 때마다 "1개 골랐어요 · 이대로 신청돼요" 한 줄
+      fs.appendChild(el("p", "apply__pick", pick === "vd"
+        ? "✅ 1개만 골라도 신청돼요 · 최대 2개까지 (보컬 · 랩 · 댄스 중)"
+        : "✅ 1개만 골라도 신청돼요 · 최대 2개까지"));
+      var cks = checks("field", pick === "vd" ? ["보컬", "랩", "댄스"] : FIELDS, mine ? mine.field.split(" + ") : []);
+      fs.appendChild(cks);
+      var cnt = el("p", "apply__picked");
+      cnt.setAttribute("role", "status");
+      fs.appendChild(cnt);
+      var count = function () {
+        var n = cks.querySelectorAll("input:checked").length;
+        cnt.textContent = n === 0 ? "아직 안 골랐어요" : n === 1 ? "1개 골랐어요 · 이대로 신청할 수 있어요" : n === 2 ? "2개 골랐어요 · 신청할 수 있어요" : "2개까지만 고를 수 있어요 · 하나를 빼 주세요";
+        cnt.classList.toggle("is-over", n > 2);
+        cnt.classList.toggle("is-ok", n === 1 || n === 2);
+      };
+      cks.addEventListener("change", count);
+      count();
     }
     f.appendChild(fs);
 

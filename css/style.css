@@ -1014,6 +1014,10 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .apply__set{border:0;margin:0;padding:0;display:grid;gap:4px;}
 .apply__set legend{padding:0;margin-bottom:2px;font-size:14px;}
 .apply__help{display:block;font-size:12.5px;line-height:1.5;color:#7A6656;}
+.apply__pick{margin:0 0 8px;padding:9px 12px;border-radius:10px;background:#E6F3EA;border:1.5px solid #2E6B45;color:#1D4A30;font-size:14px;font-weight:700;line-height:1.5;}
+.apply__picked{margin:8px 0 0;font-size:13px;line-height:1.5;color:#7A6656;}
+.apply__picked.is-ok{color:#2E6B45;font-weight:700;}
+.apply__picked.is-over{color:#B3261E;font-weight:700;}
 .apply__radios{display:flex;flex-wrap:wrap;gap:6px 16px;}
 .apply__rules{padding:14px 16px;border-radius:10px;background:#FFF6D6;border:1px solid rgba(160,120,20,.25);color:#3A2F25;}
 .apply__rules-title{cursor:pointer;font-weight:700;font-size:16px;}

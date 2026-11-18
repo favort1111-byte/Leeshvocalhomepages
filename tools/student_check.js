@@ -12,6 +12,7 @@
     7. 제휴 업체 탭: 신청 칸 없이 업체 홈페이지 링크 + 실장님 카톡 안내
     6. 카카오톡 안에서 열었을 때 마이크 안내
     8. 오디션 후기 쓰기: 내방 / 본사 고르기 · 오디션 본 날짜
+   10. 내방 오디션 신청서: 2개까지 고르는 오디션은 1개만 골라도 신청됨
     9. 보컬 오락실: 소리 장치가 멈춘 뒤(다른 앱 · 마이크 · 아이폰 interrupted)에도 다음 게임에서 소리가 나는지
 
   쓰는 법 (학생 화면을 고칠 때마다, 올리기 전에):
@@ -324,6 +325,32 @@ async function passConsent(page, wait) {
     check('마이크 게임: 마이크를 켠 뒤에도 소리 장치가 돌고 목소리가 들어옴 ' + tag, r.state === 'running' && !r.silent && rms > 0, JSON.stringify(r) + ' · 마이크 ' + rms.toFixed(3));
     await page.locator('[data-panel="target"] [data-close]').first().tap(); await wait(300);
     check('자바스크립트 오류 없음 ' + tag, !errs.length, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  // 10. 내방 오디션 신청서: "2개까지" 오디션은 1개만 골라도 신청됨 + 그 안내가 크게 보임 (2026-11-18 "꼭 2개를 골라야 된다고 함")
+  console.log('\n10. 내방 오디션 신청서 (2개까지 고르는 오디션)');
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    const wait = (ms) => page.waitForTimeout(ms);
+    await enter(page, base, wait);
+    await page.goto(base + 'apply.html?news=44', { waitUntil: 'networkidle' }); await wait(1200);
+    const help = await page.locator('.apply__pick').first().textContent().catch(() => '');
+    const size = await page.locator('.apply__pick').first().evaluate((n) => parseFloat(getComputedStyle(n).fontSize)).catch(() => 0);
+    check('"1개만 골라도 신청돼요" 안내가 크게 보임', /1개만 골라도 신청돼요/.test(help) && size >= 14, help + ' · ' + size + 'px');
+    await page.evaluate(() => {
+      document.querySelectorAll('[name=field]').forEach((c) => { if (c.checked !== (c.value === '보컬')) c.click(); });
+      const g = document.querySelector('[name=gender]'); if (g && !document.querySelector('[name=gender]:checked')) g.click();
+      document.querySelectorAll('form input[type=checkbox]').forEach((c) => { const t = c.closest('label') ? c.closest('label').textContent : ''; if (c.name !== 'field' && t.indexOf('카톡') === -1 && !c.checked) c.click(); });
+    });
+    const picked = await page.locator('.apply__picked').first().textContent().catch(() => '');
+    check('1개 고르면 "이대로 신청할 수 있어요"', /1개 골랐어요/.test(picked), picked);
+    await page.locator('form button[type=submit]').first().click(); await wait(1200);
+    const msg = await page.evaluate(() => Array.from(document.querySelectorAll('.sys-msg')).map((m) => m.textContent).filter(Boolean).join(' | '));
+    check('1개만 골라도 신청 완료', /신청했어요/.test(msg) && !/골라주세요|2개/.test(msg), msg.slice(0, 50));
+    check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }
 
