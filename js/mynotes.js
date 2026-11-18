@@ -713,8 +713,7 @@
     }
   }
 
-  /* 제휴 업체: 학생이 업체와 원하는 날짜·시간을 적어 신청 → 관리자 화면 "제휴 신청"에 보이고, 학원이 업체에 전화로
-     예약한 뒤 결과(날짜·시간·안내)를 적으면 여기에 보여요. 아직 접수 상태면 학생이 취소할 수 있어요. */
+  /* 제휴 업체: 2026-11-18부터 홈페이지 신청 없음 (아래 renderPartners). PSTATE는 그 전에 낸 신청을 보여줄 때만 써요. */
   var PSTATE = { "접수": "예약 준비 중", "예약 완료": "예약 완료", "취소": "취소" };
   /* 건의함 (원장님 2026-10-29): 이름 없이, 내용은 암호화해서 저장. 지금은 원장님(관리자)만 읽어요.
      서버 member_suggest는 로그인한 수강생인지만 보고, 누가 썼는지는 저장하지 않아요. */
@@ -831,17 +830,72 @@
     if (tab) tab.classList.remove("book__tab--dot");
   }
 
+  /* 제휴 업체 (원장님 2026-11-18): 홈페이지 신청을 없애고, 종류별 업체 이름 → 그 업체 홈페이지 + "업체를 확인하고 실장님 카톡으로".
+     예전에 낸 신청이 있으면 그것만 그대로 보여줘요. */
+  function partnerLink(p) {
+    if (p.link && /^https?:\/\//.test(p.link)) {
+      return { href: p.link, word: /instagram\.com/.test(p.link) ? "인스타그램" : /pf\.kakao\.com/.test(p.link) ? "카카오톡 채널" : "홈페이지" };
+    }
+    return { href: "https://search.naver.com/search.naver?query=" + encodeURIComponent(p.name), word: "네이버에서 찾기" };
+  }
   function renderPartners(res) {
     var box = scene.querySelector("#myPartners");
     box.textContent = "";
     var list = res.partners || [], mine = res.requests || [];
+    var kid = (window.LEESH || {}).visitKakaoId || "";
     var sum = el("div", "fold__sum");
     sum.appendChild(el("p", null, "실제 엔터 관계자가 추천한 제휴 업체예요."));
-    sum.appendChild(el("p", "sys-note", "신청하면 학원이 업체에 직접 예약해드리고, 예약이 되면 여기에 날짜·시간이 올라와요."));
+    sum.appendChild(el("p", "sys-note", "업체 이름을 누르면 그 업체 홈페이지가 새 창으로 열려요. 예약은 실장님 카톡으로 해요."));
     box.appendChild(sum);
 
+    function ask() {
+      var a = el("div", "pt__ask");
+      a.appendChild(el("b", null, "📢 업체를 확인하고 " + (kid ? kid + "(실장님)" : "실장님") + "로 카톡해주세요!"));
+      if (kid) {
+        var how = el("span", null, "카카오톡 → 친구 추가 → 카카오톡 ID → ");
+        how.appendChild(el("b", "pt__id", kid));
+        a.appendChild(how);
+        var copy = el("button", "sys-btn pt__copy", "아이디 복사");
+        copy.type = "button";
+        copy.addEventListener("click", function () {
+          function done(ok) { copy.textContent = ok ? "복사했어요 ✓" : "아이디: " + kid; setTimeout(function () { copy.textContent = "아이디 복사"; }, 2500); }
+          try { navigator.clipboard.writeText(kid).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
+        });
+        a.appendChild(copy);
+      }
+      return a;
+    }
+
+    if (!list.length) box.appendChild(el("p", "book__empty", "지금 볼 수 있는 제휴 업체가 없어요."));
+    var cats = [], by = {};
+    list.forEach(function (p) { if (!by[p.category]) { by[p.category] = []; cats.push(p.category); } by[p.category].push(p); });
+    var wrap = el("div", "pt__list");
+    cats.forEach(function (c) {
+      var sec = el("section", "pt__cat");
+      sec.appendChild(el("h3", "pt__h", c));
+      var named = by[c].filter(function (p) { return p.name; });
+      if (!named.length) {
+        sec.appendChild(el("p", "pt__none", by[c][0].info || "업체는 실장님께 카톡으로 물어봐 주세요."));
+      }
+      named.forEach(function (p) {
+        var row = el("div", "pt__shop"), l = partnerLink(p);
+        var a = el("a", "pt__name");
+        a.href = l.href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.appendChild(el("b", null, p.name));
+        a.appendChild(el("span", "pt__go", l.word + " ↗"));
+        row.appendChild(a);
+        if (p.info) row.appendChild(el("p", "pt__info", p.info));
+        sec.appendChild(row);
+      });
+      wrap.appendChild(sec);
+    });
+    box.appendChild(wrap);
+    box.appendChild(ask());
+
     if (mine.length) {
-      box.appendChild(el("h3", "rec__title", "내 신청"));
+      box.appendChild(el("h3", "rec__title", "예전에 홈페이지로 낸 신청"));
       mine.forEach(function (r) {
         var c = el("article", "fold__card partner__req");
         var top = el("p", "fold__main");
@@ -867,55 +921,6 @@
       });
     }
 
-    var ask = el("section", "fold__ask");
-    ask.appendChild(el("h3", "rec__title", "예약 신청하기"));
-    if (!list.length) { ask.appendChild(el("p", "book__empty", "지금 신청할 수 있는 제휴 업체가 없어요.")); box.appendChild(ask); return; }
-    var f = el("form", "fold__form sys");
-    var pick = el("fieldset", "apply__set");
-    pick.appendChild(el("legend", null, "업체"));
-    var chips = el("div", "sys-radios apply__radios");
-    var info = el("p", "sys-note partner__info");
-    list.forEach(function (p) {
-      var l = el("label"), r = el("input");
-      r.type = "radio";
-      r.name = "partner";
-      r.value = p.id;
-      r.addEventListener("change", function () { info.textContent = p.info || ""; info.hidden = !p.info; });
-      l.appendChild(r);
-      l.appendChild(document.createTextNode(" " + p.category + (p.name ? " · " + p.name : "")));
-      chips.appendChild(l);
-    });
-    info.hidden = true;
-    pick.appendChild(chips);
-    pick.appendChild(info);
-    f.appendChild(pick);
-    var wish = el("input"); wish.name = "wish"; wish.maxLength = 200; wish.required = true; wish.placeholder = "예) 11월 3일 (월) 오후 2시 이후 / 평일 저녁 아무 때나";
-    f.appendChild(field2("원하는 날짜·시간", wish));
-    var memo = el("textarea"); memo.name = "memo"; memo.rows = 2; memo.maxLength = 500; memo.placeholder = "예) 오디션 프로필 촬영용 메이크업이에요 / 처음 가봐요";
-    f.appendChild(field2("받고 싶은 것·요청 사항 (선택)", memo));
-    var agree = el("label", "sys-keep"), ag = el("input");
-    ag.type = "checkbox";
-    agree.appendChild(ag);
-    agree.appendChild(document.createTextNode(" 예약을 위해 학원이 업체에 내 이름과 원하는 날짜·시간을 알려주는 데 동의해요."));
-    f.appendChild(agree);
-    var btn = el("button", "sys-btn", "신청하기");
-    btn.type = "submit";
-    f.appendChild(btn);
-    var note = el("p", "sys-msg");
-    f.appendChild(note);
-    f.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var r = f.querySelector("[name=partner]:checked");
-      function bad(t) { note.textContent = t; note.className = "sys-msg sys-msg--error"; }
-      if (!r) return bad("업체를 골라주세요.");
-      if (!wish.value.trim()) return bad("원하는 날짜·시간을 적어주세요.");
-      if (!ag.checked) return bad("업체에 이름과 날짜·시간을 알려주는 데 동의해야 예약할 수 있어요.");
-      btn.disabled = true;
-      call("member_partner_request", { p_partner: Number(r.value), p_wish: wish.value, p_memo: memo.value || null }, note)
-        .then(function (ok) { btn.disabled = false; if (ok) showTab("partners"); });
-    });
-    ask.appendChild(f);
-    box.appendChild(ask);
   }
 
   /* 노래 추천: 원장님이 올린 목소리 분석 + 추천곡 (카카오톡으로 보낸 노래 영상을 분석). 학생은 여기서 신청해요. */

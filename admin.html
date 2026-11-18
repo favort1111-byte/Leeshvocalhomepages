@@ -403,19 +403,20 @@
           <option value="접수" selected>접수 (예약 전)</option><option value="예약 완료">예약 완료</option><option value="취소">취소</option><option value="">전체</option>
         </select>
       </div>
-      <p class="sys-note">학생이 내 폴더 → 제휴 업체에서 낸 신청이에요. 업체에 전화로 예약한 뒤 <b>예약 완료</b>로 바꾸고 "학생에게 보낼 말"에 날짜·시간·준비물을 적어 저장하면 학생 내 폴더에 그대로 보여요.</p>
+      <p class="sys-note"><b>2026-11-18부터 학생은 홈페이지에서 신청하지 않아요.</b> 내 폴더 → 제휴 업체에서 종류별 업체 이름을 눌러 그 업체 홈페이지를 보고, <b>실장님 카톡(sjsh54)</b>으로 연락해요. 아래 목록에는 그 전에 홈페이지로 낸 신청만 남아 있어요.</p>
       <p class="sys-msg" id="partnerMsg" role="status"></p>
       <ul class="adm__cards" id="partnerReqList"></ul>
 
       <details class="adm__fold">
-      <summary class="sys-h">제휴 업체 목록 고치기 (이름·안내 적기)</summary>
-      <p class="sys-note">학생 신청 화면에 보이는 업체예요. 업체 이름과 안내(위치·혜택·준비물 등)를 적으면 학생이 고를 때 보여요. 숨기면 학생 화면에서 빠져요 (예전 신청은 그대로).</p>
+      <summary class="sys-h">제휴 업체 목록 고치기 (이름·홈페이지·안내 적기)</summary>
+      <p class="sys-note">학생 내 폴더 → 제휴 업체에 보이는 업체예요. <b>홈페이지 주소</b>를 적으면 학생이 업체 이름을 눌렀을 때 그 주소가 열려요 (비워 두면 네이버 검색으로 연결). 안내(할인·위치 등)는 이름 밑에 보여요. 숨기면 학생 화면에서 빠져요.</p>
       <ul class="adm__cards" id="partnerList"></ul>
       <form id="partnerAdd" class="adm__drawer">
         <div class="sys-row">
           <label class="sys-field"><span>종류</span><input name="category" maxlength="30" required placeholder="예) 피부과"></label>
           <label class="sys-field"><span>업체 이름 (선택)</span><input name="name" maxlength="60" placeholder="예) ○○피부과 선릉점"></label>
         </div>
+        <label class="sys-field"><span>홈페이지 주소 (선택)</span><input name="link" type="url" maxlength="300" placeholder="https://…"></label>
         <label class="sys-field"><span>학생에게 보이는 안내 (선택)</span><textarea name="info" rows="2" maxlength="500" placeholder="예) 선릉역 3번 출구 · 학원생 할인 · 첫 방문은 상담만"></textarea></label>
         <button class="sys-btn" type="submit">업체 더하기</button>
       </form>
@@ -730,6 +731,6 @@
 <script src="js/photos.js?v=a00ab1e5"></script>
 <script src="js/fbstatus.js?v=23b1f2d6"></script>
 <script src="js/consultnote.js?v=62128afb"></script>
-<script src="js/admin.js?v=891ccebc"></script>
+<script src="js/admin.js?v=aad5fc26"></script>
 </body>
 </html>

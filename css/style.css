@@ -922,6 +922,22 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .partner__state--off{opacity:.6;}
 .partner__reply{margin-top:8px !important;padding:8px 10px;border-left:3px solid #2E6B45;background:#F1F6F0;white-space:pre-wrap;font-size:14px;color:#2F3B2F;}
 .partner__info{margin-top:6px;white-space:pre-wrap;}
+/* 제휴 업체: 종류별 업체 이름 → 홈페이지 + 실장님 카톡 안내 (2026-11-18) */
+.pt__ask{display:grid;gap:6px;justify-items:center;margin:12px 0;padding:12px 14px;border:2px solid #E0A100;border-radius:12px;background:#FFF3C4;color:#5A3A00;text-align:center;line-height:1.45;word-break:keep-all;}
+.pt__ask>b{font-size:16px;color:#B3261E;}
+.pt__ask span{font-size:14px;}
+.pt__id{font-size:16px;letter-spacing:.5px;}
+.pt__copy{min-height:40px;padding:6px 16px;font-size:14px;}
+.pt__list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin:4px 0;}
+.pt__cat{min-width:0;background:#FFFDF8;border-radius:8px;padding:10px 12px;box-shadow:0 2px 6px rgba(60,40,20,.12);}
+.pt__h{margin:0 0 6px;font-size:13px;font-weight:700;color:#1D4948;letter-spacing:.3px;}
+.pt__shop + .pt__shop{margin-top:8px;padding-top:8px;border-top:1px dashed rgba(60,40,20,.2);}
+.pt__name{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;min-height:40px;padding:4px 0;color:#1F1A14;text-decoration:none;}
+.pt__name b{font-size:17px;text-decoration:underline;text-underline-offset:3px;word-break:keep-all;}
+.pt__go{font-size:13px;color:#1D4948;font-weight:700;white-space:nowrap;}
+.pt__name:hover b,.pt__name:focus-visible b{color:#1D4948;}
+.pt__info{margin:2px 0 0 !important;font-size:14px;color:#6B4A1E;white-space:pre-wrap;word-break:keep-all;}
+.pt__none{margin:0 !important;font-size:14px;color:#6B5B48;}
 .fold__body{margin-top:6px !important;white-space:pre-wrap;color:#4A3B30;font-size:14.5px;}
 .fold__actions{display:flex;gap:14px;margin-top:8px;}
 .fold__go{align-self:flex-start;}

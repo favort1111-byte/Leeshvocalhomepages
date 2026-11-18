@@ -225,16 +225,13 @@
           body_size: "163/47", field: "보컬", music: null, note: "학교가 늦게 끝나서 뒷순서로 부탁드려요 (체험 모드 예시)",
           created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: new Date(Date.now() - 3600000).toISOString() }
       ],
-      // 제휴 업체 (블로그 [제휴업체 안내] 2023 그대로, 실제 서버와 같게) + 예시 신청 하나
-      partners: [["헤어 메이크업", "알루 본점", "헤어 · 메이크업 75% 할인"], ["헤어 메이크업", "위위아뜰리에"], ["붙임머리"], ["스타일링 컨설팅", "이미지 케렌시아", "모든 컨설팅 이벤트가 할인 + 제휴 10% 추가 할인"],
-        ["경락", "지앤스파", "얼굴 경락 관리 40% 할인"], ["헬스장", "제이드 짐", "그룹 PT 25% 할인 · 개인 PT 37% 할인"], ["피부과", "더이뻠풀 의원", "피부 · 필러, 모든 시술 10% 할인"],
-        ["성형외과", "플래너 성형외과", "시술 · 수술, 모든 수술 및 시술 10% 할인"], ["치과", "티유 치과", "치료 · 미용, 모든 시술 50~10% 할인"],
-        ["촬영 스튜디오", "소솜 스튜디오", "사진 촬영, 모든 촬영 30% 할인"], ["심리상담센터"]]
-        .map(function (c, i) { return { id: 301 + i, category: c[0], name: c[1] || null, info: c[2] || null, sort: i * 10, active: true }; }),
-      partner_requests: [
-        { id: 351, partner_id: 301, partner: "헤어 메이크업", member_id: "S002", wish: "다음 주 토요일 오전", memo: "오디션 프로필 촬영용이에요 (체험 모드 예시)", status: "접수", reply: null,
-          created_at: new Date(Date.now() - 5400000).toISOString(), updated_at: new Date(Date.now() - 5400000).toISOString() }
-      ],
+      // 제휴 업체 (블로그 [제휴업체 안내] 2023 그대로, 실제 서버와 같게). 2026-11-18부터 홈페이지 신청 없음 → 업체 홈페이지 + 실장님 카톡
+      partners: [["헤어 메이크업", "알루 본점", "헤어 · 메이크업 75% 할인", "https://aluu.co.kr/"], ["헤어 메이크업", "위위아뜰리에", null, "https://www.instagram.com/ouioui_kr/"], ["붙임머리"], ["스타일링 컨설팅", "이미지 케렌시아", "모든 컨설팅 이벤트가 할인 + 제휴 10% 추가 할인"],
+        ["경락", "지앤스파", "얼굴 경락 관리 40% 할인"], ["헬스장", "제이드 짐", "그룹 PT 25% 할인 · 개인 PT 37% 할인"], ["피부과", "더이뻠풀 의원", "피부 · 필러, 모든 시술 10% 할인", "http://theebbumfull.com/"],
+        ["성형외과", "플래너 성형외과", "시술 · 수술, 모든 수술 및 시술 10% 할인", "http://www.plannerps.com/"], ["치과", "티유 치과", "치료 · 미용, 모든 시술 50~10% 할인", "https://www.tudentalse.com/"],
+        ["촬영 스튜디오", "소솜 스튜디오", "사진 촬영, 모든 촬영 30% 할인", "https://www.instagram.com/sosom.studio/"], ["심리상담센터"]]
+        .map(function (c, i) { return { id: 301 + i, category: c[0], name: c[1] || null, info: c[2] || null, link: c[3] || null, sort: i * 10, active: true }; }),
+      partner_requests: [],
       // 인스타그램에서 가져온 글 (made up): the admin page's 인스타그램 연결 starts as connected
       ig_connected: true,
       ig_posts: [
@@ -1182,7 +1179,7 @@
       if (!who.ok) return who;
       return { ok: true,
         partners: db.partners.filter(function (p) { return p.active; }).sort(function (x, y) { return x.sort - y.sort || x.id - y.id; })
-          .map(function (p) { return { id: p.id, category: p.category, name: p.name, info: p.info }; }),
+          .map(function (p) { return { id: p.id, category: p.category, name: p.name, info: p.info, link: p.link || null }; }),
         requests: db.partner_requests.filter(function (r) { return r.member_id === who.id; }).sort(function (x, y) { return x.created_at < y.created_at ? 1 : -1; }).slice(0, 10)
           .map(function (r) { return { id: r.id, partner: r.partner, wish: r.wish, memo: r.memo, status: r.status, reply: r.reply, at: r.created_at }; }) };
     },

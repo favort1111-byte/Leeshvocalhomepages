@@ -9,6 +9,7 @@
     3. 인터넷이 잠깐 끊겼을 때 (로그인이 풀린 것처럼 보이지 않는지 · 다시 시도)
     4. 밤 12시에 새 예약 날짜가 바로 열리는지
     5. 예약 화면에 오전 · 오후와 고른 내용 한 줄이 보이는지
+    7. 제휴 업체 탭: 신청 칸 없이 업체 홈페이지 링크 + 실장님 카톡 안내
     6. 카카오톡 안에서 열었을 때 마이크 안내
 
   쓰는 법 (학생 화면을 고칠 때마다, 올리기 전에):
@@ -226,6 +227,31 @@ async function passConsent(page, wait) {
     await page.goto(base + 'games.html', { waitUntil: 'networkidle' });
     const help = await page.evaluate(() => (window.LeeshArcade && LeeshArcade.micHelp && LeeshArcade.micHelp()) || '');
     check('마이크가 막히면 "다른 브라우저로 열기" 안내', /다른 브라우저/.test(help), help.slice(0, 50));
+    check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  // 7. 제휴 업체 탭: 신청 칸 없이 업체 홈페이지 링크 + 실장님 카톡 안내
+  console.log('\n7. 제휴 업체 탭');
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    const wait = (ms) => page.waitForTimeout(ms);
+    await enter(page, base, wait); await passConsent(page, wait);
+    await page.locator('[data-book-tab="partners"]').click(); await wait(600);
+    const pt = await page.evaluate(() => {
+      const box = document.querySelector('#myPartners');
+      const links = [...box.querySelectorAll('a.pt__name')];
+      return { cats: box.querySelectorAll('.pt__cat').length, links: links.length,
+        bad: links.filter((a) => !/^https?:\/\//.test(a.href) || a.target !== '_blank').length,
+        small: links.filter((a) => a.getBoundingClientRect().height < 40).length,
+        form: box.querySelectorAll('form, textarea, input').length, ask: (box.querySelector('.pt__ask') || {}).textContent || '' };
+    });
+    check('종류별로 업체가 보임', pt.cats >= 5 && pt.links >= 5, pt.cats + '종류 · 업체 ' + pt.links + '곳');
+    check('업체 이름이 새 창 링크 (누르기 쉬운 크기)', pt.links > 0 && !pt.bad && !pt.small, '잘못된 링크 ' + pt.bad + ' · 작은 링크 ' + pt.small);
+    check('신청 칸이 없음', pt.form === 0, '입력칸 ' + pt.form + '개');
+    check('"실장님로 카톡해주세요" 안내', /sjsh54\(실장님\)로 카톡해주세요/.test(pt.ask), pt.ask.slice(0, 40));
     check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }

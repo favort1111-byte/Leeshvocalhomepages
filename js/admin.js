@@ -2239,6 +2239,8 @@
         row.appendChild(cat);
         row.appendChild(nm);
         f.appendChild(row);
+        var link = el("input"); link.type = "url"; link.maxLength = 300; link.value = p.link || ""; link.placeholder = "홈페이지 주소 (https://… · 없으면 인스타그램 주소, 비우면 네이버 검색으로 연결)"; link.setAttribute("aria-label", "홈페이지 주소");
+        f.appendChild(link);
         var info = el("textarea"); info.rows = 2; info.maxLength = 500; info.value = p.info || ""; info.placeholder = "학생에게 보이는 안내 (위치·혜택·준비물 등)"; info.setAttribute("aria-label", "안내");
         f.appendChild(info);
         var bar = el("div", "adm__cardrow");
@@ -2249,7 +2251,9 @@
         var note = el("span", "sys-msg");
         f.addEventListener("submit", function (e) {
           e.preventDefault();
-          api("partners?id=eq." + p.id, { method: "PATCH", body: { category: cat.value.trim(), name: nm.value.trim() || null, info: info.value.trim() || null } }).then(function (res) {
+          var url = link.value.trim();
+          if (url && !/^https?:\/\/\S+$/.test(url)) { msg(note, "홈페이지 주소는 https:// 로 시작하게 적어주세요.", "error"); return; }
+          api("partners?id=eq." + p.id, { method: "PATCH", body: { category: cat.value.trim(), name: nm.value.trim() || null, info: info.value.trim() || null, link: url || null } }).then(function (res) {
             msg(note, res.ok ? "저장했어요." : friendly(res), res.ok ? "ok" : "error");
           });
         });
@@ -2267,8 +2271,10 @@
   $("#partnerAdd").addEventListener("submit", function (e) {
     e.preventDefault();
     var f = e.target;
+    var url = field(f, "link").value.trim();
+    if (url && !/^https?:\/\/\S+$/.test(url)) { msg($("#partnerMsg"), "홈페이지 주소는 https:// 로 시작하게 적어주세요.", "error"); return; }
     api("partners", { method: "POST", body: { category: field(f, "category").value.trim(), name: field(f, "name").value.trim() || null,
-      info: field(f, "info").value.trim() || null, sort: 1000 } }).then(function (res) {
+      info: field(f, "info").value.trim() || null, link: url || null, sort: 1000 } }).then(function (res) {
       msg($("#partnerMsg"), res.ok ? "업체를 더했어요." : friendly(res), res.ok ? "ok" : "error");
       if (res.ok) { f.reset(); loadPartnerList(); }
     });
