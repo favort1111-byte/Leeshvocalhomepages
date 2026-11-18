@@ -2684,9 +2684,11 @@
     });
   }
   function drawReviews() {
-    var list = $("#reviewList"), q = $("#reviewFind").value.trim(), t = $("#reviewTeacher").value;
+    var list = $("#reviewList"), q = $("#reviewFind").value.trim(), t = $("#reviewTeacher").value, kd = $("#reviewKind") ? $("#reviewKind").value : "";
+    var KIND = { "내방": "🏫 내방 오디션", "본사": "🏢 본사 오디션" }; // 원장님 2026-11-18
     var hit = reviewItems.filter(function (r) {
       if (t && r.teacher !== t) return false;
+      if (kd && (kd === "none" ? !!r.kind : r.kind !== kd)) return false;
       return !q || [r.company, r.name, r.songVocal, r.songDance, r.member].some(function (v) { return v && String(v).indexOf(q) !== -1; });
     });
     $("#reviewCount").textContent = "후기 " + reviewItems.length + "개" + (hit.length !== reviewItems.length ? " 중 " + hit.length + "개" : "");
@@ -2695,9 +2697,11 @@
     hit.forEach(function (r) {
       var li = el("li", "adm__card rv");
       var h = el("p", "rv__head");
-      h.appendChild(el("b", null, r.date + " · " + r.company));
+      h.appendChild(el("b", null, r.company));
+      if (r.kind) h.appendChild(el("span", "rv__kind rv__kind--" + (r.kind === "내방" ? "visit" : "hq"), KIND[r.kind] || r.kind));
       h.appendChild(el("span", "rv__tag", r.name + " (" + r.member + ")" + (r.teacher ? " · 담당 " + r.teacher : "")));
       li.appendChild(h);
+      li.appendChild(el("p", "rv__when", "📅 오디션 본 날 · " + r.date + " (" + ["일", "월", "화", "수", "목", "금", "토"][new Date(r.date + "T00:00:00Z").getUTCDay()] + ")"));
       var info = [r.gender, r.birth, r.height && "키 " + r.height, r.weight && "몸무게 " + r.weight].filter(Boolean).join(" · ");
       if (info) li.appendChild(el("p", "rv__info", info));
       if (r.songVocal || r.songDance) {
@@ -2716,6 +2720,7 @@
   }
   $("#reviewFind").addEventListener("input", drawReviews);
   $("#reviewTeacher").addEventListener("change", drawReviews);
+  if ($("#reviewKind")) $("#reviewKind").addEventListener("change", drawReviews);
 
   /* ---------------- CCTV 동의 (원장님 2026-11-13): 누가 동의 · 동의 안 함 · 아직인지 (rpc admin_cctv) ---------------- */
   var cctvItems = [], cctvOn = false;

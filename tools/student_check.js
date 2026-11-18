@@ -256,6 +256,27 @@ async function passConsent(page, wait) {
     await ctx.close();
   }
 
+  // 8. 오디션 후기: 내방 / 본사 고르기 + 오디션 본 날짜 (비어 있다가 골라야 함)
+  console.log('\n8. 오디션 후기 쓰기');
+  {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    const wait = (ms) => page.waitForTimeout(ms);
+    await enter(page, base, wait); await passConsent(page, wait);
+    await page.locator('[data-book-tab="reviews"]').click(); await wait(600);
+    const card = await page.locator('#myReviews article.rv').first().innerText().catch(() => '');
+    check('내 후기 카드에 오디션 종류 · 본 날짜', /(내방|본사) 오디션/.test(card) && /오디션 본 날/.test(card), card.split('\n').slice(0, 3).join(' | '));
+    await page.locator('#myReviews .rv__newbtn').click(); await wait(300);
+    const form = page.locator('#myReviews .rv__new form');
+    const st = { kinds: await form.locator('[name=rvkind]').count(), date: await form.locator('input[type=date]').inputValue() };
+    check('새 후기: 내방 / 본사 고르는 칸', st.kinds === 2, st.kinds + '개');
+    check('새 후기: 오디션 본 날짜는 비어 있음 (직접 골라야)', st.date === '', JSON.stringify(st.date));
+    check('안 고르면 보내지지 않음', !(await form.evaluate((f) => f.checkValidity())));
+    check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
   await browser.close();
   srv.close();
   const bad = results.filter((r) => !r.ok);

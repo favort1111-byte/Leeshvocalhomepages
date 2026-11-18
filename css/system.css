@@ -475,6 +475,16 @@
 .tch__rvmine{white-space:nowrap;font-size:14px;}
 .tch__rv{padding:12px 14px;margin:10px 0;border-radius:10px;background:#fff;border:1px solid #EADFC8;}
 .rv__info{margin:0 0 4px;font-size:13.5px;color:#6E5A4A;}
+/* 오디션 후기: 내방 / 본사 표시 + 오디션 본 날 (2026-11-18) */
+.rv__kind{display:inline-block;margin-left:6px;padding:1px 9px;border-radius:999px;font-size:12.5px;font-weight:500;white-space:nowrap;vertical-align:middle;}
+.rv__kind--visit{background:#E7F1EF;color:#1D4948;border:1px solid #A9CBC6;}
+.rv__kind--hq{background:#FFF1D6;color:#7A4B00;border:1px solid #E6C27A;}
+.rv__head .rv__kind{margin-left:0;}
+.rv__when{margin:0 0 6px;font-size:14px;font-weight:700;color:#3C2A21;}
+.rv__kinds{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
+.rv__kindtab{min-height:40px;padding:6px 14px;border:1px solid #CDBFAF;border-radius:999px;background:#fff;font:inherit;font-size:14px;color:#3C2A21;cursor:pointer;}
+.rv__kindtab.is-on{background:#1D4948;border-color:#1D4948;color:#fff;}
+.rv__kindset{margin:0 0 12px;}
 .rv__fixed input[readonly]{background:#F3EFE6;color:#5A4A3A;}
 
 /* 원장님 피드백 신청 (내 폴더) */

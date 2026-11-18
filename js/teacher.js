@@ -524,12 +524,15 @@
   /* 학생 오디션 후기 (원장님 2026-11-09 "작성은 학생이, 보는 건 선생님들이랑 관리자만" · "선생님 모두"):
      담당이 아니어도 모든 학생 후기를 봐요 (기획사별로 무엇을 물어봤는지 같이 보려고). 보기만. 서버 teacher_reviews. */
   var RV_TEXT = [["asked", "질문 리스트"], ["tip", "나만의 꿀팁 · 나의 후기"], ["process", "진행 순서 · 상황 설명"], ["note", "특이사항"]];
+  var RV_KIND = { "내방": "🏫 내방 오디션", "본사": "🏢 본사 오디션" }; // 원장님 2026-11-18
   function reviewCard(r) {
     var c = el("article", "rv tch__rv");
     var h = el("p", "rv__head");
-    h.appendChild(el("b", null, dayLabel(r.date) + " · " + r.company));
+    h.appendChild(el("b", null, r.company));
+    if (r.kind) h.appendChild(el("span", "rv__kind rv__kind--" + (r.kind === "내방" ? "visit" : "hq"), RV_KIND[r.kind] || r.kind));
     h.appendChild(el("span", "rv__tag", r.name + (r.teacher ? " · 담당 " + r.teacher : "")));
     c.appendChild(h);
+    c.appendChild(el("p", "rv__when", "📅 오디션 본 날 · " + String(r.date).slice(0, 4) + "년 " + dayLabel(r.date)));
     var info = [r.gender, r.birth, r.height && "키 " + r.height, r.weight && "몸무게 " + r.weight].filter(Boolean).join(" · ");
     if (info) c.appendChild(el("p", "rv__info", info));
     if (r.songVocal || r.songDance) {
@@ -566,6 +569,20 @@
       bar.appendChild(q);
       bar.appendChild(mineL);
       box.appendChild(bar);
+      // 내방 / 본사 고르는 탭 (원장님 2026-11-18)
+      var kind = "", kinds = el("div", "rv__kinds");
+      [["", "전체"], ["내방", "🏫 내방 오디션"], ["본사", "🏢 본사 오디션"]].forEach(function (k) {
+        var n = k[0] ? items.filter(function (r) { return r.kind === k[0]; }).length : items.length;
+        var b = el("button", "rv__kindtab" + (k[0] === kind ? " is-on" : ""), k[1] + " " + n);
+        b.type = "button";
+        b.addEventListener("click", function () {
+          kind = k[0];
+          Array.prototype.forEach.call(kinds.children, function (x) { x.classList.toggle("is-on", x === b); });
+          shown = 10; draw();
+        });
+        kinds.appendChild(b);
+      });
+      box.appendChild(kinds);
       var listEl = el("div", "tch__rvlist");
       box.appendChild(listEl);
       var more = el("button", "sys-btn sys-btn--ghost", "더 보기");
@@ -576,6 +593,7 @@
         var w = q.value.trim();
         var hit = items.filter(function (r) {
           if (mine.checked && !r.mine) return false;
+          if (kind && r.kind !== kind) return false;
           if (!w) return true;
           return [r.company, r.name, r.songVocal, r.songDance].some(function (v) { return v && String(v).indexOf(w) !== -1; });
         });

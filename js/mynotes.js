@@ -1672,6 +1672,8 @@
     ["process", "진행 순서 · 상황 설명", "예) 번호표 → 5명씩 입장 → 자기소개 30초 → 노래 1분 → 춤. 심사위원 2명, 분위기 편했어요", 2000, 4],
     ["note", "특이사항", "예) 현장에서 영상 촬영함 / 다음 주에 2차 연락 준다고 함", 1000, 2]
   ];
+  // 원장님 2026-11-18: 내방 오디션인지 본사 오디션인지 고르기 + 오디션 본 날짜를 또렷하게
+  var RV_KIND = { "내방": "🏫 내방 오디션", "본사": "🏢 본사 오디션" };
   var rvMeta = {};
   var reviews = [];
   function loadReviews() {
@@ -1684,8 +1686,10 @@
   }
   function rvView(r) {
     var c = el("article", "lnote rv");
-    var head = el("p", "lnote__date", dayLabel(r.date) + " · " + r.company);
+    var head = el("p", "lnote__date", r.company);
+    if (r.kind) head.appendChild(el("span", "rv__kind rv__kind--" + (r.kind === "내방" ? "visit" : "hq"), RV_KIND[r.kind] || r.kind));
     c.appendChild(head);
+    c.appendChild(el("p", "rv__when", "📅 오디션 본 날 · " + String(r.date).slice(0, 4) + "년 " + dayLabel(r.date)));
     var info = [r.gender, r.birth, r.height && "키 " + r.height, r.weight && "몸무게 " + r.weight].filter(Boolean).join(" · ");
     if (info) c.appendChild(el("p", "rv__info", info));
     if (r.songVocal || r.songDance) {
@@ -1709,6 +1713,19 @@
     fixed.appendChild(field2("이름", nm));
     fixed.appendChild(field2("담당쌤", tc));
     f.appendChild(fixed);
+    var kindSet = el("fieldset", "apply__set rv__kindset");
+    kindSet.appendChild(el("legend", null, "어떤 오디션이었나요?"));
+    var kindRow = el("div", "sys-radios apply__radios");
+    [["내방", "🏫 내방 오디션 (학원에서 봄)"], ["본사", "🏢 본사 오디션 (기획사에 가서 봄)"]].forEach(function (k) {
+      var l = el("label"), ra = el("input");
+      ra.type = "radio"; ra.name = "rvkind"; ra.value = k[0]; ra.required = true;
+      if (r && r.kind === k[0]) ra.checked = true;
+      l.appendChild(ra);
+      l.appendChild(document.createTextNode(" " + k[1]));
+      kindRow.appendChild(l);
+    });
+    kindSet.appendChild(kindRow);
+    f.appendChild(kindSet);
     var gender = selectOf("gender", ["여", "남"], r ? r.gender : last.gender, "골라주세요");
     gender.required = true;
     var birth = el("input"); birth.maxLength = 20; birth.required = true; birth.placeholder = "예) 2009.03.15"; birth.value = r ? (r.birth || "") : (last.birth || "");
@@ -1724,10 +1741,10 @@
     rowHw.appendChild(field2("몸무게", wt));
     f.appendChild(rowHw);
     var co = el("input"); co.maxLength = 60; co.required = true; co.placeholder = "예) SM 엔터테인먼트"; co.value = r ? r.company : "";
-    var day = el("input"); day.type = "date"; day.value = r ? r.date : today; day.max = today; day.min = addDays(today, -730); day.required = true;
+    var day = el("input"); day.type = "date"; day.value = r ? r.date : ""; day.max = today; day.min = addDays(today, -730); day.required = true;
     var row2 = el("div", "sys-row");
     row2.appendChild(field2("기획사명", co));
-    row2.appendChild(field2("오디션 일자", day));
+    row2.appendChild(field2("오디션 본 날짜", day));
     f.appendChild(row2);
     var sv = el("input"); sv.maxLength = 300; sv.placeholder = "예) 아이유 - 밤편지 (1절 + 후렴)"; sv.value = r && r.songVocal || "";
     var sd = el("input"); sd.maxLength = 300; sd.placeholder = "예) 르세라핌 - ANTIFRAGILE (없으면 비워 두기)"; sd.value = r && r.songDance || "";
@@ -1761,7 +1778,10 @@
     f.appendChild(note);
     f.addEventListener("submit", function (e) {
       e.preventDefault();
-      var data = { gender: gender.value, birth: birth.value, height: ht.value, weight: wt.value, company: co.value, date: day.value, songVocal: sv.value, songDance: sd.value };
+      var picked = f.querySelector("[name=rvkind]:checked");
+      if (!picked) { note.textContent = "내방 오디션인지 본사 오디션인지 골라주세요."; note.className = "sys-msg sys-msg--error"; return; }
+      if (!day.value) { note.textContent = "오디션 본 날짜를 골라주세요."; note.className = "sys-msg sys-msg--error"; return; }
+      var data = { kind: picked.value, gender: gender.value, birth: birth.value, height: ht.value, weight: wt.value, company: co.value, date: day.value, songVocal: sv.value, songDance: sd.value };
       RV_TEXT.forEach(function (x) { data[x[0]] = boxes[x[0]].value; });
       save.disabled = true;
       note.textContent = "보내는 중…"; note.className = "sys-msg";

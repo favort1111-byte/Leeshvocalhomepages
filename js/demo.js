@@ -190,13 +190,13 @@
       ],
       // 오디션 후기 (학생이 내 폴더에서 씀, 선생님 모두 · 관리자가 봄)
       audition_reviews: [
-        { id: 91, member_id: "S001", audition_date: addDays(t, -4), company: "예시 엔터테인먼트", gender: "여", birth: "2009.03.15",
+        { id: 91, member_id: "S001", audition_date: addDays(t, -4), company: "예시 엔터테인먼트", kind: "본사", gender: "여", birth: "2009.03.15",
           song_vocal: "태연 - Rain (1절 + 후렴)", song_dance: null,
           asked: "자기소개 해보세요 / 다른 곡 한 소절 더 해볼 수 있어요? / 연습생 경험 있어요?",
           tip: "대기가 40분 넘게 길어요. 물 꼭 챙기기! 첫 음은 잘 잡았는데 긴장해서 후렴 호흡이 모자랐어요.",
           process: "번호표 → 5명씩 입장 → 자기소개 30초 → 노래 1분. 심사위원 2명, 분위기 편했어요.", note: "다음 주에 2차 연락 준다고 했어요.",
           created_at: new Date(Date.now() - 86400000 * 4).toISOString(), updated_at: new Date(Date.now() - 86400000 * 4).toISOString() },
-        { id: 92, member_id: "S002", audition_date: addDays(t, -12), company: "예시 뮤직", gender: "남", birth: "2008.11.02",
+        { id: 92, member_id: "S002", audition_date: addDays(t, -12), company: "예시 뮤직", kind: "내방", gender: "남", birth: "2008.11.02",
           song_vocal: "아이유 - 밤편지", song_dance: "르세라핌 - ANTIFRAGILE", asked: "춤 출 수 있어요? / 고음 부분만 한 번 더",
           tip: "MR은 USB랑 휴대폰 둘 다 챙기기", process: "3명씩 입장, 무반주 30초 후 MR, 마지막에 춤 20초", note: null,
           created_at: new Date(Date.now() - 86400000 * 12).toISOString(), updated_at: new Date(Date.now() - 86400000 * 10).toISOString() }
@@ -729,7 +729,8 @@
       var row = a.p_review ? db.audition_reviews.filter(function (r) { return r.id === a.p_review && r.member_id === who.id; })[0] : null;
       if (a.p_review && !row) return fail("후기를 찾을 수 없어요.");
       if (!row) { row = { id: ++db.next, member_id: who.id, created_at: new Date().toISOString() }; db.audition_reviews.push(row); }
-      Object.assign(row, { audition_date: d.date, company: String(d.company).trim(), gender: d.gender, birth: d.birth, height: d.height || null, weight: d.weight || null, song_vocal: d.songVocal || null, song_dance: d.songDance || null,
+      if (d.kind && ["내방", "본사"].indexOf(d.kind) < 0) return fail("내방 오디션인지 본사 오디션인지 골라주세요.");
+      Object.assign(row, { audition_date: d.date, company: String(d.company).trim(), kind: d.kind || row.kind || null, gender: d.gender, birth: d.birth, height: d.height || null, weight: d.weight || null, song_vocal: d.songVocal || null, song_dance: d.songDance || null,
         asked: d.asked || null, tip: d.tip || null, process: d.process || null, note: d.note || null, updated_at: new Date().toISOString() });
       save();
       return { ok: true, id: row.id, "new": !a.p_review };
@@ -1511,7 +1512,7 @@
   };
 
   function rvSort(x, y) { return x.audition_date < y.audition_date ? 1 : x.audition_date > y.audition_date ? -1 : y.id - x.id; }
-  function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, gender: r.gender, birth: r.birth, height: r.height, weight: r.weight, songVocal: r.song_vocal, songDance: r.song_dance, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
+  function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, kind: r.kind || null, gender: r.gender, birth: r.birth, height: r.height, weight: r.weight, songVocal: r.song_vocal, songDance: r.song_dance, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
   function myTeacher(uid) { return uid ? db.teachers.filter(function (x) { return x.kakao_user === uid && x.active; })[0] || null : null; }
   function teaches(t, mid) {
     var m = db.members.filter(function (x) { return x.id === mid; })[0];

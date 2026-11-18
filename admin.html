@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/system.css?v=99b22fc9">
+<link rel="stylesheet" href="css/system.css?v=24a899db">
 <link rel="stylesheet" href="css/admin.css?v=e0d55c24">
 </head>
 <body class="sys adm">
@@ -483,6 +483,7 @@
       <div class="adm__bar">
         <input type="search" id="reviewFind" placeholder="기획사 · 학생 이름 · 곡으로 찾기" aria-label="오디션 후기 찾기">
         <select id="reviewTeacher" aria-label="담당 선생님"><option value="">담당 선생님 전체</option></select>
+        <select id="reviewKind" aria-label="오디션 종류"><option value="">내방 · 본사 전체</option><option value="내방">🏫 내방 오디션</option><option value="본사">🏢 본사 오디션</option><option value="none">안 고른 후기</option></select>
       </div>
       <p class="sys-note" id="reviewCount"></p>
       <ul class="adm__cards" id="reviewList"></ul>
@@ -733,6 +734,6 @@
 <script src="js/photos.js?v=a00ab1e5"></script>
 <script src="js/fbstatus.js?v=dcea5374"></script>
 <script src="js/consultnote.js?v=62128afb"></script>
-<script src="js/admin.js?v=0dc3de1c"></script>
+<script src="js/admin.js?v=b0cc0ca9"></script>
 </body>
 </html>
