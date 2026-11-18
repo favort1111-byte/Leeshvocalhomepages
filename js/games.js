@@ -14,10 +14,58 @@
   var ctx = null;
 
   function $(sel, el) { return (el || root).querySelector(sel); }
-  function audio() {
-    if (!ctx) ctx = new AC();
-    if (ctx.state === "suspended") ctx.resume();
+  // 소리 장치(AudioContext). 휴대폰(특히 아이폰)은 다른 앱에 다녀오거나 · 공유 창을 열거나 · 마이크를 켜고 끌 때
+  // 소리 장치를 "suspended"가 아니라 "interrupted"로 멈춰 둠 → 예전엔 "suspended"일 때만 깨워서, 게임은 가는데 소리가 안 났음
+  // (원장님 2026-11-18 "계이름 맞히고 다음 게임으로 가면 소리가 바로 안 나서 나갔다 들어왔다를 여러 번").
+  // 이제: 돌고 있지 않으면 늘 깨우고, 누를 때마다 다시 확인하고, 깨워도 안 깨어나면 새로 만듦.
+  var wokeAt = 0, madeAt = 0, kickedAt = 0;
+  function kick() {
+    kickedAt = performance.now();
+    try { var p = ctx.resume(); if (p && p.catch) p.catch(function () { /* 누른 뒤에 다시 */ }); } catch (e) { /* 닫힌 장치 */ }
+  }
+  function make() {
+    var old = ctx;
+    ctx = new AC();
+    madeAt = performance.now();
+    wokeAt = 0;
+    ctx.onstatechange = function () {
+      if (this === ctx && ctx.state !== "running" && ctx.state !== "closed" && !document.hidden && current && performance.now() - kickedAt > 300) kick();
+    };
+    if (mic && mic.stream) wire(); // 마이크를 쓰던 중이면 새 장치에 다시 이음
+    if (old) { try { old.onstatechange = null; old.close(); } catch (e) { /* 이미 닫힘 */ } }
     return ctx;
+  }
+  function audio() {
+    if (!ctx || ctx.state === "closed") make();
+    if (ctx.state !== "running") kick();
+    return ctx;
+  }
+  // 화면을 누를 때마다 (게임 카드 · 시작 · 다시 듣기 · 건반 …): 멈춰 있으면 깨움. 앞서 깨웠는데도(0.7초 넘게) 그대로면 새 장치로 바꿈
+  function wake(e) {
+    if (!ctx) return;
+    if (ctx.state === "running") { wokeAt = 0; return; }
+    var t = performance.now(), real = e && e.type !== "pointerdown";
+    if (real && (ctx.state === "closed" || (wokeAt && t - wokeAt > 700 && t - madeAt > 3000))) { make(); if (ctx.state !== "running") kick(); return; }
+    if (!wokeAt) wokeAt = t;
+    kick();
+  }
+  ["pointerdown", "touchend", "click", "keydown"].forEach(function (ev) { document.addEventListener(ev, wake, true); });
+  function back() { if (ctx && !document.hidden && ctx.state !== "running" && ctx.state !== "closed") kick(); }
+  document.addEventListener("visibilitychange", back);
+  window.addEventListener("pageshow", back);
+  window.addEventListener("focus", back);
+  // 소리 장치가 돌 때까지 잠깐 기다림 (마이크를 켠 바로 뒤). 0.8초가 지나도 멈춰 있으면 새로 만들고 한 번 더 기다림
+  function settle() {
+    return new Promise(function (done) {
+      var t0 = performance.now(), again = false;
+      (function poll() {
+        var a = audio(), t = performance.now() - t0;
+        if (a.state === "running") return done(a);
+        if (t > 800 && !again) { again = true; make(); kick(); }
+        if (t > 1700) return done(ctx);
+        setTimeout(poll, 50);
+      })();
+    });
   }
   function best(k) { try { return Number(localStorage.getItem("leesh_game_" + k)) || 0; } catch (e) { return 0; } }
   function setBest(k, v) { try { localStorage.setItem("leesh_game_" + k, String(v)); } catch (e) { /* private mode */ } }
@@ -28,21 +76,35 @@
   function median(a) { var b = a.slice().sort(function (x, y) { return x - y; }); return b[b.length >> 1]; }
 
   /* ---------------- microphone + pitch ---------------- */
-  var mic = null;
+  var mic = null, micGen = 0;
+  function wire() {
+    var an = ctx.createAnalyser();
+    an.fftSize = 2048;
+    ctx.createMediaStreamSource(mic.stream).connect(an);
+    mic.an = an; mic.buf = new Float32Array(an.fftSize); mic.hist = [];
+  }
   function openMic() {
-    if (mic) return Promise.resolve(mic);
+    if (mic && mic.an) return Promise.resolve(mic);
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.reject(new Error("no mic"));
-    var a = audio();
+    audio();
+    var gen = ++micGen;
     return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
       .then(function (stream) {
-        var an = a.createAnalyser();
-        an.fftSize = 2048;
-        a.createMediaStreamSource(stream).connect(an);
-        mic = { stream: stream, an: an, buf: new Float32Array(an.fftSize), hist: [] };
-        return mic;
+        // 허용 창이 떠 있는 동안 게임을 닫았으면 마이크를 바로 끔 (켜진 채로 남지 않게)
+        if (gen !== micGen) { stream.getTracks().forEach(function (t) { t.stop(); }); return new Promise(function () {}); }
+        mic = { stream: stream, an: null, buf: null, hist: [] };
+        // 마이크가 켜지는 순간 휴대폰이 소리 장치를 잠깐 멈추기도 함 → 다시 돌 때까지 기다린 뒤 잇고, 첫 소리가 안 잘리게 조금 더
+        return settle().then(function () {
+          return new Promise(function (done) { setTimeout(done, 250); });
+        }).then(function () {
+          if (gen !== micGen || !mic) return new Promise(function () {});
+          wire();
+          return mic;
+        });
       });
   }
   function closeMic() {
+    micGen++;
     if (!mic) return;
     mic.stream.getTracks().forEach(function (t) { t.stop(); });
     mic = null;
@@ -74,7 +136,8 @@
   // Smoothed reading: median of the last few voiced frames, null when silent.
   function listen() {
     // the game window was just closed (mic off) but its last frame still asks: answer "quiet"
-    if (!mic) return { st: null, rms: 0 };
+    if (!mic || !mic.an) return { st: null, rms: 0 };
+    if (ctx.state !== "running" && performance.now() - kickedAt > 500) kick(); // 듣는 중에 멈췄으면 다시 깨움
     mic.an.getFloatTimeDomainData(mic.buf);
     var r = detect(mic.buf, ctx.sampleRate);
     if (r.st == null) { mic.hist.length = 0; return r; }

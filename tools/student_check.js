@@ -11,6 +11,8 @@
     5. 예약 화면에 오전 · 오후와 고른 내용 한 줄이 보이는지
     7. 제휴 업체 탭: 신청 칸 없이 업체 홈페이지 링크 + 실장님 카톡 안내
     6. 카카오톡 안에서 열었을 때 마이크 안내
+    8. 오디션 후기 쓰기: 내방 / 본사 고르기 · 오디션 본 날짜
+    9. 보컬 오락실: 소리 장치가 멈춘 뒤(다른 앱 · 마이크 · 아이폰 interrupted)에도 다음 게임에서 소리가 나는지
 
   쓰는 법 (학생 화면을 고칠 때마다, 올리기 전에):
     python3 tools/build_pages.py && python3 tools/build_preview.py <스크래치>/preview
@@ -93,7 +95,7 @@ async function passConsent(page, wait) {
   if (!fs.existsSync(path.join(ROOT, 'index.html'))) { console.error('미리보기 폴더가 없어요: ' + ROOT); process.exit(2); }
   const srv = await serve();
   const base = 'http://127.0.0.1:' + srv.address().port + '/';
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
 
   // 1. 느린 휴대폰 + 큰 레슨 노트
   console.log('\n1. 느린 휴대폰 + 큰 레슨 노트 (30장)');
@@ -274,6 +276,54 @@ async function passConsent(page, wait) {
     check('새 후기: 오디션 본 날짜는 비어 있음 (직접 골라야)', st.date === '', JSON.stringify(st.date));
     check('안 고르면 보내지지 않음', !(await form.evaluate((f) => f.checkValidity())));
     check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  // 9. 보컬 오락실: 소리 장치가 멈춰도 (다른 앱 다녀옴 · 마이크 켜고 끔 · 아이폰 "interrupted") 다음 게임에서 소리가 나는지
+  //    (2026-11-18 "계이름 맞히고 다음 게임으로 가면 소리가 바로 안 남"). intr = 깨우면 풀림 · dead = 깨워도 안 풀려서 새로 만들어야 함
+  console.log('\n9. 보컬 오락실 소리');
+  for (const mode of ['intr', 'dead']) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 800 }, isMobile: true, hasTouch: true, permissions: ['microphone'] });
+    const page = await ctx.newPage();
+    await page.addInitScript(`(() => {
+      const Real = window.AudioContext;
+      window.__acs = []; window.__silent = 0; window.__heard = 0;
+      class Fake extends Real {
+        constructor(o) { super(o); window.__acs.push(this); }
+        get state() { return this.__bad ? 'interrupted' : super.state; }
+        resume() { if (this.__bad === 'intr') this.__bad = ''; return super.resume(); }
+        createOscillator() { const o = super.createOscillator(), st = o.start.bind(o), me = this; o.start = function (t) { if (me.state === 'running') window.__heard++; else window.__silent++; return st(t); }; return o; }
+      }
+      window.__break = function (m) { const a = window.__acs[window.__acs.length - 1]; a.__bad = m; window.__heard = 0; window.__silent = 0; if (a.onstatechange) a.onstatechange.call(a); };
+      window.AudioContext = Fake; window.webkitAudioContext = Fake;
+    })();`);
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    const wait = (ms) => page.waitForTimeout(ms);
+    const tag = mode === 'intr' ? '(깨우면 풀림)' : '(새로 만들어야 풀림)';
+    const stat = () => page.evaluate(() => ({ state: window.__acs[window.__acs.length - 1].state, heard: window.__heard, silent: window.__silent }));
+    await enter(page, base, wait);
+    await page.goto(base + 'games.html', { waitUntil: 'networkidle' }); await wait(1200);
+    await page.tap('[data-game="solfa"]'); await wait(500);
+    await page.locator('[data-panel="solfa"] button', { hasText: '시작' }).tap(); await wait(2300);
+    let r = await stat();
+    check('계이름 맞히기: 소리가 남 ' + tag, r.state === 'running' && r.heard >= 6 && !r.silent, JSON.stringify(r));
+    await page.locator('[data-panel="solfa"] [data-close]').first().tap(); await wait(400);
+    await page.evaluate((m) => window.__break(m), mode);
+    await page.tap('[data-game="simon"]'); await wait(900);
+    await page.locator('[data-panel="simon"] button', { hasText: '시작' }).tap(); await wait(2300);
+    r = await stat();
+    check('소리 장치가 멈춘 뒤 다음 게임: 첫 소리부터 남 ' + tag, r.state === 'running' && r.heard >= 3 && !r.silent, JSON.stringify(r));
+    await page.locator('[data-panel="simon"] [data-close]').first().tap(); await wait(300);
+    // 마이크 게임: 마이크가 켜지는 순간 소리 장치가 멈추는 것을 흉내
+    await page.tap('[data-game="target"]'); await wait(900);
+    await page.evaluate((m) => { const g = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices); navigator.mediaDevices.getUserMedia = (c) => g(c).then((s) => { window.__break(m); return s; }); }, mode);
+    await page.locator('[data-panel="target"] button', { hasText: '시작' }).tap();
+    let rms = 0;
+    for (let i = 0; i < 40; i++) { await wait(100); rms = Math.max(rms, await page.evaluate(() => window.LeeshArcade.listen().rms)); }
+    r = await stat();
+    check('마이크 게임: 마이크를 켠 뒤에도 소리 장치가 돌고 목소리가 들어옴 ' + tag, r.state === 'running' && !r.silent && rms > 0, JSON.stringify(r) + ' · 마이크 ' + rms.toFixed(3));
+    await page.locator('[data-panel="target"] [data-close]').first().tap(); await wait(300);
+    check('자바스크립트 오류 없음 ' + tag, !errs.length, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }
 
