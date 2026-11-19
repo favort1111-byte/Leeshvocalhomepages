@@ -7,6 +7,7 @@ sys.path.insert(0, HERE)
 import blog_content as blog  # facts from the academy's Naver blog
 import privacy
 import guide  # 홈페이지 사용법 (guide.html)
+import welcome  # 신규 수강 안내 (welcome.html, 첫 레슨 알림톡 버튼이 여는 페이지)
 IMG = {int(k): v for k, v in json.load(open(os.path.join(HERE, "images.json"))).items()}
 
 def img(i):
@@ -857,6 +858,14 @@ guide_page = (head("Guide | 이송희보컬레슨", "이송희보컬레슨 홈�
               + '  <div class="booking__inner">\n' + guide.body() + "  </div>\n"
               + "</main>\n" + foot())
 
+# ---------- WELCOME: 신규 수강 안내 (tools/welcome.py, 원장님 2026-11-19) — 첫 레슨 알림톡 버튼이 여는 페이지, 검색 · 메뉴에는 없음 ----------
+welcome_page = (head("신규 수강 안내 | 이송희보컬레슨", "이송희보컬레슨 신규 수강 안내: 공지 확인 방법, 연습실 예약, 첫 레슨 준비.")
+                .replace('<meta name="description"', '<meta name="robots" content="noindex">\n<meta name="description"', 1)
+                + '<main class="stage booking">\n'
+                + nav("welcome", "dark") + "\n"
+                + '  <div class="booking__inner">\n' + welcome.body() + "  </div>\n"
+                + "</main>\n" + foot())
+
 # ---------- SCHOOLS: 입시 학교 찾기 (js/schools.js + data/schools.json, 원장님 2026-11-04) ----------
 SCHOOLS_BODY = (
     '  <div class="booking__inner sch">\n'
@@ -897,7 +906,7 @@ notfound_page = (head("페이지를 찾을 수 없습니다 | 이송희보컬레
                  '  </div>\n'
                  + "</main>\n" + foot())
 
-out = {"interview.html": interview_page, "schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "parent.html": parent_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"welcome.html": welcome_page, "interview.html": interview_page, "schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "parent.html": parent_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')

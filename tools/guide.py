@@ -88,6 +88,7 @@ def body():
     <h1 class="booking__title">guide</h1>
     <h2 class="policy__name">홈페이지 사용법</h2>
     <p class="policy__lede">이송희보컬레슨 수강생용 안내입니다. 처음 한 번 카카오로 로그인하면 연습실 예약, 월말평가, 오디션 신청을 모두 홈페이지에서 할 수 있습니다.</p>
+    <p class="guide__new"><a href="welcome.html">처음 등록하셨다면 <b>신규 수강 안내</b>를 먼저 확인해 주세요 →</a></p>
 {steps}    <section>
       <h3>자주 묻는 것</h3>
       {faq}

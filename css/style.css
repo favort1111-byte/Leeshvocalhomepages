@@ -1100,6 +1100,36 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .guide__faq summary{cursor:pointer;font-weight:500;}
 .guide__faq p{margin:8px 0 0;}
 .guide__help{text-align:center;}
+.guide__new{margin:-14px 0 22px;}
+.guide__new a{display:block;padding:11px 14px;border-radius:10px;background:#E6F3EA;border:1.5px solid #2E6B45;color:#1D4A30;text-decoration:none;font-size:14.5px;line-height:1.5;}
+/* 신규 수강 안내 (welcome.html, 원장님 2026-11-19 안내 그림을 글 페이지로) */
+.wel{max-width:640px;margin:0 auto;padding-bottom:24px;color:var(--ink-body);line-height:1.65;font-size:15.5px;}
+.wel__title{margin:6px 0 6px;text-align:center;font-size:clamp(23px,6.2vw,34px);font-weight:700;line-height:1.3;color:#1D4948;word-break:keep-all;}
+.wel__lede{margin:0 0 26px;text-align:center;color:#6B6258;font-size:14.5px;}
+.wel__part{margin:0 0 30px;}
+.wel__h{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:17px;font-weight:700;color:var(--ink);}
+.wel__h > span:last-child{padding:4px 10px;border-radius:6px;background:#FFF4CC;}
+.wel__bell{position:relative;font-size:26px;line-height:1;}
+.wel__bell i{position:absolute;top:-4px;right:-6px;min-width:17px;height:17px;border-radius:50%;background:#E0463C;color:#fff;font-size:11px;font-style:normal;font-weight:700;line-height:17px;text-align:center;}
+.wel__row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;margin:0 0 10px;}
+.wel__icon,.wel__text{border-radius:12px;background:linear-gradient(180deg,#FFFFFF,#EEF8F7);box-shadow:0 2px 7px rgba(40,70,68,.10);}
+.wel__icon{display:flex;align-items:center;justify-content:center;font-size:30px;}
+.wel__text{margin:0;padding:15px 16px;word-break:keep-all;}
+.wel__text mark,.wel__last mark{padding:0 2px;background:linear-gradient(transparent 55%,#FFE89A 55%);color:var(--ink);font-weight:700;}
+.wel__red{color:#D93636;font-weight:700;}
+.wel__small{display:block;margin-top:6px;font-size:13px;color:#7A6F64;}
+.wel__path{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:9px 0 0;}
+.wel__btn{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid #1D4948;background:#fff;color:#1D4948;font-size:14.5px;font-weight:500;text-decoration:none;}
+.wel__btn:hover,.wel__btn:focus-visible{background:#1D4948;color:#fff;}
+.wel__pill{padding:4px 12px;border-radius:999px;background:#1D4948;color:#fff;font-size:13.5px;font-weight:500;white-space:nowrap;}
+.wel__arrow{color:#1D4948;font-weight:700;}
+.wel__go{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;}
+.wel__last{padding:24px 16px;border-radius:14px;background:linear-gradient(180deg,#FFFFFF,#EEF8F7);box-shadow:0 2px 7px rgba(40,70,68,.10);text-align:center;}
+.wel__last p{margin:0 0 6px;}
+.wel__last .wel__go{justify-content:center;margin:14px 0 16px;}
+.wel__blue{color:#1F4FBF;font-weight:700;font-size:17px;line-height:1.7;}
+.wel__bye{color:#6B6258;font-size:14.5px;}
+@media (max-width:420px){.wel__row{grid-template-columns:52px minmax(0,1fr);gap:8px;}.wel__icon{font-size:25px;}.wel__text{padding:13px 13px;}}
 @media (max-width:600px){.guide__step{grid-template-columns:1fr;gap:6px;padding:14px;}}
 
 /* G마켓 산스로 바꾼 뒤 (원장님 2026-10-29): 큰 제목은 커리큘럼 안내 이미지처럼 굵게 */
