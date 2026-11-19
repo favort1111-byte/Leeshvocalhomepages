@@ -977,6 +977,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .songrec__pick{cursor:pointer;}
 .fold__apply{display:flex;width:fit-content;margin:10px 0 8px;text-decoration:none;}
 .fold__sum .rec__more{display:block;}
+.fold__ruleslink{display:block;margin:0 0 10px;padding:6px 2px;}
 .fold__planapply{margin:6px 0 0 !important;}
 .fold__wait{margin:4px 0 6px;padding:8px 12px;border-radius:8px;background:#F6EBDD;color:#5A4636;font-size:14px;line-height:1.5;}
 

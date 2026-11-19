@@ -645,10 +645,6 @@
     var insta = el("a", "rec__more", "새 소식은 인스타그램에 먼저 올라와요 · 최신 소식 보기 →");
     insta.href = "audition.html#news-insta";
     sum.appendChild(insta);
-    // 강의 규정 (원장님 2026-11-05): 보강 · 결석 규칙은 about에 — 보강 신청 전에 확인
-    var rules = el("a", "rec__more", "보강 · 결석 규정 보기 (강의 규정 안내) →");
-    rules.href = "about.html#rules";
-    sum.appendChild(rules);
 
     if (plans.length) {
       var v = el("section", "fold__visits");
@@ -684,6 +680,10 @@
     if (plain.length) plain.forEach(function (n) { box.appendChild(noticeCard(n)); });
     else box.appendChild(el("p", "book__empty", "새 공지가 없어요."));
     box.appendChild(el("h3", "rec__title", "학원 규정 · 안내"));
+    // 강의 규정 (원장님 2026-11-05): 보강 · 결석 규칙은 about에. 원장님 2026-11-19: 일정 탭에 있던 링크를 공지 탭 "학원 규정 · 안내"로 옮김
+    var rules = el("a", "rec__more fold__ruleslink", "보강 · 결석 규정 보기 (강의 규정 안내) →");
+    rules.href = "about.html#rules";
+    box.appendChild(rules);
     // 연습실 예약 및 이용 안내 + 와이파이 (원장님 2026-11-06) — js/roomrules.js, 와이파이는 펼칠 때 서버에서
     if (window.LeeshRoomRules) {
       var roomInfo = null; // member_wifi 한 번만 (와이파이). 연습실 비밀번호는 그냥 일정·공지 글 (원장님 2026-11-06)
