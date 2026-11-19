@@ -9150,3 +9150,186 @@ begin
   return jsonb_build_object('ok', true, 'id', app_id, 'new', is_new);
 end $function$
 ;
+
+-- ===== leesh_consult_sheet_order (2026-11-19) =====
+-- 원장님 2026-11-19 "원장님 컨설팅 내용 적는 게 이미 작성되던 게 있어(구글시트) → 백데이터를 홈페이지에 모두 · 이 순서대로 넣을 수 있게"
+-- ① 시트 전체 다시 받기: consult_sync(true) = 퇴원 탭까지 (1시간마다 도는 consult_sync()는 예전처럼 평일 · 주말만)
+CREATE OR REPLACE FUNCTION private.consult_sync(p_all boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  cfg private.consult_sheet; res record; j jsonb; m text[]; v_name text; v_gid text; sec text := '평일'; n int := 0;
+  seen text[] := '{}'; v_title text; v_who text; v_klass text; hdr int; rws jsonb; hd jsonb; r jsonb; cells text[]; w int; got int := 0; bad int := 0;
+  v_mid text; v_tch text; i int;
+begin
+  select * into cfg from private.consult_sheet where id = 1;
+  if cfg.sheet_id is null then return jsonb_build_object('ok', false, 'error', 'no sheet'); end if;
+  perform extensions.http_set_curlopt('CURLOPT_TIMEOUT_MS', '20000');
+  select status, content into res from extensions.http_get('https://docs.google.com/spreadsheets/d/' || cfg.sheet_id || '/htmlview');
+  if res.status <> 200 then
+    update private.consult_sheet set last_at = now(), last_ok = false, last_note = '시트를 읽지 못함 (' || res.status || ')' where id = 1;
+    return jsonb_build_object('ok', false, 'status', res.status);
+  end if;
+  for m in select x from regexp_matches(res.content, 'items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"', 'g') x loop
+    v_title := btrim(replace(replace(replace(replace(replace(replace(m[1], '\/', '/'), '\"', '"'), '\x3e', '>'), '\x3c', '<'), '\x26', '&'), '\x27', ''''));
+    v_gid := m[2];
+    n := n + 1;
+    if v_title ~ '^주말\s*>' then sec := '주말'; continue; end if;
+    if v_title ~ '^퇴원\s*>' then sec := '퇴원'; continue; end if;
+    v_name := substring(v_title from '^\s*([가-힣]{2,4})\s*\(');
+    if v_name is null then continue; end if;
+    v_klass := substring(v_title from '\(([^)]*)\)');
+    seen := seen || v_gid;
+    if sec = '퇴원' and not coalesce(p_all, false) then
+      update public.director_consults set section = '퇴원', title = v_title, pos = n, missing = false where gid = v_gid;
+      continue;
+    end if;
+    select status, content into res from extensions.http_get('https://docs.google.com/spreadsheets/d/' || cfg.sheet_id
+      || '/gviz/tq?tqx=out:json&headers=0&gid=' || v_gid || '&range=B1:Z400');
+    if res.status <> 200 then bad := bad + 1; continue; end if;
+    begin j := substring(res.content from '\((\{.*\})\);?\s*$')::jsonb; exception when others then bad := bad + 1; continue; end;
+    hdr := null; rws := '[]'; hd := '[]'; w := 0; i := 0;
+    for r in select x from jsonb_array_elements(j -> 'table' -> 'rows') x loop
+      cells := array(select btrim(regexp_replace(coalesce(c ->> 'f', c ->> 'v', ''), '01[016789][-. ]?[0-9]{3,4}[-. ]?[0-9]{4}', '(전화번호 뺌)', 'g'), E' \t\r\n')
+                     from jsonb_array_elements(coalesce(r -> 'c', '[]')) with ordinality e(c, k) order by k);
+      i := i + 1;
+      if hdr is null then
+        if cells[1] = '시간' then hdr := i; hd := to_jsonb(cells); end if;
+        continue;
+      end if;
+      if coalesce(array_to_string(cells, ''), '') = '' then continue; end if;
+      rws := rws || jsonb_build_array(to_jsonb(cells));
+    end loop;
+    if hdr is null then hd := '["시간","이름(출생년도) / 선생님","나이/키/체중/고민","수강기간 및 합격여부","비고"]'; end if;
+    -- 오른쪽 빈 칸은 잘라 냄 (머리 줄 · 내용 중 가장 넓은 것까지)
+    select greatest(coalesce(max(k), 0), 1) into w from (
+      select k from jsonb_array_elements(hd) with ordinality e(v, k) where v #>> '{}' <> ''
+      union all select k from jsonb_array_elements(rws) rr, jsonb_array_elements(rr) with ordinality e(v, k) where v #>> '{}' <> '') z;
+    hd := (select coalesce(jsonb_agg(v order by k), '[]') from jsonb_array_elements(hd) with ordinality e(v, k) where k <= w);
+    rws := (select coalesce(jsonb_agg((select coalesce(jsonb_agg(v order by k), '[]') from jsonb_array_elements(rr) with ordinality e(v, k) where k <= w) order by o), '[]')
+            from jsonb_array_elements(rws) with ordinality q(rr, o));
+    -- 시트에 적힌 선생님 ("정지아 (11) / 수빈쌤")
+    v_tch := (select substring(x #>> '{}' from '/\s*([가-힣]{1,4})\s*(?:쌤|T|선생님)')
+              from jsonb_array_elements(rws) rr, jsonb_array_elements(rr) x where (x #>> '{}') ~ '/\s*[가-힣]{1,4}\s*(쌤|T|선생님)' limit 1);
+    -- 명단과 맞추기 (레슨 시트와 같은 기준): 이름이 글자까지 같은 재원 · 휴원 학생 + 시트의 선생님("수빈쌤")이 명단 담당("이수빈")과 같을 때, 딱 한 명일 때만
+    -- 퇴원 탭(전체 다시 받기 때만 옴)은 새로 맞추지 않고 예전에 맞춘 학생 그대로
+    if sec = '퇴원' then
+      select dd.member_id into v_mid from public.director_consults dd where dd.gid = v_gid;
+    else
+      select case when count(*) = 1 then min(mm.id) end into v_mid from public.members mm
+      where mm.name = v_name and mm.status in ('재원', '휴원')
+        and (v_tch is null or substring(mm.memo from '담당\s*([^\s·,]+)') like '%' || v_tch);
+    end if;
+    insert into public.director_consults as d (gid, title, name, klass, section, member_id, sheet_teacher, head, rows, pos, missing, synced_at)
+    values (v_gid, v_title, v_name, v_klass, sec, v_mid, v_tch, hd, rws, n, false, now())
+    on conflict (gid) do update set title = excluded.title, name = excluded.name, klass = excluded.klass, section = excluded.section,
+      member_id = excluded.member_id, sheet_teacher = excluded.sheet_teacher, head = excluded.head, rows = excluded.rows,
+      pos = excluded.pos, missing = false, synced_at = now()
+    where (d.title, d.name, d.klass, d.section, d.member_id, d.sheet_teacher, d.head, d.rows, d.pos, d.missing)
+      is distinct from (excluded.title, excluded.name, excluded.klass, excluded.section, excluded.member_id, excluded.sheet_teacher, excluded.head, excluded.rows, excluded.pos, false);
+    got := got + 1;
+  end loop;
+  if n = 0 then
+    update private.consult_sheet set last_at = now(), last_ok = false, last_note = '탭 목록을 못 찾음' where id = 1;
+    return jsonb_build_object('ok', false, 'error', 'no tabs');
+  end if;
+  update public.director_consults set missing = true where not (gid = any(seen)) and not missing;
+  update private.consult_sheet set last_at = now(), last_ok = bad = 0, last_note = '학생 탭 ' || got || ' · 못 읽음 ' || bad where id = 1;
+  return jsonb_build_object('ok', bad = 0, 'tabs', got, 'bad', bad);
+end $function$;
+create or replace function private.consult_sync() returns jsonb language sql security definer set search_path to '' as $$ select private.consult_sync(false) $$;
+revoke all on function private.consult_sync(boolean) from public, anon, authenticated;
+revoke all on function private.consult_sync() from public, anon, authenticated;
+
+-- ② 퇴원 탭 기록은 원장님 · 관리자만 봄 (선생님은 예전처럼 평일 · 주말의 자기 담당만)
+create or replace function private.consult_can(t public.teachers, d public.director_consults) returns boolean
+language sql stable security definer set search_path to '' as $$
+  select not d.missing and (
+    ((public.is_admin() or t.name = '원장님') and d.section in ('평일', '주말', '퇴원'))
+    or (d.section in ('평일', '주말') and t.id is not null
+        and ((private.consult_teacher(d.sheet_teacher)).id = t.id or (d.member_id is not null and private.teaches(t, d.member_id)))));
+$$;
+revoke all on function private.consult_can(public.teachers, public.director_consults) from public, anon, authenticated;
+
+create or replace function public.teacher_consults() returns jsonb
+language plpgsql stable security definer set search_path to '' as $$
+declare t public.teachers := private.my_teacher(); dir boolean;
+begin
+  if t.id is null and not public.is_admin() then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  dir := public.is_admin() or t.name = '원장님';
+  return jsonb_build_object('ok', true, 'synced', (select last_at from private.consult_sheet where id = 1),
+    'director', dir,
+    'items', coalesce((select jsonb_agg(jsonb_build_object('gid', d.gid, 'name', d.name, 'klass', d.klass, 'section', d.section,
+        'teacher', coalesce(ct.name, substring(m.memo from '담당\s*([^\s·,]+)'), d.sheet_teacher),
+        'left', ct.id is not null and not ct.active,
+        'mine', t.id is not null and (ct.id = t.id or (d.member_id is not null and private.teaches(t, d.member_id))),
+        'count', jsonb_array_length(d.rows), 'last', d.rows -> 0 ->> 0) order by d.pos)
+      from public.director_consults d left join public.members m on m.id = d.member_id
+      left join lateral (select (private.consult_teacher(d.sheet_teacher)).*) ct on true
+      where private.consult_can(t, d) and (dir or m.id is null or m.status in ('재원', '휴원'))), '[]'::jsonb));
+end $$;
+
+-- ③ 홈페이지에서 새 기록을 쓸 때 미리 채울 것: 시트의 가장 최근 줄 (이름(출생년도) / 선생님 · 나이/키/체중/고민 · 수강기간 및 합격여부) — 쓰는 사람(원장님 · 관리자)에게만
+create or replace function public.consult_notes_of(p_member text) returns jsonb
+language plpgsql stable security definer set search_path to '' as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if not (private.consult_writer() or (t.id is not null and private.teaches(t, p_member))) then
+    return private.fail('이 학생의 컨설팅 결과를 볼 수 없어요.');
+  end if;
+  return jsonb_build_object('ok', true, 'write', private.consult_writer(),
+    'name', (select name from public.members where id = p_member),
+    'teacher', (select substring(memo from '담당\s*([^\s·,]+)') from public.members where id = p_member),
+    'pre', case when private.consult_writer() then
+      (select jsonb_build_object('who', d.rows -> 0 ->> 1, 'body', d.rows -> 0 ->> 2, 'term', d.rows -> 0 ->> 3)
+       from public.director_consults d where d.member_id = p_member and not d.missing and jsonb_array_length(d.rows) > 0
+       order by (d.section = '퇴원'), d.pos limit 1) end,
+    'items', coalesce((select jsonb_agg(jsonb_build_object('id', n.id, 'day', n.day, 'sheet', n.sheet, 'booking', n.booking_id,
+        'when', case when s.id is not null then private.reminder_when(s.at) end, 'kind', b.kind, 'updated', n.updated_at) order by n.day desc, n.id desc)
+      from public.consult_notes n left join public.feedback_bookings b on b.id = n.booking_id left join public.feedback_slots s on s.id = b.slot_id
+      where n.member_id = p_member), '[]'::jsonb));
+end $$;
+
+-- ===== leesh_consult_sheet_count (2026-11-19) =====
+-- 시트에서 "시간" 칸이 빈 줄(아래에 붙여 둔 가사 · 메모)은 컨설팅 횟수로 세지 않음 + 미리 채우기는 이름 칸이 있는 가장 최근 줄에서
+create or replace function public.teacher_consults() returns jsonb
+language plpgsql stable security definer set search_path to '' as $$
+declare t public.teachers := private.my_teacher(); dir boolean;
+begin
+  if t.id is null and not public.is_admin() then return private.fail('선생님으로 연결된 계정만 볼 수 있어요.'); end if;
+  dir := public.is_admin() or t.name = '원장님';
+  return jsonb_build_object('ok', true, 'synced', (select last_at from private.consult_sheet where id = 1),
+    'director', dir,
+    'items', coalesce((select jsonb_agg(jsonb_build_object('gid', d.gid, 'name', d.name, 'klass', d.klass, 'section', d.section,
+        'teacher', coalesce(ct.name, substring(m.memo from '담당\s*([^\s·,]+)'), d.sheet_teacher),
+        'left', ct.id is not null and not ct.active,
+        'mine', t.id is not null and (ct.id = t.id or (d.member_id is not null and private.teaches(t, d.member_id))),
+        'count', (select count(*) from jsonb_array_elements(d.rows) r where coalesce(btrim(r ->> 0), '') <> ''), 'last', d.rows -> 0 ->> 0) order by d.pos)
+      from public.director_consults d left join public.members m on m.id = d.member_id
+      left join lateral (select (private.consult_teacher(d.sheet_teacher)).*) ct on true
+      where private.consult_can(t, d) and (dir or m.id is null or m.status in ('재원', '휴원'))), '[]'::jsonb));
+end $$;
+
+create or replace function public.consult_notes_of(p_member text) returns jsonb
+language plpgsql stable security definer set search_path to '' as $$
+declare t public.teachers := private.my_teacher();
+begin
+  if not (private.consult_writer() or (t.id is not null and private.teaches(t, p_member))) then
+    return private.fail('이 학생의 컨설팅 결과를 볼 수 없어요.');
+  end if;
+  return jsonb_build_object('ok', true, 'write', private.consult_writer(),
+    'name', (select name from public.members where id = p_member),
+    'teacher', (select substring(memo from '담당\s*([^\s·,]+)') from public.members where id = p_member),
+    'pre', case when private.consult_writer() then
+      (select jsonb_build_object('who', r ->> 1, 'body', r ->> 2, 'term', r ->> 3)
+       from public.director_consults d, jsonb_array_elements(d.rows) with ordinality q(r, o)
+       where d.member_id = p_member and not d.missing and coalesce(btrim(r ->> 0), '') <> '' and coalesce(btrim(r ->> 1), '') <> ''
+       order by (d.section = '퇴원'), d.pos, o limit 1) end,
+    'items', coalesce((select jsonb_agg(jsonb_build_object('id', n.id, 'day', n.day, 'sheet', n.sheet, 'booking', n.booking_id,
+        'when', case when s.id is not null then private.reminder_when(s.at) end, 'kind', b.kind, 'updated', n.updated_at) order by n.day desc, n.id desc)
+      from public.consult_notes n left join public.feedback_bookings b on b.id = n.booking_id left join public.feedback_slots s on s.id = b.slot_id
+      where n.member_id = p_member), '[]'::jsonb));
+end $$;

@@ -415,7 +415,7 @@
         var fbs = el("div");
         box.appendChild(fbs);
         LeeshFbStatus.render(fbs, function (m) { return LeeshAPI.rpc("director_feedback", { p_month: m }); }, null, function (fn, args) { return LeeshAPI.rpc(fn, args); });
-        box.appendChild(el("p", "rv__label", "📒 컨설팅 기록 (원장님 시트)"));
+        box.appendChild(el("p", "rv__label", "📒 컨설팅 기록 · 학생을 고르면 지난 기록(원장님 시트)을 보고, 같은 순서로 새 기록을 쓸 수 있어요"));
       }
       if (!items.length) { box.appendChild(el("p", "book__empty", res.director ? "아직 컨설팅 기록이 없어요." : "담당 학생 중 원장님 컨설팅을 받은 학생이 아직 없어요.")); return; }
       // 원장님은 모든 선생님 학생이 다 보여서 너무 많음 → 선생님별로 묶은 드롭다운 하나 (원장님 2026-11-11)
@@ -470,18 +470,26 @@
     lab.appendChild(el("span", null, "학생 고르기 (선생님별 · " + items.length + "명)"));
     var sel = el("select");
     sel.appendChild(el("option", null, "학생을 고르세요"));
-    var names = items.map(function (x) { return x.teacher || "담당 없음"; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+    var now = items.filter(function (x) { return x.section !== "퇴원"; }), gone = items.filter(function (x) { return x.section === "퇴원"; });
+    var names = now.map(function (x) { return x.teacher || "담당 없음"; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
     names.sort(function (a, b) {
-      var la = items.some(function (x) { return x.teacher === a && x.left; }), lb = items.some(function (x) { return x.teacher === b && x.left; });
+      var la = now.some(function (x) { return x.teacher === a && x.left; }), lb = now.some(function (x) { return x.teacher === b && x.left; });
       return la !== lb ? (la ? 1 : -1) : a.localeCompare(b, "ko");
     });
     names.forEach(function (t) {
-      var mine = items.filter(function (x) { return (x.teacher || "담당 없음") === t; });
+      var mine = now.filter(function (x) { return (x.teacher || "담당 없음") === t; });
       var g = el("optgroup");
       g.label = t + " 선생님" + (mine[0].left ? " (퇴사)" : "") + " · " + mine.length + "명";
       mine.forEach(function (x) { var o = el("option", null, x.name + " · " + (x.klass || x.section) + " · " + x.count + "회"); o.value = x.gid; g.appendChild(o); });
       sel.appendChild(g);
     });
+    // 시트의 "퇴원>" 뒤 탭 (원장님 2026-11-19 "백데이터 모두"): 원장님 · 관리자에게만 옴
+    if (gone.length) {
+      var gg = el("optgroup");
+      gg.label = "퇴원 · 지난 학생 · " + gone.length + "명";
+      gone.forEach(function (x) { var o = el("option", null, x.name + " · " + (x.klass || "") + " · " + x.count + "회" + (x.teacher ? " · " + x.teacher : "")); o.value = x.gid; gg.appendChild(o); });
+      sel.appendChild(gg);
+    }
     sel.addEventListener("change", function () {
       var x = items.filter(function (y) { return y.gid === sel.value; })[0];
       if (x) onPick(x);
@@ -495,28 +503,16 @@
     LeeshAPI.rpc("teacher_consult", { p_gid: x.gid }).then(function (r) {
       detail.textContent = "";
       if (!r.ok) { detail.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
-      detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 컨설팅 " + (r.rows || []).length + "회"));
+      var times = (r.rows || []).filter(function (row) { return String(row[0] || "").trim(); }).length;
+      detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 시트 기록 " + times + "회"));
       // 홈페이지에서 쓴 컨설팅 결과 (원장님 2026-11-16) — 원장님은 쓰기 · 고치기, 담당 선생님은 보기만
       if (r.member && window.LeeshConsultNote) {
         var cn = el("div");
         detail.appendChild(cn);
         LeeshConsultNote.list(cn, { call: function (fn, args) { return LeeshAPI.rpc(fn, args); }, member: r.member, name: r.name });
-        detail.appendChild(el("p", "rv__label", "📒 원장님 시트 기록"));
+        detail.appendChild(el("p", "rv__label", "📒 원장님 구글시트 기록 (지난 컨설팅 · 1시간마다 저절로 들어와요)"));
       }
-      if (!(r.rows || []).length) detail.appendChild(el("p", "book__empty", "아직 적힌 컨설팅이 없어요."));
-      (r.rows || []).forEach(function (row, i) {
-        var c = el("article", "rv tch__rv cs__card");
-        var h = el("p", "rv__head");
-        h.appendChild(el("b", null, row[0] || "날짜 없음"));
-        if (i === 0) h.appendChild(el("span", "rv__tag", "가장 최근"));
-        c.appendChild(h);
-        row.forEach(function (v, k) {
-          if (!k || !v) return;
-          c.appendChild(el("p", "rv__label", (r.head || [])[k] || "칸 " + (k + 1)));
-          c.appendChild(el("p", "rv__text", v));
-        });
-        detail.appendChild(c);
-      });
+      LeeshConsultNote.sheetCards(detail, r);
       detail.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }

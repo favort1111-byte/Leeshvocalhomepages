@@ -470,6 +470,7 @@
 .cn__cardhead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 0 8px;}
 .cn__pad:empty{display:none;}
 .cn__pad{margin:8px 0;}
+.cn__order{margin:0 0 6px;padding:8px 10px;border-radius:8px;background:#FFF6CC;font-size:14px;line-height:1.5;font-weight:700;color:#3B3323;}
 .tch__rvbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;}
 .tch__rvbar .tch__find{flex:1 1 220px;margin:0;}
 .tch__rvmine{white-space:nowrap;font-size:14px;}

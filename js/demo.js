@@ -747,16 +747,26 @@
       if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
       return { ok: true, synced: new Date().toISOString(), director: !uid || (myTeacher(uid) || {}).name === "원장님", items: [
         { gid: "1", name: "김시우", klass: "평일A반", section: "평일", teacher: "안유정", mine: true, count: 2, last: "11/4 화요일 19시" },
-        { gid: "2", name: "박하늘", klass: "주말B반", section: "주말", teacher: "이수빈", mine: false, count: 1, last: "10/26 일요일 14시" }].filter(function (x) { return !uid || x.mine || (myTeacher(uid) || {}).name === "원장님"; }) };
+        { gid: "2", name: "박하늘", klass: "주말B반", section: "주말", teacher: "이수빈", mine: false, count: 1, last: "10/26 일요일 14시" },
+        { gid: "3", name: "최가을", klass: "평일B반", section: "퇴원", teacher: "이수빈", mine: false, count: 1, last: "8/12 수요일 18시" }].filter(function (x) {
+          var dir = !uid || (myTeacher(uid) || {}).name === "원장님"; // 퇴원 탭은 원장님 · 관리자만
+          return dir || (x.mine && x.section !== "퇴원");
+        }) };
     },
     teacher_consult: function (a, uid) {
       if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
       var head = ["시간", "이름(출생년도) / 선생님", "나이/키/체중/고민", "수강기간 및 합격여부", "비고"];
+      if (a.p_gid === "3") {
+        if (uid && (myTeacher(uid) || {}).name !== "원장님") return fail("컨설팅 기록을 찾을 수 없어요.");
+        return { ok: true, gid: "3", name: "최가을", klass: "평일B반", member: null, head: head, rows: [
+          ["8/12 수요일 18시", "최가을 (11) / 수빈쌤", "11년생 / 중3\n160 / 45", "26.02 부터 수강\n약 6개월", "선곡 체크 · 발성 기본기\n\n수빈쌤 전달: 호흡 연습 위주"]] };
+      }
       if (a.p_gid === "2") return { ok: true, gid: "2", name: "박하늘", klass: "주말B반", member: "S900", head: head, rows: [
         ["10/26 일요일 14시", "박하늘 (10) / 수빈쌤", "10년생 / 고1\n고음에서 목이 조임", "26.03 부터 수강\n약 7개월\n\n합격이력없음", "현재 노래체크\n- 고음 전 호흡 미리 준비\n\n다음 시간: 메인곡 액팅까지 같이 체크"]] };
       return { ok: true, gid: "1", name: "김시우", klass: "평일A반", member: "S001", head: head, rows: [
         ["11/4 화요일 19시", "김시우 (09) / 유정쌤", "09년생 / 고2\n무대 긴장", "26.01 부터 수강\n약 10개월\n\n1차 합격 1회", "현재 노래체크\n- 박자는 좋아짐, 끝음 처리 더 깔끔하게\n\n스타일링: 다음 시간에 메이크업 같이 보기\n\n유정쌤 전달: 2주 동안 기본기 위주"],
-        ["10/14 화요일 19시", "김시우 (09) / 유정쌤", "09년생 / 고2", "26.01 부터 수강\n약 9개월", "방향성 체크 · 선곡 상담\n메인곡 · 서브곡 정하기"]] };
+        ["10/14 화요일 19시", "김시우 (09) / 유정쌤", "09년생 / 고2", "26.01 부터 수강\n약 9개월", "방향성 체크 · 선곡 상담\n메인곡 · 서브곡 정하기"],
+        ["", "", "(시트 아래쪽에 붙여 둔 가사 한 줄)", "", ""]] };
     },
     teacher_reviews: function (a, uid) {
       var t = myTeacher(uid);
@@ -960,7 +970,11 @@
       var dir = !uid || (myTeacher(uid) || {}).name === "원장님";
       if (uid && !myTeacher(uid)) return fail("이 학생의 컨설팅 결과를 볼 수 없어요.");
       fbSeed();
-      return { ok: true, write: dir, items: (db.cnotes || []).filter(function (n) { return n.member === a.p_member; }).map(function (n) {
+      var pres = { S001: { who: "김시우 (09) / 유정쌤", body: "09년생 / 고2\n무대 긴장", term: "26.01 부터 수강\n약 10개월\n\n1차 합격 1회" },
+        S900: { who: "박하늘 (10) / 수빈쌤", body: "10년생 / 고1\n고음에서 목이 조임", term: "26.03 부터 수강\n약 7개월\n\n합격이력없음" } };
+      var mm = (db.members || []).filter(function (x) { return x.id === a.p_member; })[0];
+      return { ok: true, write: dir, name: mm ? mm.name : null, teacher: mm && /담당\s*(\S+)/.test(mm.memo || "") ? RegExp.$1 : null, pre: dir ? pres[a.p_member] || null : null,
+        items: (db.cnotes || []).filter(function (n) { return n.member === a.p_member; }).map(function (n) {
         var b = db.fb.bookings.filter(function (y) { return y.id === n.booking; })[0], sl = b && db.fb.slots.filter(function (x) { return x.id === b.slot; })[0];
         return { id: n.id, day: n.day, sheet: n.sheet, booking: n.booking, when: sl ? fbWhen(sl.at) : null, kind: b ? b.kind : null, updated: n.updated };
       }).sort(function (x, y) { return x.day < y.day ? 1 : -1; }) };

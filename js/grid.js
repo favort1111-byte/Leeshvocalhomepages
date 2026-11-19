@@ -6,6 +6,7 @@
 //   LeeshGrid.view(data, { zoom })            → 보기만 (쓴 곳까지만), zoom = 확대 · 축소 줄 (학생 화면)
 //   LeeshGrid.summary(note, fields)           → 지난 일지를 칸 이름별로 정리해서 (저번 시간 · 지난 일지 · 관리자 · 학생)
 //   LeeshGrid.template(fields) / fromNote(note, fields) → 새 일지 / 예전 일지(칸 5개)를 표로
+//   LeeshGrid.form([[칸 이름, 글], …]) → 칸 이름(A열) 옆 B열에 글을 줄마다 아래로 (원장님 컨설팅 기록)
 // 저장 모양 (lesson_notes.sheet, 서버 private.sheet_ok가 다시 확인):
 //   { v:1, n:행 수, w:{열:너비}, h:{행:높이}, c:{ "행,열": { t:"꾸민 글", s:{ b,i,u,x(취소선), z:글씨px, f:글자색, g:채우기색, wr:칸 안 줄바꿈, a:가로 정렬 c|r, va:세로 정렬 m|b } } } }
 // 긴 글은 구글시트처럼 오른쪽 빈 칸으로 넘쳐 보이고(오른쪽 칸에 글이 있으면 잘림), wr이면 칸 안에서 줄을 바꿔요 (원장님 2026-11-03, 선생님 시트 옮기기).
@@ -136,6 +137,19 @@
     var d = empty();
     d.w = { 0: 150 }; // A열만 칸 이름이 들어가게 조금 넓게, 나머지는 기본 너비
     (fields || []).forEach(function (fd, i) { d.c[key(headRow(i), 0)] = { t: R.textToHtml(fd[1]), s: copy(HEAD) }; });
+    return d;
+  }
+  // 칸 이름(A열) 옆 B열에 내용을 줄마다 한 칸씩 아래로 (원장님 컨설팅 기록: 구글시트 칸 순서 그대로, 2026-11-19)
+  // pairs = [[칸 이름, 미리 채울 글], …] · 글이 여러 줄이면 그만큼 아래로 내려가고 한 줄 띄움
+  function form(pairs, aw) {
+    var d = empty(), r = 0;
+    d.w = { 0: aw || 180 };
+    (pairs || []).forEach(function (p) {
+      d.c[key(r, 0)] = { t: R.textToHtml(p[0]), s: copy(HEAD) };
+      var lines = String(p[1] || "").replace(/\r/g, "").replace(/\s+$/, "").split("\n");
+      lines.forEach(function (ln, k) { if (ln.trim()) d.c[key(r + k, 1)] = { t: R.textToHtml(ln) }; });
+      r += Math.max(lines.length, 1) + (lines.length > 1 ? 1 : 0);
+    });
     return d;
   }
   function fromNote(n, fields) {
@@ -1463,7 +1477,7 @@
     };
   }
 
-  window.LeeshGrid = { editor: editor, view: view, summary: summary, template: template, fromNote: fromNote, text: function (d) {
+  window.LeeshGrid = { editor: editor, view: view, summary: summary, template: template, form: form, fromNote: fromNote, text: function (d) {
     return Object.keys((d && d.c) || {}).map(function (k) { return textOf(d.c[k].t); }).join(" ").trim();
   } };
 })();

@@ -2529,16 +2529,24 @@
       $("#dcNote").textContent = base + (d.synced ? " (마지막 " + stamp(d.synced) + ")" : "");
       $("#dcPickLab").textContent = "학생 고르기 (선생님별 · " + dc.items.length + "명)";
       sel.options[0].textContent = dc.items.length ? "학생을 고르세요" : "아직 컨설팅 기록이 없어요";
-      var names = dc.items.map(function (x) { return x.teacher || "담당 없음"; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
-      var left = function (t) { return dc.items.some(function (x) { return (x.teacher || "담당 없음") === t && x.left; }); };
+      var now = dc.items.filter(function (x) { return x.section !== "퇴원"; }), gone = dc.items.filter(function (x) { return x.section === "퇴원"; });
+      var names = now.map(function (x) { return x.teacher || "담당 없음"; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+      var left = function (t) { return now.some(function (x) { return (x.teacher || "담당 없음") === t && x.left; }); };
       names.sort(function (a, b) { return left(a) !== left(b) ? (left(a) ? 1 : -1) : a.localeCompare(b, "ko"); });
       names.forEach(function (t) {
-        var mine = dc.items.filter(function (x) { return (x.teacher || "담당 없음") === t; });
+        var mine = now.filter(function (x) { return (x.teacher || "담당 없음") === t; });
         var g = el("optgroup");
         g.label = t + " 선생님" + (left(t) ? " (퇴사)" : "") + " · " + mine.length + "명";
         mine.forEach(function (x) { var o = el("option", null, x.name + " · " + (x.klass || x.section) + " · " + x.count + "회"); o.value = x.gid; g.appendChild(o); });
         sel.appendChild(g);
       });
+      // 시트의 "퇴원>" 뒤 탭 (원장님 2026-11-19 "백데이터 모두"): 원장님 · 관리자만 봄
+      if (gone.length) {
+        var gg = el("optgroup");
+        gg.label = "퇴원 · 지난 학생 · " + gone.length + "명";
+        gone.forEach(function (x) { var o = el("option", null, x.name + " · " + (x.klass || "") + " · " + x.count + "회" + (x.teacher ? " · " + x.teacher : "")); o.value = x.gid; gg.appendChild(o); });
+        sel.appendChild(gg);
+      }
     });
   }
   function openDirector(gid) {
@@ -2549,26 +2557,15 @@
       var r = res.data || {};
       box.textContent = "";
       if (!res.ok || !r.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", r.error || friendly(res, "불러오지 못했어요."))); return; }
-      box.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 컨설팅 " + (r.rows || []).length + "회"));
+      var times = (r.rows || []).filter(function (row) { return String(row[0] || "").trim(); }).length;
+      box.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 시트 기록 " + times + "회"));
       if (r.member && window.LeeshConsultNote) {
         var cn = el("div");
         box.appendChild(cn);
         LeeshConsultNote.list(cn, { call: rpcCall, member: r.member, name: r.name });
-        box.appendChild(el("p", "rv__label", "📒 원장님 시트 기록"));
+        box.appendChild(el("p", "rv__label", "📒 원장님 구글시트 기록 (지난 컨설팅 · 1시간마다 저절로 들어와요)"));
       }
-      (r.rows || []).forEach(function (row, i) {
-        var c = el("article", "rv tch__rv cs__card");
-        var h = el("p", "rv__head");
-        h.appendChild(el("b", null, row[0] || "날짜 없음"));
-        if (i === 0) h.appendChild(el("span", "rv__tag", "가장 최근"));
-        c.appendChild(h);
-        row.forEach(function (v, k) {
-          if (!k || !v) return;
-          c.appendChild(el("p", "rv__label", (r.head || [])[k] || "칸 " + (k + 1)));
-          c.appendChild(el("p", "rv__text", v));
-        });
-        box.appendChild(c);
-      });
+      LeeshConsultNote.sheetCards(box, r);
       box.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
