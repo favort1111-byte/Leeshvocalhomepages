@@ -7,14 +7,14 @@
 @font-face{font-family:"Gmarket";src:url("gmarket.woff") format("woff");font-weight:400 700;font-display:swap}
 /* 회색 종이 바탕 위에 숯검정 판 · 레몬 판이 번갈아 나오는 한 장짜리 학원 홈페이지 (한 가지 모양으로만) */
 :root{
-  --ground:#D8D8D6;   /* 밝은 회색 바탕 */
-  --ground2:#E9E9E7;  /* 밝은 띠 */
+  --ground:#D2D2D2;   /* 밝은 회색 바탕 */
+  --ground2:#E6E6E6;  /* 밝은 띠 */
   --ink:#2A2A2A;      /* 숯검정 */
   --ink2:#3A3A3A;     /* 숯검정 위 칸 */
-  --lemon:#F1EE7C;    /* 형광 레몬 */
+  --lemon:#FCF67E;    /* 형광 레몬 */
   --paper:#FFFFFF;    /* 스티커 · 카드 */
-  --muted:#5A5A58;    /* 작은 설명 */
-  --pill:#B9B9B7;     /* 회색 알약 버튼 */
+  --muted:#555555;    /* 작은 설명 */
+  --pill:#B5B5B5;     /* 회색 알약 버튼 */
   --f-title:Anton,"Arial Narrow",Impact,sans-serif;
   --f-body:Gmarket,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   color-scheme:light;
@@ -60,7 +60,7 @@ h1,h2,h3{text-wrap:balance}
 .stage{position:relative;min-height:480px}
 .book{position:absolute;width:44%;aspect-ratio:3/4.1;border-radius:4px 10px 10px 4px;box-shadow:24px 30px 40px rgba(0,0,0,.28),inset 10px 0 0 rgba(0,0,0,.18),inset 12px 0 0 rgba(255,255,255,.12);padding:22px 20px 18px 30px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .5s ease}
 .book--ink{background:linear-gradient(135deg,#353535,#222);color:var(--lemon);left:4%;top:8%;transform:rotate(-8deg)}
-.book--lemon{background:linear-gradient(135deg,#F6F38C,#E6E26A);color:var(--ink);left:40%;top:20%;transform:rotate(7deg)}
+.book--lemon{background:linear-gradient(135deg,#FEF98E,#F2EC6E);color:var(--ink);left:40%;top:20%;transform:rotate(7deg)}
 .stage:hover .book--ink{transform:rotate(-11deg) translateY(-6px)}
 .stage:hover .book--lemon{transform:rotate(10deg) translateY(-6px)}
 .book .big{font-size:clamp(52px,8vw,98px)}
@@ -116,9 +116,9 @@ h1,h2,h3{text-wrap:balance}
 .band .big{font-size:clamp(64px,11vw,150px)}
 .dark .big{color:var(--lemon)}
 .list{list-style:none;margin:46px 0 0;padding:0;border-top:1px solid currentColor}
-.dark .list{border-color:rgba(241,238,124,.55)}
+.dark .list{border-color:rgba(252,246,126,.55)}
 .list li{display:grid;grid-template-columns:90px minmax(0,1fr) minmax(0,1.3fr);gap:20px;align-items:baseline;padding:22px 4px;border-bottom:1px solid currentColor}
-.dark .list li{border-color:rgba(241,238,124,.55)}
+.dark .list li{border-color:rgba(252,246,126,.55)}
 .list .no{font-family:var(--f-title);font-size:30px}
 .dark .list .no{color:var(--lemon)}
 .list .name{font-size:22px;font-weight:700}
