@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>이송희보컬레슨 첫 화면 휴대폰</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&amp;display=swap">
+<style>
+@font-face{font-family:"Gmarket";src:url("/_blob/6522c92bd8ed6da3f51f31c70881fefb") format("woff");font-weight:400 700;font-display:swap}
+body{margin:0}
+a{color:#2A2A2A}a:hover{color:#000}
+</style>
+</helmet>
+<div style="width: 390px; height: 3300px; overflow: hidden; background: {{ground}}; color: {{ink}}; font-family: Gmarket, 'Noto Sans KR', sans-serif">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 16px 18px">
+    <span style="font-family: Anton, sans-serif; font-size: 26px">LEESH VOCAL</span>
+    <a href="Student.dc.html" style="text-decoration: none; padding: 11px 16px; border-radius: 999px; background: {{ink}}; color: {{lemon}}; font-size: 14px">내 폴더</a>
+  </header>
+  <nav aria-label="주 메뉴" style="display: flex; gap: 4px; padding: 0 12px 6px; overflow-x: auto">
+    <a href="#m-class" style="text-decoration: none; padding: 12px 10px; font-size: 14px; white-space: nowrap">수업</a>
+    <a href="#m-cur" style="text-decoration: none; padding: 12px 10px; font-size: 14px; white-space: nowrap">커리큘럼</a>
+    <a href="#m-month" style="text-decoration: none; padding: 12px 10px; font-size: 14px; white-space: nowrap">오디션</a>
+    <a href="#m-room" style="text-decoration: none; padding: 12px 10px; font-size: 14px; white-space: nowrap">연습실</a>
+    <a href="#m-contact" style="text-decoration: none; padding: 12px 10px; font-size: 14px; white-space: nowrap">상담</a>
+  </nav>
+
+  <!-- 첫 장면 -->
+  <section style="position: relative; height: 470px">
+    <div style="position: absolute; left: 20px; top: 40px; width: 170px; height: 240px; background: {{ink}}; border-radius: 4px 10px 10px 4px; transform: rotate(-9deg); box-shadow: 18px 24px 36px rgba(0,0,0,.28); display: flex; flex-direction: column; justify-content: center; padding-left: 18px; box-sizing: border-box">
+      <span style="font-family: Anton, sans-serif; font-size: 84px; line-height: .82; color: {{lemon}}">VO</span>
+      <span style="font-family: Anton, sans-serif; font-size: 84px; line-height: .82; color: {{lemon}}; padding-left: 36px">CAL</span>
+    </div>
+    <div style="position: absolute; left: 170px; top: 18px; width: 180px; height: 250px; background: {{lemon}}; border-radius: 4px 10px 10px 4px; transform: rotate(13deg); box-shadow: 20px 28px 40px rgba(0,0,0,.25); display: flex; flex-direction: column; justify-content: center; padding-left: 22px; box-sizing: border-box; border-right: 8px solid #E9E7C9">
+      <span style="font-family: Anton, sans-serif; font-size: 84px; line-height: .82">LE</span>
+      <span style="font-family: Anton, sans-serif; font-size: 84px; line-height: .82; padding-left: 40px">ESH</span>
+    </div>
+    <div style="position: absolute; left: 95px; top: 250px; width: 200px; background: #FFFFFF; border-radius: 18px; padding: 38px 16px 16px; box-sizing: border-box; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.12)">
+      <div style="position: absolute; left: 50%; top: -28px; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; background: {{lemon}}; border: 4px solid #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: Anton, sans-serif; font-size: 18px">LSH</div>
+      <p style="margin: 0 0 12px; font-size: 15px; font-weight: 700">☆ 이번 달 내방 오디션 ★</p>
+      <a href="#m-month" style="display: block; padding: 12px 0; border-radius: 12px; background: #B5B5B5; color: #2A2A2A; text-decoration: none; font-size: 15px">신청하기 &gt;&gt;</a>
+    </div>
+  </section>
+  <section style="padding: 0 22px 40px; display: flex; flex-direction: column; gap: 14px">
+    <h1 style="margin: 0; font-family: Anton, sans-serif; font-weight: 400; font-size: 64px; line-height: .95">SING YOUR OWN.</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 1.6">오디션은 많이 보는 것보다<br>정확한 정보로 제대로 보는 것이 더 중요합니다.</p>
+    <a href="#m-contact" style="align-self: flex-start; text-decoration: none; padding: 14px 24px; border-radius: 999px; background: {{ink}}; color: {{lemon}}; font-size: 15px">상담 신청</a>
+  </section>
+
+  <!-- 수업 -->
+  <section id="m-class" style="padding: 10px 22px 50px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; align-items: center">
+      <div style="width: 150px; height: 150px; border-radius: 50%; background: {{ink}}; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 14px 28px rgba(0,0,0,.25)">
+        <span style="position: absolute; top: 28px; left: 0; right: 0; text-align: center; font-family: Anton, sans-serif; font-size: 22px; color: {{lemon}}">AUDITION</span>
+        <span style="width: 26px; height: 26px; border-radius: 50%; background: {{ground}}"></span>
+      </div>
+      <div style="width: 150px; height: 150px; border-radius: 50%; background: {{lemon}}; display: flex; align-items: center; justify-content: center; position: relative; margin-left: -44px; box-shadow: 0 14px 28px rgba(0,0,0,.25)">
+        <span style="position: absolute; top: 28px; left: 0; right: 0; text-align: center; font-family: Anton, sans-serif; font-size: 22px">ENTRANCE</span>
+        <span style="width: 26px; height: 26px; border-radius: 50%; background: {{ground}}"></span>
+      </div>
+    </div>
+    <h2 style="margin: 0; font-size: 19px; line-height: 1.5">오디션 심화반 · 오디션반 · 입시반<br>전문반 · 취미반</h2>
+    <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #3A3A3A">모든 반은 담임제입니다. 레슨 후 1:1 맞춤 피드백을 드립니다.</p>
+  </section>
+
+  <!-- 커리큘럼 -->
+  <section id="m-cur" style="background: {{ink}}; color: #FFFFFF; padding: 56px 22px 60px">
+    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 40px">
+      <h2 style="margin: 0; font-family: Anton, sans-serif; font-weight: 400; font-size: 58px; line-height: .9; color: {{lemon}}">CURRICULUM</h2>
+      <span style="margin-top: 6px; display: flex; gap: 3px" aria-hidden="true"><span style="width: 10px; height: 10px; background: {{lemon}}"></span><span style="width: 9px; height: 9px; border: 1px solid {{lemon}}"></span></span>
+    </div>
+    <div style="border-top: 1px solid {{lemon}}">
+      <sc-for list="{{steps}}" as="st" hint-placeholder-count="4">
+        <div style="padding: 16px 4px; border-bottom: 1px solid {{lemon}}; display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 16px; color: {{lemon}}"><span style="font-family: Anton, sans-serif; margin-right: 14px">{{st.no}}</span>{{st.name}}</span>
+          <span style="font-size: 13px; color: #F2F2E6">{{st.desc}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- 연습실 -->
+  <section id="m-room" style="background: {{lemon}}; padding: 56px 22px 60px">
+    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 36px">
+      <h2 style="margin: 0; font-family: Anton, sans-serif; font-weight: 400; font-size: 58px; line-height: .9">PRACTICE<br>ROOM</h2>
+      <span style="margin-top: 6px; display: flex; gap: 3px" aria-hidden="true"><span style="width: 9px; height: 9px; border: 1px solid {{ink}}"></span><span style="width: 10px; height: 10px; background: {{ink}}"></span></span>
+    </div>
+    <div style="border-top: 1px solid {{ink}}">
+      <sc-for list="{{room}}" as="r" hint-placeholder-count="4">
+        <div style="display: flex; gap: 18px; padding: 14px 4px; border-bottom: 1px solid {{ink}}; font-size: 14px">
+          <span style="font-family: Anton, sans-serif; width: 26px">{{r.no}}</span><span>{{r.text}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <a href="#m-room" style="display: block; margin-top: 26px; text-align: center; text-decoration: none; padding: 16px 0; border-radius: 999px; background: {{ink}}; color: {{lemon}}; font-size: 16px">연습실 예약하기 →</a>
+  </section>
+
+  <!-- 이번 달 -->
+  <section id="m-month" style="background: {{ink}}; color: #FFFFFF; padding: 56px 16px 60px; display: flex; flex-direction: column; align-items: center; gap: 14px">
+    <h2 style="margin: 0; font-family: Anton, sans-serif; font-weight: 400; font-size: 58px; line-height: .9; color: {{lemon}}">THIS MONTH</h2>
+    <p style="margin: 0 0 6px; font-size: 13px">12월 학원 일정 (예시)</p>
+    <div style="width: 100%; background: #FFFFFF; color: #2A2A2A; border-radius: 6px; overflow: hidden">
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: #EFEFEF; font-size: 12px; text-align: center">
+        <span style="padding: 7px 0; color: #C0392B">일</span><span style="padding: 7px 0">월</span><span style="padding: 7px 0">화</span><span style="padding: 7px 0">수</span><span style="padding: 7px 0">목</span><span style="padding: 7px 0">금</span><span style="padding: 7px 0">토</span>
+      </div>
+      <sc-for list="{{weeks}}" as="w" hint-placeholder-count="5">
+        <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: 34px 26px; border-top: 1px solid #E2E2E2">
+          <sc-for list="{{w.days}}" as="d" hint-placeholder-count="7">
+            <div style="grid-row: 1 / 3; grid-column: {{d.col}}; background: {{d.bg}}; border-right: 1px solid #E2E2E2; padding: 5px 6px; font-size: 13px; color: {{d.fg}}">{{d.n}}</div>
+          </sc-for>
+          <sc-if value="{{w.band}}" hint-placeholder-val="{{true}}">
+            <div style="grid-row: 2; grid-column: {{w.bandCol}}; position: relative; display: flex; align-items: center; justify-content: center">
+              <span style="position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: #2A2A2A"></span>
+              <span style="position: relative; background: #FFFFFF; border: 1px solid #2A2A2A; border-radius: 999px; padding: 1px 8px; font-size: 11px; white-space: nowrap">{{w.label}}</span>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <!-- 상담 -->
+  <section id="m-contact" style="background: #EDEDED; padding: 50px 18px 56px; display: flex; flex-direction: column; gap: 10px">
+    <h2 style="margin: 0 0 12px; font-family: Anton, sans-serif; font-weight: 400; font-size: 52px; line-height: .9; text-align: center">CONTACT</h2>
+    <sc-for list="{{rows}}" as="c" hint-placeholder-count="4">
+      <a href="{{c.href}}" style="text-decoration: none; background: #FFFFFF; border-radius: 14px; padding: 18px 18px; display: flex; align-items: center; gap: 12px; font-size: 15px">
+        <span style="flex: 1">{{c.text}}</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2A2A2A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+      </a>
+    </sc-for>
+  </section>
+
+  <footer style="background: {{ink}}; color: #D9D9D9; padding: 26px 18px; font-size: 12px; line-height: 1.8; text-align: center">
+    <span style="font-family: Anton, sans-serif; font-size: 20px; color: {{lemon}}">LEESH VOCAL</span><br>
+    서울 강남구 테헤란로55길 21 미승(태원)빌딩 2층
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"ground":{"editor":"color","default":"#D9D9D9","options":["#D9D9D9","#E6E6E6","#CFCFCF"]},"ink":{"editor":"color","default":"#2A2A2A","options":["#2A2A2A","#1D4948","#111111"]},"lemon":{"editor":"color","default":"#F3F07A","options":["#F3F07A","#F2E14C","#E8F06A"]},"$preview":{"width":390,"height":3300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var lemon = this.props.lemon ?? '#F3F07A';
+    var steps = [
+      { no: '01', name: '노래 진단', desc: '기초 발성 파악 · 맞춤형 기본기 수업' },
+      { no: '02', name: '실전 수업', desc: '기본기를 노래에 직접 적용 · 원포인트 레슨' },
+      { no: '03', name: '디테일 레슨', desc: '톤 메이킹 · 감정 표현 · 끝음 처리' },
+      { no: '04', name: '디테일 플래닝', desc: '입시 · 기획사 맞춤 플래닝 · 선곡 · 스케줄' }
+    ];
+    var room = ['수강생 365일 24시간 무료', '한 번에 최대 2시간 · 오늘 · 내일 예약', '50cm 이상 방음벽 스튜디오형', 'C hall 댄스 연습실']
+      .map(function (t, i) { return { no: '0' + (i + 1), text: t }; });
+    var strong = lemon, soft = '#FBF9C8';
+    var mark = { 7: strong, 8: strong, 9: strong, 10: strong, 14: soft, 15: soft, 16: soft, 17: soft, 18: soft, 21: '#E6E6E6', 22: '#E6E6E6', 23: '#E6E6E6' };
+    var starts = [[29, 11], [6, 12], [13, 12], [20, 12], [27, 12]];
+    var bands = [null, { col: '2 / 6', label: '내방 오디션 신청' }, { col: '2 / 7', label: '컨설팅 신청' }, { col: '2 / 5', label: '월말평가' }, null];
+    var weeks = starts.map(function (s, wi) {
+      var days = [];
+      for (var k = 0; k < 7; k++) {
+        var n = s[0] + k, m = s[1];
+        if (m === 11 && n > 30) { n -= 30; m = 12; }
+        if (m === 12 && n > 31) { n -= 31; m = 1; }
+        var inMonth = m === 12;
+        days.push({ n: n, col: String(k + 1), bg: inMonth && mark[n] ? mark[n] : '#FFFFFF', fg: !inMonth ? '#B0B0B0' : (k === 0 || n === 25 ? '#C0392B' : '#2A2A2A') });
+      }
+      var b = bands[wi];
+      return { days: days, band: !!b, bandCol: b ? b.col : '1 / 2', label: b ? b.label : '' };
+    });
+    var rows = [
+      { text: '카카오톡으로 상담 신청', href: 'https://pf.kakao.com/_xgNYbK/chat' },
+      { text: '전화 010-4458-5448', href: 'tel:01044585448' },
+      { text: '오시는 길 · 선릉역 7번 출구', href: '#m-contact' },
+      { text: '인스타그램 · 오디션 소식', href: '#m-contact' }
+    ];
+    return { ground: this.props.ground ?? '#D9D9D9', ink: this.props.ink ?? '#2A2A2A', lemon: lemon, steps: steps, room: room, weeks: weeks, rows: rows };
+  }
+}
+</script>
+</body>
+</html>
