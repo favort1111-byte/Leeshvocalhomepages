@@ -7260,7 +7260,9 @@ declare a jsonb := jsonb_build_object(
     '#{이름}', r.name, '#{일시}', private.reminder_when(r.at), '#{시간}', private.reminder_time(r.at),
     '#{장소}', coalesce(nullif(r.place, ''), '이송희보컬레슨'),
     '#{안내}', coalesce(nullif(r.memo, ''), case when r.kind = '특강' then '따로 챙기실 준비물은 없어요!' else '-' end),
-    '#{강사}', coalesce(nullif(r.teacher, ''), '담당'), '#{클래스}', coalesce(nullif(r.track, ''), '보컬'), '#{특강}', coalesce(nullif(r.topic, ''), '오디션'));
+    '#{강사}', coalesce(nullif(r.teacher, ''), '담당'), '#{클래스}', coalesce(nullif(r.track, ''), '보컬'), '#{특강}', coalesce(nullif(r.topic, ''), '오디션'),
+    -- 신규 수강 안내 "매주 #{요일시간}" = 첫 레슨 날의 요일 + 시간 ("월요일 오후 6시", 2026-11-20)
+    '#{요일시간}', (array['일','월','화','수','목','금','토'])[extract(dow from r.at at time zone 'Asia/Seoul')::int + 1] || '요일 ' || private.reminder_time(r.at));
   o jsonb := '{}'; k text;
 begin
   if coalesce(txt, '') = '' then return a; end if;
