@@ -2,45 +2,43 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&display=swap">
 <style>
 @font-face{font-family:"Gmarket";src:url("gmarket.woff") format("woff");font-weight:400 700;font-display:swap}
-/* 학원 간판 색: 대리석 흰 바탕 + 간판 진초록 판(안쪽 흰 실선) + 노랑은 작은 강조만 (한 가지 모양으로만) */
+/* 회색 종이 바탕 위에 숯검정 판 · 레몬 판이 번갈아 나오는 한 장짜리 학원 홈페이지 (한 가지 모양으로만) */
 :root{
-  --ground:#EDEBE6;   /* 간판 뒤 대리석 벽 */
-  --paper2:#FBFAF7;   /* 밝은 띠 */
-  --ink:#1D4948;      /* 간판 진초록 */
-  --ink2:#2B5D5B;     /* 진초록 위 칸 */
-  --text:#1F2C2B;     /* 본문 글씨 */
-  --lemon:#F5C518;    /* 학원 노랑 (작은 강조) */
-  --mint:#D6E6E3;     /* 옅은 진초록 */
+  --ground:#D2D2D2;   /* 밝은 회색 바탕 */
+  --ground2:#E6E6E6;  /* 밝은 띠 */
+  --ink:#2A2A2A;      /* 숯검정 */
+  --ink2:#3A3A3A;     /* 숯검정 위 칸 */
+  --lemon:#FCF67E;    /* 형광 레몬 */
   --paper:#FFFFFF;    /* 스티커 · 카드 */
-  --muted:#5D6B69;    /* 작은 설명 */
-  --pill:#1D4948;     /* 버튼 */
-  --f-title:"Archivo Black","Arial Black",sans-serif;
+  --muted:#555555;    /* 작은 설명 */
+  --pill:#B5B5B5;     /* 회색 알약 버튼 */
+  --f-title:Anton,"Arial Narrow",Impact,sans-serif;
   --f-body:Gmarket,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   color-scheme:light;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
-body{margin:0;background:var(--ground);color:var(--text);font-family:var(--f-body);font-size:16px;line-height:1.6;overflow-x:hidden}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;overflow-x:hidden}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ground)}
 a{color:inherit}
 :focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .dark :focus-visible{outline-color:var(--lemon)}
 h1,h2,h3{text-wrap:balance}
 .wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.big{font-family:var(--f-title);font-weight:400;line-height:.95;letter-spacing:-.5px;margin:0;color:var(--ink)}
+.big{font-family:var(--f-title);font-weight:400;line-height:.9;letter-spacing:.5px;margin:0}
 .marks{display:inline-flex;gap:4px;vertical-align:top;margin-left:10px;margin-top:.15em}
-.marks i{width:.2em;height:.2em;background:var(--lemon);border-radius:50%;display:block}
-.marks i+i{display:none}
+.marks i{width:.22em;height:.22em;background:currentColor;display:block}
+.marks i+i{background:transparent;border:2px solid currentColor}
 .eyebrow{font-size:13px;letter-spacing:3px;color:var(--muted);margin:0}
 
 /* 머리 */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ground);border-bottom:1px solid rgba(42,42,42,.18)}
 .top .wrap{display:flex;align-items:center;gap:18px;padding-block:12px}
-.logo{font-family:var(--f-title);font-size:22px;color:var(--ink);text-decoration:none;letter-spacing:1px;white-space:nowrap}
+.logo{font-family:var(--f-title);font-size:26px;text-decoration:none;letter-spacing:1px;white-space:nowrap}
 .nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
 .nav a{text-decoration:none;padding:9px 12px;border-radius:999px;font-size:15px}
 .nav a:hover{background:rgba(42,42,42,.08)}
@@ -60,28 +58,27 @@ h1,h2,h3{text-wrap:balance}
 /* 첫 화면 */
 .hero .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:40px;align-items:center;padding-block:48px 30px}
 .stage{position:relative;min-height:480px}
-.book{position:absolute;width:44%;overflow:hidden;aspect-ratio:3/4.1;border-radius:4px 10px 10px 4px;box-shadow:24px 30px 40px rgba(0,0,0,.28),inset 10px 0 0 rgba(0,0,0,.18),inset 12px 0 0 rgba(255,255,255,.12);padding:22px 20px 18px 30px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .5s ease}
-.book--ink{background:linear-gradient(135deg,#25605E,#163B3A);color:#fff;left:4%;top:8%;transform:rotate(-8deg)}
-.book--lemon{background:linear-gradient(135deg,#FFFFFF,#E7E5DF);color:var(--ink);left:40%;top:20%;transform:rotate(7deg)}
+.book{position:absolute;width:44%;aspect-ratio:3/4.1;border-radius:4px 10px 10px 4px;box-shadow:24px 30px 40px rgba(0,0,0,.28),inset 10px 0 0 rgba(0,0,0,.18),inset 12px 0 0 rgba(255,255,255,.12);padding:22px 20px 18px 30px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .5s ease}
+.book--ink{background:linear-gradient(135deg,#353535,#222);color:var(--lemon);left:4%;top:8%;transform:rotate(-8deg)}
+.book--lemon{background:linear-gradient(135deg,#FEF98E,#F2EC6E);color:var(--ink);left:40%;top:20%;transform:rotate(7deg)}
 .stage:hover .book--ink{transform:rotate(-11deg) translateY(-6px)}
 .stage:hover .book--lemon{transform:rotate(10deg) translateY(-6px)}
-.book::after{content:"";position:absolute;inset:12px 12px 12px 20px;border:1.5px solid currentColor;opacity:.7;border-radius:2px;pointer-events:none}
-.book .big{font-size:clamp(30px,4.6vw,60px);color:inherit;line-height:1.1}
+.book .big{font-size:clamp(52px,8vw,98px)}
 .book small{font-size:12px;letter-spacing:2px}
 .book .ver{font-family:var(--f-title);font-size:15px;letter-spacing:1px}
-.sticker{position:absolute;right:0;top:-6px;z-index:3;background:var(--paper);border-radius:14px;padding:16px 16px 14px;width:236px;box-shadow:0 14px 30px rgba(29,73,72,.18);display:flex;flex-direction:column;gap:10px;transform:rotate(1.5deg);border-top:5px solid var(--lemon)}
+.sticker{position:absolute;right:0;top:-6px;z-index:3;background:var(--paper);border-radius:22px;padding:16px 16px 14px;width:230px;box-shadow:0 14px 30px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:10px;transform:rotate(3deg)}
 .sticker .row{display:flex;gap:10px;align-items:center}
-.avatar{width:46px;height:46px;border-radius:6px;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:11px;line-height:1.15;text-align:center;font-weight:700;flex:none;box-shadow:inset 0 0 0 3px var(--ink),inset 0 0 0 4px rgba(255,255,255,.7)}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--ink);color:var(--lemon);display:grid;place-items:center;font-family:var(--f-title);font-size:14px;flex:none}
 .sticker b{font-size:15px;line-height:1.35}
-.sticker .pill{background:var(--pill);color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:14px;align-self:flex-start}
+.sticker .pill{background:var(--pill);border:0;border-radius:12px;padding:9px 14px;font-size:14px;align-self:flex-start}
 .copy{display:flex;flex-direction:column;gap:18px;min-width:0}
-.copy .big{font-size:clamp(44px,6.2vw,84px)}
-.motto{font-size:17px;line-height:1.75;margin:0;max-width:30em;color:var(--text)}
+.copy .big{font-size:clamp(64px,9vw,128px)}
+.motto{font-size:17px;line-height:1.75;margin:0;max-width:30em;color:#383836}
 .btns{display:flex;flex-wrap:wrap;gap:10px}
 .hero .slides{display:flex;grid-template-columns:none;align-items:center;gap:14px;padding-block:6px 40px}
-.arrow{width:44px;height:44px;border-radius:10px;border:2px solid var(--ink);background:transparent;color:var(--ink);font-size:18px;cursor:pointer;display:grid;place-items:center}
+.arrow{width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);background:transparent;color:var(--ink);font-size:18px;cursor:pointer;display:grid;place-items:center}
 .dots{display:flex;gap:8px}
-.dots button{width:10px;height:10px;border-radius:50%;border:0;background:#B9C6C4;padding:0;cursor:pointer}
+.dots button{width:10px;height:10px;border-radius:50%;border:0;background:#A9A9A7;padding:0;cursor:pointer}
 .dots button[aria-current="true"]{background:var(--ink);width:26px;border-radius:6px}
 .slideNote{font-size:13px;color:var(--muted)}
 @media (max-width:860px){
@@ -93,120 +90,122 @@ h1,h2,h3{text-wrap:balance}
 
 /* 반 */
 .class .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:center;padding-block:70px 90px}
-.box{background:var(--ink);border-radius:6px;padding:96px 22px 22px;outline:1.5px solid rgba(255,255,255,.6);outline-offset:-10px;display:flex;gap:8px;align-items:flex-end;box-shadow:24px 30px 40px rgba(0,0,0,.22);transform:rotate(-2deg);position:relative;min-height:330px}
+.box{background:var(--ink);border-radius:14px;padding:96px 22px 22px;display:flex;gap:8px;align-items:flex-end;box-shadow:24px 30px 40px rgba(0,0,0,.22);transform:rotate(-2deg);position:relative;min-height:330px}
 .spine{flex:1;min-width:0;height:260px;border-radius:5px;background:var(--lemon);color:var(--ink);display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;font-size:15px;font-weight:700;letter-spacing:2px;cursor:pointer;border:0;font-family:inherit;transition:transform .25s}
-.spine:nth-child(2){height:240px;background:#FBFAF7}
-.spine:nth-child(3){height:270px;background:var(--mint)}
-.spine:nth-child(4){height:230px;background:#FBFAF7}
-.spine:nth-child(5){height:250px;background:#A9C6C2}
+.spine:nth-child(2){height:240px;background:#E3E3E1}
+.spine:nth-child(3){height:270px}
+.spine:nth-child(4){height:230px;background:#E3E3E1}
+.spine:nth-child(5){height:250px;background:#BDBDBB}
 .spine[aria-pressed="true"]{transform:translateY(-22px);box-shadow:0 10px 0 rgba(0,0,0,.25)}
-.box .big{position:absolute;left:24px;top:24px;color:#fff;font-size:40px;line-height:1}
+.box .big{position:absolute;left:22px;top:20px;color:var(--lemon);font-size:62px;line-height:1}
 .classInfo{display:flex;flex-direction:column;gap:14px;min-width:0}
 .classInfo h2{font-size:clamp(28px,4vw,40px);margin:0}
 .card{background:var(--paper);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:8px}
 .card h3{margin:0;font-size:21px}
-.card p{margin:0;color:var(--text)}
+.card p{margin:0;color:#383836}
 .tag{display:inline-block;background:var(--lemon);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;align-self:flex-start}
 .steps{display:flex;gap:6px;flex-wrap:wrap;font-size:13px}
-.steps span{border:1.5px solid var(--ink);color:var(--ink);border-radius:999px;padding:2px 10px}
-.steps span.on{background:var(--ink);color:#fff}
+.steps span{border:1.5px solid var(--ink);border-radius:999px;padding:2px 10px}
+.steps span.on{background:var(--ink);color:var(--paper)}
 @media (max-width:860px){.class .wrap{grid-template-columns:minmax(0,1fr);padding-block:40px 60px}.box{min-height:280px}.spine{height:200px}.spine:nth-child(n){height:auto;min-height:170px}}
 
 /* 숯검정 판 · 레몬 판 */
-.dark{background:var(--ink);color:#fff;box-shadow:inset 0 0 0 14px var(--ink),inset 0 0 0 15.5px rgba(255,255,255,.45)}
-.lemon{background:var(--paper2);color:var(--text)}
+.dark{background:var(--ink);color:var(--paper)}
+.lemon{background:var(--lemon);color:var(--ink)}
 .band .wrap{padding-block:90px 100px}
-.band .big{font-size:clamp(34px,8vw,104px)}
-.dark .big{color:#fff}
+.band .big{font-size:clamp(64px,11vw,150px)}
+.dark .big{color:var(--lemon)}
 .list{list-style:none;margin:46px 0 0;padding:0;border-top:1px solid currentColor}
-.dark .list{border-color:rgba(255,255,255,.35)}
-.list li{display:grid;grid-template-columns:130px minmax(0,1fr) minmax(0,1.3fr);gap:20px;align-items:baseline;padding:22px 4px;border-bottom:1px solid currentColor}
-.dark .list li{border-color:rgba(255,255,255,.35)}
-.list .no{font-family:var(--f-title);font-size:22px;color:var(--ink);white-space:nowrap}
+.dark .list{border-color:rgba(252,246,126,.55)}
+.list li{display:grid;grid-template-columns:90px minmax(0,1fr) minmax(0,1.3fr);gap:20px;align-items:baseline;padding:22px 4px;border-bottom:1px solid currentColor}
+.dark .list li{border-color:rgba(252,246,126,.55)}
+.list .no{font-family:var(--f-title);font-size:30px}
 .dark .list .no{color:var(--lemon)}
 .list .name{font-size:22px;font-weight:700}
 .list .desc{font-size:15px;opacity:.85}
-@media (max-width:700px){.list li{grid-template-columns:82px minmax(0,1fr);gap:12px}.list .desc{grid-column:2}.list .no{font-size:16px;white-space:nowrap}.list .name{font-size:18px}}
+@media (max-width:700px){.list li{grid-template-columns:78px minmax(0,1fr);gap:12px}.list .desc{grid-column:2}.list .no{font-size:20px;white-space:nowrap}.list .name{font-size:18px}}
 .split{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:50px;align-items:center}
 @media (max-width:860px){.split{grid-template-columns:minmax(0,1fr)}}
 
-/* 연습실 문 표지판 (간판 모양) */
-.plate{background:linear-gradient(135deg,#25605E,#163B3A);color:#fff;border-radius:6px;padding:34px 30px;aspect-ratio:1.45/1;max-width:100%;display:flex;flex-direction:column;justify-content:center;gap:10px;box-shadow:18px 24px 36px rgba(29,73,72,.28);transform:rotate(-2deg);position:relative}
-.plate::after{content:"";position:absolute;inset:12px;border:1.5px solid rgba(255,255,255,.7);border-radius:2px;pointer-events:none}
-.plate b{font-size:clamp(30px,4.6vw,54px);line-height:1.08}
-.plate span{font-size:15px;opacity:.9;border-top:1.5px solid rgba(255,255,255,.7);padding-top:10px;align-self:flex-start}
-.plate em{font-style:normal;font-family:var(--f-title);font-size:14px;color:var(--lemon);letter-spacing:1px}
+/* 카세트 */
+.cassette{background:var(--ink);border-radius:18px;padding:20px;aspect-ratio:1.6/1;max-width:100%;display:flex;flex-direction:column;gap:14px;box-shadow:20px 26px 40px rgba(0,0,0,.25);transform:rotate(4deg)}
+.cassette .label{background:var(--paper);border-radius:8px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;font-family:var(--f-title);font-size:22px}
+.cassette .label span{font-family:var(--f-body);font-size:12px}
+.reels{flex:1;background:#4A4A48;border-radius:40px;display:flex;align-items:center;justify-content:space-around;padding:0 18px}
+.reel{width:30%;aspect-ratio:1;border-radius:50%;background:var(--paper);display:grid;place-items:center;animation:spin 6s linear infinite}
+.reel::after{content:"";width:40%;aspect-ratio:1;border-radius:50%;border:5px dotted var(--ink)}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* 달력 */
-.cal{background:var(--paper);color:var(--text);border-radius:22px;padding:22px;margin-top:40px;overflow-x:auto}
+.cal{background:var(--paper);color:var(--ink);border-radius:22px;padding:22px;margin-top:40px;overflow-x:auto}
 .calHead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.calHead b{font-family:var(--f-title);font-size:28px;font-weight:400;color:var(--ink)}
+.calHead b{font-family:var(--f-title);font-size:34px;font-weight:400}
 .grid7{display:grid;grid-template-columns:repeat(7,minmax(40px,1fr));gap:4px;min-width:330px}
 .grid7 .dow{font-size:12px;text-align:center;color:var(--muted);padding-bottom:4px}
-.day{min-height:64px;border-radius:6px;padding:6px 7px;font-size:14px;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:2px;background:#F3F2EE}
-.day.out{background:transparent;color:#B3BAB9}
-.day.e1{background:#FBE39A}
-.day.e2{background:var(--mint)}
-.day.e3{background:#E4E2DC}
+.day{min-height:64px;border-radius:10px;padding:6px 7px;font-size:14px;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:2px;background:#F2F2F0}
+.day.out{background:transparent;color:#B0B0AE}
+.day.e1{background:var(--lemon)}
+.day.e2{background:#F8F6C4}
+.day.e3{background:#DEDEDC}
 .day.e4{background:#F4D9D6}
 .day .ev{font-size:10.5px;line-height:1.25;font-weight:700}
 .day.sun{color:#B8402F}
 .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
-.legend span{display:inline-flex;align-items:center;gap:6px;font-size:13px;border-radius:999px;padding:5px 12px;background:#F3F2EE}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:13px;border-radius:999px;padding:5px 12px;background:#F2F2F0}
 .legend i{width:12px;height:12px;border-radius:3px;display:block}
 .calNote{font-size:12px;color:var(--muted);margin:12px 0 0}
 @media (max-width:600px){.day{min-height:52px;padding:4px}.day .ev{display:none}}
 
 /* 노트 */
 .note .wrap{padding-block:90px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:50px;align-items:center}
-.notebook{position:relative;background:var(--paper);border-radius:8px 18px 18px 8px;aspect-ratio:4/3;max-width:100%;box-shadow:22px 28px 40px rgba(0,0,0,.24);transform:rotate(-4deg);overflow:hidden;background-image:repeating-linear-gradient(transparent 0 30px,#E3E9E8 30px 31px)}
+.notebook{position:relative;background:var(--paper);border-radius:8px 18px 18px 8px;aspect-ratio:4/3;max-width:100%;box-shadow:22px 28px 40px rgba(0,0,0,.24);transform:rotate(-4deg);overflow:hidden;background-image:repeating-linear-gradient(transparent 0 30px,#E6E6E4 30px 31px)}
 .notebook::before{content:"";position:absolute;left:0;top:0;bottom:0;width:30px;background:var(--ink)}
-.notebook .bandL{position:absolute;left:30px;right:0;top:36%;height:26%;background:var(--ink);color:#fff;display:flex;align-items:center;padding-left:24px}
-.notebook .bandL .big{font-size:clamp(24px,3.4vw,44px);color:#fff}
-.notebook .lines{position:absolute;left:54px;top:12px;font-size:13px;line-height:31px;color:var(--muted)}
+.notebook .bandL{position:absolute;left:30px;right:0;top:36%;height:26%;background:var(--lemon);display:flex;align-items:center;padding-left:24px}
+.notebook .bandL .big{font-size:clamp(42px,6vw,72px)}
+.notebook .lines{position:absolute;left:54px;top:12px;font-size:13px;line-height:31px;color:#5A5A58}
 .note .sticker{position:static;transform:rotate(-2deg);width:auto;max-width:300px}
 @media (max-width:860px){.note .wrap{grid-template-columns:minmax(0,1fr);padding-block:60px}}
 
 /* 연락 */
 .contact .wrap{max-width:680px;padding-block:90px 100px;display:flex;flex-direction:column;gap:12px}
-.contact .big{font-size:clamp(40px,8vw,76px);text-align:center;margin-bottom:18px}
+.contact .big{font-size:clamp(60px,10vw,96px);text-align:center;margin-bottom:18px}
 .share{background:var(--paper);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;font-size:17px;text-decoration:none;color:var(--ink);border:0;font-family:inherit;text-align:left;width:100%;cursor:pointer}
-.share:hover{background:#F4F8F7}
+.share:hover{background:#FAFAF2}
 .share span{flex:1;min-width:0}
 .share small{display:block;font-size:13px;color:var(--muted)}
 .share svg{flex:none}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:14px;z-index:40}
-footer{background:var(--ink);color:#CFDFDD;font-size:13px;line-height:1.8;text-align:center}
+footer{background:var(--ink);color:#CFCFCD;font-size:13px;line-height:1.8;text-align:center}
 footer .wrap{padding-block:34px calc(34px + env(safe-area-inset-bottom,0px))}
-footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;letter-spacing:.5px}
+footer b{font-family:var(--f-title);font-weight:400;font-size:24px;color:var(--lemon);letter-spacing:1px}
 
 /* 시안 표시 */
-.mock{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 6px 16px rgba(0,0,0,.15)}
+.mock{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 6px 16px rgba(0,0,0,.15)}
 
 /* 내 폴더 화면 */
-#folder{background:var(--paper2);min-height:100vh}
+#folder{background:var(--lemon);min-height:100vh}
 #folder .wrap{max-width:760px;padding-block:28px 90px;display:flex;flex-direction:column;gap:22px}
 .fTop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.fTop .big{font-size:clamp(52px,11vw,96px)}
-.today{background:var(--ink);color:#fff;border-radius:8px;outline:1.5px solid rgba(255,255,255,.5);outline-offset:-8px;padding:20px;display:flex;flex-direction:column;gap:10px}
-.today p{margin:0;font-family:var(--f-title);font-size:20px;color:var(--lemon)}
+.fTop .big{font-size:clamp(70px,14vw,120px)}
+.today{background:var(--ink);color:var(--paper);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.today p{margin:0;font-family:var(--f-title);font-size:24px;color:var(--lemon)}
 .today a{display:flex;gap:12px;align-items:center;text-decoration:none;background:var(--ink2);border-radius:12px;padding:13px 14px;font-size:15px}
 .today a span{flex:1;min-width:0}
 .today a em{font-style:normal;color:var(--lemon);font-size:13px;white-space:nowrap}
 .bigBtns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.bigBtns a{background:var(--paper);border:1.5px solid var(--mint);border-radius:12px;padding:16px;min-height:100px;text-decoration:none;display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.bigBtns a{background:var(--paper);border-radius:18px;padding:16px;min-height:100px;text-decoration:none;display:flex;flex-direction:column;justify-content:space-between;gap:8px}
 .bigBtns small{font-family:var(--f-title);font-size:13px;letter-spacing:1px;color:var(--muted)}
 .bigBtns b{font-size:17px}
 @media (max-width:600px){.bigBtns{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 30px}
 @media (max-width:600px){.groups{grid-template-columns:minmax(0,1fr)}}
-.groups h2{margin:0 0 8px;font-family:var(--f-title);font-weight:400;font-size:24px;line-height:1;color:var(--ink)}
+.groups h2{margin:0 0 8px;font-family:var(--f-title);font-weight:400;font-size:32px;line-height:1}
 .groups h2 small{font-family:var(--f-body);font-size:14px;margin-left:6px}
 .groups ul{list-style:none;margin:0;padding:0;border-top:1.5px solid var(--ink)}
 .groups li{border-bottom:1.5px solid var(--ink)}
-.groups button{display:flex;gap:16px;align-items:baseline;width:100%;padding:13px 4px;background:none;border:0;font-family:inherit;font-size:15px;color:var(--text);text-align:left;cursor:pointer}
+.groups button{display:flex;gap:16px;align-items:baseline;width:100%;padding:13px 4px;background:none;border:0;font-family:inherit;font-size:15px;color:var(--ink);text-align:left;cursor:pointer}
 .groups button:hover{background:rgba(42,42,42,.06)}
-.groups .no{font-family:var(--f-title);width:24px;color:var(--ink);font-size:13px}
+.groups .no{font-family:var(--f-title);width:24px}
 .groups .nm{flex:1}
 .groups .nt{font-size:12px}
 .fNote{font-size:13px;margin:0;line-height:1.7}
@@ -233,16 +232,16 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
       <div class="stage" aria-hidden="true">
         <div class="book book--ink" id="bookA">
           <small>LEESH VOCAL</small>
-          <p class="big">이송희</p>
-          <span class="ver" id="verA">AUDITION</span>
+          <p class="big">VO<br>CAL</p>
+          <span class="ver" id="verA">AUDITION Ver.</span>
         </div>
         <div class="book book--lemon" id="bookB">
-          <small>1:1 개인레슨전문</small>
-          <p class="big">보컬<br>레슨</p>
-          <span class="ver" id="verB">ENTRANCE</span>
+          <small>SEOLLEUNG · GANGNAM</small>
+          <p class="big">LE<br>ESH</p>
+          <span class="ver" id="verB">ENTRANCE Ver.</span>
         </div>
         <div class="sticker">
-          <div class="row"><span class="avatar">이송희<br>보컬</span><b id="stickerText">이번 달 내방 오디션</b></div>
+          <div class="row"><span class="avatar">LSH</span><b id="stickerText">☆ 이번 달 내방 오디션 ★</b></div>
           <a class="pill" id="stickerBtn" href="#month">신청하기 &gt;&gt;</a>
         </div>
       </div>
@@ -285,7 +284,7 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
 
   <section class="band dark" id="curriculum" aria-label="커리큘럼">
     <div class="wrap">
-      <p class="eyebrow" style="color:#BFD3D1">레슨 4단계 · 반마다 필요한 단계까지</p>
+      <p class="eyebrow" style="color:#BDBDBB">레슨 4단계 · 반마다 필요한 단계까지</p>
       <h2 class="big">CURRICULUM<span class="marks" aria-hidden="true"><i></i><i></i></span></h2>
       <ol class="list">
         <li><span class="no">STEP 01</span><span class="name">노래 진단</span><span class="desc">노래를 들어보며 기초 발성 파악 · 맞춤형 기본기 수업</span></li>
@@ -299,7 +298,7 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
   <section class="band lemon" id="room" aria-label="연습실">
     <div class="wrap split">
       <div>
-        <p class="eyebrow">수강생 전용 · B1~B5 연습실 · C hall</p>
+        <p class="eyebrow" style="color:#4A4A30">수강생 전용 · B1~B5 연습실 · C hall</p>
         <h2 class="big">PRACTICE<br>ROOM</h2>
         <ol class="list">
           <li><span class="no">01</span><span class="name">365일 24시간 무료</span><span class="desc">수강생이면 언제든</span></li>
@@ -311,17 +310,16 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
         </ol>
         <div class="btns" style="margin-top:28px"><a class="pill pill--fill" href="#my-folder">연습실 예약하기 →</a></div>
       </div>
-      <div class="plate" aria-hidden="true">
-        <em>24H PRACTICE</em>
-        <b>연습실<br>B1 ~ B5</b>
-        <span>C hall 댄스 연습실 · 수강생 전용</span>
+      <div class="cassette" aria-hidden="true">
+        <div class="label">24h Practice <span>SIDE A · B1~B5</span></div>
+        <div class="reels"><span class="reel"></span><span class="reel"></span></div>
       </div>
     </div>
   </section>
 
   <section class="band dark" id="month" aria-label="이번 달 일정">
     <div class="wrap">
-      <p class="eyebrow" style="color:#BFD3D1">EARLY BIRD · 신청 기간을 한눈에</p>
+      <p class="eyebrow" style="color:#BDBDBB">EARLY BIRD · 신청 기간을 한눈에</p>
       <h2 class="big">THIS MONTH</h2>
       <div class="cal">
         <div class="calHead">
@@ -330,9 +328,9 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
         </div>
         <div class="grid7" id="cal"></div>
         <div class="legend">
-          <span><i style="background:#FBE39A"></i>내방 오디션 신청</span>
-          <span><i style="background:var(--mint)"></i>원장님 컨설팅 신청</span>
-          <span><i style="background:#E4E2DC"></i>월말평가</span>
+          <span><i style="background:var(--lemon)"></i>내방 오디션 신청</span>
+          <span><i style="background:#F8F6C4;border:1px solid #CFCB6A"></i>원장님 컨설팅 신청</span>
+          <span><i style="background:#DEDEDC"></i>월말평가</span>
           <span><i style="background:#F4D9D6"></i>휴일</span>
         </div>
         <p class="calNote">날짜는 시안 예시입니다. 실제 홈페이지에서는 관리자 화면에 올린 일정으로 채워집니다.</p>
@@ -350,7 +348,7 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
         <h2 class="big" style="font-size:clamp(48px,7vw,80px)">LESSON<br>NOTE</h2>
         <p class="motto">수업 내용 · 곡별 피드백 · 연습 포인트를 선생님과 같이 쓰고, 내 폴더에서 다시 봅니다.</p>
         <div class="sticker">
-          <div class="row"><span class="avatar">이송희<br>보컬</span><b>수강생 전용</b></div>
+          <div class="row"><span class="avatar">LSH</span><b>☆ 수강생 전용 ★</b></div>
           <a class="pill" href="#my-folder">내 폴더 열기 &gt;&gt;</a>
         </div>
       </div>
@@ -388,7 +386,7 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
 </div>
 
 <div id="folder" hidden>
-  <header class="top" style="background:var(--paper2)">
+  <header class="top" style="background:var(--lemon);border-color:rgba(42,42,42,.25)">
     <div class="wrap">
       <a class="logo" href="#home">LEESH VOCAL</a>
       <a class="pill" href="#home" style="margin-left:auto">← 첫 화면</a>
@@ -418,7 +416,7 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
   </div>
 </div>
 
-<div class="mock">시안 · 가짜 홈페이지 · 간판 색</div>
+<div class="mock">시안 · 가짜 홈페이지</div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script>
@@ -442,9 +440,9 @@ footer b{font-family:var(--f-title);font-weight:400;font-size:20px;color:#fff;le
 
   // 첫 화면 넘기기
   var slides = [
-    { eb: '강남 선릉역 1:1 보컬학원', title: 'SING YOUR<br>OWN.', text: '오디션은 많이 보는 것보다 정확한 정보로 제대로 보는 것이 더 중요합니다.', st: '이번 달 내방 오디션', btn: '신청하기 >>', href: '#month', a: 'AUDITION', b: 'ENTRANCE' },
-    { eb: '오디션반 · 오디션 심화반', title: 'AUDITION<br>CARE.', text: '매달 오디션 세미나, 학원 내방 오디션, 오디션 후기까지 한 곳에서 챙깁니다.', st: '원장님 1:1 컨설팅', btn: '반 보기 >>', href: '#class', a: 'SEMINAR', b: 'CONSULTING' },
-    { eb: '수강생 전용 연습실', title: '24H<br>PRACTICE.', text: '수강생은 365일 24시간 무료로 연습실을 씁니다. 한 번에 최대 2시간, 오늘 · 내일 예약.', st: '연습실 B1~B5 · C hall', btn: '확인하기 ↓↓', href: '#room', a: 'ROOM B1~B5', b: 'C HALL' }
+    { eb: '강남 선릉역 1:1 보컬학원', title: 'SING YOUR<br>OWN.', text: '오디션은 많이 보는 것보다 정확한 정보로 제대로 보는 것이 더 중요합니다.', st: '☆ 이번 달 내방 오디션 ★', btn: '신청하기 >>', href: '#month', a: 'AUDITION Ver.', b: 'ENTRANCE Ver.' },
+    { eb: '오디션반 · 오디션 심화반', title: 'AUDITION<br>CARE.', text: '매달 오디션 세미나, 학원 내방 오디션, 오디션 후기까지 한 곳에서 챙깁니다.', st: '☆ 원장님 1:1 컨설팅 ★', btn: '반 보기 >>', href: '#class', a: 'CHARCOAL Ver.', b: 'CREAM Ver.' },
+    { eb: '수강생 전용 연습실', title: '24H<br>PRACTICE.', text: '수강생은 365일 24시간 무료로 연습실을 씁니다. 한 번에 최대 2시간, 오늘 · 내일 예약.', st: '☆ 연습실 B1~B5 · C hall ★', btn: '확인하기 ↓↓', href: '#room', a: 'ROOM B1~B5', b: 'C HALL Ver.' }
   ];
   var cur = 0, dots = document.getElementById('dots'), timer;
   slides.forEach(function (s, i) {
