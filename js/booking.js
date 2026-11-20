@@ -137,7 +137,7 @@
       if (!res.ok) { board.textContent = ""; board.appendChild(el("p", "sys-msg sys-msg--error", res.error)); return; }
       state.date = res.date;
       state.rooms = res;
-      renderDays(res.days, res.date);
+      renderDays(res);
       renderBoard(res);
       renderRooms(res);
       // 하루 합계 제한이 24시간이면 (원장님 2026-10-28: 한 번에 2시간, 횟수 제한 없음) "더 예약할 수 있어요"로
@@ -176,11 +176,12 @@
   function plusDay(d) { return new Date(Date.parse(d + "T00:00:00Z") + DAY).toISOString().slice(0, 10); }
   function openNewDay(tries, old) {
     if (!state.who || !state.rooms || paused) return;
-    old = old || { days: state.rooms.days, last: state.date === state.rooms.days[state.rooms.days.length - 1] };
+    old = old || { days: state.rooms.days, last: state.date === state.rooms.days[state.rooms.days.length - 1], preview: !!state.rooms.preview, date: state.date };
     if (state.rooms.days[0] !== old.days[0]) return; // 이미 바뀜 (1분 새로 고침이 먼저 함)
-    var want = old.last ? plusDay(old.days[old.days.length - 1]) : (old.days[1] || plusDay(old.days[0]));
+    // 미리 보던 날(모레)은 12시가 되면 그날이 바로 열림 → 그날 그대로
+    var want = old.preview ? old.date : old.last ? plusDay(old.days[old.days.length - 1]) : (old.days[1] || plusDay(old.days[0]));
     LeeshAPI.rpc("rooms_day", { p_date: want }).then(function (res) {
-      if (!res.ok || res.days[0] === old.days[0]) {
+      if (!res.ok || res.days[0] === old.days[0] || res.preview) {
         // 기기 시계가 서버보다 빠를 수 있어서: 처음 6초는 0.5초마다, 그 뒤 1분까지 2초마다 다시 물어봄
         if (tries < 40) setTimeout(function () { openNewDay(tries + 1, old); }, tries < 12 ? 500 : 2000);
         return;
@@ -188,7 +189,7 @@
       state.date = res.date;
       state.rooms = res;
       state.pick = null;
-      renderDays(res.days, res.date);
+      renderDays(res);
       renderBoard(res);
       renderRooms(res);
       updatePick();
@@ -202,21 +203,30 @@
   }
   armMidnight();
 
-  function renderDays(days, current) {
-    var wrap = $("#days");
+  function renderDays(res) {
+    var days = res.days, current = res.date, wrap = $("#days");
     wrap.textContent = "";
     if (days.length === 1) { // same-day only: nothing to pick, just say which day and when the next one opens
       wrap.appendChild(el("p", "sys-note", "오늘 " + dayLabel(days[0]) + " · 예약은 당일만 돼요. 매일 밤 12시에 그날 예약이 열려요."));
-      return;
+    } else {
+      if (days.length === 2) wrap.appendChild(el("p", "sys-note", "오늘과 내일까지 예약할 수 있어요. 매일 밤 12시에 다음 날 예약이 열려요."));
+      days.forEach(function (d, i) {
+        var b = el("button", "sys-chip", (days.length === 2 ? (i ? "내일 " : "오늘 ") : "") + dayLabel(d));
+        b.type = "button";
+        b.setAttribute("aria-pressed", d === current ? "true" : "false");
+        b.addEventListener("click", function () { loadDay(d); });
+        wrap.appendChild(b);
+      });
     }
-    if (days.length === 2) wrap.appendChild(el("p", "sys-note", "오늘과 내일까지 예약할 수 있어요. 매일 밤 12시에 다음 날 예약이 열려요."));
-    days.forEach(function (d, i) {
-      var b = el("button", "sys-chip", (days.length === 2 ? (i ? "내일 " : "오늘 ") : "") + dayLabel(d));
-      b.type = "button";
-      b.setAttribute("aria-pressed", d === current ? "true" : "false");
-      b.addEventListener("click", function () { loadDay(d); });
-      wrap.appendChild(b);
-    });
+    // 다음에 열릴 날 미리 보기 (선생님 의견 2026-11-20 "선생님들이 미리 예약해서 막힌 칸이 미리 보였으면 → 예약할 때 안 헤매게")
+    if (res.next) {
+      var p = el("button", "sys-chip sys-chip--soon", "🔒 " + (days.length === 2 ? "모레 " : "") + dayLabel(res.next) + " 미리 보기");
+      p.type = "button";
+      p.setAttribute("aria-pressed", res.next === current ? "true" : "false");
+      p.addEventListener("click", function () { loadDay(res.next); });
+      wrap.appendChild(p);
+    }
+    if (res.preview) wrap.appendChild(el("p", "sys-msg sys-msg--soon", "🔒 " + dayLabel(current) + " 예약은 밤 12시에 열려요. 지금은 미리 보기만 돼요 — 회색 칸은 선생님 수업 · 학원 일정으로 이미 막힌 시간이에요."));
   }
 
   /**
@@ -252,7 +262,11 @@
       var free = room.free.map(toMin);
       for (var t = open; t < close; t += unit) {
         var label = room.name + " " + hhmm(t);
-        if (free.indexOf(t) !== -1) {
+        if (free.indexOf(t) !== -1 && res.preview) {
+          var soon = el("span", "sys-board__cell is-free is-soon"); // 미리 보기: 비어 있지만 밤 12시에 열림
+          soon.title = label + " 빈 시간 (밤 12시에 열려요)";
+          grid.appendChild(soon);
+        } else if (free.indexOf(t) !== -1) {
           var cell = el("button", "sys-board__cell is-free");
           cell.type = "button";
           cell.title = label + " 빈 시간";
@@ -315,6 +329,7 @@
     });
     box.appendChild(chips);
 
+    if (res.preview) { box.appendChild(el("p", "sys-note", "🔒 이날은 밤 12시부터 예약할 수 있어요. 위 표에서 막힌 시간을 미리 확인해 두세요.")); return; }
     var room = res.rooms[names.indexOf(state.room)];
     var slots = el("div", "sys-slots");
     if (!room.free.length) slots.appendChild(el("span", "sys-note", "이날은 남은 시간이 없습니다. 다른 방이나 날짜를 골라주세요."));
@@ -339,10 +354,10 @@
     var sel = $("#hours");
     var btn = $("#bookBtn");
     sel.textContent = "";
-    if (!state.pick || !state.rooms) {
+    if (!state.pick || !state.rooms || state.rooms.preview) {
       sel.disabled = true;
       btn.disabled = true;
-      $("#pickLabel").textContent = "연습실과 시작 시간을 골라주세요.";
+      $("#pickLabel").textContent = state.rooms && state.rooms.preview ? "이날 예약은 밤 12시에 열려요." : "연습실과 시작 시간을 골라주세요.";
       return;
     }
     var unit = state.rooms.unit, start = toMin(state.pick.start);

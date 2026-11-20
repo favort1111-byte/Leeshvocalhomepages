@@ -114,6 +114,9 @@
 .sys-board__cell.is-free:hover{background:var(--sys-accent-soft);}
 .sys-board__cell.is-picked{background:var(--sys-accent);box-shadow:none;}
 .sys-board__cell.is-taken{background:var(--board-taken);}
+.sys-board__cell.is-soon{cursor:default;opacity:.75;}
+.sys-chip--soon{border-style:dashed;}
+.sys-msg--soon{display:block;margin:6px 0 2px;padding:8px 10px;border-radius:8px;background:#FFF6D6;color:#5B4300;font-size:13px;line-height:1.5;}
 .sys-board__cell.is-past{background:repeating-linear-gradient(135deg,var(--board-past) 0 3px,#E2DBD4 3px 5px);}
 .sys-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 0;font-size:13px;color:var(--sys-muted);}
 .sys-legend span{display:inline-flex;align-items:center;gap:6px;}

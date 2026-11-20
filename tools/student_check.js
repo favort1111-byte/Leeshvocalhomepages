@@ -13,6 +13,7 @@
     6. 카카오톡 안에서 열었을 때 마이크 안내
     8. 오디션 후기 쓰기: 내방 / 본사 고르기 · 오디션 본 날짜
    10. 내방 오디션 신청서: 2개까지 고르는 오디션은 1개만 골라도 신청됨
+   11. 연습실 예약: 밤 12시에 열릴 날(모레)을 미리 보기 — 막힌 칸만 보이고 예약은 안 됨, 12시가 되면 그날이 바로 열림
     9. 보컬 오락실: 소리 장치가 멈춘 뒤(다른 앱 · 마이크 · 아이폰 interrupted)에도 다음 게임에서 소리가 나는지
 
   쓰는 법 (학생 화면을 고칠 때마다, 올리기 전에):
@@ -198,7 +199,7 @@ async function passConsent(page, wait) {
     await page.clock.install({ time: new Date(kstDay + 'T23:59:20+09:00') });
     await enter(page, base, run);
     await page.goto(base + 'booking.html', { waitUntil: 'networkidle' }); await run(1500);
-    const chips = () => page.$$eval('#days .sys-chip', (a) => a.map((x) => x.textContent + (x.getAttribute('aria-pressed') === 'true' ? '*' : '')));
+    const chips = () => page.$$eval('#days .sys-chip:not(.sys-chip--soon)', (a) => a.map((x) => x.textContent + (x.getAttribute('aria-pressed') === 'true' ? '*' : '')));
     const before = await chips();
     const day = (t) => ((t || '').match(/\d+\/\d+/) || [''])[0];   // "내일 11/18(수)" → "11/18"
     await page.locator('#days .sys-chip').nth(1).click(); await run(800);
@@ -352,6 +353,36 @@ async function passConsent(page, wait) {
     check('1개만 골라도 신청 완료', /신청했어요/.test(msg) && !/골라주세요|2개/.test(msg), msg.slice(0, 50));
     check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
     await ctx.close();
+  }
+
+  // 11. 다음에 열릴 날 미리 보기 (선생님 의견 2026-11-20 "선생님들이 미리 예약해서 막힌 칸이 미리 보였으면")
+  console.log('\n11. 연습실 예약: 모레 미리 보기');
+  {
+    const page = await browser.newPage({ viewport: { width: 360, height: 900 } });
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+    const run = (ms) => page.clock.runFor(ms);
+    const kstDay = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    await page.clock.install({ time: new Date(kstDay + 'T23:59:20+09:00') });
+    await enter(page, base, run);
+    await page.goto(base + 'booking.html', { waitUntil: 'networkidle' }); await run(1500);
+    const soon = page.locator('#days .sys-chip--soon');
+    const label = await soon.textContent().catch(() => '');
+    check('"모레 … 미리 보기" 버튼', /모레 .*미리 보기/.test(label), label);
+    await soon.click().catch(() => {}); await run(800);
+    const taken = await page.$$eval('#board .is-taken', (a) => a.length);
+    const clickable = await page.$$eval('#board button.sys-board__cell', (a) => a.length);
+    const slots = await page.$$eval('.sys-slot', (a) => a.length);
+    const btnOff = await page.$eval('#bookBtn', (b) => b.disabled).catch(() => false);
+    const note = await page.$eval('#days', (e) => e.textContent).catch(() => '');
+    check('막힌 칸이 미리 보임', taken > 0, taken + '칸');
+    check('미리 보기에선 예약 못 함 (누를 칸 · 시간 버튼 없음)', clickable === 0 && slots === 0 && btnOff, clickable + ' · ' + slots + ' · ' + btnOff);
+    check('"밤 12시에 열려요" 안내', /밤 12시에 열려요/.test(note), note.slice(-60));
+    await run(41000);   // 0시 0분 1초쯤
+    const after = await page.$$eval('#days .sys-chip', (a) => a.map((x) => x.textContent + (x.getAttribute('aria-pressed') === 'true' ? '*' : '')));
+    const open = await page.$$eval('.sys-slot', (a) => a.length);
+    check('12시가 되면 미리 보던 날이 바로 열림', /^내일 .*\*$/.test(after[1] || '') && open > 0, after.join(' | ') + ' · 빈 시간 ' + open);
+    check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
+    await page.close();
   }
 
   await browser.close();

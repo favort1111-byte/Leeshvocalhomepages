@@ -8,7 +8,7 @@
   cfg.local = true;
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 37; // bump when the demo defaults change
+  var VERSION = 38; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -58,7 +58,11 @@
         { id: 1, room_id: 1, member_id: "S002", day: t, start_min: 1200, end_min: 1320, status: "확정", memo: null },
         { id: 2, room_id: 6, member_id: "G001", day: t, start_min: 1140, end_min: 1260, status: "확정", memo: null },
         { id: 3, room_id: 3, member_id: null, day: t, start_min: 600, end_min: 660, status: "확정", memo: "청소" },
-        { id: 4, room_id: 2, member_id: "S001", day: t, start_min: 1320, end_min: 1440, status: "확정", memo: null }
+        { id: 4, room_id: 2, member_id: "S001", day: t, start_min: 1320, end_min: 1440, status: "확정", memo: null },
+        // 모레(밤 12시에 열리는 날) 미리 보기용: 선생님 수업 · 매주 고정 일정으로 이미 막힌 칸
+        { id: 5, room_id: 6, member_id: null, teacher_id: 501, day: addDays(t, 2), start_min: 960, end_min: 1080, status: "확정", memo: "안유정 선생님" },
+        { id: 6, room_id: 6, member_id: null, day: addDays(t, 2), start_min: 1080, end_min: 1380, status: "확정", memo: "댄스특강 (매주 고정)" },
+        { id: 7, room_id: 1, member_id: null, teacher_id: 504, day: addDays(t, 2), start_min: 1140, end_min: 1260, status: "확정", memo: "원장님 선생님" }
       ],
       lesson_notes: [
         { id: 11, member_id: "S001", lesson_date: addDays(t, -2), teacher: "원장님", teacher_id: 504, did: "후렴 고음에서 턱에 힘 빼기.\n호흡을 먼저 채우고 소리를 얹는 연습.",
@@ -349,11 +353,11 @@
       if (!checkReady("", "", uid).ok) return { ok: false, code: "members_only", error: "수강생만 볼 수 있어요. 카카오로 로그인해주세요." };
       var s = db.settings, n = nowKst(), d = a.p_date || n.today;
       var ahead = diffDays(n.today, d);
-      if (isNaN(ahead) || ahead < 0 || ahead > s.max_days) return fail("예약할 수 없는 날짜입니다.");
+      if (isNaN(ahead) || ahead < 0 || ahead > s.max_days + 1) return fail("예약할 수 없는 날짜입니다.");
       var days = [];
       for (var i = 0; i <= s.max_days; i++) days.push(addDays(n.today, i));
       return {
-        ok: true, date: d, now: ahead === 0 ? n.min : null, days: days, unit: s.unit_min, open: hhmm(s.open_min), close: hhmm(s.close_min),
+        ok: true, date: d, preview: ahead > s.max_days, next: addDays(n.today, s.max_days + 1), now: ahead === 0 ? n.min : null, days: days, unit: s.unit_min, open: hhmm(s.open_min), close: hhmm(s.close_min),
         maxHours: s.max_minutes / 60, dailyMaxHours: s.daily_max_minutes / 60, cancelBefore: before(s.cancel_minutes),
         rooms: db.rooms.filter(function (r) { return r.active; })
           .sort(function (x, y) { return x.sort - y.sort || x.id - y.id; })

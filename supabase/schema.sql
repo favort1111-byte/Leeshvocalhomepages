@@ -2302,12 +2302,15 @@ begin
   exception when others then
     return private.fail('날짜 형식이 올바르지 않습니다.');
   end;
-  if d < today or d > today + s.max_days then
+  -- 다음에 열릴 날(오늘 + max_days + 1)은 미리 보기만 (선생님 의견 2026-11-20 "선생님들이 미리 예약해서 막힌 칸이 미리 보였으면"): 예약은 booking_create가 그대로 막음
+  if d < today or d > today + s.max_days + 1 then
     return private.fail('예약할 수 없는 날짜입니다.');
   end if;
   return jsonb_build_object(
     'ok', true,
     'date', d,
+    'preview', d > today + s.max_days,
+    'next', today + s.max_days + 1,
     'now', case when d = today then now_min end,   -- lets the page grey out hours already gone
     'days', (select jsonb_agg(today + i order by i) from generate_series(0, s.max_days) i),
     'unit', s.unit_min,
