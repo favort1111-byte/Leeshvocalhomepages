@@ -2881,6 +2881,7 @@
   var logState = { items: [], loaded: false };
   /* ---------------- 카톡 자동발송 (원장님 2026-11-10): 전날 오후 6시 솔라피 알림톡 리마인더 ---------------- */
   var KK_KINDS = ["상담", "컨설팅", "특강", "첫 레슨", "보강"];
+  function kkName(k) { return k === "첫 레슨" ? "신규 수강 안내" : k; } // 종류 값은 "첫 레슨" 그대로 (서버 · 템플릿 키), 화면 이름만 (2026-11-20)
   // 미리보기용 문구 (docs/alimtalk_templates.md와 같은 초안. 실제로 나가는 문구는 솔라피에서 승인된 템플릿)
   var KK_LEAD = { "상담": "내일 상담 예약을 안내드립니다.", "컨설팅": "내일 오디션 컨설팅 일정을 안내드립니다.", "특강": "내일 특강 일정을 안내드립니다.",
     "첫 레슨": "내일 첫 레슨 일정을 안내드립니다.", "보강": "내일 보강 레슨 일정을 안내드립니다." };
@@ -2958,7 +2959,7 @@
     "보강": "[이송희보컬레슨학원 보강 리마인더]\n\n안녕하세요, #{이름}님! 😺\n\n내일 #{시간}, #{강사} 선생님과 함께하는 보강 수업이 예정되어 있어 안내드립니다.\n\n보강 수업은 사전에 확정된 일정으로 진행되며, 불참 시 추가 보강이 어려운 점 양해 부탁드립니다.\n\n소중한 수업 시간을 놓치지 않도록 일정을 다시 한번 확인해 주시고, 내일 보강 수업에서 반갑게 뵙겠습니다! 😺\n이송희보컬레슨학원 드림"
   };
   // 원장님 메모 (보내기 전에 할 일)
-  var KK_HINT = { "첫 레슨": "📌 신규 수강 안내: 등록하면 첫 레슨 날짜 · 시간을 넣고 '지금 보내기'로 바로 보내기 (그대로 두면 첫 레슨 전날 저녁 6시에 나감) · 매주 요일 · 시간은 첫 레슨 날짜에서 저절로 · 안내 이미지 2장은 따로 보내기 · 전화번호 미리 등록",
+  var KK_HINT = { "첫 레슨": "📌 신규 수강 안내 = 수강 등록하면 바로 보내는 카톡이에요 (첫 레슨 전날이 아니라). 날짜 · 시간에는 첫 레슨 날짜 · 시간을 넣으면 '매주 ○요일 오후 ○시'가 저절로 나가요. 카톡의 '신규 수강 안내 보기' 버튼을 누르면 안내 이미지 2장(신규 수강 안내 · 강의 규정)이 열려요. 전화번호를 먼저 등록해 두세요.",
     "컨설팅": "📌 컨설팅 참여 학생들을 모아서, 시간이 같은 학생끼리 한 번에 넣기 (시간이 다르면 따로)",
     "특강": "📌 특강 참여 학생들을 모아서, 시간이 같은 학생끼리 한 번에 넣기 · 준비물은 아래 칸에",
     "보강": "📌 강사를 비우면 학생의 담당 선생님 이름으로 보내요", "상담": "" };
@@ -2983,6 +2984,12 @@
     field(f, "teacher").placeholder = kind === "특강" ? "예) 메이크업 김○○ 원장님 (뒤에 '과')" : "비우면 학생의 담당 선생님 (뒤에 'T와')";
     $("#kkHint").textContent = KK_HINT[kind] || "";
     $("#kkHint").hidden = !KK_HINT[kind];
+    // 신규 수강 안내 (종류 값 "첫 레슨"): 등록하면 바로 보냄 (원장님 2026-11-20 "첫 레슨 때가 아니고 첫 등록 때")
+    var now = kind === "첫 레슨";
+    $("#kkDayLab").textContent = now ? "첫 레슨 날짜" : "날짜";
+    $("#kkTimeLab").textContent = now ? "첫 레슨 시간" : "시간";
+    var save = $("#kkSave");
+    if (!save.getAttribute("data-armed")) save.textContent = now ? "저장하고 바로 보내기" : "일정 넣기";
   }
   kk.texts = {};
   function kkText(k) { return kk.texts[k] || KK_STYLES[0][1](k); }
@@ -2998,9 +3005,9 @@
     KK_KINDS.forEach(function (k) {
       var card = el("div", "adm__kktext");
       var head = el("div", "adm__kktexthead");
-      head.appendChild(el("strong", null, k));
+      head.appendChild(el("strong", null, kkName(k)));
       var pick = el("select");
-      pick.setAttribute("aria-label", k + " 예시 문구");
+      pick.setAttribute("aria-label", kkName(k) + " 예시 문구");
       pick.appendChild(el("option", null, "예시 문구 고르기…"));
       KK_STYLES.forEach(function (st, i) { var o = el("option", null, st[0]); o.value = i; pick.appendChild(o); });
       head.appendChild(pick);
@@ -3050,14 +3057,14 @@
       kkDrawTexts();
       kkPreview();
       $("#kkState").textContent = (d.connected ? "✅ 솔라피 연결됨 (" + d.key_tail + (d.sender ? " · 발신 " + d.sender : " · 카카오 채널로 보냄") + (d.pf_id ? "" : " · 채널 pfId 없음") + ")" : "⚠️ 솔라피 연결 전 — 아래 설정에서 연결해 주세요")
-        + " · " + (d.enabled ? "자동 발송 켜짐 (전날 " + d.send_hour + "시)" : "자동 발송 꺼짐") + (missing.length ? " · 템플릿 ID 없음: " + missing.join(", ") : "")
+        + " · " + (d.enabled ? "자동 발송 켜짐 (전날 " + d.send_hour + "시)" : "자동 발송 꺼짐") + (missing.length ? " · 템플릿 ID 없음: " + missing.map(kkName).join(", ") : "")
         + " · 시트에서 받은 번호 " + d.contacts + "명" + (d.last_note ? " · 마지막 발송 " + stamp(d.last_run_at) + " " + d.last_note : "");
       var rows = $("#kkTplRows");
       rows.textContent = "";
       KK_KINDS.forEach(function (k) {
         var lab = el("label", "sys-field"), inp = el("input");
         inp.name = k; inp.value = tpl[k] || ""; inp.placeholder = "KA01TP…"; inp.autocomplete = "off";
-        lab.appendChild(el("span", null, k));
+        lab.appendChild(el("span", null, kkName(k)));
         lab.appendChild(inp);
         rows.appendChild(lab);
       });
@@ -3074,7 +3081,7 @@
       d.items.forEach(function (x) {
         var li = el("li", "adm__card adm__kkrow adm__kkrow--" + ({ "예정": "wait", "보냄": "sent", "실패": "fail", "취소": "off" }[x.status] || "wait")), top = el("div", "adm__cardtop");
         top.appendChild(el("strong", null, x.when));
-        top.appendChild(el("span", "adm__badge adm__badge--kind", x.kind));
+        top.appendChild(el("span", "adm__badge adm__badge--kind", kkName(x.kind)));
         top.appendChild(el("span", null, x.name + (x.member ? " (" + x.member + ")" : "")));
         top.appendChild(el("span", "adm__badge", x.status));
         li.appendChild(top);
@@ -3137,12 +3144,36 @@
       }
       if (who === "consult") body.p_consult = Number($("#kkConsultSel").value) || null;
       if (who === "direct") { body.p_name = $("#kkName").value; body.p_phone = $("#kkPhone").value; }
+      var nowSend = kind === "첫 레슨", save = $("#kkSave");
+      // 신규 수강 안내는 저장하자마자 학생에게 카톡이 나가서 두 번 눌러야 (잘못 보내지 않게)
+      if (nowSend && save.getAttribute("data-armed") !== "1") {
+        save.setAttribute("data-armed", "1"); save.textContent = "한 번 더 누르면 바로 보내요";
+        setTimeout(function () { save.removeAttribute("data-armed"); kkFields(field(f, "kind").value); }, 5000);
+        return;
+      }
+      save.removeAttribute("data-armed"); save.disabled = true;
       api("rpc/admin_reminder_save", { method: "POST", body: body }).then(function (r) {
         var d = r.data || {};
-        if (!r.ok || !d.ok) { msg($("#kkMsg"), d.error || friendly(r, "넣지 못했어요."), "error"); return; }
-        msg($("#kkMsg"), d.count + "건 넣었어요. 전날 오후 6시에 저절로 보내요.", "ok");
-        kk.picked = {}; $("#kkFind").value = ""; kkPickList(); kkChosen(); field(f, "memo").value = ""; field(f, "teacher").value = ""; field(f, "topic").value = "";
-        loadKakao();
+        if (!r.ok || !d.ok) { save.disabled = false; kkFields(kind); msg($("#kkMsg"), d.error || friendly(r, "넣지 못했어요."), "error"); return; }
+        var done = function (text, kindMsg) {
+          save.disabled = false; kkFields(field(f, "kind").value);
+          msg($("#kkMsg"), text, kindMsg);
+          kk.picked = {}; $("#kkFind").value = ""; kkPickList(); kkChosen(); field(f, "memo").value = ""; field(f, "teacher").value = ""; field(f, "topic").value = "";
+          loadKakao();
+        };
+        if (!nowSend) { done(d.count + "건 넣었어요. 전날 오후 6시에 저절로 보내요.", "ok"); return; }
+        msg($("#kkMsg"), "보내는 중…");
+        var ids = d.ids || [], sent = 0, bad = [];
+        ids.reduce(function (p, id) {
+          return p.then(function () {
+            return api("rpc/admin_reminder_send", { method: "POST", body: { p_id: id } }).then(function (x) {
+              var y = x.data || {};
+              if (x.ok && y.ok) sent += 1; else bad.push(y.error || friendly(x, "못 보냈어요"));
+            });
+          });
+        }, Promise.resolve()).then(function () {
+          done(bad.length ? sent + "명 보냄 · " + bad.length + "명 못 보냄 (" + bad[0] + ") — 아래 목록에서 다시 보낼 수 있어요." : sent + "명에게 신규 수강 안내를 보냈어요.", bad.length ? "error" : "ok");
+        });
       });
     });
     $("#kkConn").addEventListener("submit", function (e) {

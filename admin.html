@@ -530,7 +530,7 @@
       </form>
     </section>
 
-    <!-- 카톡 자동발송 (원장님 2026-11-10): 상담 · 컨설팅 · 특강 · 첫 레슨 · 보강 전날 오후 6시 솔라피 알림톡 리마인더 -->
+    <!-- 카톡 자동발송 (원장님 2026-11-10): 상담 · 컨설팅 · 특강 · 보강 전날 오후 6시 솔라피 알림톡 리마인더 · 신규 수강 안내(종류 값 "첫 레슨")는 등록하면 바로 (2026-11-20) -->
     <section class="sys-card" data-panel="kakao" hidden>
       <h3 class="sys-h">카톡 자동발송 · 전날 리마인더</h3>
       <p class="sys-note">일정을 넣어 두면 <b>전날 오후 6시</b>에 솔라피 알림톡으로 저절로 보내요 (6시 뒤에 넣은 내일 일정도 밤 10시까지는 저절로). 학생 번호는 학생관리 시트 '회차·결제 관리' P열 "결제 연락처"에서 받아요.</p>
@@ -539,9 +539,9 @@
       <h4 class="adm__sub">일정 넣기</h4>
       <form class="sys adm__kkform" id="kkForm">
         <div class="sys-row">
-          <label class="sys-field"><span>종류</span><select name="kind"><option>상담</option><option>컨설팅</option><option>특강</option><option>첫 레슨</option><option>보강</option></select></label>
-          <label class="sys-field"><span>날짜</span><input name="day" type="date" required></label>
-          <label class="sys-field"><span>시간</span><input name="time" type="time" step="600" value="15:00" required></label>
+          <label class="sys-field"><span>종류</span><select name="kind"><option>상담</option><option>컨설팅</option><option>특강</option><option value="첫 레슨">신규 수강 안내 (등록하면 바로)</option><option>보강</option></select></label>
+          <label class="sys-field"><span id="kkDayLab">날짜</span><input name="day" type="date" required></label>
+          <label class="sys-field"><span id="kkTimeLab">시간</span><input name="time" type="time" step="600" value="15:00" required></label>
         </div>
         <fieldset class="sys-field adm__kkwho"><span>받는 사람</span>
           <label><input type="radio" name="who" value="member" checked> 학생 (여러 명 가능)</label>
@@ -569,7 +569,7 @@
           <label class="sys-field" data-var="#{안내}"><span id="kkMemoLab">안내 (선택)</span><input name="memo" maxlength="200" placeholder="예) 10분 전 도착 · 악보 지참"></label>
         </div>
         <p class="adm__kkpreview" id="kkPreview"></p>
-        <button class="sys-btn" type="submit">일정 넣기</button>
+        <button class="sys-btn" type="submit" id="kkSave">일정 넣기</button>
         <p class="sys-msg" id="kkMsg"></p>
       </form>
 
@@ -734,6 +734,6 @@
 <script src="js/photos.js?v=a00ab1e5"></script>
 <script src="js/fbstatus.js?v=dcea5374"></script>
 <script src="js/consultnote.js?v=42226ed5"></script>
-<script src="js/admin.js?v=8b744f2f"></script>
+<script src="js/admin.js?v=60630763"></script>
 </body>
 </html>

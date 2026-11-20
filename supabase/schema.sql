@@ -9338,3 +9338,67 @@ begin
       from public.consult_notes n left join public.feedback_bookings b on b.id = n.booking_id left join public.feedback_slots s on s.id = b.slot_id
       where n.member_id = p_member), '[]'::jsonb));
 end $$;
+
+-- ---------------------------------------------------------------- 마이그레이션 leesh_kakao_newstudent_now (2026-11-20)
+-- 신규 수강 안내(종류 "첫 레슨")는 첫 레슨 전날이 아니라 수강 등록할 때 보냄 (원장님 2026-11-20 "첫 레슨 때가 아니고 첫 등록 때")
+--   → 전날 오후 6시 자동 발송에서 뺌, 관리자 화면이 저장한 뒤 바로 보냄 (admin_reminder_save가 넣은 일정 번호 ids를 돌려줌)
+create or replace function private.reminders_daily()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare c private.solapi; h int := extract(hour from now() at time zone 'Asia/Seoul'); tmr date := (now() at time zone 'Asia/Seoul')::date + 1;
+  r record; sent int := 0; failed int := 0; x jsonb;
+begin
+  select * into c from private.solapi where id = 1;
+  if not c.enabled or h < c.send_hour or h >= 22 then return jsonb_build_object('ok', true, 'skip', true); end if;
+  for r in select id from public.reminders where status = '예정' and kind <> '첫 레슨' and (at at time zone 'Asia/Seoul')::date = tmr order by at limit 200 loop
+    x := private.reminder_send(r.id);
+    if (x ->> 'ok')::boolean then sent := sent + 1; else failed := failed + 1; end if;
+  end loop;
+  update private.solapi set last_run_at = now(), last_note = '보냄 ' || sent || ' · 실패 ' || failed where id = 1 and (sent + failed) > 0;
+  return jsonb_build_object('ok', true, 'sent', sent, 'failed', failed);
+end $$;
+create or replace function public.admin_reminder_save(p_id bigint, p_kind text, p_at timestamptz, p_place text default null, p_memo text default null,
+  p_members text[] default null, p_consult bigint default null, p_name text default null, p_phone text default null,
+  p_teacher text default null, p_track text default null, p_topic text default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare me text := lower(auth.jwt() ->> 'email'); m public.members; c public.consults; ph text := private.phone_norm(p_phone); n int := 0; mid text; rid bigint; ids bigint[] := '{}';
+  v_place text := nullif(trim(coalesce(p_place, '')), ''); v_memo text := nullif(trim(coalesce(p_memo, '')), '');
+  v_t text := left(nullif(trim(coalesce(p_teacher, '')), ''), 30); v_tr text := left(nullif(trim(coalesce(p_track, '')), ''), 30); v_to text := left(nullif(trim(coalesce(p_topic, '')), ''), 40);
+begin
+  if not public.is_admin() then return private.fail('관리자만 할 수 있어요.'); end if;
+  if p_kind not in ('상담', '컨설팅', '특강', '첫 레슨', '보강') then return private.fail('종류를 골라주세요.'); end if;
+  if p_at is null or p_at < now() - interval '1 day' then return private.fail('날짜 · 시간을 확인해주세요.'); end if;
+  if nullif(trim(coalesce(p_phone, '')), '') is not null and ph is null then return private.fail('휴대폰 번호를 다시 확인해주세요.'); end if;
+  if p_id is not null then
+    update public.reminders set kind = p_kind, at = p_at, place = v_place, memo = v_memo, teacher = coalesce(v_t, teacher), track = v_tr, topic = v_to,
+      name = coalesce(nullif(trim(coalesce(p_name, '')), ''), name), phone = case when p_phone is null then phone else ph end,
+      status = case when status = '보냄' and at = p_at then status else '예정' end, result = case when status = '보냄' and at = p_at then result else null end,
+      updated_at = now()
+    where id = p_id;
+    if not found then return private.fail('일정을 찾을 수 없어요.'); end if;
+    return jsonb_build_object('ok', true, 'count', 1, 'ids', jsonb_build_array(p_id));
+  end if;
+  if p_consult is not null then
+    select * into c from public.consults where id = p_consult;
+    if c.id is null then return private.fail('상담 신청을 찾을 수 없어요.'); end if;
+    insert into public.reminders (kind, consult_id, name, phone, at, place, memo, teacher, track, topic, created_by)
+    values (p_kind, c.id, left(coalesce(nullif(trim(coalesce(p_name, '')), ''), c.name), 30), ph, p_at, v_place, v_memo, v_t, v_tr, v_to, me) returning id into rid;
+    return jsonb_build_object('ok', true, 'count', 1, 'ids', jsonb_build_array(rid));
+  end if;
+  if coalesce(array_length(p_members, 1), 0) = 0 then
+    if nullif(trim(coalesce(p_name, '')), '') is null or ph is null then return private.fail('학생을 고르거나, 이름과 번호를 적어주세요.'); end if;
+    insert into public.reminders (kind, name, phone, at, place, memo, teacher, track, topic, created_by)
+    values (p_kind, left(trim(p_name), 30), ph, p_at, v_place, v_memo, v_t, v_tr, v_to, me) returning id into rid;
+    return jsonb_build_object('ok', true, 'count', 1, 'ids', jsonb_build_array(rid));
+  end if;
+  if array_length(p_members, 1) > 100 then return private.fail('한 번에 100명까지예요.'); end if;
+  foreach mid in array p_members loop
+    select * into m from public.members where id = upper(trim(mid));
+    if m.id is null then continue; end if;
+    insert into public.reminders (kind, member_id, name, phone, at, place, memo, teacher, track, topic, created_by)
+    values (p_kind, m.id, m.name, case when array_length(p_members, 1) = 1 then ph end, p_at, v_place, v_memo,
+            coalesce(v_t, private.reminder_teacher(m)), v_tr, v_to, me) returning id into rid;
+    ids := ids || rid;
+    n := n + 1;
+  end loop;
+  return jsonb_build_object('ok', true, 'count', n, 'ids', to_jsonb(ids));
+end $$;
