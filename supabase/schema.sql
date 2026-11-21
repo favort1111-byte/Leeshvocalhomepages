@@ -9402,3 +9402,8 @@ begin
   end loop;
   return jsonb_build_object('ok', true, 'count', n, 'ids', to_jsonb(ids));
 end $$;
+
+-- ===== leesh_lesson_sheets_admin_read (2026-11-21, 원장님 "권한 넣어줘") =====
+-- 관리자 → 수업 기록 → 곡·자료가 "불러오지 못했습니다"(403)였음: 표 읽기 권한이 빠져 있었음.
+-- 정책 lesson_sheets_admin(is_admin)이 있어서 관리자(이메일 로그인)만 읽힘, 학생 · 선생님 · 로그인 없는 사람은 0줄.
+grant select on public.lesson_sheets to authenticated;
