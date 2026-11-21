@@ -72,16 +72,35 @@
     });
   }
 
-  /** A valid access token, refreshing it when it is about to expire. */
+  /** A valid access token, refreshing it when it is about to expire.
+   *  한 번만 새로 받음: 휴대폰에서 관리자 화면을 오래 열어 뒀다가 다시 보면 메뉴 숫자 · 탭이 한꺼번에(수십 개)
+   *  열쇠를 새로 받으려다 서버가 막아서(429 · 같은 열쇠 다시 씀 400) 로그아웃됐음 (2026-11-21 기록에서 찾음). */
+  var refreshing = null;
   function token() {
     if (!session) return Promise.resolve(null);
     if (session.expires - 60 > Date.now() / 1000) return Promise.resolve(session.access);
-    return authCall("refresh_token", { refresh_token: session.refresh }).then(function (s) {
-      if (!s) { signOut("다시 로그인해주세요."); return null; }
-      s.email = s.email || session.email;
+    if (refreshing) return refreshing;
+    var old = session;
+    refreshing = LeeshAPI.request("/auth/v1/token?grant_type=refresh_token", {
+      method: "POST", headers: LeeshAPI.headers(), body: JSON.stringify({ refresh_token: old.refresh })
+    }).then(function (res) {
+      refreshing = null;
+      var d = res.data;
+      if (!res.ok || !d || !d.access_token) {
+        // 인터넷이 잠깐 끊김 · 서버가 바쁨(429 · 5xx): 로그인은 그대로 두고 다음에 다시
+        if (res.status === 0 || res.status === 429 || res.status >= 500) return old.access;
+        signOut("다시 로그인해주세요.");
+        return null;
+      }
+      var s = {
+        access: d.access_token, refresh: d.refresh_token,
+        expires: d.expires_at || Math.floor(Date.now() / 1000) + (d.expires_in || 3600),
+        email: (d.user && d.user.email) || old.email
+      };
       saveSession(s);
       return s.access;
     });
+    return refreshing;
   }
 
   /** REST call as the signed-in admin. Resolves to { ok, status, data }. */

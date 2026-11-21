@@ -177,7 +177,8 @@
         var d = res.data;
         if (!res.ok || !d || !d.access_token) {
           // 인터넷이 잠깐 끊긴 것(0 · 5xx)이면 로그인은 그대로 두고 예전 열쇠로 (서버가 거절하면 그때 다시)
-          if (res.status === 0 || res.status >= 500) return s.access;
+          // 429(서버가 잠깐 막음)도 같게: 예전엔 여기서 로그아웃돼 버렸음 (2026-11-21 점검)
+          if (res.status === 0 || res.status === 429 || res.status >= 500) return s.access;
           if (res.status) kakao.save(null);
           return null;
         }
