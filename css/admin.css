@@ -185,6 +185,9 @@ video.adm__player{height:auto;max-height:240px;}
 .adm__sub{margin:18px 0 8px;font-size:16px;}
 .adm__kkwho{display:flex;flex-wrap:wrap;gap:6px 16px;border:0;padding:0;}
 .adm__kkwho>span{width:100%;}
+.adm__kkfind{display:flex;flex-wrap:wrap;gap:8px;}
+.adm__kkfind input{flex:1 1 200px;min-width:0;}
+.adm__kkfind select{flex:1 1 220px;min-width:0;max-width:100%;}
 .adm__kkpick,#kkChosen{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
 .adm__kkpick .sys-chip,#kkChosen .sys-chip{padding:4px 10px;border:1px solid #CDBFAF;border-radius:999px;background:#fff;font:inherit;font-size:13px;cursor:pointer;}
 .adm__kkpick .sys-chip.is-on,#kkChosen .sys-chip.is-on{background:#1D4948;color:#fff;border-color:#1D4948;}

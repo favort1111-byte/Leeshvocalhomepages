@@ -2936,11 +2936,41 @@
         box.appendChild(b);
       });
       if (q && !list.length) box.appendChild(el("span", "sys-note", "찾는 학생이 없어요."));
+      kkSelectFill(ms);
     });
+  }
+  /* 목록에서 고르기 (원장님 2026-11-23 "이름 검색도 하고 드롭다운으로도, 학생 이름이랑 담당 선생님까지"):
+     담당 선생님별로 묶고, 줄마다 "이름 · 담당 ○○○", 이미 고른 학생은 ✓. 고르면 위 "고른 학생"에 더해짐. */
+  function kkSelectFill(ms) {
+    var sel = $("#kkSelect");
+    if (!sel) return;
+    var groups = {};
+    ms.filter(function (m) { return m.status !== "종료"; }).forEach(function (m) {
+      var t = teacherOf(m) || "담당 없음";
+      (groups[t] = groups[t] || []).push(m);
+    });
+    sel.textContent = "";
+    var first = el("option", "", "또는 목록에서 고르기 ▾");
+    first.value = "";
+    sel.appendChild(first);
+    Object.keys(groups).sort(function (a, b) {
+      if (a === "담당 없음") return 1; if (b === "담당 없음") return -1; return a.localeCompare(b, "ko");
+    }).forEach(function (t) {
+      var g = document.createElement("optgroup");
+      g.label = t === "담당 없음" ? "담당 없음" : "담당 " + t;
+      groups[t].sort(function (a, b) { return a.name.localeCompare(b.name, "ko"); }).forEach(function (m) {
+        var o = el("option", "", (kk.picked[m.id] ? "✓ " : "") + m.name + " · " + (t === "담당 없음" ? "담당 없음" : "담당 " + t) + (m.status !== "재원" ? " (" + m.status + ")" : ""));
+        o.value = m.id;
+        o.dataset.name = m.name;
+        g.appendChild(o);
+      });
+      sel.appendChild(g);
+    });
+    sel.value = "";
   }
   function kkChosen() {
     var ids = Object.keys(kk.picked), p = $("#kkChosen");
-    p.textContent = ids.length ? "고른 학생: " : "학생을 찾아서 눌러 고르세요.";
+    p.textContent = ids.length ? "고른 학생: " : "이름으로 찾거나 목록에서 고르세요. 여러 명 고를 수 있어요.";
     ids.forEach(function (id) {
       var b = el("button", "sys-chip is-on", kk.picked[id] + " ✕");
       b.type = "button";
@@ -2949,7 +2979,7 @@
     });
     if (ids.length) api("rpc/admin_member_phones", { method: "POST", body: { p_ids: ids } }).then(function (r) {
       var have = (r.data && r.data.items) || {}, none = ids.filter(function (id) { return !have[id]; });
-      if (none.length) p.appendChild(el("span", "sys-msg sys-msg--error", " · 번호 없음: " + none.map(function (id) { return kk.picked[id]; }).join(", ") + " (시트 P열 결제 연락처 확인)"));
+      if (none.length) p.appendChild(el("span", "sys-msg sys-msg--error", " · 번호 없음: " + none.map(function (id) { return kk.picked[id]; }).join(", ") + " (수강 ID 목록의 전화번호 칸에 넣어 주세요)"));
     });
     kkPreview();
   }
@@ -3068,6 +3098,7 @@
   function loadKakao() {
     var f = $("#kkForm");
     if (!field(f, "day").value) field(f, "day").value = addDays(todayKst(), 1);
+    kkPickList(); // 목록에서 고르기 채우기
     api("rpc/admin_solapi_status", { method: "POST", body: {} }).then(function (r) {
       var d = r.data || {};
       if (!r.ok || !d.ok) { $("#kkState").textContent = d.error || "불러오지 못했어요."; return; }
@@ -3148,6 +3179,11 @@
     $("#kkConsultSel").addEventListener("change", kkPreview);
     var t = null;
     $("#kkFind").addEventListener("input", function () { clearTimeout(t); t = setTimeout(kkPickList, 200); });
+    $("#kkSelect").addEventListener("change", function () {
+      var o = this.selectedOptions[0];
+      if (o && o.value) { if (kk.picked[o.value]) delete kk.picked[o.value]; else kk.picked[o.value] = o.dataset.name; }
+      kkPickList(); kkChosen();
+    });
     kkChosen();
     f.addEventListener("submit", function (e) {
       e.preventDefault();
