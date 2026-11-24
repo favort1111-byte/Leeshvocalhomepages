@@ -136,18 +136,25 @@
   /* ================================================================ 2. 계이름 맞히기 */
   A.register("solfa", (function () {
     var f = frame("solfa", "먼저 '도'를 들려주고, 다음 소리가 무슨 음인지 맞혀요. 처음엔 도·미·솔 세 개로 시작해요.");
-    var POOL = [[60, "도"], [64, "미"], [67, "솔"], [62, "레"], [65, "파"], [69, "라"], [71, "시"], [72, "높은 도"]];
-    var choices = el("div", "game__row g2__choices"), r = row(), go = btn("시작"), again = btn("🔁 다시 듣기", "game__btn--ghost");
+    var EASY = [[60, "도"], [64, "미"], [67, "솔"], [62, "레"], [65, "파"], [69, "라"], [71, "시"], [72, "높은 도"]];
+    // 🔥 어려움 (학생 의견 2026-11-24 "너무 쉬워요, 샵 · 플랫처럼"): 8음 전부에서 시작 → 3번 연속 맞히면 반음(검은 건반)이 하나씩
+    var HARD = EASY.concat([[66, "파# · 솔♭"], [61, "도# · 레♭"], [68, "솔# · 라♭"], [63, "레# · 미♭"], [70, "라# · 시♭"]]);
+    var POOL = EASY;
+    var choices = el("div", "game__row g2__choices"), r = row(), go = btn("시작"), hard = btn("🔥 어려움 · 샵 · 플랫", "game__btn--hard"),
+      again = btn("🔁 다시 듣기", "game__btn--ghost");
     f.box.appendChild(el("p", "g2__lives"));
     f.box.appendChild(choices);
-    r.appendChild(go); r.appendChild(again);
+    r.appendChild(go); r.appendChild(hard); r.appendChild(again);
     f.box.appendChild(r);
+    var hardNote = el("p", "g2__hardnote", "🔥 어려움: 도~높은 도 8음에서 시작해, 3번 연속 맞히면 반음(#·♭)이 하나씩 늘어요. 기록은 따로 남아요" +
+      (window.LeeshGameEvent ? " (이벤트 점수는 기본 단계로만)." : "."));
+    f.box.appendChild(hardNote);
     var st = null, q = null, timers = [];
     function lives() { f.box.querySelector(".g2__lives").textContent = st ? "♥".repeat(st.lives) + "♡".repeat(3 - st.lives) + " · 맞힌 개수 " + st.score : ""; }
     function build() {
       choices.textContent = "";
       POOL.slice(0, st.n).slice().sort(function (a, b) { return a[0] - b[0]; }).forEach(function (p) {
-        var b = btn(p[1], "game__btn--ghost g2__pick");
+        var b = btn(p[1], "game__btn--ghost g2__pick" + (p[1].indexOf("#") >= 0 ? " g2__pick--sharp" : ""));
         b.disabled = true;
         b.setAttribute("data-m", p[0]);
         b.addEventListener("click", function () { answer(p[0], b); });
@@ -173,7 +180,7 @@
       choices.querySelectorAll("button").forEach(function (x) { x.disabled = true; if (Number(x.getAttribute("data-m")) === q.m) x.classList.add("is-right"); });
       if (!ok) b.classList.add("is-wrong");
       // 이벤트 점수 (2026-11-10): 맞히면 100 + 음이 많을수록 10씩 + 빨리 답할수록 최대 100 (다시 듣기로 시간이 다시 가지 않음). 평소 화면엔 안 보임
-      if (ok) st.pts += 100 + 10 * (st.n - 3) + Math.max(0, 100 - Math.floor((performance.now() - (q.t || performance.now())) / 30));
+      if (ok && !st.hard) st.pts += 100 + 10 * (st.n - 3) + Math.max(0, 100 - Math.floor((performance.now() - (q.t || performance.now())) / 30));
       if (ok) { st.score++; st.streak++; } else { st.lives--; st.streak = 0; }
       var qn = POOL.filter(function (p) { return p[0] === q.m; })[0][1]; // "높은 도"도 그대로
       f.status.textContent = ok ? "정답! " + qn + "였어요." : "아쉬워요. " + qn + "였어요.";
@@ -183,18 +190,32 @@
       timers.push(setTimeout(ask, 1300));
     }
     function end(stopped) {
-      var nb = record("solfa", st.score);
-      go.hidden = false;
+      var nb = record(st.hard ? "solfa_hard" : "solfa", st.score);
+      go.hidden = hard.hidden = false;
       f.status.textContent = stopped ? "멈춰서 여기까지 기록했어요." : "끝!";
+      if (st.hard) {
+        var bh = A.best("solfa_hard");
+        A.result(f.panel, ["🔥 어려움 " + st.score + "개 맞힘" + (nb && st.score ? " · 새 기록!" : ""),
+          "반음 " + (st.n - EASY.length) + "개까지 왔어요" + (bh ? " · 어려움 최고 " + bh + "개" : "") + ". 반음은 바로 옆 음보다 살짝 높거나 낮은 소리예요."],
+          "계이름 맞히기 🔥어려움(샵·플랫) " + st.score + "개! 너는 몇 개?");
+        return;   // 어려움 단계는 이벤트 점수에 안 보냄 (이벤트 도중 규칙이 바뀌지 않게)
+      }
       A.result(f.panel, [st.score + "개 맞힘" + (nb && st.score ? " · 새 기록!" : ""), "음 " + st.n + "개까지 왔어요. 도에서 몇 칸 떨어졌는지 느껴 보는 게 비결이에요."],
         "계이름 맞히기 " + st.score + "개! 너는 몇 개?");
       if (window.LeeshGameEvent) LeeshGameEvent.submit("solfa", st.pts, f.panel); // 보컬오락실 이벤트 (2026-11-10)
     }
-    go.addEventListener("click", function () { A.audio(); go.hidden = true; f.hideResult(); st = { n: 3, lives: 3, score: 0, streak: 0, pts: 0 }; build(); lives(); ask(); });
+    function start(isHard) {
+      A.audio(); go.hidden = hard.hidden = true; f.hideResult();
+      POOL = isHard ? HARD : EASY;
+      st = { n: isHard ? EASY.length : 3, lives: 3, score: 0, streak: 0, pts: 0, hard: isHard };
+      build(); lives(); ask();
+    }
+    go.addEventListener("click", function () { start(false); });
+    hard.addEventListener("click", function () { start(true); });
     again.addEventListener("click", function () { if (q && !q.lock) { q.lock = true; play(); } });
     return {
       bestText: function (v) { return v + "개"; },
-      stop: function () { var playing = st && go.hidden; timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; go.hidden = false; if (playing) end(true); }
+      stop: function () { var playing = st && go.hidden; timers.forEach(clearTimeout); timers = []; if (q) q.lock = true; go.hidden = hard.hidden = false; if (playing) end(true); }
     };
   })());
 
