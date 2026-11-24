@@ -456,6 +456,11 @@ img{display:block;}
   .book__title{font-size:32px;}
   .book__tablink{margin-left:0;flex-basis:100%;}
 }
+/* 컴퓨터 · 노트북처럼 넓은 화면에서는 폴더를 크게 (학생 건의 2026-11-22 "시트가 작게 보여 불편") */
+@media (min-width:1000px){
+  .book{width:min(1240px, calc(100% - 96px));}
+  body:has(.pub-bar) .book{bottom:70px;} /* 왼쪽 아래 "다 쓰면 꼭 로그아웃" 띠에 안 가리게 */
+}
 @media (prefers-reduced-motion:reduce){.book{animation:none;}}
 
 /* ---------- home motion 1: the screen switching on (first visit, js/intro.js) ----------
