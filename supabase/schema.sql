@@ -12046,3 +12046,28 @@ begin
                   'teacher', substring(mm.memo from '담당\s*([^\s·,]+)'), 'memo', s.memo, 'status', mm.status) order by mm.name), '[]'::jsonb)
                   from public.lesson_missing_skip s join public.members mm on mm.id = s.member_id) end);
 end $function$;
+
+-- 이 작업 세션에 레슨실 자동 정리 알리기 (마이그레이션 leesh_claude_auto_ends_report, 2026-11-24)
+-- 이 작업 세션(Claude)에 "레슨실 자동 정리"를 알려 주기 위한 읽은 자리 (원장님 2026-11-24 "텔레그램이랑 이 세션에서 반드시 공유")
+create table if not exists private.claude_seen (key text primary key, last_id bigint not null default 0, at timestamptz not null default now());
+insert into private.claude_seen (key, last_id) values ('lesson_auto_ends', coalesce((select max(id) from public.lesson_auto_ends), 0))
+on conflict (key) do nothing;
+revoke all on private.claude_seen from public, anon, authenticated;
+
+-- 지난번 뒤로 새로 자동으로 끝난 레슨실 예약 (부르면 읽은 자리를 앞으로 옮김)
+create or replace function private.claude_auto_ends_report()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare last bigint; rows jsonb; mx bigint;
+begin
+  select last_id into last from private.claude_seen where key = 'lesson_auto_ends' for update;
+  select coalesce(jsonb_agg(jsonb_build_object('at', to_char(e.at at time zone 'Asia/Seoul', 'MM/DD HH24:MI'), 'member', e.member_id, 'name', e.student_name,
+           'teacher', t.name, 'room', e.room, 'kind', e.kind, 'weekday', (array['일','월','화','수','목','금','토'])[e.weekday + 1],
+           'time', private.hhmm(e.start_min) || '~' || private.hhmm(e.end_min), 'first', e.first_day,
+           'action', e.action, 'new_last', e.new_last, 'reason', e.reason) order by e.id), '[]'::jsonb), max(e.id)
+    into rows, mx
+    from public.lesson_auto_ends e left join public.teachers t on t.id = e.teacher_id
+   where e.id > coalesce(last, 0);
+  if mx is not null then update private.claude_seen set last_id = mx, at = now() where key = 'lesson_auto_ends'; end if;
+  return jsonb_build_object('count', jsonb_array_length(rows), 'rows', rows);
+end $$;
+revoke all on function private.claude_auto_ends_report() from public, anon, authenticated;
