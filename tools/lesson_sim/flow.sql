@@ -21,6 +21,7 @@ begin
   insert into r(step, ok, res) values ('준비', true, jsonb_build_object('teacher', tid, 'wed', w));
 
   -- 0) 예약 닫혀 있을 때 선생님은 막힘
+  update public.settings set lesson_rooms_open = false;
   perform pg_temp.as_t(tid);
   x := public.lesson_room_book('A4', m, '정규', w::text, '03:00', 50, null, null);
   insert into r(step, ok, res) values ('닫혀 있을 때 선생님 정규 신청 → 막혀야', not (x->>'ok')::boolean, x);
