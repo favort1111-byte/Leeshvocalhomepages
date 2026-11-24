@@ -50,7 +50,7 @@
   }
   function minutesSelect(v) {
     var o = [];
-    for (var i = 10; i <= 240; i += 10) o.push([i, i % 60 === 0 ? i / 60 + "시간" : i > 60 ? Math.floor(i / 60) + "시간 " + (i % 60) + "분" : i + "분"]);
+    for (var i = 10; i <= 120; i += 10) o.push([i, i % 60 === 0 ? i / 60 + "시간" : i > 60 ? Math.floor(i / 60) + "시간 " + (i % 60) + "분" : i + "분"]);
     return select(o, v || 50);
   }
 
@@ -112,11 +112,12 @@
         })(addDays(st.from, i));
       }
     }
-    function who(it) { return it.name || (it.teacher ? it.teacher + " 선생님" : "예약"); }
+    function who(it) { return it.name || (it.teacher ? it.teacher + " 선생님" : "예약됨"); }
     function drawDay() {
       body.textContent = "";
       var rooms = st.data.rooms || [], list = itemsOn(st.day);
       body.appendChild(el("p", "lr__hint", md(st.day) + " · 빈 곳을 누르면 그 방 · 그 시간으로 예약 칸이 열려요. 예약을 누르면 빼기 · 옮기기 · 취소."));
+      body.appendChild(freeBox(rooms, list));
       var grid = el("div", "lr__grid");
       grid.style.setProperty("--cols", rooms.length);
       var head = el("div", "lr__ghead");
@@ -161,6 +162,30 @@
       grid.appendChild(scroll);
       body.appendChild(grid);
       scroll.scrollTop = Math.max(0, ((first == null ? 600 : first - 30)) / 10 * ROW);
+    }
+    // 빈 시간 (25분 넘게 비어 있는 곳만, 오늘은 지금 뒤부터): 누르면 그 방 · 시간으로 예약 칸
+    function freeBox(rooms, list) {
+      var box = el("div", "lr__free");
+      box.appendChild(el("b", "lr__free-title", "빈 시간"));
+      if (st.day < st.data.today) { box.appendChild(el("span", "sys-note", "지난 날이에요.")); return box; }
+      var from = 0;
+      if (st.day === st.data.today) { var k = new Date(Date.now() + 9 * 3600000); from = Math.ceil((k.getUTCHours() * 60 + k.getUTCMinutes() + 1) / 10) * 10; }
+      rooms.forEach(function (r) {
+        var row = el("div", "lr__free-row");
+        row.appendChild(el("span", "lr__free-room", r.name));
+        var busy = list.filter(function (i) { return i.room === r.name; }).sort(function (a, b) { return a.st - b.st; });
+        var cur = from, gaps = [];
+        busy.forEach(function (i) { if (i.st - cur >= 25) gaps.push([cur, i.st]); cur = Math.max(cur, i.en); });
+        if (1440 - cur >= 25) gaps.push([cur, 1440]);
+        if (!gaps.length) row.appendChild(el("span", "sys-note", "빈 시간 없음"));
+        gaps.forEach(function (g) {
+          var c = btn(hhmm(g[0]) + "~" + hhmm(g[1]), "lr__free-chip");
+          c.addEventListener("click", function () { openForm({ room: r.name, date: st.day, start: g[0], minutes: Math.min(50, g[1] - g[0] - (g[1] - g[0]) % 10) }); });
+          row.appendChild(c);
+        });
+        box.appendChild(row);
+      });
+      return box;
     }
     function drawWeek() {
       body.textContent = "";
@@ -227,17 +252,20 @@
       if (!list.length) { s.appendChild(el("option", null, "예약할 수 있는 학생이 없어요")); s.disabled = true; return s; }
       s.appendChild(el("option", null, "학생 고르기"));
       s.options[0].value = "";
+      var cnt = {};
+      list.forEach(function (m) { cnt[m.name] = (cnt[m.name] || 0) + 1; });
+      function label(m) { return cnt[m.name] > 1 ? m.name + " (" + m.id + ")" : m.name; }
       if (st.data.admin || st.data.director) {
         var groups = {};
         list.forEach(function (m) { var k = m.teacher || "담당 없음"; (groups[k] = groups[k] || []).push(m); });
         Object.keys(groups).sort(function (a, b) { return a === "담당 없음" ? 1 : b === "담당 없음" ? -1 : a < b ? -1 : 1; }).forEach(function (k) {
           var g = el("optgroup");
           g.label = k === "담당 없음" ? k : "담당 " + k;
-          groups[k].forEach(function (m) { var o = el("option", null, m.name); o.value = m.id; g.appendChild(o); });
+          groups[k].forEach(function (m) { var o = el("option", null, label(m)); o.value = m.id; g.appendChild(o); });
           s.appendChild(g);
         });
       } else {
-        list.forEach(function (m) { var o = el("option", null, m.name); o.value = m.id; s.appendChild(o); });
+        list.forEach(function (m) { var o = el("option", null, label(m)); o.value = m.id; s.appendChild(o); });
       }
       if (value) s.value = value;
       return s;
@@ -254,13 +282,13 @@
       kinds.appendChild(kReg); kinds.appendChild(kOnce);
       panel.appendChild(kinds);
       var stu = studentSelect(pre.member);
-      var date = el("input"); date.type = "date"; date.value = pre.date || st.day;
+      var date = el("input"); date.type = "date"; date.min = st.data.today; date.value = (pre.date || st.day) < st.data.today ? st.data.today : (pre.date || st.day);
       var dHint = el("small", "lr__dhint");
       var time = timeSelects(pre.start != null ? pre.start : 600);
       var mins = minutesSelect(pre.minutes || 50);
       var room = roomSelect(pre.room || ((st.data.rooms || [])[0] || {}).name);
       var until = el("input"); until.type = "date";
-      var memo = el("input"); memo.maxLength = 200; memo.placeholder = "예) 입시반 · 다음 달부터 화요일로";
+      var memo = el("input"); memo.maxLength = 500; memo.placeholder = "예) 입시반 · 다음 달부터 화요일로";
       var grid = el("div", "lr__fgrid");
       grid.appendChild(field("학생", stu));
       grid.appendChild(field("레슨실", room));
@@ -313,13 +341,21 @@
       if (it.source && it.source !== "site") info.appendChild(el("p", "sys-note", it.source === "sheet" ? "시트에서 옮겨 온 예약" : "시뮬레이션 예약"));
       panel.appendChild(info);
       if (!it.edit) { panel.appendChild(el("p", "sys-note", "다른 선생님 수업이에요 (보기만).")); return; }
+      var past = it.date < st.data.today, started = it.first < st.data.today;
       var acts = el("div", "lr__acts");
       var m = el("p", "sys-msg");
       function run(fn, args, ok) {
         say(m, "처리하는 중…");
         call(fn, args).then(function (r) { if (!r || !r.ok) { say(m, (r && r.error) || "하지 못했어요.", "error"); return; } done(ok); });
       }
-      if (it.kind === "정규") {
+      if (it.kind === "정규" && past) {
+        panel.appendChild(el("p", "sys-note", "지난 수업이라 이날은 바꿀 수 없어요. 앞으로의 수업은 오늘 뒤 날짜를 골라서 바꿔주세요."));
+        var endNow = btn("오늘부터 이 정규 수업 끝내기", "sys-link lr__danger");
+        arm(endNow, "한 번 더 누르면 오늘부터 안 열려요 (지난 수업은 남아요)", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "all" }, "어제까지로 정규 수업을 끝냈어요. 지난 수업 기록은 남아 있어요."); });
+        acts.appendChild(endNow);
+      } else if (it.kind === "보강" && past) {
+        panel.appendChild(el("p", "sys-note", "지난 보강이라 바꿀 수 없어요."));
+      } else if (it.kind === "정규") {
         var skip = btn(md(it.date) + " 한 번만 빼기", "sys-btn sys-btn--ghost");
         arm(skip, "한 번 더 누르면 " + md(it.date) + " 수업만 빠져요", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "once", p_on: it.date }, md(it.date) + " 수업을 뺐어요. 그 시간은 다른 예약에 열려요."); });
         var once = btn(md(it.date) + " 한 번만 다른 시간으로 (보강)", "sys-btn sys-btn--ghost");
@@ -328,8 +364,10 @@
         from.addEventListener("click", function () { moveForm(it, "from"); });
         var end = btn(md(it.date) + "부터 끝내기", "sys-link lr__danger");
         arm(end, "한 번 더 누르면 " + md(it.date) + "부터 안 열려요", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "from", p_on: it.date }, md(it.date) + "부터 정규 수업을 끝냈어요."); });
-        var all = btn("전부 취소 (잘못 넣었을 때)", "sys-link lr__danger");
-        arm(all, "한 번 더 누르면 이 정규 수업이 전부 없어져요", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "all" }, "정규 수업을 취소했어요."); });
+        var all = btn(started ? "오늘부터 끝내기 (지난 수업은 남김)" : "전부 취소 (잘못 넣었을 때)", "sys-link lr__danger");
+        arm(all, started ? "한 번 더 누르면 오늘부터 안 열려요 (지난 수업은 남아요)" : "한 번 더 누르면 이 정규 수업이 전부 없어져요", function () {
+          run("lesson_room_cancel", { p_id: it.id, p_mode: "all" }, started ? "어제까지로 정규 수업을 끝냈어요. 지난 수업 기록은 남아 있어요." : "정규 수업을 취소했어요.");
+        });
         [skip, once, from, end, all].forEach(function (b) { acts.appendChild(b); });
       } else {
         var mv = btn("날짜 · 시간 바꾸기", "sys-btn sys-btn--ghost");
@@ -347,7 +385,7 @@
       panel.appendChild(el("p", "sys-note", it.kind === "보강" ? "새 날짜 · 시간 · 방을 고르세요."
         : mode === "once" ? md(it.date) + " 정규 수업은 빠지고, 고른 날짜에 보강으로 들어가요."
         : "고른 날짜부터 새 요일 · 시간 · 방으로 매주 열려요. 그 전 수업은 그대로예요."));
-      var date = el("input"); date.type = "date"; date.value = it.date;
+      var date = el("input"); date.type = "date"; date.min = st.data.today; date.value = it.date < st.data.today ? st.data.today : it.date;
       var dHint = el("small", "lr__dhint");
       var time = timeSelects(it.st);
       var mins = minutesSelect(it.en - it.st);

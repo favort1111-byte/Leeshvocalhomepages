@@ -1310,7 +1310,7 @@
           if (db.lr.skips.some(function (k) { return k.id === b.id && k.day === d; })) return;
           var mine = !!(who.t && b.teacher === who.t.id), see = who.dir || mine, tt = db.teachers.filter(function (x) { return x.id === b.teacher; })[0];
           items.push({ id: b.id, room: b.room, kind: b.kind, date: d, start: hhmm(b.st), end: hhmm(b.en), st: b.st, en: b.en, mine: mine, edit: who.adm || mine,
-            name: see ? b.name : null, member: see ? b.member : null, teacher: tt ? tt.name : null, memo: see ? b.memo : null, first: b.first, last: b.last, source: b.source });
+            name: see ? b.name : null, member: see ? b.member : null, teacher: see && tt ? tt.name : null, memo: see ? b.memo : null, first: b.first, last: b.last, source: b.source });
         });
       }
       items.sort(function (x, y) { return x.date === y.date ? (x.room === y.room ? x.st - y.st : x.room < y.room ? -1 : 1) : x.date < y.date ? -1 : 1; });
@@ -1331,17 +1331,20 @@
       if (!who.adm && !teaches(who.t, m.id)) return fail("내 담당 학생만 예약할 수 있어요.");
       var d = lrDate(a.p_date), today = nowKst().today;
       if (!d) return fail("날짜를 골라주세요.");
-      if (diffDays(today, d) < -7) return fail("일주일보다 지난 날짜는 넣을 수 없어요.");
+      if (d < today) return fail("지난 날짜는 예약할 수 없어요.");
       if (diffDays(today, d) > 365) return fail("1년 안의 날짜만 예약할 수 있어요.");
       var u = a.p_kind === "정규" ? lrDate(a.p_until) : d;
       if (u && u < d) return fail("마지막 날짜는 첫 수업 날보다 뒤여야 해요.");
       var tm = lrTime(a.p_start, a.p_minutes);
       if (tm.err) return fail(tm.err);
-      var c = lrClash(a.p_room, m.id, wdOf(d), d, u, tm.st, tm.en, null);
-      if (c) return fail("겹치는 예약이 있어요: " + c);
+      if (d === today && tm.st <= nowKst().min) return fail("이미 지난 시간은 예약할 수 없어요.");
+      if (a.p_memo && a.p_memo.length > 500) return fail("메모는 500자까지예요.");
       var dm = /담당\s*([^\s·,]+)/.exec(m.memo || ""), tt = dm && db.teachers.filter(function (x) { return x.name === dm[1]; })[0];
+      var tid = who.t && teaches(who.t, m.id) ? who.t.id : tt ? tt.id : null;
+      var c = lrClash(a.p_room, m.id, tid, wdOf(d), d, u, tm.st, tm.en, null, who);
+      if (c) return fail("겹치는 예약이 있어요: " + c);
       var id = db.lr.next++;
-      db.lr.bookings.push({ id: id, room: a.p_room, member: m.id, name: m.name, teacher: who.t && teaches(who.t, m.id) ? who.t.id : tt ? tt.id : null,
+      db.lr.bookings.push({ id: id, room: a.p_room, member: m.id, name: m.name, teacher: tid,
         kind: a.p_kind, weekday: wdOf(d), first: d, last: u, st: tm.st, en: tm.en, status: "확정", memo: (a.p_memo || "").trim() || null, source: "site" });
       save();
       return { ok: true, id: id };
@@ -1353,8 +1356,15 @@
       var b = db.lr.bookings.filter(function (x) { return x.id === a.p_id && x.status === "확정"; })[0];
       if (!b) return fail("이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.");
       if (!who.adm && !(who.t && b.teacher === who.t.id)) return fail("내 예약만 취소할 수 있어요.");
-      if (b.kind === "보강" || a.p_mode === "all") { b.status = "취소"; save(); return { ok: true, done: "all" }; }
+      var today = nowKst().today;
+      if (b.kind === "보강") { if (b.first < today) return fail("지난 보강은 취소할 수 없어요."); b.status = "취소"; save(); return { ok: true, done: "all" }; }
+      if (a.p_mode === "all") {
+        if (b.first >= today) { b.status = "취소"; save(); return { ok: true, done: "all" }; }
+        if (b.last && b.last < today) return fail("이미 끝난 정규 수업이에요.");
+        b.last = addDays(today, -1); save(); return { ok: true, done: "ended" };
+      }
       var d = lrDate(a.p_on);
+      if (d && d < today) return fail("지난 수업은 바꿀 수 없어요.");
       if (!d || wdOf(d) !== b.weekday || d < b.first || (b.last && d > b.last)) return fail("그날은 이 정규 수업이 있는 날이 아니에요.");
       if (a.p_mode === "once") { db.lr.skips.push({ id: b.id, day: d }); save(); return { ok: true, done: "once" }; }
       if (a.p_mode === "from") { if (d <= b.first) b.status = "취소"; else b.last = addDays(d, -1); save(); return { ok: true, done: "from" }; }
@@ -1368,13 +1378,16 @@
       if (!b) return fail("이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.");
       if (!who.adm && !(who.t && b.teacher === who.t.id)) return fail("내 예약만 옮길 수 있어요.");
       if (LR_ROOMS.indexOf(a.p_room) < 0) return fail("레슨실을 골라주세요.");
-      var d = lrDate(a.p_date);
+      var d = lrDate(a.p_date), now = nowKst();
       if (!d) return fail("새 날짜를 골라주세요.");
+      if (d < now.today) return fail("지난 날짜로는 옮길 수 없어요.");
       var tm = lrTime(a.p_start, a.p_minutes);
       if (tm.err) return fail(tm.err);
+      if (d === now.today && tm.st <= now.min) return fail("이미 지난 시간으로는 옮길 수 없어요.");
       var c, id;
       if (b.kind === "보강") {
-        c = lrClash(a.p_room, b.member, wdOf(d), d, d, tm.st, tm.en, b.id);
+        if (b.first < now.today) return fail("지난 보강은 옮길 수 없어요.");
+        c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, d, tm.st, tm.en, b.id, who);
         if (c) return fail("겹치는 예약이 있어요: " + c);
         b.room = a.p_room; b.weekday = wdOf(d); b.first = b.last = d; b.st = tm.st; b.en = tm.en; save();
         return { ok: true, id: b.id };
@@ -1382,8 +1395,9 @@
       if (a.p_mode === "once") {
         var o = lrDate(a.p_on);
         if (!o || wdOf(o) !== b.weekday || o < b.first || (b.last && o > b.last)) return fail("옮길 수업 날짜가 이 정규 수업 날이 아니에요.");
+        if (o < now.today) return fail("지난 수업은 옮길 수 없어요.");
         db.lr.skips.push({ id: b.id, day: o });
-        c = lrClash(a.p_room, b.member, wdOf(d), d, d, tm.st, tm.en, null);
+        c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, d, tm.st, tm.en, null, who);
         if (c) { db.lr.skips.pop(); return fail("겹치는 예약이 있어요: " + c); }
         id = db.lr.next++;
         db.lr.bookings.push({ id: id, room: a.p_room, member: b.member, name: b.name, teacher: b.teacher, kind: "보강", weekday: wdOf(d), first: d, last: d,
@@ -1392,7 +1406,7 @@
         return { ok: true, id: id };
       }
       if (a.p_mode === "from") {
-        c = lrClash(a.p_room, b.member, wdOf(d), d, b.last, tm.st, tm.en, b.id);
+        c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, b.last, tm.st, tm.en, b.id, who);
         if (c) return fail("겹치는 예약이 있어요: " + c);
         var keep = b.last && b.last >= d ? b.last : null;
         if (d <= b.first) b.status = "취소"; else if (!b.last || b.last >= d) b.last = addDays(d, -1);
@@ -1664,20 +1678,21 @@
     if (!adm && !t) return { err: "선생님 · 관리자만 볼 수 있어요." };
     return { t: t, adm: adm, dir: adm || (t && t.name === "원장님") };
   }
-  function lrClash(room, member, wd, first, last, st, en, ex) {
+  function lrClash(room, member, teacher, wd, first, last, st, en, ex) {
     var hit = db.lr.bookings.filter(function (b) {
-      return b.status === "확정" && b.id !== ex && (b.room === room || (member && b.member === member)) && b.weekday === wd
+      return b.status === "확정" && b.id !== ex && (b.room === room || (member && b.member === member) || (teacher && b.teacher === teacher)) && b.weekday === wd
         && b.st < en && st < b.en && b.first <= (last || "9999-12-31") && (b.last || "9999-12-31") >= first
         && !(first === last && db.lr.skips.some(function (k) { return k.id === b.id && k.day === first; }));
-    }).sort(function (x, y) { return (y.room === room) - (x.room === room) || x.st - y.st; })[0];
+    }).sort(function (x, y) { return (y.room === room) - (x.room === room) || (y.member === member) - (x.member === member) || x.st - y.st; })[0];
     if (!hit) return null;
-    return (hit.room === room ? "" : "이 학생은 ") + hit.room + " · " + hit.kind + " · " + hit.name + " · "
+    return (hit.room === room ? "" : member && hit.member === member ? "이 학생은 " : "이 선생님은 ") + hit.room + " · " + hit.kind + " · "
+      + (hit.member === member || (teacher && hit.teacher === teacher) ? hit.name + " · " : "다른 선생님 수업 · ")
       + (hit.kind === "정규" ? "매주 " + WD[hit.weekday] + " " : Number(hit.first.slice(5, 7)) + "/" + Number(hit.first.slice(8)) + " ") + hhmm(hit.st) + "~" + hhmm(hit.en);
   }
   function lrTime(p_start, p_minutes) {
     var st = toMin(p_start), n = Number(p_minutes);
     if (st == null || st % 10 || st >= 1440) return { err: "시작 시간은 10분 단위로 골라주세요." };
-    if (!(n >= 10 && n <= 240 && n % 10 === 0)) return { err: "수업 시간은 10분 단위로 10분 ~ 4시간 안에서 골라주세요." };
+    if (!(n >= 10 && n <= 120 && n % 10 === 0)) return { err: "수업 시간은 10분 단위로 10분 ~ 2시간 안에서 골라주세요." };
     if (st + n > 1440) return { err: "밤 12시를 넘기는 수업은 넣을 수 없어요." };
     return { st: st, en: st + n };
   }
