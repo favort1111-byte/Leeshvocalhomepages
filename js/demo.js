@@ -1406,6 +1406,7 @@
         return { ok: true, id: id };
       }
       if (a.p_mode === "from") {
+        if (b.last && b.last < d) return fail("이 정규 수업은 " + Number(b.last.slice(5, 7)) + "/" + Number(b.last.slice(8)) + "에 끝나서 그 뒤로는 옮길 수 없어요. 새 예약으로 넣어주세요.");
         c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, b.last, tm.st, tm.en, b.id, who);
         if (c) return fail("겹치는 예약이 있어요: " + c);
         var keep = b.last && b.last >= d ? b.last : null;
