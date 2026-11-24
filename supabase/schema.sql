@@ -11329,3 +11329,141 @@ begin
                   'teacher', substring(mm.memo from '담당\s*([^\s·,]+)'), 'memo', s.memo, 'status', mm.status) order by mm.name), '[]'::jsonb)
                   from public.lesson_missing_skip s join public.members mm on mm.id = s.member_id) end);
 end $function$;
+
+-- 선생님 근무 시간 · 빈 시간 (마이그레이션 leesh_teacher_hours, 2026-11-24, 시트 "가능시간 입력" 5명 가져옴)
+-- 선생님 근무 시간 (요일별 출근~퇴근, 구간 2개까지) · 빈 시간 = 근무 시간 − 레슨실 수업 (원장님 2026-11-24, 시트 "가능시간 입력" · "교사 빈 시간"과 같은 규칙)
+create table if not exists public.teacher_hours (
+  teacher_id bigint not null references public.teachers(id) on delete cascade,
+  weekday int not null check (weekday between 0 and 6),
+  s1 int, e1 int, s2 int, e2 int,
+  memo text check (memo is null or char_length(memo) <= 200),
+  updated_at timestamptz not null default now(),
+  updated_by text,
+  primary key (teacher_id, weekday),
+  constraint teacher_hours_r1 check ((s1 is null) = (e1 is null) and (s1 is null or (s1 >= 0 and e1 <= 1440 and s1 < e1 and s1 % 10 = 0 and e1 % 10 = 0))),
+  constraint teacher_hours_r2 check ((s2 is null) = (e2 is null) and (s2 is null or (s2 >= 0 and e2 <= 1440 and s2 < e2 and s2 % 10 = 0 and e2 % 10 = 0))),
+  constraint teacher_hours_order check (s2 is null or (s1 is not null and e1 <= s2))
+);
+alter table public.teacher_hours enable row level security;
+revoke all on public.teacher_hours from public, anon, authenticated;
+create trigger zz_admin_log after insert or update or delete on public.teacher_hours for each row execute function private.log_change();
+
+-- 그 선생님 · 그 요일 근무 구간 (입력한 적이 없으면 영업시간 10:00~22:00, 입력했는데 그 요일이 비었으면 휴무 = 빈 구간)
+create or replace function private.teacher_work(p_teacher bigint, p_wd int)
+returns int4multirange language sql stable security definer set search_path = '' as $$
+  select case
+    when not exists (select 1 from public.teacher_hours h where h.teacher_id = p_teacher) then int4multirange(int4range(600, 1320))
+    else coalesce((select int4multirange(
+                     case when h.s1 is not null then int4range(h.s1, h.e1) else 'empty'::int4range end,
+                     case when h.s2 is not null then int4range(h.s2, h.e2) else 'empty'::int4range end)
+                   from public.teacher_hours h where h.teacher_id = p_teacher and h.weekday = p_wd), '{}'::int4multirange)
+  end $$;
+
+-- 빈 구간을 ["14:50","15:40"] 목록으로 (30분 이상만 · 시트 "교사 빈 시간"과 같은 기준)
+create or replace function private.mr_list(p int4multirange)
+returns jsonb language sql immutable set search_path = '' as $$
+  select coalesce(jsonb_agg(jsonb_build_array(private.hhmm(lower(r)), private.hhmm(upper(r))) order by lower(r)), '[]'::jsonb)
+    from unnest(p) r where upper(r) - lower(r) >= 30 $$;
+
+create or replace function public.teacher_free(p_teacher int default null, p_days int default 14)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  dir boolean := adm or coalesce(t.name = '원장님', false);
+  k timestamp := private.now_kst();
+  today date := k::date;
+  now_min int := extract(hour from k)::int * 60 + extract(minute from k)::int;
+  n int := least(greatest(coalesce(p_days, 14), 1), 28);
+begin
+  if not (adm or t.id is not null) then return private.fail('선생님 · 관리자만 볼 수 있어요.'); end if;
+  return jsonb_build_object('ok', true, 'today', today, 'director', dir, 'me', t.id,
+    'teachers', (select coalesce(jsonb_agg(jsonb_build_object(
+      'id', tt.id, 'name', tt.name,
+      'set', exists (select 1 from public.teacher_hours h where h.teacher_id = tt.id),
+      'hours', (select coalesce(jsonb_agg(jsonb_build_object('wd', h.weekday,
+                  's1', private.hhmm(h.s1), 'e1', private.hhmm(h.e1), 's2', private.hhmm(h.s2), 'e2', private.hhmm(h.e2),
+                  'memo', h.memo) order by h.weekday), '[]'::jsonb) from public.teacher_hours h where h.teacher_id = tt.id),
+      'updated', (select max(h.updated_at) from public.teacher_hours h where h.teacher_id = tt.id),
+      -- 요일별 (정규 수업 기준: 지금 · 앞으로 열리는 매주 정규, 방 상관없이)
+      'weekly', (select jsonb_agg(jsonb_build_object('wd', w.wd,
+                   'off', isempty(private.teacher_work(tt.id, w.wd)),
+                   'free', private.mr_list(private.teacher_work(tt.id, w.wd) - coalesce((select range_agg(int4range(b.start_min, b.end_min))
+                             from public.lesson_bookings b where b.teacher_id = tt.id and b.status = '확정' and b.kind = '정규'
+                              and b.weekday = w.wd and coalesce(b.last_day, 'infinity'::date) >= today), '{}'::int4multirange))) order by w.ord)
+                   from (select x.wd, x.ord from unnest(array[1,2,3,4,5,6,0]) with ordinality x(wd, ord)) w),
+      -- 날짜별 (오늘부터 n일: 그날 실제 수업 = 정규(빠진 날 빼고) + 보강, 오늘은 지금 뒤부터)
+      'days', (select jsonb_agg(jsonb_build_object('date', g.d, 'wd', extract(dow from g.d)::int,
+                   'off', isempty(private.teacher_work(tt.id, extract(dow from g.d)::int)),
+                   'free', private.mr_list(private.teacher_work(tt.id, extract(dow from g.d)::int)
+                             - coalesce((select range_agg(int4range(b.start_min, b.end_min))
+                                 from public.lesson_bookings b where b.teacher_id = tt.id and b.status = '확정'
+                                  and b.weekday = extract(dow from g.d)::int and b.first_day <= g.d and coalesce(b.last_day, 'infinity'::date) >= g.d
+                                  and not exists (select 1 from public.lesson_skips s where s.booking_id = b.id and s.day = g.d)), '{}'::int4multirange)
+                             - case when g.d = today then int4multirange(int4range(0, greatest(now_min, 1))) else '{}'::int4multirange end)) order by g.d)
+                   from (select gs::date d from generate_series(today, today + n - 1, interval '1 day') gs) g)
+      ) order by case when tt.name = '원장님' then 0 else 1 end, tt.name), '[]'::jsonb)
+      from public.teachers tt
+     where tt.active and (dir or tt.id = t.id) and (p_teacher is null or tt.id = p_teacher)));
+end $$;
+revoke all on function public.teacher_free(int, int) from public, anon;
+grant execute on function public.teacher_free(int, int) to authenticated;
+
+-- 근무 시간 저장: 선생님 = 내 것만, 관리자 · 원장님 = 아무 선생님. p_rows = [{wd, s1, e1, s2, e2, memo}] 7줄 (빈 칸 = 휴무)
+create or replace function public.teacher_hours_save(p_teacher int, p_rows jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  dir boolean := adm or coalesce(t.name = '원장님', false);
+  tid bigint := coalesce(p_teacher, t.id);
+  tt public.teachers;
+  r jsonb; wd int; a int; b int; c int; d int; m text;
+  by_ text := case when adm then '관리자' when t.name = '원장님' then '원장님' else t.name || ' 선생님' end;
+  before text; after text;
+begin
+  if not (adm or t.id is not null) then return private.fail('선생님 · 관리자만 할 수 있어요.'); end if;
+  if not dir and tid is distinct from t.id then return private.fail('내 근무 시간만 고칠 수 있어요.'); end if;
+  select * into tt from public.teachers where id = tid and active;
+  if tt.id is null then return private.fail('선생님을 찾을 수 없어요.'); end if;
+  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) > 7 then return private.fail('근무 시간을 다시 확인해 주세요.'); end if;
+  select string_agg(weekday || ':' || coalesce(s1::text, '') || '-' || coalesce(e1::text, '') || ',' || coalesce(s2::text, '') || '-' || coalesce(e2::text, ''), ' ' order by weekday)
+    into before from public.teacher_hours where teacher_id = tid;
+  for r in select * from jsonb_array_elements(p_rows) loop
+    wd := (r->>'wd')::int;
+    if wd is null or wd < 0 or wd > 6 then return private.fail('요일을 다시 확인해 주세요.'); end if;
+    a := private.to_min(nullif(r->>'s1', '')); b := private.to_min(nullif(r->>'e1', ''));
+    c := private.to_min(nullif(r->>'s2', '')); d := private.to_min(nullif(r->>'e2', ''));
+    if (r->>'e1') = '24:00' then b := 1440; end if;
+    if (r->>'e2') = '24:00' then d := 1440; end if;
+    if a is null and c is not null then a := c; b := d; c := null; d := null; end if;
+    if (a is null) <> (b is null) or (c is null) <> (d is null) then
+      return private.fail((array['일','월','화','수','목','금','토'])[wd + 1] || '요일: 시작과 끝을 둘 다 골라 주세요.');
+    end if;
+    if (a is not null and a >= b) or (c is not null and c >= d) then
+      return private.fail((array['일','월','화','수','목','금','토'])[wd + 1] || '요일: 끝 시간이 시작보다 늦어야 해요.');
+    end if;
+    if c is not null and b > c then
+      return private.fail((array['일','월','화','수','목','금','토'])[wd + 1] || '요일: 두 번째 구간은 첫 번째가 끝난 뒤로 골라 주세요.');
+    end if;
+    m := nullif(left(trim(coalesce(r->>'memo', '')), 200), '');
+    insert into public.teacher_hours (teacher_id, weekday, s1, e1, s2, e2, memo, updated_at, updated_by)
+    values (tid, wd, a, b, c, d, m, now(), by_)
+    on conflict (teacher_id, weekday) do update set s1 = excluded.s1, e1 = excluded.e1, s2 = excluded.s2, e2 = excluded.e2,
+      memo = excluded.memo, updated_at = now(), updated_by = excluded.updated_by;
+  end loop;
+  -- 7줄이 다 있게 (안 보낸 요일은 휴무)
+  insert into public.teacher_hours (teacher_id, weekday, updated_by)
+  select tid, g, by_ from generate_series(0, 6) g on conflict do nothing;
+  select string_agg(weekday || ':' || coalesce(s1::text, '') || '-' || coalesce(e1::text, '') || ',' || coalesce(s2::text, '') || '-' || coalesce(e2::text, ''), ' ' order by weekday)
+    into after from public.teacher_hours where teacher_id = tid;
+  if after is distinct from before then
+    perform private.notify('⏰ 근무 시간 바뀜 · ' || case when tt.name = '원장님' then '원장님' else tt.name || 'T' end
+      || case when by_ like tt.name || '%' or (tt.name = '원장님' and by_ = '원장님') then '' else ' (' || by_ || ')' end);
+  end if;
+  return jsonb_build_object('ok', true);
+exception when check_violation then
+  return private.fail('근무 시간을 다시 확인해 주세요. (10분 단위 · 끝이 시작보다 늦게)');
+end $$;
+revoke all on function public.teacher_hours_save(int, jsonb) from public, anon;
+grant execute on function public.teacher_hours_save(int, jsonb) to authenticated;

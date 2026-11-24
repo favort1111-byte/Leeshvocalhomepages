@@ -1344,6 +1344,49 @@
       save();
       return { ok: true, skip: !!a.p_skip, name: m.name };
     },
+    teacher_free: function (a, uid) {
+      lrSeed(); hoursSeed();
+      var who = lrActor(uid);
+      if (who.err) return fail(who.err);
+      var n = nowKst(), today = n.today, days = Math.min(Math.max(Number(a.p_days) || 14, 1), 28);
+      var list = db.teachers.filter(function (t) { return t.active && ["양유경", "오은지"].indexOf(t.name) < 0 && (who.dir || (who.t && t.id === who.t.id)) && (!a.p_teacher || t.id === a.p_teacher); })
+        .sort(function (x, y) { return x.name === "원장님" ? -1 : y.name === "원장님" ? 1 : x.name < y.name ? -1 : 1; });
+      return { ok: true, today: today, director: who.dir, me: who.t ? who.t.id : null, teachers: list.map(function (t) {
+        var h = db.thours[t.id];
+        return { id: t.id, name: t.name, set: !!h, hours: h ? [0, 1, 2, 3, 4, 5, 6].map(function (w) { return h[w]; }) : [], updated: null,
+          weekly: [1, 2, 3, 4, 5, 6, 0].map(function (w) {
+            var work = workOf(t.id, w), busy = db.lr.bookings.filter(function (b) { return b.teacher === t.id && b.status === "확정" && b.kind === "정규" && b.weekday === w && (!b.last || b.last >= today); })
+              .map(function (b) { return [b.st, b.en]; });
+            return { wd: w, off: !work.length, free: freeOf(work, busy) };
+          }),
+          days: Array.from({ length: days }, function (_, i) {
+            var d = addDays(today, i), w = wdOf(d), work = workOf(t.id, w);
+            var busy = db.lr.bookings.filter(function (b) { return b.teacher === t.id && b.status === "확정" && b.weekday === w && b.first <= d && (!b.last || b.last >= d)
+              && !db.lr.skips.some(function (k) { return k.id === b.id && k.day === d; }); }).map(function (b) { return [b.st, b.en]; });
+            if (d === today) busy.push([0, Math.max(n.min, 1)]);
+            return { date: d, wd: w, off: !work.length, free: freeOf(work, busy) };
+          }) };
+      }) };
+    },
+    teacher_hours_save: function (a, uid) {
+      lrSeed(); hoursSeed();
+      var who = lrActor(uid);
+      if (who.err) return fail("선생님 · 관리자만 할 수 있어요.");
+      var tid = a.p_teacher || (who.t && who.t.id);
+      if (!who.dir && tid !== (who.t && who.t.id)) return fail("내 근무 시간만 고칠 수 있어요.");
+      var rows = {}, WDN = ["일", "월", "화", "수", "목", "금", "토"];
+      for (var w = 0; w < 7; w++) rows[w] = { wd: w, s1: null, e1: null, s2: null, e2: null, memo: null };
+      for (var i = 0; i < (a.p_rows || []).length; i++) {
+        var r = a.p_rows[i], s1 = r.s1 || null, e1 = r.e1 || null, s2 = r.s2 || null, e2 = r.e2 || null;
+        if (!s1 && s2) { s1 = s2; e1 = e2; s2 = e2 = null; }
+        if (!!s1 !== !!e1 || !!s2 !== !!e2) return fail(WDN[r.wd] + "요일: 시작과 끝을 둘 다 골라 주세요.");
+        if ((s1 && toMin(s1) >= toMin(e1)) || (s2 && toMin(s2) >= toMin(e2))) return fail(WDN[r.wd] + "요일: 끝 시간이 시작보다 늦어야 해요.");
+        if (s2 && toMin(e1) > toMin(s2)) return fail(WDN[r.wd] + "요일: 두 번째 구간은 첫 번째가 끝난 뒤로 골라 주세요.");
+        rows[r.wd] = { wd: r.wd, s1: s1, e1: e1, s2: s2, e2: e2, memo: (r.memo || "").trim().slice(0, 200) || null };
+      }
+      db.thours[tid] = rows; save();
+      return { ok: true };
+    },
     admin_lesson_rooms_set: function (a, uid) {
       if (uid) return fail("관리자만 할 수 있어요.");
       lrSeed(); db.lr.open = !!a.p_open; save();
@@ -1719,6 +1762,46 @@
     var fri = addDays(nowKst().today, (5 - wdOf(nowKst().today) + 7) % 7);
     db.lr.bookings.push({ id: db.lr.next++, room: "A1", member: "S002", name: "이하늘", teacher: tid("안유정"), kind: "보강", weekday: 5, first: fri, last: fri,
       st: 840, en: 890, status: "확정", memo: "체험 보강", source: "site" });
+  }
+  // 선생님 근무 시간 (시트 "가능시간 입력"과 같은 모양, 체험용 값)
+  function hoursSeed() {
+    if (db.thours) return;
+    function tid(n) { return (db.teachers.filter(function (x) { return x.name === n; })[0] || {}).id; }
+    var H = {
+      안유정: [[1, "14:00", "15:50", "16:30", "20:40"], [2, "14:50", "17:30", "18:00", "20:40", "7시 50분 가능 바로"], [3, "14:40", "16:50", "17:00", "20:30"], [4, "14:00", "16:40", "17:00", "20:40"], [5, "12:00", "15:30", "", "", "1시40분, 2시 30분 가능"]],
+      이수빈: [[2, "15:00", "21:00"], [3, "15:00", "21:00"], [4, "15:00", "21:00"], [5, "13:00", "17:00"], [6, "12:00", "15:00", "15:30", "19:20"]],
+      이윤지: [[1, "13:00", "16:00", "16:30", "19:20"], [2, "13:00", "16:00", "16:30", "19:20", "12/1 부터 가능"], [5, "13:00", "16:00", "16:30", "19:20"], [6, "13:00", "16:00", "16:20", "19:10"]],
+      최홍주: [[1, "16:00", "18:00", "18:30", "20:30"], [4, "16:00", "21:00"], [5, "15:00", "18:00", "18:30", "20:30"], [6, "13:00", "17:00", "17:30", "21:30"], [0, "12:00", "16:00", "16:30", "19:30"]],
+      이하섬: [[3, "17:30", "21:30"], [4, "17:00", "20:30"], [5, "16:00", "16:30", "17:00", "21:20"], [6, "14:00", "18:30"], [0, "13:00", "14:30", "15:00", "20:20"]]
+    };
+    db.thours = {};
+    Object.keys(H).forEach(function (n) {
+      var rows = {}; for (var w = 0; w < 7; w++) rows[w] = { wd: w, s1: null, e1: null, s2: null, e2: null, memo: null };
+      H[n].forEach(function (r) { rows[r[0]] = { wd: r[0], s1: r[1] || null, e1: r[2] || null, s2: r[3] || null, e2: r[4] || null, memo: r[5] || null }; });
+      db.thours[tid(n)] = rows;
+    });
+  }
+  function toMin(t) { if (!t) return null; var p = String(t).split(":"); return Number(p[0]) * 60 + Number(p[1]); }
+  function freeOf(work, busy) {
+    var out = [];
+    work.forEach(function (w) {
+      var segs = [[w[0], w[1]]];
+      busy.forEach(function (b) {
+        var nx = [];
+        segs.forEach(function (s) { if (b[1] <= s[0] || b[0] >= s[1]) nx.push(s); else { if (b[0] > s[0]) nx.push([s[0], b[0]]); if (b[1] < s[1]) nx.push([b[1], s[1]]); } });
+        segs = nx;
+      });
+      out = out.concat(segs);
+    });
+    return out.filter(function (s) { return s[1] - s[0] >= 30; }).sort(function (x, y) { return x[0] - y[0]; }).map(function (s) { return [hhmm(s[0]), hhmm(s[1])]; });
+  }
+  function workOf(tid, wd) {
+    var h = db.thours[tid];
+    if (!h) return [[600, 1320]];
+    var r = h[wd], w = [];
+    if (r && r.s1) w.push([toMin(r.s1), toMin(r.e1)]);
+    if (r && r.s2) w.push([toMin(r.s2), toMin(r.e2)]);
+    return w;
   }
   function lrActor(uid) {
     var t = myTeacher(uid), adm = !uid;

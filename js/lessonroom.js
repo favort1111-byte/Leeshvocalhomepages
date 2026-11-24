@@ -72,8 +72,8 @@
     pick.type = "date";
     pick.setAttribute("aria-label", "날짜로 가기");
     var modes = el("div", "lr__modes");
-    var mDay = btn("하루 보기", "lr__mode"), mWeek = btn("주간 표", "lr__mode");
-    modes.appendChild(mDay); modes.appendChild(mWeek);
+    var mDay = btn("하루 보기", "lr__mode"), mWeek = btn("주간 표", "lr__mode"), mFree = btn("⏰ 빈 시간", "lr__mode");
+    modes.appendChild(mDay); modes.appendChild(mWeek); modes.appendChild(mFree);
     var add = btn("+ 새 예약", "sys-btn lr__add");
     // 관리자 · 원장님: 선생님 고르기 (고른 선생님 수업만 진하게, 나머지는 흐리게 — 빈 시간 계산은 그대로)
     var who_ = el("select", "lr__tfilter");
@@ -105,8 +105,12 @@
         pick.value = st.day;
         mDay.classList.toggle("is-on", st.mode === "day");
         mWeek.classList.toggle("is-on", st.mode === "week");
+        mFree.classList.toggle("is-on", st.mode === "free");
+        mFree.textContent = d.director ? "⏰ 선생님 빈 시간" : "⏰ 내 근무 · 빈 시간";
+        [prev, next, today, pick, week].forEach(function (n) { n.hidden = st.mode === "free"; });
+        who_.hidden = !d.director || st.mode === "free";
         drawDays();
-        if (st.mode === "day") drawDay(); else drawWeek();
+        if (st.mode === "day") drawDay(); else if (st.mode === "week") drawWeek(); else loadFree();
       });
     }
     // 맨 위 안내: 선생님은 보기만(예약 시작 전) / 관리자는 열기 · 닫기 스위치
@@ -396,6 +400,139 @@
       t.appendChild(tb); wrap.appendChild(t); box.appendChild(wrap);
       return box;
     }
+    // ⏰ 선생님 빈 시간 = 근무 시간 − 레슨실 수업 (시트 "교사 빈 시간"과 같은 규칙, 30분 이상만)
+    // 관리자 · 원장님: 모든 선생님 (새 학생 배정용) / 선생님: 내 근무 시간 고치기 + 내 빈 시간
+    var WDO = [1, 2, 3, 4, 5, 6, 0];
+    function tname(n) { return n === "원장님" ? "원장님" : n + "T"; }
+    function nextDate(wd) { var d = st.data.today; while (wdOf(d) !== wd) d = addDays(d, 1); return d; }
+    function loadFree() {
+      body.textContent = "";
+      body.appendChild(el("p", "sys-note", "불러오는 중…"));
+      call("teacher_free", { p_teacher: null, p_days: 14 }).then(function (fd) {
+        body.textContent = "";
+        if (!fd || !fd.ok) { body.appendChild(el("p", "sys-msg sys-msg--error", (fd && fd.error) || "불러오지 못했어요.")); return; }
+        drawFree(fd);
+      });
+    }
+    function freeCell(td, f, date) {
+      if (f.off) { td.appendChild(el("span", "lr__off", "휴무")); return; }
+      if (!f.free.length) { td.appendChild(el("span", "lr__none", "없음")); return; }
+      f.free.forEach(function (g) {
+        var c = btn(g[0] + "~" + g[1], "lr__wkfree lr__fchip");
+        if (!st.can) c.disabled = true;
+        else c.addEventListener("click", function () {
+          var s0 = Number(g[0].slice(0, 2)) * 60 + Number(g[0].slice(3)), e0 = Number(g[1].slice(0, 2)) * 60 + Number(g[1].slice(3));
+          openForm({ date: date, start: s0, minutes: Math.min(50, e0 - s0 - (e0 - s0) % 10) });
+        });
+        td.appendChild(c);
+      });
+    }
+    function drawFree(fd) {
+      var ts = fd.teachers || [];
+      if (!fd.director) {
+        var me = ts[0];
+        if (!me) { body.appendChild(el("p", "sys-note", "선생님 정보를 찾지 못했어요.")); return; }
+        body.appendChild(hoursEditor(me, false));
+      } else {
+        body.appendChild(el("p", "lr__hint", "선생님 빈 시간 = 근무 시간 − 레슨실 수업(방 상관없이) · 30분 넘게 빈 곳만. 새 학생을 배정할 때 보세요." + (st.can ? " 빈 시간을 누르면 그 날짜 · 시간으로 예약 칸이 열려요." : "")));
+      }
+      // 요일별 (매주 정규 기준)
+      var sec = el("div", "lr__fsec");
+      sec.appendChild(el("b", "lr__fsec-title", (fd.director ? "📅 요일별 빈 시간" : "📅 내 빈 시간 · 요일별") + " (매주 정규 수업 기준)"));
+      var wrap = el("div", "lr__wkwrap"), t = el("table", "lr__wk lr__ftbl"), hr = el("tr");
+      hr.appendChild(el("th", null, "요일"));
+      ts.forEach(function (x) {
+        var th = el("th");
+        th.appendChild(el("b", null, tname(x.name)));
+        if (!x.set) th.appendChild(el("small", "lr__fnote", "근무 시간 미입력 (10~22시 기준)"));
+        hr.appendChild(th);
+      });
+      var thead = el("thead"); thead.appendChild(hr); t.appendChild(thead);
+      var tb = el("tbody");
+      WDO.forEach(function (w) {
+        var tr = el("tr");
+        tr.appendChild(el("th", null, WD[w]));
+        ts.forEach(function (x) {
+          var td = el("td"), f = (x.weekly || []).filter(function (y) { return y.wd === w; })[0] || { off: true, free: [] };
+          freeCell(td, f, nextDate(w));
+          var h = (x.hours || []).filter(function (y) { return y.wd === w; })[0];
+          if (h && h.memo) td.appendChild(el("small", "lr__fmemo", "💬 " + h.memo));
+          tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); wrap.appendChild(t); sec.appendChild(wrap);
+      body.appendChild(sec);
+      // 날짜별 (오늘부터 14일, 보강 · 빠진 날까지)
+      var sec2 = el("details", "lr__fsec");
+      sec2.open = !fd.director;
+      sec2.appendChild(el("summary", "lr__fsec-title", "🗓 날짜별 빈 시간 (오늘부터 14일 · 보강 · 빠진 날 반영)"));
+      var wrap2 = el("div", "lr__wkwrap"), t2 = el("table", "lr__wk lr__ftbl"), hr2 = el("tr");
+      hr2.appendChild(el("th", null, "날짜"));
+      ts.forEach(function (x) { hr2.appendChild(el("th", null, tname(x.name))); });
+      var th2 = el("thead"); th2.appendChild(hr2); t2.appendChild(th2);
+      var tb2 = el("tbody");
+      ((ts[0] || {}).days || []).forEach(function (d0, i) {
+        var tr = el("tr", d0.date === fd.today ? "is-today" : "");
+        tr.appendChild(el("th", null, md(d0.date) + (d0.date === fd.today ? " 오늘" : "")));
+        ts.forEach(function (x) { var td = el("td"); freeCell(td, (x.days || [])[i] || { off: true, free: [] }, d0.date); tr.appendChild(td); });
+        tb2.appendChild(tr);
+      });
+      t2.appendChild(tb2); wrap2.appendChild(t2); sec2.appendChild(wrap2);
+      body.appendChild(sec2);
+      // 관리자 · 원장님: 선생님 근무 시간 고치기
+      if (fd.director) {
+        var sec3 = el("details", "lr__fsec");
+        sec3.appendChild(el("summary", "lr__fsec-title", "✏️ 선생님 근무 시간 보기 · 고치기"));
+        var pickT = el("select", "lr__tfilter");
+        ts.forEach(function (x) { var o = el("option", null, tname(x.name) + (x.set ? "" : " (미입력)")); o.value = x.id; pickT.appendChild(o); });
+        var holder = el("div");
+        function show2() { holder.textContent = ""; var x = ts.filter(function (y) { return String(y.id) === pickT.value; })[0]; if (x) holder.appendChild(hoursEditor(x, true)); }
+        pickT.addEventListener("change", show2);
+        sec3.appendChild(pickT); sec3.appendChild(holder); show2();
+        body.appendChild(sec3);
+      }
+    }
+    function timePick(v) {
+      var s = el("select", "lr__hsel"), o = el("option", null, "—"); o.value = ""; s.appendChild(o);
+      for (var m = 0; m <= 1440; m += 10) { var x = el("option", null, hhmm(m)); x.value = hhmm(m); s.appendChild(x); }
+      s.value = v || "";
+      return s;
+    }
+    // 근무 시간 고치기 (요일 × 구간 2개 + 메모, 시트 "가능시간 입력" ① 표와 같은 모양)
+    function hoursEditor(x, asAdmin) {
+      var box = el("div", "lr__hours");
+      box.appendChild(el("b", "lr__fsec-title", asAdmin ? "⏰ " + tname(x.name) + " 근무 시간" : "⏰ 내 근무 시간 (요일별 출근 ~ 퇴근)"));
+      box.appendChild(el("p", "lr__hint", "요일마다 구간 2개까지 (예: 13:00 ~ 16:00, 18:00 ~ 21:00). 비워 두면 그 요일은 휴무예요. 수업이 있는 시간은 저절로 빠지고 남는 시간이 관리자에게 보여요. 특정 날 휴무 · 안 되는 시간은 실장님께 카톡으로 알려 주세요."
+        + (x.set ? "" : " 아직 입력 전이라 지금은 10:00 ~ 22:00 전체로 보고 있어요.")));
+      var wrap = el("div", "lr__wkwrap"), t = el("table", "lr__wk lr__htbl"), hr = el("tr");
+      ["요일", "시작 1", "끝 1", "시작 2", "끝 2", "메모 (선택)"].forEach(function (h) { hr.appendChild(el("th", null, h)); });
+      var thead = el("thead"); thead.appendChild(hr); t.appendChild(thead);
+      var tb = el("tbody"), rows = [];
+      WDO.forEach(function (w) {
+        var h = (x.hours || []).filter(function (y) { return y.wd === w; })[0] || {};
+        var tr = el("tr"), r = { wd: w, s1: timePick(h.s1), e1: timePick(h.e1), s2: timePick(h.s2), e2: timePick(h.e2), memo: el("input", "lr__hmemo") };
+        r.memo.maxLength = 200; r.memo.value = h.memo || ""; r.memo.placeholder = "예) 7시 50분 바로 가능";
+        tr.appendChild(el("th", null, WD[w]));
+        ["s1", "e1", "s2", "e2", "memo"].forEach(function (k) { var td = el("td"); td.appendChild(r[k]); tr.appendChild(td); });
+        tb.appendChild(tr); rows.push(r);
+      });
+      t.appendChild(tb); wrap.appendChild(t); box.appendChild(wrap);
+      var go = btn("근무 시간 저장"), m = el("p", "sys-msg");
+      go.addEventListener("click", function () {
+        go.disabled = true; say(m, "저장하는 중…");
+        call("teacher_hours_save", { p_teacher: asAdmin ? x.id : null, p_rows: rows.map(function (r) {
+          return { wd: r.wd, s1: r.s1.value, e1: r.e1.value, s2: r.s2.value, e2: r.e2.value, memo: r.memo.value };
+        }) }).then(function (res) {
+          go.disabled = false;
+          if (!res || !res.ok) { say(m, (res && res.error) || "저장하지 못했어요.", "error"); return; }
+          toast.textContent = "근무 시간을 저장했어요. 빈 시간에 바로 반영돼요."; toast.className = "sys-msg sys-msg--ok lr__toast";
+          loadFree();
+        });
+      });
+      box.appendChild(go); box.appendChild(m);
+      return box;
+    }
     function closePanel() { panel.hidden = true; panel.textContent = ""; }
     function show(title) {
       panel.textContent = "";
@@ -605,6 +742,7 @@
     pick.addEventListener("change", function () { if (!pick.value) return; st.day = pick.value; st.from = monday(pick.value); load(); });
     mDay.addEventListener("click", function () { st.mode = "day"; load(); });
     mWeek.addEventListener("click", function () { st.mode = "week"; load(); });
+    mFree.addEventListener("click", function () { st.mode = "free"; load(); });
     add.addEventListener("click", function () { if (st.data) openForm({ date: st.day }); });
     load();
   }
