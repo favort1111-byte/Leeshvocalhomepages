@@ -87,9 +87,10 @@
         body.textContent = "";
         if (!d || !d.ok) { body.appendChild(el("p", "sys-msg sys-msg--error", (d && d.error) || "불러오지 못했어요.")); return; }
         st.data = d;
+        st.can = d.can_edit !== false;
         if (st.day < st.from || st.day > addDays(st.from, 6)) st.day = st.from;
-        note.hidden = !!d.open;
-        note.textContent = "🧪 시뮬레이션 중 · 선생님들 화면에는 아직 안 보여요 (관리자 · 원장님만). 실제 수업과 상관없이 마음껏 넣고 지워 보세요.";
+        drawNote(d);
+        add.hidden = !st.can;
         week.textContent = md(st.from) + " ~ " + md(addDays(st.from, 6));
         pick.value = st.day;
         mDay.classList.toggle("is-on", st.mode === "day");
@@ -97,6 +98,27 @@
         drawDays();
         if (st.mode === "day") drawDay(); else drawWeek();
       });
+    }
+    // 맨 위 안내: 선생님은 보기만(예약 시작 전) / 관리자는 열기 · 닫기 스위치
+    function drawNote(d) {
+      note.textContent = "";
+      note.hidden = !!d.open && !d.admin;
+      if (!st.can) {
+        note.textContent = "👀 지금은 보기만 할 수 있어요. 레슨실 예약 · 바꾸기는 곧 시작해요. 그 전에 바꿀 일은 원장님 · 실장님께 말씀해 주세요.";
+        return;
+      }
+      note.appendChild(el("span", null, d.open ? "✅ 선생님들도 레슨실을 예약 · 바꾸기 할 수 있어요." : "👀 선생님들은 지금 보기만 해요. 예약 · 바꾸기는 관리자 · 원장님만 돼요."));
+      if (d.admin) {
+        var sw = btn(d.open ? "다시 보기만으로" : "선생님 예약 열기", "sys-btn sys-btn--ghost lr__switch");
+        arm(sw, d.open ? "한 번 더 누르면 선생님들은 다시 보기만 해요" : "한 번 더 누르면 선생님들이 바로 예약할 수 있어요", function () {
+          call("admin_lesson_rooms_set", { p_open: !d.open }).then(function (r) {
+            if (!r || !r.ok) { toast.textContent = (r && r.error) || "바꾸지 못했어요."; toast.className = "sys-msg sys-msg--error lr__toast"; return; }
+            toast.textContent = r.open ? "선생님들께 레슨실 예약을 열었어요." : "선생님들은 다시 보기만 해요."; toast.className = "sys-msg sys-msg--ok lr__toast";
+            load();
+          });
+        });
+        note.appendChild(sw);
+      }
     }
     function itemsOn(d) { return (st.data.items || []).filter(function (i) { return i.date === d; }); }
     function drawDays() {
@@ -116,7 +138,7 @@
     function drawDay() {
       body.textContent = "";
       var rooms = st.data.rooms || [], list = itemsOn(st.day);
-      body.appendChild(el("p", "lr__hint", md(st.day) + " · 빈 곳을 누르면 그 방 · 그 시간으로 예약 칸이 열려요. 예약을 누르면 빼기 · 옮기기 · 취소."));
+      body.appendChild(el("p", "lr__hint", md(st.day) + (st.can ? " · 빈 곳을 누르면 그 방 · 그 시간으로 예약 칸이 열려요. 예약을 누르면 빼기 · 옮기기 · 취소." : " · 보기만 할 수 있어요. 내 수업은 학생 이름이, 다른 선생님 수업은 \"예약됨\"으로 보여요.")));
       body.appendChild(freeBox(rooms, list));
       var grid = el("div", "lr__grid");
       grid.style.setProperty("--cols", rooms.length);
@@ -135,7 +157,7 @@
         var col = el("div", "lr__col");
         col.setAttribute("aria-label", r.name + " 시간표");
         col.addEventListener("click", function (e) {
-          if (e.target !== col) return;
+          if (e.target !== col || !st.can) return;
           var rect = col.getBoundingClientRect(), min = Math.max(0, Math.min(1430, Math.floor((e.clientY - rect.top) / ROW) * 10));
           openForm({ room: r.name, date: st.day, start: min });
         });
@@ -180,6 +202,7 @@
         if (!gaps.length) row.appendChild(el("span", "sys-note", "빈 시간 없음"));
         gaps.forEach(function (g) {
           var c = btn(hhmm(g[0]) + "~" + hhmm(g[1]), "lr__free-chip");
+          if (!st.can) { c.disabled = true; row.appendChild(c); return; }
           c.addEventListener("click", function () { openForm({ room: r.name, date: st.day, start: g[0], minutes: Math.min(50, g[1] - g[0] - (g[1] - g[0]) % 10) }); });
           row.appendChild(c);
         });
@@ -340,7 +363,7 @@
       if (it.memo) info.appendChild(el("p", "sys-note", "메모 · " + it.memo));
       if (it.source && it.source !== "site") info.appendChild(el("p", "sys-note", it.source === "sheet" ? "시트에서 옮겨 온 예약" : "시뮬레이션 예약"));
       panel.appendChild(info);
-      if (!it.edit) { panel.appendChild(el("p", "sys-note", "다른 선생님 수업이에요 (보기만).")); return; }
+      if (!it.edit) { panel.appendChild(el("p", "sys-note", !st.can && it.mine ? "지금은 보기만 할 수 있어요. 바꿀 일은 원장님 · 실장님께 말씀해 주세요." : "다른 선생님 수업이에요 (보기만).")); return; }
       var past = it.date < st.data.today, started = it.first < st.data.today;
       var acts = el("div", "lr__acts");
       var m = el("p", "sys-msg");

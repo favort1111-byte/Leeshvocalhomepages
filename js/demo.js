@@ -6,7 +6,7 @@
   var cfg = window.LEESH = window.LEESH || {};
   cfg.supabaseKey = "demo";
   cfg.local = true;
-  cfg.lessonRooms = true; // 레슨실 예약 (체험 선생님 안유정에게도 보이게, 실제는 시뮬레이션 동안 원장님만)
+  cfg.lessonRooms = true; // 레슨실 (실제와 같이 선생님은 보기만, 관리자 "선생님 예약 열기"를 누르면 체험에서도 열림)
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
   var VERSION = 38; // bump when the demo defaults change
@@ -1302,6 +1302,7 @@
       lrSeed();
       var who = lrActor(uid);
       if (who.err) return fail(who.err);
+      var can = who.adm || who.dir || !!db.lr.open;
       var today = nowKst().today, from = lrDate(a.p_from) || today, n = Math.min(Math.max(Number(a.p_days) || 7, 1), 14), items = [];
       for (var i = 0; i < n; i++) {
         var d = addDays(from, i);
@@ -1309,20 +1310,26 @@
           if (b.status !== "확정" || b.weekday !== wdOf(d) || b.first > d || (b.last && b.last < d)) return;
           if (db.lr.skips.some(function (k) { return k.id === b.id && k.day === d; })) return;
           var mine = !!(who.t && b.teacher === who.t.id), see = who.dir || mine, tt = db.teachers.filter(function (x) { return x.id === b.teacher; })[0];
-          items.push({ id: b.id, room: b.room, kind: b.kind, date: d, start: hhmm(b.st), end: hhmm(b.en), st: b.st, en: b.en, mine: mine, edit: who.adm || mine,
+          items.push({ id: b.id, room: b.room, kind: b.kind, date: d, start: hhmm(b.st), end: hhmm(b.en), st: b.st, en: b.en, mine: mine, edit: can && (who.adm || mine),
             name: see ? b.name : null, member: see ? b.member : null, teacher: see && tt ? tt.name : null, memo: see ? b.memo : null, first: b.first, last: b.last, source: b.source });
         });
       }
       items.sort(function (x, y) { return x.date === y.date ? (x.room === y.room ? x.st - y.st : x.room < y.room ? -1 : 1) : x.date < y.date ? -1 : 1; });
-      return { ok: true, today: today, from: from, days: n, admin: who.adm, director: who.dir, me: who.t ? who.t.name : null, open: false,
+      return { ok: true, today: today, from: from, days: n, admin: who.adm, director: who.dir, me: who.t ? who.t.name : null, open: !!db.lr.open, can_edit: can,
         rooms: LR_ROOMS.map(function (r, i) { return { id: i + 1, name: r }; }), items: items,
-        students: db.members.filter(function (m) { return (m.status === "재원" || m.status === "외부") && (who.adm || teaches(who.t, m.id)); })
+        students: !can ? [] : db.members.filter(function (m) { return (m.status === "재원" || m.status === "외부") && (who.adm || teaches(who.t, m.id)); })
           .map(function (m) { var d = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return { id: m.id, name: m.name, teacher: d ? d[1] : null }; }) };
+    },
+    admin_lesson_rooms_set: function (a, uid) {
+      if (uid) return fail("관리자만 할 수 있어요.");
+      lrSeed(); db.lr.open = !!a.p_open; save();
+      return { ok: true, open: db.lr.open };
     },
     lesson_room_book: function (a, uid) {
       lrSeed();
       var who = lrActor(uid);
       if (who.err) return fail("선생님 · 관리자만 예약할 수 있어요.");
+      if (!(who.adm || who.dir || db.lr.open)) return fail("레슨실 예약은 아직 준비 중이에요.");
       if (a.p_kind !== "정규" && a.p_kind !== "보강") return fail("정규 수업인지 보강 수업인지 골라주세요.");
       if (LR_ROOMS.indexOf(a.p_room) < 0) return fail("레슨실을 골라주세요.");
       var m = db.members.filter(function (x) { return x.id === a.p_member; })[0];
@@ -1353,6 +1360,7 @@
       lrSeed();
       var who = lrActor(uid);
       if (who.err) return fail("선생님 · 관리자만 할 수 있어요.");
+      if (!(who.adm || who.dir || db.lr.open)) return fail("레슨실 예약은 아직 준비 중이에요. 바꿀 일은 원장님 · 실장님께 말씀해 주세요.");
       var b = db.lr.bookings.filter(function (x) { return x.id === a.p_id && x.status === "확정"; })[0];
       if (!b) return fail("이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.");
       if (!who.adm && !(who.t && b.teacher === who.t.id)) return fail("내 예약만 취소할 수 있어요.");
@@ -1374,6 +1382,7 @@
       lrSeed();
       var who = lrActor(uid);
       if (who.err) return fail("선생님 · 관리자만 할 수 있어요.");
+      if (!(who.adm || who.dir || db.lr.open)) return fail("레슨실 예약은 아직 준비 중이에요. 바꿀 일은 원장님 · 실장님께 말씀해 주세요.");
       var b = db.lr.bookings.filter(function (x) { return x.id === a.p_id && x.status === "확정"; })[0];
       if (!b) return fail("이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.");
       if (!who.adm && !(who.t && b.teacher === who.t.id)) return fail("내 예약만 옮길 수 있어요.");
