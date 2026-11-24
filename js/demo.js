@@ -807,7 +807,7 @@
     // 관리자 작업 기록 (체험 모드는 예시 몇 줄)
     // 카톡 자동발송 (체험): 솔라피 연결 없이 일정만 넣어 보기
     admin_solapi_status: function () {
-      return { ok: true, connected: false, key_tail: null, sender: null, pf_id: false, templates: {}, texts: db.kk_texts || {}, send_hour: 18, enabled: false, contacts: 1, last_run_at: null, last_note: null };
+      return { ok: true, connected: true, key_tail: "…DEMO", sender: null, pf_id: true, templates: { "컨설팅": "KA01TP_DEMO", "특강": "KA01TP_DEMO", "첫 레슨": "KA01TP_DEMO", "보강": "KA01TP_DEMO" }, texts: db.kk_texts || {}, send_hour: 18, enabled: false, contacts: 1, last_run_at: null, last_note: null };
     },
     admin_solapi_texts: function (a) {
       var t = {};

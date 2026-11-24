@@ -65,7 +65,7 @@
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="cctv" aria-selected="false">CCTV 동의 <span class="adm__badge" id="cctvBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="suggest" aria-selected="false">건의함 <span class="adm__badge" id="suggestBadge" hidden></span></button>
-      <button type="button" role="tab" data-tab="kakao" aria-selected="false">카톡 자동발송</button>
+      <button type="button" role="tab" data-tab="kakao" aria-selected="false">카톡 보내기</button>
       <button type="button" role="tab" data-tab="gameevent" aria-selected="false">오락실 이벤트</button>
       <button type="button" role="tab" data-tab="adminlog" aria-selected="false">작업 기록</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">설정</button>
@@ -532,8 +532,9 @@
 
     <!-- 카톡 자동발송 (원장님 2026-11-10): 상담 · 컨설팅 · 특강 · 보강 전날 오후 6시 솔라피 알림톡 리마인더 · 신규 수강 안내(종류 값 "첫 레슨")는 등록하면 바로 (2026-11-20) -->
     <section class="sys-card" data-panel="kakao" hidden>
-      <h3 class="sys-h">카톡 자동발송 · 전날 리마인더</h3>
-      <p class="sys-note">일정을 넣어 두면 <b>전날 오후 6시</b>에 솔라피 알림톡으로 저절로 보내요 (6시 뒤에 넣은 내일 일정도 밤 10시까지는 저절로). 학생 번호는 학생관리 시트 '회차·결제 관리' P열 "결제 연락처"에서 받아요.</p>
+      <h3 class="sys-h">카톡 보내기 (알림톡)</h3>
+      <p class="sys-note"><b>종류(문구) → 날짜 · 시간 → 받는 학생</b>을 고르고 <b>카톡 바로 보내기</b>를 두 번 누르면 그때 솔라피 알림톡으로 나가요. 저절로 보내는 것은 꺼져 있어요 (원장님 2026-11-24). 학생 번호는 수강 ID 목록의 <b>전화번호</b> 칸 번호예요.</p>
+      <p class="sys-note">💡 컨설팅 · 특강 · 보강 문구는 "<b>내일</b> ○시 …"로 나가요 → <b>일정 전날</b> 보내 주세요. 신규 수강 안내는 등록하면 바로.</p>
       <p class="sys-note" id="kkState"></p>
 
       <h4 class="adm__sub">일정 넣기</h4>
@@ -572,7 +573,8 @@
           <label class="sys-field" data-var="#{안내}"><span id="kkMemoLab">안내 (선택)</span><input name="memo" maxlength="200" placeholder="예) 10분 전 도착 · 악보 지참"></label>
         </div>
         <p class="adm__kkpreview" id="kkPreview"></p>
-        <button class="sys-btn" type="submit" id="kkSave">일정 넣기</button>
+        <p class="sys-msg sys-msg--error" id="kkWarn" hidden>⚠️ 고른 날짜가 내일이 아니에요. 이 문구는 "내일 ○시"라고 나가니, 일정 전날 보내 주세요.</p>
+        <button class="sys-btn" type="submit" id="kkSave">카톡 바로 보내기</button>
         <p class="sys-msg" id="kkMsg"></p>
       </form>
 
@@ -604,7 +606,7 @@
         <form class="sys" id="kkTpl">
           <p class="sys-note">카카오 승인이 끝난 알림톡 템플릿 ID (KA01TP…)를 종류마다 넣어 주세요. 문구 초안은 docs/alimtalk_templates.md · 변수는 #{이름} #{일시} #{장소} #{안내}.</p>
           <div class="adm__kktpl" id="kkTplRows"></div>
-          <label class="sys-check"><input type="checkbox" id="kkOn"> 전날 자동 발송 켜기</label>
+          <label class="sys-check"><input type="checkbox" id="kkOn"> 전날 오후 6시 자동 발송 켜기 (지금은 안 씀 · 켜지 마세요)</label>
           <button class="sys-btn" type="submit">저장</button>
           <p class="sys-msg" id="kkTplMsg"></p>
         </form>
@@ -737,6 +739,6 @@
 <script src="js/photos.js?v=a00ab1e5"></script>
 <script src="js/fbstatus.js?v=dcea5374"></script>
 <script src="js/consultnote.js?v=42226ed5"></script>
-<script src="js/admin.js?v=f89b68ca"></script>
+<script src="js/admin.js?v=7a7f711d"></script>
 </body>
 </html>
