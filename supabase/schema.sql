@@ -11806,3 +11806,243 @@ begin
 exception when sqlstate 'P0001' then
   return private.fail(sqlerrm);
 end $function$;
+
+-- 레슨실 퇴원 · 휴원 자동 종료 (archive 기준, 마이그레이션 leesh_lesson_archive_end, 2026-11-24)
+-- 레슨실 퇴원 · 휴원 자동 종료 기록 (원장님 2026-11-24): 시트 명단 archive가 종료보관 · 휴원보관으로 바뀔 때만
+create table if not exists public.lesson_auto_ends (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  booking_id bigint references public.lesson_bookings(id) on delete set null,
+  member_id text, student_name text, teacher_id bigint, room text, kind text,
+  weekday int, start_min int, end_min int, first_day date,
+  action text not null check (action in ('정규 종료', '취소')),
+  old_last date, new_last date,
+  archive text, reason text
+);
+create index if not exists lesson_auto_ends_at on public.lesson_auto_ends (at desc);
+alter table public.lesson_auto_ends enable row level security;
+revoke all on public.lesson_auto_ends from public, anon, authenticated;
+create trigger zz_admin_log after insert or update or delete on public.lesson_auto_ends for each row execute function private.log_change();
+
+-- 퇴원 · 휴원 레슨실 자동 종료 (원장님 2026-11-24): 시트 명단 archive가 종료보관 · 휴원보관일 때 sheet_sync_members가 부름.
+-- 시작한 정규 = 어제까지 (지난 기록 남김) · 아직 시작 전 정규 · 오늘부터의 보강 = 취소. 이미 정리됐으면 아무것도 안 함. 다시 재원이 돼도 되살리지 않음.
+create or replace function private.lesson_archive_end(p_member text, arch text)
+returns int language plpgsql security definer set search_path = '' as $$
+declare
+  today date := private.now_kst()::date;
+  mname text := (select name from public.members where id = p_member);
+  lr record; why text; n_end int := 0; n_cancel int := 0;
+begin
+  -- 기준은 시트 명단의 archive 값 하나 (선생님이 학생 현황에 적는 종료 · 휴원 표시는 홈페이지로 안 옴).
+  -- 관리자 화면에서 상태만 바꾼 것은 다음 시트 반영 때 덮이므로 레슨실은 건드리지 않음.
+  -- 시작한 정규 = 어제까지로 끝냄(지난 기록은 남김) · 아직 시작 전 정규 · 오늘부터의 보강 = 취소. 다시 재원이 돼도 되살리지 않음.
+  if arch in ('종료보관', '휴원보관') then
+    why := case when arch = '종료보관' then '퇴원 보관' else '휴원 보관' end || '으로 자동 종료';
+    for lr in
+      select lb.*, r.name room_name from public.lesson_bookings lb join public.lesson_rooms r on r.id = lb.room_id
+       where lb.member_id = p_member and lb.status = '확정' and coalesce(lb.last_day, 'infinity'::date) >= today
+         and (lb.kind = '정규' or lb.first_day >= today)
+       for update of lb
+    loop
+      if lr.kind = '정규' and lr.first_day < today then
+        update public.lesson_bookings set last_day = today - 1, cancelled_by = '자동 (' || why || ')',
+               memo = left(coalesce(memo || ' / ', '') || why || ' (' || to_char(today, 'FMMM/FMDD') || ')', 500)
+         where id = lr.id;
+        n_end := n_end + 1;
+      else
+        update public.lesson_bookings set status = '취소', cancelled_at = now(), cancelled_by = '자동 (' || why || ')',
+               memo = left(coalesce(memo || ' / ', '') || why || ' (' || to_char(today, 'FMMM/FMDD') || ')', 500)
+         where id = lr.id;
+        n_cancel := n_cancel + 1;
+      end if;
+      insert into public.lesson_auto_ends (booking_id, member_id, student_name, teacher_id, room, kind, weekday, start_min, end_min, first_day,
+                                           action, old_last, new_last, archive, reason)
+      values (lr.id, p_member, mname, lr.teacher_id, lr.room_name, lr.kind, lr.weekday, lr.start_min, lr.end_min, lr.first_day,
+              case when lr.kind = '정규' and lr.first_day < today then '정규 종료' else '취소' end,
+              lr.last_day, case when lr.kind = '정규' and lr.first_day < today then today - 1 end, arch, why);
+    end loop;
+    if n_end + n_cancel > 0 then
+      perform private.notify('↩️ 레슨실 자동 정리 · ' || mname || ' (' || why || ')'
+        || case when n_end > 0 then ' · 정규 ' || n_end || '개 어제까지로 끝' else '' end
+        || case when n_cancel > 0 then ' · ' || n_cancel || '개 취소' else '' end);
+    end if;
+  end if;
+  return n_end + n_cancel;
+end $$;
+revoke all on function private.lesson_archive_end(text, text) from public, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION private.member_status_cancel()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  k timestamp := private.now_kst();
+  today date := k::date;
+  now_min int := extract(hour from k)::int * 60 + extract(minute from k)::int;
+  b record;
+begin
+  if new.status in ('재원', '외부') or old.status not in ('재원', '외부') then return new; end if;
+  for b in
+    update public.bookings x
+       set status = '취소', cancelled_at = now(),
+           memo = coalesce(x.memo || ' / ', '') || new.status || '(으)로 바뀌어 자동 취소'
+     where x.member_id = new.id and x.status = '확정'
+       and (x.day > today or (x.day = today and x.start_min > now_min))
+    returning x.day, x.start_min, x.end_min, x.room_id
+  loop
+    perform private.notify('↩️ 연습실 예약 자동 취소 (' || new.status || ')' || chr(10) || new.name || ' · '
+      || (select r.name from public.rooms r where r.id = b.room_id)
+      || chr(10) || private.day_label(b.day) || ' ' || private.hhmm(b.start_min) || '~' || private.hhmm(b.end_min));
+  end loop;
+  -- 원장님 컨설팅 신청도 (원장님 2026-11-17): 아직 안 한 신청은 지워서 그 타임을 다시 비움, 알림은 바로
+  for b in
+    delete from public.feedback_bookings fb using public.feedback_slots s
+     where fb.member_id = new.id and s.id = fb.slot_id and s.at > now()
+    returning s.at, fb.kind
+  loop
+    perform private.notify('↩️ 원장님 컨설팅 자동 취소 (' || new.status || ')' || chr(10) || new.name || ' · '
+      || private.reminder_when(b.at) || ' · ' || coalesce(b.kind, '보컬') || chr(10) || '그 타임은 다시 비었어요.');
+  end loop;
+  -- 레슨실은 여기서 안 함: 시트 명단 archive(종료보관 · 휴원보관) 기준으로 sheet_sync_members가 private.lesson_archive_end를 부름 (원장님 2026-11-24)
+  return new;
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.sheet_sync_members(p_key text, p_rows jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  s private.sheet_sync;
+  r jsonb;
+  v_id text; v_name text; v_teacher text; v_status text; v_memo text;
+  m public.members;
+  added int := 0; changed int := 0; same int := 0; skipped int := 0;
+  new_teachers text[] := '{}';
+  lr_ended int := 0;
+  res jsonb;
+begin
+  select * into s from private.sheet_sync where id = 1;
+  if s.key_hash is null or s.key_hash <> extensions.digest(coalesce(p_key, ''), 'sha256') then
+    return private.fail('연결 열쇠가 맞지 않아요.');
+  end if;
+  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 or jsonb_array_length(p_rows) > 2000 then
+    return private.fail('보낸 명단이 비어 있거나 너무 커요.');
+  end if;
+  for r in select * from jsonb_array_elements(p_rows) loop
+    v_id := upper(trim(coalesce(r ->> 'id', '')));
+    v_name := trim(coalesce(r ->> 'name', ''));
+    v_teacher := nullif(regexp_replace(trim(coalesce(r ->> 'teacher', '')), '\s+', '', 'g'), '');
+    v_status := case trim(coalesce(r ->> 'archive', '')) when '종료보관' then '종료' when '휴원보관' then '휴원' else '재원' end;
+    if v_id !~ '^E\d{3,}$' or v_name = '' or char_length(v_name) > 30 or char_length(coalesce(v_teacher, '')) > 20 then
+      skipped := skipped + 1;
+      continue;
+    end if;
+    select * into m from public.members where id = v_id;
+    if m.id is null then
+      insert into public.members (id, name, status, memo, pin_hash, must_change_pin)
+      values (v_id, v_name, v_status, case when v_teacher is not null then '담당 ' || v_teacher end,
+              extensions.crypt('0000', extensions.gen_salt('bf')), true);
+      added := added + 1;
+    else
+      -- 메모의 "담당 ○○○"만 바꾸고 나머지 메모는 그대로
+      v_memo := case
+        when v_teacher is null then m.memo
+        when coalesce(m.memo, '') ~ '담당\s*[^\s·,]+' then regexp_replace(m.memo, '담당\s*[^\s·,]+', '담당 ' || v_teacher)
+        else nullif(concat_ws(' · ', nullif(m.memo, ''), '담당 ' || v_teacher), '') end;
+      if m.name is distinct from v_name or m.status is distinct from v_status or m.memo is distinct from v_memo then
+        update public.members set name = v_name, status = v_status, memo = v_memo where id = v_id;
+        changed := changed + 1;
+      else
+        same := same + 1;
+      end if;
+    end if;
+    -- 레슨실 퇴원 · 휴원 자동 종료: archive 값 하나가 기준 (원장님 2026-11-24). 아직 열린 레슨실 예약이 있을 때만.
+    if trim(coalesce(r ->> 'archive', '')) in ('종료보관', '휴원보관')
+       and exists (select 1 from public.lesson_bookings lb where lb.member_id = v_id and lb.status = '확정'
+                     and coalesce(lb.last_day, 'infinity'::date) >= private.now_kst()::date) then
+      lr_ended := lr_ended + private.lesson_archive_end(v_id, trim(r ->> 'archive'));
+    end if;
+    -- 시트에 새 선생님이 생기면 선생님 목록에도 (선생님 화면 연결용)
+    if v_teacher is not null and not exists (select 1 from public.teachers where name = v_teacher) then
+      insert into public.teachers (name) values (v_teacher) on conflict (name) do nothing;
+      new_teachers := array_append(new_teachers, v_teacher);
+    end if;
+  end loop;
+  res := jsonb_build_object('ok', true, 'added', added, 'changed', changed, 'same', same, 'skipped', skipped,
+                            'newTeachers', to_jsonb(new_teachers), 'lessonEnded', lr_ended, 'at', now());
+  update private.sheet_sync set last_at = now(), last_result = res where id = 1;
+  if added > 0 then perform private.notify('📋 구글시트에서 새 수강생 ' || added || '명이 홈페이지에 들어왔어요.'); end if;
+  return res;
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.lesson_room_view(p_from text DEFAULT NULL::text, p_days integer DEFAULT 7)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  dir boolean;
+  can boolean;
+  today date := private.now_kst()::date;
+  d0 date;
+  n int := least(greatest(coalesce(p_days, 7), 1), 14);
+begin
+  can := private.lesson_allowed(adm, t);
+  if not can and not (t.id is not null and coalesce((select s.lesson_rooms_view from public.settings s where s.id = 1), false)) then
+    return private.fail(case when t.id is null then '선생님 · 관리자만 볼 수 있어요.' else '레슨실 예약은 아직 준비 중이에요.' end);
+  end if;
+  dir := adm or coalesce(t.name = '원장님', false);
+  begin d0 := coalesce(nullif(p_from, '')::date, today); exception when others then d0 := today; end;
+  return jsonb_build_object('ok', true, 'today', today, 'from', d0, 'days', n,
+    'admin', adm, 'director', dir, 'me', t.name,
+    'open', coalesce((select s.lesson_rooms_open from public.settings s where s.id = 1), false),
+    'can_edit', can,
+    'rooms', (select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name) order by r.sort, r.id), '[]'::jsonb)
+                from public.lesson_rooms r where r.active),
+    'items', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', b.id, 'room', r.name, 'kind', b.kind, 'date', g.d,
+                'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min), 'st', b.start_min, 'en', b.end_min,
+                'mine', coalesce(t.id is not null and b.teacher_id = t.id, false),
+                'edit', coalesce(can and (adm or (t.id is not null and b.teacher_id = t.id)), false),
+                'name', case when dir or b.teacher_id = t.id then b.student_name end,
+                'member', case when dir or b.teacher_id = t.id then b.member_id end,
+                'teacher', case when dir or b.teacher_id = t.id then tt.name end,
+                'memo', case when dir or b.teacher_id = t.id then b.memo end,
+                'first', b.first_day, 'last', b.last_day, 'source', b.source)
+                order by g.d, r.sort, b.start_min), '[]'::jsonb)
+                from (select gs::date as d from generate_series(d0, d0 + n - 1, interval '1 day') gs) g
+                join public.lesson_bookings b on b.status = '확정' and b.weekday = extract(dow from g.d)::int
+                  and b.first_day <= g.d and coalesce(b.last_day, 'infinity'::date) >= g.d
+                  and not exists (select 1 from public.lesson_skips k where k.booking_id = b.id and k.day = g.d)
+                join public.lesson_rooms r on r.id = b.room_id
+                left join public.teachers tt on tt.id = b.teacher_id),
+    'students', case when not can then '[]'::jsonb else (select coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'name', m.name,
+                   'teacher', substring(m.memo from '담당\s*([^\s·,]+)')) order by m.name, m.id), '[]'::jsonb)
+                   from public.members m
+                  where m.status in ('재원', '외부') and m.id <> 'DEMO'
+                    and (adm or private.teaches(t, m.id))) end,
+    -- 정규 레슨실 예약이 없는 재원생 (선생님 = 내 담당만, 관리자 · 원장님 = 전부)
+    'missing', (select coalesce(jsonb_agg(jsonb_build_object('id', x.member_id, 'name', x.name, 'teacher', x.teacher,
+                  'makeup', x.makeup, 'ended', x.ended) order by x.teacher, x.name), '[]'::jsonb)
+                  from private.lesson_missing() x
+                 where dir or (t.id is not null and private.teaches(t, x.member_id))),
+    -- 최근 30일 자동으로 끝난 예약 (관리자 · 원장님만)
+    'auto_ends', case when not dir then '[]'::jsonb else (select coalesce(jsonb_agg(jsonb_build_object('id', e.id, 'at', e.at, 'member', e.member_id,
+                  'name', e.student_name, 'teacher', tt2.name, 'room', e.room, 'kind', e.kind, 'weekday', e.weekday,
+                  'start', private.hhmm(e.start_min), 'end', private.hhmm(e.end_min), 'first', e.first_day,
+                  'action', e.action, 'old_last', e.old_last, 'new_last', e.new_last, 'reason', e.reason,
+                  'status', (select mm.status from public.members mm where mm.id = e.member_id)) order by e.at desc, e.id), '[]'::jsonb)
+                  from (select * from public.lesson_auto_ends where at > now() - interval '30 days' order by at desc limit 200) e
+                  left join public.teachers tt2 on tt2.id = e.teacher_id) end,
+    -- 알림에서 뺀 학생 (관리자 · 원장님만 봄)
+    'skipped', case when not dir then '[]'::jsonb else (select coalesce(jsonb_agg(jsonb_build_object('id', s.member_id, 'name', mm.name,
+                  'teacher', substring(mm.memo from '담당\s*([^\s·,]+)'), 'memo', s.memo, 'status', mm.status) order by mm.name), '[]'::jsonb)
+                  from public.lesson_missing_skip s join public.members mm on mm.id = s.member_id) end);
+end $function$;

@@ -738,6 +738,10 @@ details.lr__fsec>summary.lr__fsec-title{cursor:pointer;}
 .lr__offrow.has-lesson{border-color:#E8A0A0;background:#FFF4F4;}
 .lr__offname{font-weight:700;color:#1D4948;}
 .lr__offwarn{color:#B03A2E;font-size:12px;}
+.lr__auto{margin:0 0 10px;padding:8px 12px;border:1px solid #d8d2c4;border-radius:10px;background:#FBFAF6;font-size:14px;}
+.lr__auto[hidden]{display:none;}
+.lr__auto summary{cursor:pointer;font-weight:700;}
+.lr__auto .lr__mytbl tr.is-back td{background:#FFF4F4;color:#8B2E22;}
 .lr__tfilter{width:auto !important;flex:0 0 auto;padding:6px 8px;border:1px solid var(--line,#d8d2c4);border-radius:8px;font:inherit;font-size:14px;background:#fff;max-width:100%;}
 .lr__blk.is-dim,.lr__wkitem.is-dim{opacity:.22;}
 .lr__sum{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line,#d8d2c4);border-radius:10px;background:#fbfaf6;display:grid;gap:6px;font-size:14px;}

@@ -63,6 +63,8 @@
     note.hidden = true;
     var miss = el("div", "lr__miss");
     miss.hidden = true;
+    var autoBox = el("details", "lr__auto");
+    autoBox.hidden = true;
     var nav = el("div", "lr__nav");
     var prev = btn("◀ 지난주", "sys-btn sys-btn--ghost lr__step");
     var week = el("b", "lr__week-label");
@@ -86,7 +88,7 @@
     panel.hidden = true;
     var body = el("div", "lr__body");
     var toast = el("p", "sys-msg lr__toast");
-    [note, miss, nav, days, toast, panel, body].forEach(function (n) { box.appendChild(n); });
+    [note, miss, autoBox, nav, days, toast, panel, body].forEach(function (n) { box.appendChild(n); });
 
     function load() {
       body.textContent = "";
@@ -99,6 +101,7 @@
         if (st.day < st.from || st.day > addDays(st.from, 6)) st.day = st.from;
         drawNote(d);
         drawMiss(d);
+        drawAuto(d);
         drawFilter(d);
         add.hidden = !st.can;
         week.textContent = md(st.from) + " ~ " + md(addDays(st.from, 6));
@@ -186,6 +189,33 @@
       });
       det.appendChild(row);
       return det;
+    }
+    // 관리자 · 원장님: 최근 30일 퇴원 · 휴원(시트 archive)으로 자동으로 끝난 레슨실 예약 — 잘못 끝난 게 없는지 확인용
+    function drawAuto(d) {
+      var list = d.auto_ends || [], wasOpen = autoBox.open;
+      autoBox.textContent = "";
+      autoBox.hidden = !list.length;
+      if (!list.length) return;
+      var back = list.filter(function (e) { return e.status === "재원" || e.status === "외부"; }).length;
+      autoBox.appendChild(el("summary", null, "↩️ 최근 자동으로 끝난 예약 (30일) " + list.length + "건" + (back ? " · ⚠️ 지금 다시 재원 " + back + "건" : "")));
+      autoBox.appendChild(el("p", "lr__hint", "시트 명단에서 종료보관 · 휴원보관으로 바뀐 학생의 레슨실 예약이에요. 시작한 정규는 전날까지로 끝내고(지난 기록은 남김), 아직 시작 전 정규 · 앞으로의 보강은 취소했어요. 다시 재원이 돼도 되살리지 않으니, 복귀한 학생은 선생님이 새로 예약해 주세요."));
+      var wrap = el("div", "lr__mywrap"), t = el("table", "lr__mytbl"), hr = el("tr");
+      ["처리한 때", "학생", "담당", "수업", "처리", "까닭"].forEach(function (h) { hr.appendChild(el("th", null, h)); });
+      var th = el("thead"); th.appendChild(hr); t.appendChild(th);
+      var tb = el("tbody");
+      list.forEach(function (e) {
+        var at = new Date(new Date(e.at).getTime() + 9 * 3600000).toISOString();
+        var tr = el("tr", e.status === "재원" || e.status === "외부" ? "is-back" : "");
+        [md(at.slice(0, 10)) + " " + at.slice(11, 16),
+         e.name + (e.member ? " (" + e.member + ")" : "") + (e.status ? " · 지금 " + e.status : ""),
+         e.teacher ? tname(e.teacher) : "",
+         e.room + " · " + (e.kind === "정규" ? "정규 매주 " + WD[e.weekday] : "보강 " + md(e.first)) + " " + e.start + "~" + e.end,
+         e.action === "정규 종료" ? "정규 끝 (" + md(e.new_last) + "까지)" : "취소",
+         e.reason || ""].forEach(function (x) { tr.appendChild(el("td", null, x)); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); wrap.appendChild(t); autoBox.appendChild(wrap);
+      autoBox.open = wasOpen;
     }
     function drawFilter(d) {
       who_.hidden = !d.director;

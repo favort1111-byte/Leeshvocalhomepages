@@ -1320,6 +1320,13 @@
         students: !can ? [] : db.members.filter(function (m) { return (m.status === "재원" || m.status === "외부") && (who.adm || teaches(who.t, m.id)); })
           .map(function (m) { var d = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return { id: m.id, name: m.name, teacher: d ? d[1] : null }; }),
         // 정규 레슨실 예약이 없는 재원생 (선생님 = 내 담당만)
+        auto_ends: !who.dir ? [] : [
+          { id: 1, at: new Date(Date.now() - 2 * 86400000).toISOString(), member: "S903", name: "강도윤", teacher: "이하섬", room: "A2", kind: "정규", weekday: 2,
+            start: "18:00", end: "18:50", first: addDays(today, -60), action: "정규 종료", new_last: addDays(today, -3), reason: "퇴원 보관으로 자동 종료", status: "종료" },
+          { id: 2, at: new Date(Date.now() - 2 * 86400000).toISOString(), member: "S903", name: "강도윤", teacher: "이하섬", room: "A1", kind: "보강", weekday: 5,
+            start: "15:00", end: "15:50", first: addDays(today, 3), action: "취소", new_last: null, reason: "퇴원 보관으로 자동 종료", status: "종료" },
+          { id: 3, at: new Date(Date.now() - 6 * 86400000).toISOString(), member: "S905", name: "윤하린", teacher: "이수빈", room: "A3", kind: "정규", weekday: 4,
+            start: "20:00", end: "20:50", first: addDays(today, -40), action: "정규 종료", new_last: addDays(today, -7), reason: "휴원 보관으로 자동 종료", status: "재원" }],
         skipped: !who.dir ? [] : (db.lr.missSkip || []).map(function (id) {
           var m = db.members.filter(function (x) { return x.id === id; })[0] || { id: id, name: id }, d = /담당\s*([^\s·,]+)/.exec(m.memo || "");
           return { id: id, name: m.name, teacher: d ? d[1] : null, memo: null, status: m.status };
