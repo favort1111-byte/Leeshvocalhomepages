@@ -55,7 +55,7 @@
   }
 
   function render(box, call) {
-    var st = { from: monday(todayKst()), day: todayKst(), mode: "day", data: null };
+    var st = { from: monday(todayKst()), day: todayKst(), mode: "week", data: null, free: true };
     box.textContent = "";
     box.classList.add("lr");
     var note = el("p", "lr__sim");
@@ -140,6 +140,18 @@
       if (keep && !names[keep]) { var o = el("option", null, keep + " (0)"); o.value = keep; who_.appendChild(o); }
       who_.value = keep; st.tf = keep;
     }
+    function mine(it) { return !!it.teacher && it.teacher === st.data.me; }
+    // 그 방 · 그날 빈 시간 (25분 넘게, 오늘은 지금 뒤부터, 지난 날은 없음)
+    function gapsOf(room, d) {
+      if (d < st.data.today) return [];
+      var from = 0;
+      if (d === st.data.today) { var k = new Date(Date.now() + 9 * 3600000); from = Math.ceil((k.getUTCHours() * 60 + k.getUTCMinutes() + 1) / 10) * 10; }
+      var busy = itemsOn(d).filter(function (i) { return i.room === room; }).sort(function (a, b) { return a.st - b.st; });
+      var cur = from, gaps = [];
+      busy.forEach(function (i) { if (i.st - cur >= 25) gaps.push([cur, i.st]); cur = Math.max(cur, i.en); });
+      if (1440 - cur >= 25) gaps.push([cur, 1440]);
+      return gaps;
+    }
     function dim(it) { return !!st.tf && it.teacher !== st.tf; }
     function itemsOn(d) { return (st.data.items || []).filter(function (i) { return i.date === d; }); }
     function drawDays() {
@@ -184,7 +196,7 @@
         });
         list.filter(function (i) { return i.room === r.name; }).forEach(function (it) {
           first = first == null ? it.st : Math.min(first, it.st);
-          var b = btn("", "lr__blk lr__blk--" + (it.kind === "정규" ? "reg" : "once") + (it.edit ? " is-mine" : " is-other") + (dim(it) ? " is-dim" : ""));
+          var b = btn("", "lr__blk lr__blk--" + (it.kind === "정규" ? "reg" : "once") + (it.edit || mine(it) ? " is-mine" : " is-other") + (dim(it) ? " is-dim" : ""));
           b.style.top = it.st / 10 * ROW + "px";
           b.style.height = Math.max(ROW, (it.en - it.st) / 10 * ROW) - 2 + "px";
           b.appendChild(el("b", null, it.start + "~" + it.end));
@@ -211,15 +223,10 @@
       var box = el("div", "lr__free");
       box.appendChild(el("b", "lr__free-title", "빈 시간"));
       if (st.day < st.data.today) { box.appendChild(el("span", "sys-note", "지난 날이에요.")); return box; }
-      var from = 0;
-      if (st.day === st.data.today) { var k = new Date(Date.now() + 9 * 3600000); from = Math.ceil((k.getUTCHours() * 60 + k.getUTCMinutes() + 1) / 10) * 10; }
       rooms.forEach(function (r) {
         var row = el("div", "lr__free-row");
         row.appendChild(el("span", "lr__free-room", r.name));
-        var busy = list.filter(function (i) { return i.room === r.name; }).sort(function (a, b) { return a.st - b.st; });
-        var cur = from, gaps = [];
-        busy.forEach(function (i) { if (i.st - cur >= 25) gaps.push([cur, i.st]); cur = Math.max(cur, i.en); });
-        if (1440 - cur >= 25) gaps.push([cur, 1440]);
+        var gaps = gapsOf(r.name, st.day);
         if (!gaps.length) row.appendChild(el("span", "sys-note", "빈 시간 없음"));
         gaps.forEach(function (g) {
           var c = btn(hhmm(g[0]) + "~" + hhmm(g[1]), "lr__free-chip");
@@ -234,8 +241,15 @@
     function drawWeek() {
       body.textContent = "";
       var rooms = st.data.rooms || [];
-      body.appendChild(el("p", "lr__hint", "시트 \"수업방관리\"와 같은 표예요. 날짜를 누르면 그날 시간표로, 예약을 누르면 자세히."));
-      if (st.data.director) body.appendChild(weekSum());
+      body.appendChild(el("p", "lr__hint", st.data.director
+        ? "이번 주 모든 수업이에요 (시트 \"수업방관리\"와 같은 표 · 시간 · 선생님 · 학생). 초록 = 빈 시간. 날짜를 누르면 그날 시간표로, 수업을 누르면 자세히."
+        : "진한 초록 = 내 수업 · 회색 = 다른 선생님 수업 · 연한 초록 = 빈 시간. 날짜를 누르면 그날 시간표로."));
+      if (st.data.director) body.appendChild(weekSum()); else body.appendChild(myTable());
+      var opt = el("label", "lr__freeopt");
+      var cb = el("input"); cb.type = "checkbox"; cb.checked = st.free;
+      cb.addEventListener("change", function () { st.free = cb.checked; drawWeek(); });
+      opt.appendChild(cb); opt.appendChild(document.createTextNode(" 빈 시간도 표에 보기"));
+      body.appendChild(opt);
       var wrap = el("div", "lr__wkwrap");
       var t = el("table", "lr__wk");
       var tr = el("tr");
@@ -258,9 +272,20 @@
         row.appendChild(el("th", null, r.name));
         for (var i = 0; i < 7; i++) {
           var d = addDays(st.from, i), td = el("td"), list = itemsOn(d).filter(function (x) { return x.room === r.name; });
-          if (!list.length) td.appendChild(el("span", "lr__empty", "공석"));
-          list.forEach(function (it) {
-            var b = btn(it.start + "~" + it.end + " · " + (st.data.director && it.teacher ? it.teacher + " · " : "") + who(it) + (it.kind === "보강" ? " (보강)" : ""), "lr__wkitem" + (it.edit ? " is-mine" : "") + (it.kind === "보강" ? " is-once" : "") + (dim(it) ? " is-dim" : ""));
+          var rows = list.map(function (it) { return { st: it.st, it: it }; });
+          if (st.free) gapsOf(r.name, d).forEach(function (g) { rows.push({ st: g[0], gap: g }); });
+          rows.sort(function (a, b) { return a.st - b.st; });
+          if (!rows.length) td.appendChild(el("span", "lr__empty", d < st.data.today ? "지난 날" : "공석"));
+          rows.forEach(function (x) {
+            if (x.gap) {
+              var g = x.gap, f = btn("빈 " + hhmm(g[0]) + "~" + hhmm(g[1]), "lr__wkfree");
+              if (!st.can) f.disabled = true;
+              else f.addEventListener("click", (function (room, day, g) { return function () { openForm({ room: room, date: day, start: g[0], minutes: Math.min(50, g[1] - g[0] - (g[1] - g[0]) % 10) }); }; })(r.name, d, g));
+              td.appendChild(f);
+              return;
+            }
+            var it = x.it, my = it.edit || mine(it);
+            var b = btn(it.start + "~" + it.end + " · " + (st.data.director && it.teacher ? it.teacher + " · " : "") + who(it) + (it.kind === "보강" ? " (보강)" : ""), "lr__wkitem" + (my && !st.data.director ? " is-mine" : "") + (!st.data.director && !my ? " is-other" : "") + (it.kind === "보강" ? " is-once" : "") + (dim(it) ? " is-dim" : ""));
             b.addEventListener("click", function () { openDetail(it); });
             td.appendChild(b);
           });
@@ -293,6 +318,25 @@
       var r = el("div", "lr__sum-row lr__sum-rooms");
       (st.data.rooms || []).forEach(function (x) { r.appendChild(el("span", null, x.name + " " + (room[x.name] || 0))); });
       box.appendChild(r);
+      return box;
+    }
+    // 선생님: 이번 주 내 수업 표 (날짜 · 시간 · 방 · 학생 · 정규/보강)
+    function myTable() {
+      var my = (st.data.items || []).filter(mine).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.st - b.st; });
+      var box = el("div", "lr__sum lr__my");
+      box.appendChild(el("b", null, "📌 이번 주 내 수업 " + my.length + "건"));
+      if (!my.length) { box.appendChild(el("span", "sys-note", "이번 주에 잡힌 내 수업이 없어요.")); return box; }
+      var wrap = el("div", "lr__mywrap"), t = el("table", "lr__mytbl"), h = el("tr");
+      ["날짜", "시간", "방", "학생", "구분"].forEach(function (x) { h.appendChild(el("th", null, x)); });
+      var th = el("thead"); th.appendChild(h); t.appendChild(th);
+      var tb = el("tbody");
+      my.forEach(function (it) {
+        var tr = el("tr", it.date < st.data.today ? "is-past" : it.date === st.data.today ? "is-today" : "");
+        [md(it.date), it.start + "~" + it.end, it.room, it.name || "", it.kind].forEach(function (x) { tr.appendChild(el("td", null, x)); });
+        tr.addEventListener("click", function () { openDetail(it); });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb); wrap.appendChild(t); box.appendChild(wrap);
       return box;
     }
     function closePanel() { panel.hidden = true; panel.textContent = ""; }
