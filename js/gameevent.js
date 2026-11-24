@@ -41,6 +41,7 @@
   }
 
   function draw() {
+    try { document.dispatchEvent(new CustomEvent("leesh:gameevent")); } catch (e) { /* 옛 브라우저 */ }
     var box = document.getElementById("arcadeEvent");
     document.querySelectorAll("[data-top]").forEach(function (t) { t.hidden = true; t.textContent = ""; });
     if (!box) return;
@@ -63,6 +64,7 @@
       name.type = "button";
       name.addEventListener("click", function () { location.hash = g; var c = document.querySelector('[data-game="' + g + '"]'); if (c) c.click(); });
       li.appendChild(name);
+      if (g === "solfa" && !after) li.appendChild(el("p", "arcade__evrule", "※ 기본 단계(시작 버튼) 점수만 들어가요 · 🔥 어려움 단계는 이벤트 점수에 포함되지 않아요"));
       li.appendChild(el("span", "arcade__evmine", b.mine != null ? "내 최고 " + score(g, b.mine) + " · " + b.rank + "위 / " + b.players + "명"
         : before ? "" : "내 기록 · 아직 없음"));
       // 1~5등 (원장님 2026-11-14): 이름은 가려서, 내 순위면 "나"
@@ -129,5 +131,11 @@
   if (window.LeeshMember) { who = window.LeeshMember; load(); }
   document.addEventListener("visibilitychange", function () { if (!document.hidden) load(); });
   setInterval(function () { if (!document.hidden) load(); }, 120000);
-  window.LeeshGameEvent = { submit: submit, reload: load };
+  // 지금 이 게임이 이벤트 중인지 (계이름 맞히기 🔥 어려움 안내용, 2026-11-24)
+  function on(game) {
+    if (!ev || (ev.games || []).indexOf(game) < 0) return false;
+    var now = Date.now();
+    return !!ev.preview || (now >= new Date(ev.starts).getTime() && now <= new Date(ev.ends).getTime());
+  }
+  window.LeeshGameEvent = { submit: submit, reload: load, on: on, notice: note };
 })();

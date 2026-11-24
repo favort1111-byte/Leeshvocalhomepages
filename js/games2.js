@@ -146,9 +146,14 @@
     f.box.appendChild(choices);
     r.appendChild(go); r.appendChild(hard); r.appendChild(again);
     f.box.appendChild(r);
-    var hardNote = el("p", "g2__hardnote", "🔥 어려움: 도~높은 도 8음에서 시작해, 3번 연속 맞히면 반음(#·♭)이 하나씩 늘어요. 기록은 따로 남아요" +
-      (window.LeeshGameEvent ? " (이벤트 점수는 기본 단계로만)." : "."));
-    f.box.appendChild(hardNote);
+    f.box.appendChild(el("p", "g2__hardnote", "🔥 어려움: 도~높은 도 8음에서 시작해, 3번 연속 맞히면 반음(#·♭)이 하나씩 늘어요. 최고 기록은 따로 남아요."));
+    // 이벤트 기간에만: 어려움 단계는 이벤트 점수에 안 들어간다는 안내 (원장님 2026-11-24 "제대로 된 문구")
+    var evNote = el("p", "g2__evnote", "⚠️ 🔥 어려움 단계 점수는 보컬오락실 이벤트 점수에 포함되지 않아요. 이벤트 순위에는 기본 단계(시작 버튼) 점수만 들어가요.");
+    evNote.hidden = true;
+    f.box.appendChild(evNote);
+    function evCheck() { evNote.hidden = !(window.LeeshGameEvent && LeeshGameEvent.on && LeeshGameEvent.on("solfa")); }
+    document.addEventListener("leesh:gameevent", evCheck);
+    evCheck();
     var st = null, q = null, timers = [];
     function lives() { f.box.querySelector(".g2__lives").textContent = st ? "♥".repeat(st.lives) + "♡".repeat(3 - st.lives) + " · 맞힌 개수 " + st.score : ""; }
     function build() {
@@ -198,7 +203,10 @@
         A.result(f.panel, ["🔥 어려움 " + st.score + "개 맞힘" + (nb && st.score ? " · 새 기록!" : ""),
           "반음 " + (st.n - EASY.length) + "개까지 왔어요" + (bh ? " · 어려움 최고 " + bh + "개" : "") + ". 반음은 바로 옆 음보다 살짝 높거나 낮은 소리예요."],
           "계이름 맞히기 🔥어려움(샵·플랫) " + st.score + "개! 너는 몇 개?");
-        return;   // 어려움 단계는 이벤트 점수에 안 보냄 (이벤트 도중 규칙이 바뀌지 않게)
+        // 어려움 단계는 이벤트 점수에 안 보냄 (이벤트 도중 규칙이 바뀌지 않게)
+        if (window.LeeshGameEvent && LeeshGameEvent.on && LeeshGameEvent.on("solfa"))
+          LeeshGameEvent.notice(f.panel, "🎮 이 점수는 🔥 어려움 단계라 이벤트 점수에 포함되지 않아요. 이벤트에 참여하려면 기본 단계(시작 버튼)로 해 주세요.", "is-off");
+        return;
       }
       A.result(f.panel, [st.score + "개 맞힘" + (nb && st.score ? " · 새 기록!" : ""), "음 " + st.n + "개까지 왔어요. 도에서 몇 칸 떨어졌는지 느껴 보는 게 비결이에요."],
         "계이름 맞히기 " + st.score + "개! 너는 몇 개?");

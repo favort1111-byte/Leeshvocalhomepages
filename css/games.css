@@ -146,6 +146,8 @@
 .game .g2__pick--sharp{background:#2B2522;color:#FBF3E4;border-color:#2B2522;}
 .game .game__btn--hard{background:#C2410C;border-color:#C2410C;color:#fff;}
 .g2__hardnote{margin:6px 0 0;font-size:13px;opacity:.85;}
+.arcade__evrule{margin:2px 0 4px;font-size:12px;color:#7A4B00;}
+.g2__evnote{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:#FFF3C4;border:1px solid #E8C547;color:#5A3D00;font-size:13px;line-height:1.5;}
 .g2__dots{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0;}
 .g2__dot{width:40px;height:40px;border-radius:50%;border:2px solid #6E3B28;background:#FBF3E4;font:inherit;font-weight:500;color:#6E3B28;cursor:pointer;}
 .g2__dot.is-on{background:#E8C27A;}
