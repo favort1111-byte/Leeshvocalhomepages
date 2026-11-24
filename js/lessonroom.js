@@ -72,7 +72,12 @@
     var mDay = btn("하루 보기", "lr__mode"), mWeek = btn("주간 표", "lr__mode");
     modes.appendChild(mDay); modes.appendChild(mWeek);
     var add = btn("+ 새 예약", "sys-btn lr__add");
-    [prev, week, next, today, pick, modes, add].forEach(function (n) { nav.appendChild(n); });
+    // 관리자 · 원장님: 선생님 고르기 (고른 선생님 수업만 진하게, 나머지는 흐리게 — 빈 시간 계산은 그대로)
+    var who_ = el("select", "lr__tfilter");
+    who_.setAttribute("aria-label", "선생님 고르기");
+    who_.hidden = true;
+    who_.addEventListener("change", function () { st.tf = who_.value; drawDays(); if (st.mode === "day") drawDay(); else drawWeek(); });
+    [prev, week, next, today, pick, modes, who_, add].forEach(function (n) { nav.appendChild(n); });
     var days = el("div", "lr__days");
     var panel = el("div", "lr__panel");
     panel.hidden = true;
@@ -90,6 +95,7 @@
         st.can = d.can_edit !== false;
         if (st.day < st.from || st.day > addDays(st.from, 6)) st.day = st.from;
         drawNote(d);
+        drawFilter(d);
         add.hidden = !st.can;
         week.textContent = md(st.from) + " ~ " + md(addDays(st.from, 6));
         pick.value = st.day;
@@ -120,6 +126,21 @@
         note.appendChild(sw);
       }
     }
+    function drawFilter(d) {
+      who_.hidden = !d.director;
+      if (!d.director) { st.tf = ""; return; }
+      var names = {};
+      (d.items || []).forEach(function (i) { if (i.teacher) names[i.teacher] = (names[i.teacher] || 0) + 1; });
+      var keep = st.tf || "";
+      who_.textContent = "";
+      var all = el("option", null, "모든 선생님 (" + (d.items || []).length + ")"); all.value = ""; who_.appendChild(all);
+      Object.keys(names).sort(function (a, b) { return a === "원장님" ? -1 : b === "원장님" ? 1 : a.localeCompare(b, "ko"); }).forEach(function (n) {
+        var o = el("option", null, n + " (" + names[n] + ")"); o.value = n; who_.appendChild(o);
+      });
+      if (keep && !names[keep]) { var o = el("option", null, keep + " (0)"); o.value = keep; who_.appendChild(o); }
+      who_.value = keep; st.tf = keep;
+    }
+    function dim(it) { return !!st.tf && it.teacher !== st.tf; }
     function itemsOn(d) { return (st.data.items || []).filter(function (i) { return i.date === d; }); }
     function drawDays() {
       days.textContent = "";
@@ -128,7 +149,7 @@
         (function (d) {
           var c = btn("", "lr__day" + (d === st.day ? " is-on" : "") + (d === st.data.today ? " is-today" : ""));
           c.appendChild(el("b", null, WD[wdOf(d)] + " " + Number(d.slice(8, 10))));
-          c.appendChild(el("span", null, itemsOn(d).length + "건"));
+          c.appendChild(el("span", null, itemsOn(d).filter(function (i) { return !dim(i); }).length + "건"));
           c.addEventListener("click", function () { st.day = d; drawDays(); drawDay(); });
           days.appendChild(c);
         })(addDays(st.from, i));
@@ -163,7 +184,7 @@
         });
         list.filter(function (i) { return i.room === r.name; }).forEach(function (it) {
           first = first == null ? it.st : Math.min(first, it.st);
-          var b = btn("", "lr__blk lr__blk--" + (it.kind === "정규" ? "reg" : "once") + (it.edit ? " is-mine" : " is-other"));
+          var b = btn("", "lr__blk lr__blk--" + (it.kind === "정규" ? "reg" : "once") + (it.edit ? " is-mine" : " is-other") + (dim(it) ? " is-dim" : ""));
           b.style.top = it.st / 10 * ROW + "px";
           b.style.height = Math.max(ROW, (it.en - it.st) / 10 * ROW) - 2 + "px";
           b.appendChild(el("b", null, it.start + "~" + it.end));
@@ -214,6 +235,7 @@
       body.textContent = "";
       var rooms = st.data.rooms || [];
       body.appendChild(el("p", "lr__hint", "시트 \"수업방관리\"와 같은 표예요. 날짜를 누르면 그날 시간표로, 예약을 누르면 자세히."));
+      if (st.data.director) body.appendChild(weekSum());
       var wrap = el("div", "lr__wkwrap");
       var t = el("table", "lr__wk");
       var tr = el("tr");
@@ -238,7 +260,7 @@
           var d = addDays(st.from, i), td = el("td"), list = itemsOn(d).filter(function (x) { return x.room === r.name; });
           if (!list.length) td.appendChild(el("span", "lr__empty", "공석"));
           list.forEach(function (it) {
-            var b = btn(it.start + "~" + it.end + " · " + who(it) + (it.kind === "보강" ? " (보강)" : ""), "lr__wkitem" + (it.edit ? " is-mine" : "") + (it.kind === "보강" ? " is-once" : ""));
+            var b = btn(it.start + "~" + it.end + " · " + (st.data.director && it.teacher ? it.teacher + " · " : "") + who(it) + (it.kind === "보강" ? " (보강)" : ""), "lr__wkitem" + (it.edit ? " is-mine" : "") + (it.kind === "보강" ? " is-once" : "") + (dim(it) ? " is-dim" : ""));
             b.addEventListener("click", function () { openDetail(it); });
             td.appendChild(b);
           });
@@ -251,6 +273,28 @@
       body.appendChild(wrap);
     }
 
+    // 관리자 · 원장님: 이번 주 한눈에 (전체 · 정규 · 보강 · 선생님별 · 방별)
+    function weekSum() {
+      var items = st.data.items || [], by = {}, room = {}, reg = 0;
+      items.forEach(function (i) {
+        if (i.kind === "정규") reg++;
+        var k = i.teacher || "(선생님 없음)"; by[k] = (by[k] || 0) + 1;
+        room[i.room] = (room[i.room] || 0) + 1;
+      });
+      var box = el("div", "lr__sum");
+      box.appendChild(el("b", null, "이번 주 수업 " + items.length + "건 · 정규 " + reg + " · 보강 " + (items.length - reg)));
+      var t = el("div", "lr__sum-row");
+      Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }).forEach(function (n) {
+        var c = btn(n + " " + by[n], "lr__sum-chip" + (st.tf === n ? " is-on" : ""));
+        c.addEventListener("click", function () { st.tf = st.tf === n ? "" : n; who_.value = st.tf; drawDays(); drawWeek(); });
+        t.appendChild(c);
+      });
+      box.appendChild(t);
+      var r = el("div", "lr__sum-row lr__sum-rooms");
+      (st.data.rooms || []).forEach(function (x) { r.appendChild(el("span", null, x.name + " " + (room[x.name] || 0))); });
+      box.appendChild(r);
+      return box;
+    }
     function closePanel() { panel.hidden = true; panel.textContent = ""; }
     function show(title) {
       panel.textContent = "";

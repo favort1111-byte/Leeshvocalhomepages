@@ -687,6 +687,13 @@
 .lr__sim{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;}
 .lr__sim[hidden]{display:none;}
 .lr__switch{padding:4px 12px !important;font-size:13px !important;}
+.lr__tfilter{width:auto !important;flex:0 0 auto;padding:6px 8px;border:1px solid var(--line,#d8d2c4);border-radius:8px;font:inherit;font-size:14px;background:#fff;max-width:100%;}
+.lr__blk.is-dim,.lr__wkitem.is-dim{opacity:.22;}
+.lr__sum{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line,#d8d2c4);border-radius:10px;background:#fbfaf6;display:grid;gap:6px;font-size:14px;}
+.lr__sum-row{display:flex;flex-wrap:wrap;gap:6px;}
+.lr__sum-chip{padding:3px 10px;border:1px solid var(--line,#d8d2c4);border-radius:999px;background:#fff;font:inherit;font-size:13px;cursor:pointer;}
+.lr__sum-chip.is-on{background:#1D4948;color:#fff;border-color:#1D4948;}
+.lr__sum-rooms span{font-size:13px;color:#555;padding:2px 8px;background:#efece4;border-radius:6px;}
 @media (max-width:600px){
   .lr__add{margin-left:0;}
   .lr__ghead,.lr__cols{grid-template-columns:38px repeat(var(--cols,4),minmax(0,1fr));}
