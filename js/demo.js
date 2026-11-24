@@ -1320,14 +1320,29 @@
         students: !can ? [] : db.members.filter(function (m) { return (m.status === "재원" || m.status === "외부") && (who.adm || teaches(who.t, m.id)); })
           .map(function (m) { var d = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return { id: m.id, name: m.name, teacher: d ? d[1] : null }; }),
         // 정규 레슨실 예약이 없는 재원생 (선생님 = 내 담당만)
+        skipped: !who.dir ? [] : (db.lr.missSkip || []).map(function (id) {
+          var m = db.members.filter(function (x) { return x.id === id; })[0] || { id: id, name: id }, d = /담당\s*([^\s·,]+)/.exec(m.memo || "");
+          return { id: id, name: m.name, teacher: d ? d[1] : null, memo: null, status: m.status };
+        }),
         missing: db.members.filter(function (m) {
-          return m.status === "재원" && m.id !== "DEMO" && (who.dir || teaches(who.t, m.id))
+          return m.status === "재원" && m.id !== "DEMO" && (who.dir || teaches(who.t, m.id)) && (db.lr.missSkip || []).indexOf(m.id) < 0
             && !db.lr.bookings.some(function (b) { return b.member === m.id && b.status === "확정" && b.kind === "정규" && (!b.last || b.last >= today); });
         }).map(function (m) {
           var d = /담당\s*([^\s·,]+)/.exec(m.memo || "");
           return { id: m.id, name: m.name, teacher: d ? d[1] : null,
             makeup: db.lr.bookings.some(function (b) { return b.member === m.id && b.status === "확정" && b.kind === "보강" && b.first >= today; }), ended: null };
         }) };
+    },
+    lesson_missing_skip_set: function (a, uid) {
+      lrSeed();
+      var who = lrActor(uid);
+      if (who.err || !who.dir) return fail("관리자 · 원장님만 할 수 있어요.");
+      var m = db.members.filter(function (x) { return x.id === a.p_member; })[0];
+      if (!m) return fail("학생을 찾을 수 없어요.");
+      db.lr.missSkip = (db.lr.missSkip || []).filter(function (id) { return id !== m.id; });
+      if (a.p_skip) db.lr.missSkip.push(m.id);
+      save();
+      return { ok: true, skip: !!a.p_skip, name: m.name };
     },
     admin_lesson_rooms_set: function (a, uid) {
       if (uid) return fail("관리자만 할 수 있어요.");

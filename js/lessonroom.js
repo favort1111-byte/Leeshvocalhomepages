@@ -132,10 +132,10 @@
     }
     // 재원생인데 정규 레슨실 예약이 없는 학생 (선생님 = 내 담당만, 관리자 · 원장님 = 전부): 다른 선생님이 빈방으로 알고 잡지 않게
     function drawMiss(d) {
-      var list = d.missing || [];
+      var list = d.missing || [], skipped = d.skipped || [];
       miss.textContent = "";
-      miss.hidden = !list.length;
-      if (!list.length) return;
+      miss.hidden = !list.length && !skipped.length;
+      if (!list.length) { if (skipped.length) miss.appendChild(skipBox(skipped)); return; }
       miss.appendChild(el("b", null, (d.director ? "⚠️ 정규 레슨실 예약이 없는 재원생 " : "⚠️ 내 담당 학생 중 정규 레슨실 예약이 없는 학생 ") + list.length + "명"));
       miss.appendChild(el("span", "lr__miss-hint", "수업이 있으면 예약을 걸어 주세요. 안 걸면 다른 선생님이 빈방인 줄 알고 예약할 수 있어요." + (st.can ? " 이름을 누르면 바로 예약 칸이 열려요." : "")));
       var row = el("div", "lr__miss-row");
@@ -145,9 +145,43 @@
         var c = btn(label, "lr__miss-chip");
         if (!st.can || !(st.data.students || []).some(function (x) { return x.id === m.id; })) c.disabled = true;
         else c.addEventListener("click", function () { openForm({ member: m.id, date: st.day }); });
-        row.appendChild(c);
+        var wrap = el("span", "lr__miss-item");
+        wrap.appendChild(c);
+        if (d.director) {
+          // 관리자 · 원장님: 레슨실을 안 쓰는 학생은 알림에서 빼기
+          var x = btn("알림 빼기", "lr__miss-skip");
+          x.title = m.name + " 학생을 매일 알림에서 빼요 (레슨실을 안 쓰는 학생일 때)";
+          arm(x, "한 번 더 누르면 빼요", function () { skipSet(m.id, true); });
+          wrap.appendChild(x);
+        }
+        row.appendChild(wrap);
       });
       miss.appendChild(row);
+      if (skipped.length) miss.appendChild(skipBox(skipped));
+    }
+    function skipSet(id, on) {
+      call("lesson_missing_skip_set", { p_member: id, p_skip: on, p_memo: null }).then(function (r) {
+        if (!r || !r.ok) { toast.textContent = (r && r.error) || "바꾸지 못했어요."; toast.className = "sys-msg sys-msg--error lr__toast"; return; }
+        toast.textContent = r.name + (r.skip ? " 학생을 알림에서 뺐어요." : " 학생을 다시 알림에 넣었어요.");
+        toast.className = "sys-msg sys-msg--ok lr__toast";
+        load();
+      });
+    }
+    // 알림에서 뺀 학생 (관리자 · 원장님만, 접어 둠)
+    function skipBox(list) {
+      var det = el("details", "lr__miss-off");
+      det.appendChild(el("summary", null, "알림에서 뺀 학생 " + list.length + "명"));
+      var row = el("div", "lr__miss-row");
+      list.forEach(function (m) {
+        var wrap = el("span", "lr__miss-item");
+        wrap.appendChild(el("span", "lr__miss-name", (m.teacher ? (m.teacher === "원장님" ? "원장님" : m.teacher + "T") + " · " : "") + m.name + (m.status && m.status !== "재원" ? " (" + m.status + ")" : "")));
+        var back = btn("다시 알림", "lr__miss-skip");
+        back.addEventListener("click", function () { skipSet(m.id, false); });
+        wrap.appendChild(back);
+        row.appendChild(wrap);
+      });
+      det.appendChild(row);
+      return det;
     }
     function drawFilter(d) {
       who_.hidden = !d.director;

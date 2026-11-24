@@ -706,6 +706,11 @@
 .lr__miss-row{display:flex;flex-wrap:wrap;gap:6px;}
 .lr__miss-chip{padding:3px 10px;border:1px solid #E2B04F;border-radius:999px;background:#fff;font:inherit;font-size:13px;cursor:pointer;color:#5B4210;}
 .lr__miss-chip:disabled{cursor:default;opacity:.9;}
+.lr__miss-item{display:inline-flex;align-items:center;gap:2px;}
+.lr__miss-skip{border:0;background:none;font:inherit;font-size:12px;color:#8A6D2B;text-decoration:underline;cursor:pointer;padding:2px 4px;}
+.lr__miss-name{font-size:13px;padding:3px 6px;color:#5B4210;}
+.lr__miss-off summary{cursor:pointer;font-size:13px;color:#6B5A3A;}
+.lr__miss-off .lr__miss-row{margin-top:6px;}
 .lr__tfilter{width:auto !important;flex:0 0 auto;padding:6px 8px;border:1px solid var(--line,#d8d2c4);border-radius:8px;font:inherit;font-size:14px;background:#fff;max-width:100%;}
 .lr__blk.is-dim,.lr__wkitem.is-dim{opacity:.22;}
 .lr__sum{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line,#d8d2c4);border-radius:10px;background:#fbfaf6;display:grid;gap:6px;font-size:14px;}

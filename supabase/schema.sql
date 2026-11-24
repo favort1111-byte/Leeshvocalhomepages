@@ -11216,3 +11216,116 @@ begin
 end $function$;
 
 select cron.schedule('leesh_lesson_missing', '7 1 * * *', $$select private.lesson_missing_alert()$$);
+
+-- 레슨실: 정규 예약 없는 재원생 알림에서 빼는 목록 (마이그레이션 leesh_lesson_missing_skip, 2026-11-24)
+-- 레슨실 정규 예약 없는 재원생 알림에서 빼는 학생 (레슨실을 안 쓰는 재원생 등, 관리자 · 원장님만 넣고 뺌)
+create table if not exists public.lesson_missing_skip (
+  member_id text primary key references public.members(id) on delete cascade,
+  memo text check (memo is null or char_length(memo) <= 200),
+  created_at timestamptz not null default now(),
+  created_by text
+);
+alter table public.lesson_missing_skip enable row level security;
+revoke all on public.lesson_missing_skip from public, anon, authenticated;
+create trigger zz_admin_log after insert or update or delete on public.lesson_missing_skip for each row execute function private.log_change();
+
+create or replace function public.lesson_missing_skip_set(p_member text, p_skip boolean, p_memo text default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  nm text;
+begin
+  if not (adm or coalesce(t.name = '원장님', false)) then return private.fail('관리자 · 원장님만 할 수 있어요.'); end if;
+  select name into nm from public.members where id = p_member and id <> 'DEMO';
+  if nm is null then return private.fail('학생을 찾을 수 없어요.'); end if;
+  if coalesce(p_skip, false) then
+    insert into public.lesson_missing_skip (member_id, memo, created_by)
+    values (p_member, nullif(left(trim(coalesce(p_memo, '')), 200), ''), case when adm then '관리자' else '원장님' end)
+    on conflict (member_id) do update set memo = excluded.memo, created_by = excluded.created_by, created_at = now();
+  else
+    delete from public.lesson_missing_skip where member_id = p_member;
+  end if;
+  return jsonb_build_object('ok', true, 'skip', coalesce(p_skip, false), 'name', nm);
+end $$;
+revoke all on function public.lesson_missing_skip_set(text, boolean, text) from public, anon;
+grant execute on function public.lesson_missing_skip_set(text, boolean, text) to authenticated;
+
+CREATE OR REPLACE FUNCTION private.lesson_missing()
+ RETURNS TABLE(member_id text, name text, teacher text, makeup boolean, ended date)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  -- 재원생인데 지금 · 앞으로 열리는 정규 레슨실 예약이 하나도 없는 학생 (외부 · 휴원 · 종료 · DEMO 빼고)
+  select m.id, m.name, substring(m.memo from '담당\s*([^\s·,]+)'),
+         exists (select 1 from public.lesson_bookings b where b.member_id = m.id and b.status = '확정' and b.kind = '보강'
+                   and b.first_day >= private.now_kst()::date),
+         (select max(b.last_day) from public.lesson_bookings b where b.member_id = m.id and b.status = '확정' and b.kind = '정규'
+                   and b.last_day < private.now_kst()::date)
+    from public.members m
+   where m.status = '재원' and m.id <> 'DEMO'
+     and not exists (select 1 from public.lesson_missing_skip s where s.member_id = m.id)
+     and not exists (select 1 from public.lesson_bookings b where b.member_id = m.id and b.status = '확정' and b.kind = '정규'
+                       and coalesce(b.last_day, 'infinity'::date) >= private.now_kst()::date)
+   order by 3 nulls last, 2 $function$;
+
+CREATE OR REPLACE FUNCTION public.lesson_room_view(p_from text DEFAULT NULL::text, p_days integer DEFAULT 7)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  dir boolean;
+  can boolean;
+  today date := private.now_kst()::date;
+  d0 date;
+  n int := least(greatest(coalesce(p_days, 7), 1), 14);
+begin
+  can := private.lesson_allowed(adm, t);
+  if not can and not (t.id is not null and coalesce((select s.lesson_rooms_view from public.settings s where s.id = 1), false)) then
+    return private.fail(case when t.id is null then '선생님 · 관리자만 볼 수 있어요.' else '레슨실 예약은 아직 준비 중이에요.' end);
+  end if;
+  dir := adm or coalesce(t.name = '원장님', false);
+  begin d0 := coalesce(nullif(p_from, '')::date, today); exception when others then d0 := today; end;
+  return jsonb_build_object('ok', true, 'today', today, 'from', d0, 'days', n,
+    'admin', adm, 'director', dir, 'me', t.name,
+    'open', coalesce((select s.lesson_rooms_open from public.settings s where s.id = 1), false),
+    'can_edit', can,
+    'rooms', (select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name) order by r.sort, r.id), '[]'::jsonb)
+                from public.lesson_rooms r where r.active),
+    'items', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', b.id, 'room', r.name, 'kind', b.kind, 'date', g.d,
+                'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min), 'st', b.start_min, 'en', b.end_min,
+                'mine', coalesce(t.id is not null and b.teacher_id = t.id, false),
+                'edit', coalesce(can and (adm or (t.id is not null and b.teacher_id = t.id)), false),
+                'name', case when dir or b.teacher_id = t.id then b.student_name end,
+                'member', case when dir or b.teacher_id = t.id then b.member_id end,
+                'teacher', case when dir or b.teacher_id = t.id then tt.name end,
+                'memo', case when dir or b.teacher_id = t.id then b.memo end,
+                'first', b.first_day, 'last', b.last_day, 'source', b.source)
+                order by g.d, r.sort, b.start_min), '[]'::jsonb)
+                from (select gs::date as d from generate_series(d0, d0 + n - 1, interval '1 day') gs) g
+                join public.lesson_bookings b on b.status = '확정' and b.weekday = extract(dow from g.d)::int
+                  and b.first_day <= g.d and coalesce(b.last_day, 'infinity'::date) >= g.d
+                  and not exists (select 1 from public.lesson_skips k where k.booking_id = b.id and k.day = g.d)
+                join public.lesson_rooms r on r.id = b.room_id
+                left join public.teachers tt on tt.id = b.teacher_id),
+    'students', case when not can then '[]'::jsonb else (select coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'name', m.name,
+                   'teacher', substring(m.memo from '담당\s*([^\s·,]+)')) order by m.name, m.id), '[]'::jsonb)
+                   from public.members m
+                  where m.status in ('재원', '외부') and m.id <> 'DEMO'
+                    and (adm or private.teaches(t, m.id))) end,
+    -- 정규 레슨실 예약이 없는 재원생 (선생님 = 내 담당만, 관리자 · 원장님 = 전부)
+    'missing', (select coalesce(jsonb_agg(jsonb_build_object('id', x.member_id, 'name', x.name, 'teacher', x.teacher,
+                  'makeup', x.makeup, 'ended', x.ended) order by x.teacher, x.name), '[]'::jsonb)
+                  from private.lesson_missing() x
+                 where dir or (t.id is not null and private.teaches(t, x.member_id))),
+    -- 알림에서 뺀 학생 (관리자 · 원장님만 봄)
+    'skipped', case when not dir then '[]'::jsonb else (select coalesce(jsonb_agg(jsonb_build_object('id', s.member_id, 'name', mm.name,
+                  'teacher', substring(mm.memo from '담당\s*([^\s·,]+)'), 'memo', s.memo, 'status', mm.status) order by mm.name), '[]'::jsonb)
+                  from public.lesson_missing_skip s join public.members mm on mm.id = s.member_id) end);
+end $function$;
