@@ -60,6 +60,14 @@ img{display:block;}
   transition:background .15s ease;
 }
 .nav a[aria-current="page"]{text-decoration:none;}
+/* 영어 메뉴 밑 작은 한글 (원장님 2026-11-24) */
+.nav a{flex-direction:column;height:auto;min-height:calc(30 * var(--s));padding:calc(3 * var(--s)) 0;border-radius:calc(10 * var(--s));line-height:1.15;}
+.nav a{text-decoration:none;}
+.nav a span{text-decoration:underline;text-underline-offset:calc(2.5 * var(--s));text-decoration-thickness:1px;}
+.nav a[aria-current="page"] span{text-decoration:none;}
+.nav a small{display:block;font-size:.78em;line-height:1.15;opacity:.92;}
+.subnav a{flex-direction:column;justify-content:center;height:auto !important;min-height:40px;padding-top:3px !important;padding-bottom:3px !important;line-height:1.2;}
+.subnav a small{display:block;font-size:.8em;opacity:.9;}
 .nav a:focus-visible{outline:2px solid currentColor;outline-offset:3px;}
 
 .nav--light a{color:#F7EEEA;border-color:rgba(247,238,234,0.9);}
@@ -287,7 +295,7 @@ img{display:block;}
   :root{--s:calc(100vw / 400);}
 
   .nav{position:relative;top:auto;padding:calc(16 * var(--s)) 0 0;gap:calc(6 * var(--s));flex-wrap:wrap;}
-  .nav a{width:calc(71 * var(--s));height:calc(28 * var(--s));font-size:calc(12 * var(--s));}
+  .nav a{width:calc(71 * var(--s));height:auto;min-height:calc(34 * var(--s));font-size:calc(12 * var(--s));}
 
   /* home: icons become a loose grid over the photo */
   .wall{height:auto;min-height:100vh;padding-bottom:calc(30 * var(--s));background-position:60% center;}
@@ -840,7 +848,14 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .news__foot .pill-btn{display:inline-flex;align-items:center;height:40px;padding:0 18px;border:1px solid var(--ink);border-radius:999px;color:var(--ink);text-decoration:none;font-size:14px;}
 @media (max-width:760px){
   .nav{gap:calc(4 * var(--s));}
-  .nav a{width:calc(52 * var(--s));font-size:calc(11 * var(--s));}
+  .nav a{width:calc(52 * var(--s));font-size:calc(11 * var(--s));padding:calc(3 * var(--s)) 0;}
+  .nav a small{font-size:.92em;letter-spacing:-.04em;white-space:nowrap;}
+  .subnav{gap:6px;padding:0 10px;}
+  .subnav a{padding-left:12px !important;padding-right:12px !important;white-space:nowrap;}
+}
+@media (max-width:360px){
+  .nav a small{font-size:.84em;letter-spacing:-.07em;}
+  .icon__label small{font-size:1em;}
   .news__card{grid-template-columns:1fr auto;gap:2px 10px;}
   .news__card time{grid-column:1;}
   .news__what{grid-column:1;grid-row:2;}

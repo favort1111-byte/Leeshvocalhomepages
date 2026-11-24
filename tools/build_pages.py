@@ -21,11 +21,14 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
 
 PAGES = [("home", "index.html"), ("about", "about.html"), ("audition", "audition.html"), ("school", "schools.html"), ("contact", "contact.html"),
          ("consult", "consult.html"), ("booking", "booking.html")]
+# 영어 메뉴 밑에 작은 한글 (원장님 2026-11-24 "어린 학생이 많아서 영어를 보기 어렵대, 오시는 길처럼 한글을 밑에")
+NAV_KO = {"home": "홈", "about": "학원 소개", "audition": "오디션", "school": "입시 학교", "contact": "오시는 길",
+          "consult": "상담 신청", "booking": "연습실 예약"}
 
 def nav(current, theme):
     cur = ' aria-current="page"'
     links = "\n".join(
-        f'    <a href="{href}"{cur if name == current else ""}>{name}</a>'
+        f'    <a href="{href}"{cur if name == current else ""}><span>{name}</span><small>{NAV_KO[name]}</small></a>'
         for name, href in PAGES)
     return f'  <nav class="nav nav--{theme}" aria-label="주요 메뉴">\n{links}\n  </nav>'
 
@@ -154,7 +157,14 @@ CLIP = ('<svg class="clip" viewBox="0 0 26 60" aria-hidden="true">'
         '<path d="M9 44V12a6 6 0 0 1 12 0v36a9 9 0 0 1-18 0V16" fill="none" stroke="#9FA1A3" stroke-width="2.4" stroke-linecap="round"/>'
         '</svg>')
 
+# 아이콘 영어 이름 밑 작은 한글 (원장님 2026-11-24, map · my folder처럼)
+ICON_KO = {"YouTube": "유튜브", "Instagram": "인스타그램", "stage.jpg": "원장님 소개", "lesson.jpg": "레슨 과정",
+           "practice room.jpg": "연습실", "audition.jpg": "오디션 소식", "results.jpg": "합격 실적", "vocal.jpg": "학원 특징",
+           "hobby.jpg": "원포인트 레슨", "school.jpg": "입시 · 학교", "debut.jpg": "오디션 케어", "games.exe": "보컬 오락실"}
+
 def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", scene=None, ko=None):
+    if "<small>" not in label and label in ICON_KO:
+        label += f"<small>{ICON_KO[label]}</small>"
     target = f' title="{ko}"' if ko else ""  # English names on the desktop, Korean on hover (원장님 2026-10-28)
     if scene == "me":  # the student folder opens in place (js/scene.js); the #anchor keeps it reachable without JS
         href, target = "#scene-me", target + ' data-scene="scene-me" aria-haspopup="dialog"'
@@ -722,10 +732,10 @@ def news_list(kind, first):
 CUR = ' aria-current="page"'
 
 def subnav(current):
-    links = [("news", "audition.html", "audition news"), ("results", "results.html", "results"),
-             ("interview", "interview.html", "interview")]  # 합격자 인터뷰 (원장님 2026-11-04)
+    links = [("news", "audition.html", "audition news", "오디션 소식"), ("results", "results.html", "results", "합격 현황"),
+             ("interview", "interview.html", "interview", "합격자 인터뷰")]  # 합격자 인터뷰 (원장님 2026-11-04)
     return ('  <nav class="subnav" aria-label="오디션 메뉴">\n'
-            + "".join(f'    <a href="{h}"{CUR if k == current else ""}>{t}</a>\n' for k, h, t in links)
+            + "".join(f'    <a href="{h}"{CUR if k == current else ""}>{t}<small>{ko}</small></a>\n' for k, h, t, ko in links)
             + "  </nav>\n")
 
 def news_foot():

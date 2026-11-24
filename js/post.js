@@ -85,7 +85,8 @@
     var k = KIND[p.kind] || KIND.academy;
     document.title = p.title + " | 이송희보컬레슨";
     document.querySelectorAll(".nav a").forEach(function (a) {
-      if (a.textContent.trim() === k[2]) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+      var en = a.querySelector("span");   // 영어 이름 (밑의 한글 <small>은 빼고)
+      if ((en ? en.textContent : a.textContent).trim() === k[2]) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
     box.textContent = "";
     var back = el("a", "post__back", "← " + k[0]);
