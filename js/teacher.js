@@ -142,7 +142,7 @@
     side.appendChild(cons);
     // 레슨실 예약 (원장님 2026-11-24, A1~A4 · 선생님 · 관리자만): 메뉴는 config.js lessonRooms, 예약 · 바꾸기는 서버 lesson_rooms_open(관리자 스위치)
     if ((cfg.lessonRooms || me === "원장님") && window.LeeshLessonRoom) {
-      var lr = button("🎹 레슨실", "sys-link");
+      var lr = button("🎹 레슨실 예약", "sys-link");
       lr.addEventListener("click", lessonPage);
       side.appendChild(lr);
     }
