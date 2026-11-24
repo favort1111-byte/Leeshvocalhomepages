@@ -1364,18 +1364,26 @@
       var b = db.lr.bookings.filter(function (x) { return x.id === a.p_id && x.status === "확정"; })[0];
       if (!b) return fail("이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.");
       if (!who.adm && !(who.t && b.teacher === who.t.id)) return fail("내 예약만 취소할 수 있어요.");
-      var today = nowKst().today;
-      if (b.kind === "보강") { if (b.first < today) return fail("지난 보강은 취소할 수 없어요."); b.status = "취소"; save(); return { ok: true, done: "all" }; }
+      var nk = nowKst(), today = nk.today;
+      if (b.kind === "보강") {
+        if (b.first < today) return fail("지난 보강은 취소할 수 없어요.");
+        if (b.first === today && b.st <= nk.min) return fail("이미 시작한 보강은 취소할 수 없어요.");
+        b.status = "취소"; save(); return { ok: true, done: "all" };
+      }
+      var keep = b.weekday === wdOf(today) && b.first <= today && (!b.last || b.last >= today) && b.st <= nk.min;
       if (a.p_mode === "all") {
-        if (b.first >= today) { b.status = "취소"; save(); return { ok: true, done: "all" }; }
+        if (b.first > today || (b.first === today && !keep)) { b.status = "취소"; save(); return { ok: true, done: "all" }; }
         if (b.last && b.last < today) return fail("이미 끝난 정규 수업이에요.");
-        b.last = addDays(today, -1); save(); return { ok: true, done: "ended" };
+        b.last = keep ? today : addDays(today, -1); save(); return { ok: true, done: "ended", last: b.last };
       }
       var d = lrDate(a.p_on);
       if (d && d < today) return fail("지난 수업은 바꿀 수 없어요.");
       if (!d || wdOf(d) !== b.weekday || d < b.first || (b.last && d > b.last)) return fail("그날은 이 정규 수업이 있는 날이 아니에요.");
-      if (a.p_mode === "once") { db.lr.skips.push({ id: b.id, day: d }); save(); return { ok: true, done: "once" }; }
-      if (a.p_mode === "from") { if (d <= b.first) b.status = "취소"; else b.last = addDays(d, -1); save(); return { ok: true, done: "from" }; }
+      if (a.p_mode === "once") {
+        if (d === today && keep) return fail("오늘 수업은 이미 시작해서 뺄 수 없어요.");
+        db.lr.skips.push({ id: b.id, day: d }); save(); return { ok: true, done: "once" };
+      }
+      if (a.p_mode === "from") { if (d === today && keep) d = addDays(today, 1); if (d <= b.first) b.status = "취소"; else b.last = addDays(d, -1); save(); return { ok: true, done: "from" }; }
       return fail("취소 방법을 골라주세요.");
     },
     lesson_room_move: function (a, uid) {
@@ -1396,6 +1404,7 @@
       var c, id;
       if (b.kind === "보강") {
         if (b.first < now.today) return fail("지난 보강은 옮길 수 없어요.");
+        if (b.first === now.today && b.st <= now.min) return fail("이미 시작한 보강은 옮길 수 없어요.");
         c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, d, tm.st, tm.en, b.id, who);
         if (c) return fail("겹치는 예약이 있어요: " + c);
         b.room = a.p_room; b.weekday = wdOf(d); b.first = b.last = d; b.st = tm.st; b.en = tm.en; save();
@@ -1405,6 +1414,7 @@
         var o = lrDate(a.p_on);
         if (!o || wdOf(o) !== b.weekday || o < b.first || (b.last && o > b.last)) return fail("옮길 수업 날짜가 이 정규 수업 날이 아니에요.");
         if (o < now.today) return fail("지난 수업은 옮길 수 없어요.");
+        if (o === now.today && b.st <= now.min) return fail("오늘 수업은 이미 시작해서 옮길 수 없어요.");
         db.lr.skips.push({ id: b.id, day: o });
         c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, d, tm.st, tm.en, null, who);
         if (c) { db.lr.skips.pop(); return fail("겹치는 예약이 있어요: " + c); }
@@ -1419,7 +1429,10 @@
         c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, b.last, tm.st, tm.en, b.id, who);
         if (c) return fail("겹치는 예약이 있어요: " + c);
         var keep = b.last && b.last >= d ? b.last : null;
-        if (d <= b.first) b.status = "취소"; else if (!b.last || b.last >= d) b.last = addDays(d, -1);
+        var cut = lrDate(a.p_on) && lrDate(a.p_on) < d ? lrDate(a.p_on) : d;
+        if (cut < now.today) cut = now.today;
+        if (cut === now.today && b.st <= now.min) cut = addDays(now.today, 1);
+        if (cut <= b.first) b.status = "취소"; else if (!b.last || b.last >= cut) b.last = addDays(cut, -1);
         id = db.lr.next++;
         db.lr.bookings.push({ id: id, room: a.p_room, member: b.member, name: b.name, teacher: b.teacher, kind: "정규", weekday: wdOf(d), first: d, last: keep,
           st: tm.st, en: tm.en, status: "확정", memo: b.memo, source: b.source });

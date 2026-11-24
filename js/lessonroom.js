@@ -14,6 +14,7 @@
   }
   function btn(text, cls) { var b = el("button", cls || "sys-btn", text); b.type = "button"; return b; }
   function addDays(d, n) { var t = new Date(d + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+  function nowMinKst() { var k = new Date(Date.now() + 9 * 3600000); return k.getUTCHours() * 60 + k.getUTCMinutes(); }
   function todayKst() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
   function wdOf(d) { return new Date(d + "T00:00:00Z").getUTCDay(); }
   function monday(d) { return addDays(d, -((wdOf(d) + 6) % 7)); }
@@ -452,20 +453,29 @@
       if (it.source && it.source !== "site") info.appendChild(el("p", "sys-note", it.source === "sheet" ? "시트에서 옮겨 온 예약" : "시뮬레이션 예약"));
       panel.appendChild(info);
       if (!it.edit) { panel.appendChild(el("p", "sys-note", !st.can && it.mine ? "지금은 보기만 할 수 있어요. 바꿀 일은 원장님 · 실장님께 말씀해 주세요." : "다른 선생님 수업이에요 (보기만).")); return; }
+      var nowMin = nowMinKst();
       var past = it.date < st.data.today, started = it.first < st.data.today;
+      var begun = it.date === st.data.today && it.st <= nowMin; // 오늘 수업이 이미 시작함 → 오늘 수업은 기록으로 남김
       var acts = el("div", "lr__acts");
       var m = el("p", "sys-msg");
       function run(fn, args, ok) {
         say(m, "처리하는 중…");
-        call(fn, args).then(function (r) { if (!r || !r.ok) { say(m, (r && r.error) || "하지 못했어요.", "error"); return; } done(ok); });
+        call(fn, args).then(function (r) { if (!r || !r.ok) { say(m, (r && r.error) || "하지 못했어요.", "error"); return; } done(typeof ok === "function" ? ok(r) : ok); });
       }
       if (it.kind === "정규" && past) {
         panel.appendChild(el("p", "sys-note", "지난 수업이라 이날은 바꿀 수 없어요. 앞으로의 수업은 오늘 뒤 날짜를 골라서 바꿔주세요."));
         var endNow = btn("오늘부터 이 정규 수업 끝내기", "sys-link lr__danger");
-        arm(endNow, "한 번 더 누르면 오늘부터 안 열려요 (지난 수업은 남아요)", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "all" }, "어제까지로 정규 수업을 끝냈어요. 지난 수업 기록은 남아 있어요."); });
+        arm(endNow, "한 번 더 누르면 오늘부터 안 열려요 (지난 수업은 남아요)", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "all" }, function (r) { return (r.last ? md(r.last) + "까지로" : "") + " 정규 수업을 끝냈어요. 지난 수업 기록은 남아 있어요."; }); });
         acts.appendChild(endNow);
-      } else if (it.kind === "보강" && past) {
-        panel.appendChild(el("p", "sys-note", "지난 보강이라 바꿀 수 없어요."));
+      } else if (it.kind === "보강" && (past || begun)) {
+        panel.appendChild(el("p", "sys-note", past ? "지난 보강이라 바꿀 수 없어요." : "이미 시작한 보강이라 바꿀 수 없어요."));
+      } else if (it.kind === "정규" && begun) {
+        panel.appendChild(el("p", "sys-note", "오늘 수업은 이미 시작해서 빼거나 옮길 수 없어요 (기록으로 남아요). 다음 수업부터는 바꿀 수 있어요."));
+        var fromB = btn("다음 수업부터 시간 바꾸기 (정규 변경)", "sys-btn sys-btn--ghost");
+        fromB.addEventListener("click", function () { moveForm(it, "from"); });
+        var endB = btn("다음 수업부터 끝내기", "sys-link lr__danger");
+        arm(endB, "한 번 더 누르면 다음 수업부터 안 열려요 (오늘 수업은 남아요)", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "from", p_on: it.date }, "오늘 수업까지 하고 정규 수업을 끝냈어요."); });
+        acts.appendChild(fromB); acts.appendChild(endB);
       } else if (it.kind === "정규") {
         var skip = btn(md(it.date) + " 한 번만 빼기", "sys-btn sys-btn--ghost");
         arm(skip, "한 번 더 누르면 " + md(it.date) + " 수업만 빠져요", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "once", p_on: it.date }, md(it.date) + " 수업을 뺐어요. 그 시간은 다른 예약에 열려요."); });
@@ -477,7 +487,7 @@
         arm(end, "한 번 더 누르면 " + md(it.date) + "부터 안 열려요", function () { run("lesson_room_cancel", { p_id: it.id, p_mode: "from", p_on: it.date }, md(it.date) + "부터 정규 수업을 끝냈어요."); });
         var all = btn(started ? "오늘부터 끝내기 (지난 수업은 남김)" : "전부 취소 (잘못 넣었을 때)", "sys-link lr__danger");
         arm(all, started ? "한 번 더 누르면 오늘부터 안 열려요 (지난 수업은 남아요)" : "한 번 더 누르면 이 정규 수업이 전부 없어져요", function () {
-          run("lesson_room_cancel", { p_id: it.id, p_mode: "all" }, started ? "어제까지로 정규 수업을 끝냈어요. 지난 수업 기록은 남아 있어요." : "정규 수업을 취소했어요.");
+          run("lesson_room_cancel", { p_id: it.id, p_mode: "all" }, function (r) { return r.last ? md(r.last) + "까지로 정규 수업을 끝냈어요. 지난 수업 기록은 남아 있어요." : "정규 수업을 취소했어요."; });
         });
         [skip, once, from, end, all].forEach(function (b) { acts.appendChild(b); });
       } else {
@@ -495,7 +505,7 @@
       show(title + " · " + who(it));
       panel.appendChild(el("p", "sys-note", it.kind === "보강" ? "새 날짜 · 시간 · 방을 고르세요."
         : mode === "once" ? md(it.date) + " 정규 수업은 빠지고, 고른 날짜에 보강으로 들어가요."
-        : "고른 날짜부터 새 요일 · 시간 · 방으로 매주 열려요. 그 전 수업은 그대로예요."));
+        : "고른 날짜부터 새 요일 · 시간 · 방으로 매주 열려요. 원래 시간 수업은 " + md(it.date) + (it.date === st.data.today && it.st <= nowMinKst() ? " 다음 수업" : "") + "부터 없어지고, 그 전 수업은 그대로예요."));
       var date = el("input"); date.type = "date"; date.min = st.data.today; date.value = it.date < st.data.today ? st.data.today : it.date;
       var dHint = el("small", "lr__dhint");
       var time = timeSelects(it.st);
@@ -507,7 +517,12 @@
       grid.appendChild(field("수업 시간", mins));
       grid.appendChild(field("레슨실", room));
       panel.appendChild(grid);
-      function hint() { dHint.textContent = date.value ? (mode === "from" && it.kind === "정규" ? "매주 " + WD[wdOf(date.value)] + "요일 · " + md(date.value) + "부터" : md(date.value)) : ""; }
+      function hint() {
+        if (!date.value) { dHint.textContent = ""; return; }
+        if (!(mode === "from" && it.kind === "정규")) { dHint.textContent = md(date.value); return; }
+        var last = addDays(date.value, -1), gap = date.value > it.date ? " · " + (last === it.date ? md(it.date) : md(it.date) + " ~ " + md(last)) + " 원래 시간 수업은 없어요" : "";
+        dHint.textContent = "매주 " + WD[wdOf(date.value)] + "요일 · " + md(date.value) + "부터" + gap;
+      }
       date.addEventListener("change", hint);
       hint();
       var go = btn("옮기기");

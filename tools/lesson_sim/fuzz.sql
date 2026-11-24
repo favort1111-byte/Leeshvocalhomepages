@@ -72,7 +72,7 @@ begin
           if op in ('once','from','mvonce') and b.kind = '정규' and o < today then insert into bad(kind, info) values ('changed_past', jsonb_build_object('op', op, 'on', o, 'b', to_jsonb(b))); end if;
           if op = 'all' and b.kind = '정규' and b.first_day < today then
             select * into nb from public.lesson_bookings where id = b.id;
-            if nb.status <> '확정' or nb.last_day <> today - 1 then insert into bad(kind, info) values ('all_started_wrong', jsonb_build_object('before', to_jsonb(b), 'after', to_jsonb(nb))); end if;
+            if nb.status <> '확정' or nb.last_day not in (today - 1, today) then insert into bad(kind, info) values ('all_started_wrong', jsonb_build_object('before', to_jsonb(b), 'after', to_jsonb(nb))); end if;
           end if;
           if op like 'mv%' and (d < today or (d = today and st <= nowm)) then insert into bad(kind, info) values ('moved_to_past', jsonb_build_object('op', op, 'd', d, 'st', st)); end if;
           if op in ('once','from','all') and (select cancelled_by from public.lesson_bookings where id = b.id) is null
