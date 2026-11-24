@@ -14,6 +14,8 @@ window.LEESH = {
   // 학생 내 폴더에 레슨 노트 보이기. 원장님 2026-10-29: 선생님들과 얘기 끝날 때까지 숨김 (서버도 settings.student_notes = false라 안 보냄).
   // 레슨 노트: 원장님 2026-10-29 숨김 → 2026-11-06 켬. 끄거나 켤 때는 이것과 서버 둘 다 (settings.student_notes).
   studentNotes: true,
+  // 레슨실 예약 (A1~A4, 원장님 2026-11-24): 시뮬레이션 동안 false = 선생님 화면엔 원장님만 "🎹 레슨실". 열 때는 이것 + 서버 settings.lesson_rooms_open = true 둘 다.
+  lessonRooms: false,
   // 연습실 예약 켜기. 원장님 2026-11-05: 학생들 다 가입시킨 뒤 한 번에 시작 → 잠깐 멈춤 ("준비 중", 서버도 settings.booking_open = false라 booking_create가 막음).
   // 다시 열 때는 둘 다: bookingOpen: true + update public.settings set booking_open = true;
   bookingOpen: false,

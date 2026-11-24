@@ -9407,3 +9407,369 @@ end $$;
 -- 관리자 → 수업 기록 → 곡·자료가 "불러오지 못했습니다"(403)였음: 표 읽기 권한이 빠져 있었음.
 -- 정책 lesson_sheets_admin(is_admin)이 있어서 관리자(이메일 로그인)만 읽힘, 학생 · 선생님 · 로그인 없는 사람은 0줄.
 grant select on public.lesson_sheets to authenticated;
+
+-- 레슨실 예약 (2026-11-24, 마이그레이션 leesh_lesson_rooms)
+-- 레슨실 예약 (원장님 2026-11-24): 레슨실 A1~A4는 선생님 · 관리자만 씀 (학생 연습실 B1~B5 · C hall과 따로).
+-- 정규 = 퇴원 전까지 매주 같은 요일 · 시간 · 방, 보강 = 그날 한 번. 10분 단위, 24시간(0시~24시), 한 번 최대 4시간.
+-- 지금은 "형태 + 시뮬레이션" 단계: settings.lesson_rooms_open = false 동안 관리자 · 선생님 "원장님"만 쓸 수 있음.
+alter table public.settings add column if not exists lesson_rooms_open boolean not null default false;
+
+create table if not exists public.lesson_rooms (
+  id serial primary key,
+  name text not null unique,
+  sort int not null default 0,
+  active boolean not null default true
+);
+insert into public.lesson_rooms (name, sort) values ('A1', 1), ('A2', 2), ('A3', 3), ('A4', 4)
+  on conflict (name) do nothing;
+
+create table if not exists public.lesson_bookings (
+  id bigserial primary key,
+  room_id int not null references public.lesson_rooms(id),
+  member_id text references public.members(id) on delete set null,
+  student_name text not null check (char_length(student_name) between 1 and 40),
+  teacher_id int references public.teachers(id) on delete set null,
+  kind text not null check (kind in ('정규', '보강')),
+  weekday smallint not null check (weekday between 0 and 6),
+  first_day date not null,
+  last_day date,
+  start_min int not null check (start_min >= 0 and start_min < 1440 and start_min % 10 = 0),
+  end_min int not null check (end_min <= 1440 and end_min % 10 = 0),
+  status text not null default '확정' check (status in ('확정', '취소')),
+  memo text check (memo is null or char_length(memo) <= 200),
+  source text not null default 'site' check (source in ('site', 'sheet', 'sim')),
+  moved_from bigint references public.lesson_bookings(id) on delete set null,
+  created_by text,
+  created_at timestamptz not null default now(),
+  cancelled_at timestamptz,
+  constraint lesson_bookings_time check (end_min > start_min and end_min - start_min <= 240),
+  constraint lesson_bookings_days check (last_day is null or last_day >= first_day),
+  constraint lesson_bookings_once check (kind = '정규' or last_day = first_day),
+  constraint lesson_bookings_wd check (weekday = extract(dow from first_day)::int)
+);
+create index if not exists lesson_bookings_room_wd on public.lesson_bookings (room_id, weekday) where status = '확정';
+create index if not exists lesson_bookings_member on public.lesson_bookings (member_id);
+
+-- 정규 수업의 "이번 한 번만 빼기" (결석 · 이번 주만 다른 시간으로 옮김)
+create table if not exists public.lesson_skips (
+  booking_id bigint not null references public.lesson_bookings(id) on delete cascade,
+  day date not null,
+  memo text check (memo is null or char_length(memo) <= 200),
+  created_at timestamptz not null default now(),
+  primary key (booking_id, day)
+);
+
+alter table public.lesson_rooms enable row level security;
+alter table public.lesson_bookings enable row level security;
+alter table public.lesson_skips enable row level security;
+revoke all on public.lesson_rooms, public.lesson_bookings, public.lesson_skips from anon, authenticated;
+revoke all on sequence public.lesson_rooms_id_seq, public.lesson_bookings_id_seq from anon, authenticated;
+
+create trigger zz_admin_log after insert or update or delete on public.lesson_rooms for each row execute function private.log_change();
+create trigger zz_admin_log after insert or update or delete on public.lesson_bookings for each row execute function private.log_change();
+create trigger zz_admin_log after insert or update or delete on public.lesson_skips for each row execute function private.log_change();
+
+-- 누가 쓰나: 관리자 전부 · 선생님은 자기 담당 학생 것만. 문이 닫혀 있으면(시뮬레이션) 원장님만.
+create or replace function private.lesson_allowed(adm boolean, t public.teachers)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select adm or (t.id is not null and (t.name = '원장님'
+    or coalesce((select s.lesson_rooms_open from public.settings s where s.id = 1), false)));
+$$;
+
+create or replace function private.wd_name(w int)
+returns text language sql immutable set search_path = '' as $$
+  select (array['일', '월', '화', '수', '목', '금', '토'])[w + 1];
+$$;
+
+-- 겹치는 예약 하나를 글로 (없으면 null): 같은 방이거나 같은 학생, 같은 요일, 시간이 겹치고 날짜 범위가 겹침.
+-- 정규끼리는 시작일이 둘 다 그 요일이라 범위가 겹치면 그 요일 날짜가 반드시 겹침. 한 번(보강)일 때는 그날 빠진(skip) 정규는 비어 있음.
+create or replace function private.lesson_clash(p_room int, p_member text, p_wd int, p_first date, p_last date,
+                                               p_st int, p_en int, p_ex bigint)
+returns text language sql stable security definer set search_path = '' as $$
+  select case when b.room_id = p_room then '' else '이 학생은 ' end
+         || r.name || ' · ' || b.kind || ' · ' || b.student_name || ' · '
+         || case when b.kind = '정규' then '매주 ' || private.wd_name(b.weekday) || ' ' else to_char(b.first_day, 'FMMM/FMDD') || ' ' end
+         || private.hhmm(b.start_min) || '~' || private.hhmm(b.end_min)
+    from public.lesson_bookings b join public.lesson_rooms r on r.id = b.room_id
+   where b.status = '확정' and b.id <> coalesce(p_ex, 0)
+     and (b.room_id = p_room or (p_member is not null and b.member_id = p_member))
+     and b.weekday = p_wd
+     and b.start_min < p_en and p_st < b.end_min
+     and b.first_day <= coalesce(p_last, 'infinity'::date)
+     and coalesce(b.last_day, 'infinity'::date) >= p_first
+     and not (p_first = p_last and exists (select 1 from public.lesson_skips k where k.booking_id = b.id and k.day = p_first))
+   order by (b.room_id = p_room) desc, b.start_min
+   limit 1;
+$$;
+
+-- 보기: p_from부터 p_days일(최대 14) 동안 실제로 열리는 수업(정규는 그 요일마다, 빠진 날 제외) + 예약할 수 있는 학생
+create or replace function public.lesson_room_view(p_from text default null, p_days int default 7)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  dir boolean;
+  today date := private.now_kst()::date;
+  d0 date;
+  n int := least(greatest(coalesce(p_days, 7), 1), 14);
+begin
+  if not private.lesson_allowed(adm, t) then
+    return private.fail(case when t.id is null then '선생님 · 관리자만 볼 수 있어요.' else '레슨실 예약은 아직 준비 중이에요.' end);
+  end if;
+  dir := adm or coalesce(t.name = '원장님', false);
+  begin d0 := coalesce(nullif(p_from, '')::date, today); exception when others then d0 := today; end;
+  return jsonb_build_object('ok', true, 'today', today, 'from', d0, 'days', n,
+    'admin', adm, 'director', dir, 'me', t.name,
+    'open', coalesce((select s.lesson_rooms_open from public.settings s where s.id = 1), false),
+    'rooms', (select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name) order by r.sort, r.id), '[]'::jsonb)
+                from public.lesson_rooms r where r.active),
+    'items', (select coalesce(jsonb_agg(jsonb_build_object(
+                'id', b.id, 'room', r.name, 'kind', b.kind, 'date', g.d,
+                'start', private.hhmm(b.start_min), 'end', private.hhmm(b.end_min), 'st', b.start_min, 'en', b.end_min,
+                'mine', coalesce(t.id is not null and b.teacher_id = t.id, false),
+                'edit', coalesce(adm or (t.id is not null and b.teacher_id = t.id), false),
+                'name', case when dir or b.teacher_id = t.id then b.student_name end,
+                'member', case when dir or b.teacher_id = t.id then b.member_id end,
+                'teacher', tt.name,
+                'memo', case when dir or b.teacher_id = t.id then b.memo end,
+                'first', b.first_day, 'last', b.last_day, 'source', b.source)
+                order by g.d, r.sort, b.start_min), '[]'::jsonb)
+                from (select gs::date as d from generate_series(d0, d0 + n - 1, interval '1 day') gs) g
+                join public.lesson_bookings b on b.status = '확정' and b.weekday = extract(dow from g.d)::int
+                  and b.first_day <= g.d and coalesce(b.last_day, 'infinity'::date) >= g.d
+                  and not exists (select 1 from public.lesson_skips k where k.booking_id = b.id and k.day = g.d)
+                join public.lesson_rooms r on r.id = b.room_id
+                left join public.teachers tt on tt.id = b.teacher_id),
+    'students', (select coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'name', m.name,
+                   'teacher', substring(m.memo from '담당\s*([^\s·,]+)')) order by m.name, m.id), '[]'::jsonb)
+                   from public.members m
+                  where m.status in ('재원', '외부') and m.id <> 'DEMO'
+                    and (adm or private.teaches(t, m.id))));
+end $$;
+
+-- 예약: 정규(매주, p_date = 첫 수업 날 · p_until = 마지막 날 선택) / 보강(그날 한 번)
+create or replace function public.lesson_room_book(p_room text, p_member text, p_kind text, p_date text, p_start text,
+                                                   p_minutes int, p_until text default null, p_memo text default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  today date := private.now_kst()::date;
+  r public.lesson_rooms;
+  m public.members;
+  d date; u date;
+  st int := private.to_min(p_start);
+  en int;
+  tid int;
+  c text;
+  new_id bigint;
+begin
+  if not private.lesson_allowed(adm, t) then
+    return private.fail(case when t.id is null then '선생님 · 관리자만 예약할 수 있어요.' else '레슨실 예약은 아직 준비 중이에요.' end);
+  end if;
+  if p_kind not in ('정규', '보강') then return private.fail('정규 수업인지 보강 수업인지 골라주세요.'); end if;
+  select * into r from public.lesson_rooms where name = p_room and active;
+  if r.id is null then return private.fail('레슨실을 골라주세요.'); end if;
+  select * into m from public.members where id = p_member;
+  if m.id is null or m.id = 'DEMO' then return private.fail('학생을 골라주세요.'); end if;
+  if m.status not in ('재원', '외부') then return private.fail(m.name || ' 학생은 지금 ' || m.status || ' 상태라 예약할 수 없어요.'); end if;
+  if not adm and not private.teaches(t, m.id) then return private.fail('내 담당 학생만 예약할 수 있어요.'); end if;
+  begin d := p_date::date; exception when others then d := null; end;
+  if d is null then return private.fail('날짜를 골라주세요.'); end if;
+  if d < today - 7 then return private.fail('일주일보다 지난 날짜는 넣을 수 없어요.'); end if;
+  if d > today + 365 then return private.fail('1년 안의 날짜만 예약할 수 있어요.'); end if;
+  u := d;
+  if p_kind = '정규' then
+    u := null;
+    if nullif(p_until, '') is not null then
+      begin u := p_until::date; exception when others then return private.fail('마지막 날짜가 올바르지 않아요.'); end;
+      if u < d then return private.fail('마지막 날짜는 첫 수업 날보다 뒤여야 해요.'); end if;
+    end if;
+  end if;
+  if st is null or st % 10 <> 0 or st >= 1440 then return private.fail('시작 시간은 10분 단위로 골라주세요.'); end if;
+  if p_minutes is null or p_minutes < 10 or p_minutes > 240 or p_minutes % 10 <> 0 then
+    return private.fail('수업 시간은 10분 단위로 10분 ~ 4시간 안에서 골라주세요.');
+  end if;
+  en := st + p_minutes;
+  if en > 1440 then return private.fail('밤 12시를 넘기는 수업은 넣을 수 없어요.'); end if;
+  if p_memo is not null and char_length(p_memo) > 200 then return private.fail('메모는 200자까지예요.'); end if;
+  tid := case when adm and (t.id is null or not private.teaches(t, m.id))
+              then (select x.id from public.teachers x where x.name = substring(m.memo from '담당\s*([^\s·,]+)') limit 1)
+              else t.id end;
+  perform pg_advisory_xact_lock(hashtext('lroom:' || r.id));
+  perform pg_advisory_xact_lock(hashtext('lmember:' || m.id));
+  c := private.lesson_clash(r.id, m.id, extract(dow from d)::int, d, u, st, en, null);
+  if c is not null then return private.fail('겹치는 예약이 있어요: ' || c); end if;
+  insert into public.lesson_bookings (room_id, member_id, student_name, teacher_id, kind, weekday, first_day, last_day,
+                                      start_min, end_min, memo, created_by)
+  values (r.id, m.id, m.name, tid, p_kind, extract(dow from d)::int, d, u, st, en, nullif(trim(p_memo), ''),
+          case when adm then 'admin' else 't' || t.id end)
+  returning id into new_id;
+  return jsonb_build_object('ok', true, 'id', new_id);
+end $$;
+
+-- 취소: once = 정규의 그날 한 번만 빼기 (보강은 그 예약 취소) · from = 그날부터 끝내기 · all = 전부 취소
+create or replace function public.lesson_room_cancel(p_id bigint, p_mode text default 'all', p_on text default null)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  b public.lesson_bookings;
+  d date;
+begin
+  if not private.lesson_allowed(adm, t) then return private.fail('선생님 · 관리자만 할 수 있어요.'); end if;
+  select * into b from public.lesson_bookings where id = p_id and status = '확정';
+  if b.id is null then return private.fail('이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.'); end if;
+  if not adm and b.teacher_id is distinct from t.id then return private.fail('내 예약만 취소할 수 있어요.'); end if;
+  perform pg_advisory_xact_lock(hashtext('lroom:' || b.room_id));
+  if b.kind = '보강' or p_mode = 'all' then
+    update public.lesson_bookings set status = '취소', cancelled_at = now() where id = b.id;
+    return jsonb_build_object('ok', true, 'done', 'all');
+  end if;
+  begin d := p_on::date; exception when others then d := null; end;
+  if d is null then return private.fail('날짜를 골라주세요.'); end if;
+  if extract(dow from d)::int <> b.weekday or d < b.first_day or d > coalesce(b.last_day, 'infinity'::date) then
+    return private.fail('그날은 이 정규 수업이 있는 날이 아니에요.');
+  end if;
+  if p_mode = 'once' then
+    insert into public.lesson_skips (booking_id, day) values (b.id, d) on conflict do nothing;
+    return jsonb_build_object('ok', true, 'done', 'once');
+  elsif p_mode = 'from' then
+    if d <= b.first_day then
+      update public.lesson_bookings set status = '취소', cancelled_at = now() where id = b.id;
+    else
+      update public.lesson_bookings set last_day = d - 1 where id = b.id;
+    end if;
+    return jsonb_build_object('ok', true, 'done', 'from');
+  end if;
+  return private.fail('취소 방법을 골라주세요.');
+end $$;
+
+-- 옮기기: once = 정규의 그날(p_on) 한 번만 빼고 p_date에 보강으로 · from = 정규를 p_date부터 새 요일 · 시간 · 방으로
+--        (보강을 옮기면 그 보강을 새 날짜 · 시간으로). 한 번에 처리돼서 겹치면 아무것도 안 바뀜.
+create or replace function public.lesson_room_move(p_id bigint, p_mode text, p_on text, p_date text, p_room text,
+                                                   p_start text, p_minutes int)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  adm boolean := public.is_admin();
+  t public.teachers := private.my_teacher();
+  today date := private.now_kst()::date;
+  b public.lesson_bookings;
+  r public.lesson_rooms;
+  d date; o date;
+  st int := private.to_min(p_start);
+  en int;
+  c text;
+  new_id bigint;
+begin
+  if not private.lesson_allowed(adm, t) then return private.fail('선생님 · 관리자만 할 수 있어요.'); end if;
+  select * into b from public.lesson_bookings where id = p_id and status = '확정';
+  if b.id is null then return private.fail('이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.'); end if;
+  if not adm and b.teacher_id is distinct from t.id then return private.fail('내 예약만 옮길 수 있어요.'); end if;
+  select * into r from public.lesson_rooms where name = p_room and active;
+  if r.id is null then return private.fail('레슨실을 골라주세요.'); end if;
+  begin d := p_date::date; exception when others then d := null; end;
+  if d is null then return private.fail('새 날짜를 골라주세요.'); end if;
+  if d < today - 7 or d > today + 365 then return private.fail('새 날짜는 1년 안에서 골라주세요.'); end if;
+  if st is null or st % 10 <> 0 or st >= 1440 then return private.fail('시작 시간은 10분 단위로 골라주세요.'); end if;
+  if p_minutes is null or p_minutes < 10 or p_minutes > 240 or p_minutes % 10 <> 0 then
+    return private.fail('수업 시간은 10분 단위로 10분 ~ 4시간 안에서 골라주세요.');
+  end if;
+  en := st + p_minutes;
+  if en > 1440 then return private.fail('밤 12시를 넘기는 수업은 넣을 수 없어요.'); end if;
+  perform pg_advisory_xact_lock(hashtext('lroom:' || least(b.room_id, r.id)));
+  perform pg_advisory_xact_lock(hashtext('lroom:' || greatest(b.room_id, r.id)));
+
+  if b.kind = '보강' then
+    c := private.lesson_clash(r.id, b.member_id, extract(dow from d)::int, d, d, st, en, b.id);
+    if c is not null then return private.fail('겹치는 예약이 있어요: ' || c); end if;
+    update public.lesson_bookings set room_id = r.id, weekday = extract(dow from d)::int, first_day = d, last_day = d,
+           start_min = st, end_min = en where id = b.id;
+    return jsonb_build_object('ok', true, 'id', b.id);
+  end if;
+
+  if p_mode = 'once' then
+    begin o := p_on::date; exception when others then o := null; end;
+    if o is null or extract(dow from o)::int <> b.weekday or o < b.first_day or o > coalesce(b.last_day, 'infinity'::date) then
+      return private.fail('옮길 수업 날짜가 이 정규 수업 날이 아니에요.');
+    end if;
+    insert into public.lesson_skips (booking_id, day, memo) values (b.id, o, '보강으로 옮김') on conflict do nothing;
+    c := private.lesson_clash(r.id, b.member_id, extract(dow from d)::int, d, d, st, en, null);
+    if c is not null then raise exception using errcode = 'P0001', message = '겹치는 예약이 있어요: ' || c; end if;
+    insert into public.lesson_bookings (room_id, member_id, student_name, teacher_id, kind, weekday, first_day, last_day,
+                                        start_min, end_min, memo, source, moved_from, created_by)
+    values (r.id, b.member_id, b.student_name, b.teacher_id, '보강', extract(dow from d)::int, d, d, st, en,
+            to_char(o, 'FMMM/FMDD') || ' 정규에서 옮김', b.source, b.id, case when adm then 'admin' else 't' || t.id end)
+    returning id into new_id;
+    return jsonb_build_object('ok', true, 'id', new_id);
+  elsif p_mode = 'from' then
+    if d <= b.first_day then
+      update public.lesson_bookings set status = '취소', cancelled_at = now() where id = b.id;
+    else
+      update public.lesson_bookings set last_day = d - 1 where id = b.id and (last_day is null or last_day >= d);
+    end if;
+    c := private.lesson_clash(r.id, b.member_id, extract(dow from d)::int, d, b.last_day, st, en, b.id);
+    if c is not null then raise exception using errcode = 'P0001', message = '겹치는 예약이 있어요: ' || c; end if;
+    insert into public.lesson_bookings (room_id, member_id, student_name, teacher_id, kind, weekday, first_day, last_day,
+                                        start_min, end_min, memo, source, moved_from, created_by)
+    values (r.id, b.member_id, b.student_name, b.teacher_id, '정규', extract(dow from d)::int, d,
+            case when b.last_day is not null and b.last_day >= d then b.last_day end, st, en, b.memo, b.source, b.id,
+            case when adm then 'admin' else 't' || t.id end)
+    returning id into new_id;
+    return jsonb_build_object('ok', true, 'id', new_id);
+  end if;
+  return private.fail('옮기는 방법을 골라주세요.');
+exception when sqlstate 'P0001' then
+  return private.fail(sqlerrm);
+end $$;
+
+revoke all on function public.lesson_room_view(text, int), public.lesson_room_book(text, text, text, text, text, int, text, text),
+  public.lesson_room_cancel(bigint, text, text), public.lesson_room_move(bigint, text, text, text, text, text, int) from public, anon;
+grant execute on function public.lesson_room_view(text, int), public.lesson_room_book(text, text, text, text, text, int, text, text),
+  public.lesson_room_cancel(bigint, text, text), public.lesson_room_move(bigint, text, text, text, text, text, int) to authenticated;
+revoke all on function private.lesson_allowed(boolean, public.teachers), private.lesson_clash(int, text, int, date, date, int, int, bigint),
+  private.wd_name(int) from public, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION private.member_status_cancel()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  k timestamp := private.now_kst();
+  today date := k::date;
+  now_min int := extract(hour from k)::int * 60 + extract(minute from k)::int;
+  b record;
+begin
+  if new.status in ('재원', '외부') or old.status not in ('재원', '외부') then return new; end if;
+  for b in
+    update public.bookings x
+       set status = '취소', cancelled_at = now(),
+           memo = coalesce(x.memo || ' / ', '') || new.status || '(으)로 바뀌어 자동 취소'
+     where x.member_id = new.id and x.status = '확정'
+       and (x.day > today or (x.day = today and x.start_min > now_min))
+    returning x.day, x.start_min, x.end_min, x.room_id
+  loop
+    perform private.notify('↩️ 연습실 예약 자동 취소 (' || new.status || ')' || chr(10) || new.name || ' · '
+      || (select r.name from public.rooms r where r.id = b.room_id)
+      || chr(10) || private.day_label(b.day) || ' ' || private.hhmm(b.start_min) || '~' || private.hhmm(b.end_min));
+  end loop;
+  -- 원장님 컨설팅 신청도 (원장님 2026-11-17): 아직 안 한 신청은 지워서 그 타임을 다시 비움, 알림은 바로
+  for b in
+    delete from public.feedback_bookings fb using public.feedback_slots s
+     where fb.member_id = new.id and s.id = fb.slot_id and s.at > now()
+    returning s.at, fb.kind
+  loop
+    perform private.notify('↩️ 원장님 컨설팅 자동 취소 (' || new.status || ')' || chr(10) || new.name || ' · '
+      || private.reminder_when(b.at) || ' · ' || coalesce(b.kind, '보컬') || chr(10) || '그 타임은 다시 비었어요.');
+  end loop;
+  -- 레슨실 (2026-11-24): 정규는 오늘까지로 끝내고, 앞으로의 보강 · 아직 시작 안 한 정규는 취소 (다시 재원이 돼도 되살리지 않음)
+  update public.lesson_bookings x
+     set status = case when x.first_day > today then '취소' else '확정' end,
+         cancelled_at = case when x.first_day > today then now() else x.cancelled_at end,
+         last_day = case when x.first_day > today then x.last_day else today end,
+         memo = left(coalesce(x.memo || ' / ', '') || new.status || '(으)로 바뀌어 자동 정리', 200)
+   where x.member_id = new.id and x.status = '확정' and coalesce(x.last_day, 'infinity'::date) > today;
+  return new;
+end $function$;

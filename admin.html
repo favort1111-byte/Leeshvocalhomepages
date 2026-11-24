@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/system.css?v=dd847805">
+<link rel="stylesheet" href="css/system.css?v=76b70a89">
 <link rel="stylesheet" href="css/admin.css?v=fdb414d3">
 </head>
 <body class="sys adm">
@@ -48,6 +48,7 @@
   <div id="app" hidden>
     <nav class="adm__tabs" role="tablist">
       <button type="button" role="tab" data-tab="bookings" aria-selected="true">예약 현황 <span class="adm__badge" id="bookBadge" hidden></span></button>
+      <button type="button" role="tab" data-tab="lroom" aria-selected="false">레슨실</button>
       <button type="button" role="tab" data-tab="members" aria-selected="false">수강 ID <span class="adm__badge" id="linkBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="records" aria-selected="false">수업 기록</button>
       <button type="button" role="tab" data-tab="news" aria-selected="false">오디션 소식 <span class="adm__badge" id="newsBadge" hidden></span></button>
@@ -498,6 +499,13 @@
     </section>
 
     <!-- 원장님 컨설팅 신청 (원장님 2026-11-11): 심화반 학생만 내 폴더에서 신청, 한 타임 한 명 -->
+    <!-- 레슨실 예약 (원장님 2026-11-24): A1~A4 · 선생님 · 관리자만, 시트 "레슨실 예약" · "수업방관리"를 홈페이지로 (js/lessonroom.js) -->
+    <section class="sys-card" data-panel="lroom" hidden>
+      <h3 class="sys-h">레슨실 예약 (A1 ~ A4)</h3>
+      <p class="sys-note">정규 = 퇴원 · 휴원할 때까지 매주 같은 요일 · 시간 · 방 · 보강 = 그날 한 번. 관리자는 모든 학생 · 모든 예약을 넣고 고칠 수 있어요. 학생이 휴원 · 종료되면 정규는 그날로 끝나고 앞으로의 보강은 저절로 취소돼요.</p>
+      <div id="lroomBox"></div>
+    </section>
+
     <section class="sys-card" data-panel="feedback" hidden>
       <h3 class="sys-h">원장님 컨설팅 신청 (심화반)</h3>
       <p class="sys-note">아래 명단의 심화반 학생만 내 폴더 → <b>원장님 컨설팅</b> 탭이 보여요. 한 타임에 한 명(먼저 신청한 사람), 한 학생은 남은 신청 하나만, 신청 마감이 지나면 학생은 신청 · 취소를 못 해요(학원에서 취소 가능). 신청 · 취소는 텔레그램으로도 와요.</p>
@@ -731,14 +739,15 @@
   </div>
 </main>
 
-<script src="js/config.js?v=96b24ec3"></script>
+<script src="js/config.js?v=fd750ca2"></script>
 <script src="js/api.js?v=9cf8a23f"></script>
 <script src="js/richtext.js?v=6d782c73"></script>
 <script src="js/grid.js?v=5d19f7ef"></script>
 <script src="js/evalcard.js?v=1d7f233f"></script>
 <script src="js/photos.js?v=a00ab1e5"></script>
 <script src="js/fbstatus.js?v=dcea5374"></script>
+<script src="js/lessonroom.js?v=50d84c1e"></script>
 <script src="js/consultnote.js?v=42226ed5"></script>
-<script src="js/admin.js?v=7a7f711d"></script>
+<script src="js/admin.js?v=4c2268b5"></script>
 </body>
 </html>

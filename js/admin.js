@@ -180,6 +180,7 @@
     if (name === "reviews") loadReviews();
     if (name === "director") loadDirector();
     if (name === "feedback") loadFeedback();
+    if (name === "lroom" && window.LeeshLessonRoom) LeeshLessonRoom.render($("#lroomBox"), rpcCall);
     if (name === "adminlog") loadLog();
     if (name === "gameevent") loadGameEvent();
     if (name === "kakao") loadKakao();

@@ -140,6 +140,12 @@
     var cons = button("🎯 원장 컨설팅", "sys-link");
     cons.addEventListener("click", consultPage);
     side.appendChild(cons);
+    // 레슨실 예약 (원장님 2026-11-24, A1~A4 · 선생님 · 관리자만): 시뮬레이션 동안은 원장님만 (config.js lessonRooms)
+    if ((cfg.lessonRooms || me === "원장님") && window.LeeshLessonRoom) {
+      var lr = button("🎹 레슨실", "sys-link");
+      lr.addEventListener("click", lessonPage);
+      side.appendChild(lr);
+    }
     var out = button("로그아웃", "sys-link");
     out.addEventListener("click", signOut);
     side.appendChild(out);
@@ -388,6 +394,20 @@
     next.addEventListener("click", function () { if (cur) load(addDay(cur.date, 1)); });
     pick.addEventListener("change", function () { if (pick.value) load(pick.value); });
     load(date || "");
+  }
+
+  /* 레슨실 예약 (원장님 2026-11-24): 시트 "레슨실 예약" · "수업방관리"를 홈페이지로. 그리는 건 js/lessonroom.js (관리자 화면과 같이 씀). */
+  function lessonPage() {
+    clear();
+    app.appendChild(header());
+    var back = button("← 담당 학생", "sys-link tch__back");
+    back.addEventListener("click", start);
+    app.appendChild(back);
+    app.appendChild(el("h3", "tch__name", "🎹 레슨실 예약 (A1 ~ A4)"));
+    app.appendChild(el("p", "sys-note", "정규 수업은 퇴원 · 휴원할 때까지 매주 같은 요일 · 시간 · 방을 써요. 보강은 그날 한 번만. 내 담당 학생만 예약하고, 다른 선생님 수업은 이름 없이 보여요."));
+    var box = el("div");
+    app.appendChild(box);
+    LeeshLessonRoom.render(box, function (fn, args) { return LeeshAPI.rpc(fn, args); });
   }
 
   /* 원장 컨설팅 (원장님 2026-11-11 "심화반만 하는 원장님 특별 컨설팅, 선생님들만 볼 수 있게 · 학생은 보면 안 됨 · 학생별로"):

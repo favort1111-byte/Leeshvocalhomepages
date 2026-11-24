@@ -6,6 +6,7 @@
   var cfg = window.LEESH = window.LEESH || {};
   cfg.supabaseKey = "demo";
   cfg.local = true;
+  cfg.lessonRooms = true; // 레슨실 예약 (체험 선생님 안유정에게도 보이게, 실제는 시뮬레이션 동안 원장님만)
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
   var VERSION = 38; // bump when the demo defaults change
@@ -1297,6 +1298,112 @@
     admin_telegram_options: function (a) { demoTg.bookings = !!a.p_bookings; return { ok: true }; },
     admin_telegram_off: function () { demoTg.bot = null; demoTg.chats = 0; return { ok: true }; },
     // 선생님 연습실 예약 (2026-11-12): 오늘 ~ 1년 뒤, 준비 중이어도 됨, 시작 전이면 취소
+    lesson_room_view: function (a, uid) {
+      lrSeed();
+      var who = lrActor(uid);
+      if (who.err) return fail(who.err);
+      var today = nowKst().today, from = lrDate(a.p_from) || today, n = Math.min(Math.max(Number(a.p_days) || 7, 1), 14), items = [];
+      for (var i = 0; i < n; i++) {
+        var d = addDays(from, i);
+        db.lr.bookings.forEach(function (b) {
+          if (b.status !== "확정" || b.weekday !== wdOf(d) || b.first > d || (b.last && b.last < d)) return;
+          if (db.lr.skips.some(function (k) { return k.id === b.id && k.day === d; })) return;
+          var mine = !!(who.t && b.teacher === who.t.id), see = who.dir || mine, tt = db.teachers.filter(function (x) { return x.id === b.teacher; })[0];
+          items.push({ id: b.id, room: b.room, kind: b.kind, date: d, start: hhmm(b.st), end: hhmm(b.en), st: b.st, en: b.en, mine: mine, edit: who.adm || mine,
+            name: see ? b.name : null, member: see ? b.member : null, teacher: tt ? tt.name : null, memo: see ? b.memo : null, first: b.first, last: b.last, source: b.source });
+        });
+      }
+      items.sort(function (x, y) { return x.date === y.date ? (x.room === y.room ? x.st - y.st : x.room < y.room ? -1 : 1) : x.date < y.date ? -1 : 1; });
+      return { ok: true, today: today, from: from, days: n, admin: who.adm, director: who.dir, me: who.t ? who.t.name : null, open: false,
+        rooms: LR_ROOMS.map(function (r, i) { return { id: i + 1, name: r }; }), items: items,
+        students: db.members.filter(function (m) { return (m.status === "재원" || m.status === "외부") && (who.adm || teaches(who.t, m.id)); })
+          .map(function (m) { var d = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return { id: m.id, name: m.name, teacher: d ? d[1] : null }; }) };
+    },
+    lesson_room_book: function (a, uid) {
+      lrSeed();
+      var who = lrActor(uid);
+      if (who.err) return fail("선생님 · 관리자만 예약할 수 있어요.");
+      if (a.p_kind !== "정규" && a.p_kind !== "보강") return fail("정규 수업인지 보강 수업인지 골라주세요.");
+      if (LR_ROOMS.indexOf(a.p_room) < 0) return fail("레슨실을 골라주세요.");
+      var m = db.members.filter(function (x) { return x.id === a.p_member; })[0];
+      if (!m) return fail("학생을 골라주세요.");
+      if (m.status !== "재원" && m.status !== "외부") return fail(m.name + " 학생은 지금 " + m.status + " 상태라 예약할 수 없어요.");
+      if (!who.adm && !teaches(who.t, m.id)) return fail("내 담당 학생만 예약할 수 있어요.");
+      var d = lrDate(a.p_date), today = nowKst().today;
+      if (!d) return fail("날짜를 골라주세요.");
+      if (diffDays(today, d) < -7) return fail("일주일보다 지난 날짜는 넣을 수 없어요.");
+      if (diffDays(today, d) > 365) return fail("1년 안의 날짜만 예약할 수 있어요.");
+      var u = a.p_kind === "정규" ? lrDate(a.p_until) : d;
+      if (u && u < d) return fail("마지막 날짜는 첫 수업 날보다 뒤여야 해요.");
+      var tm = lrTime(a.p_start, a.p_minutes);
+      if (tm.err) return fail(tm.err);
+      var c = lrClash(a.p_room, m.id, wdOf(d), d, u, tm.st, tm.en, null);
+      if (c) return fail("겹치는 예약이 있어요: " + c);
+      var dm = /담당\s*([^\s·,]+)/.exec(m.memo || ""), tt = dm && db.teachers.filter(function (x) { return x.name === dm[1]; })[0];
+      var id = db.lr.next++;
+      db.lr.bookings.push({ id: id, room: a.p_room, member: m.id, name: m.name, teacher: who.t && teaches(who.t, m.id) ? who.t.id : tt ? tt.id : null,
+        kind: a.p_kind, weekday: wdOf(d), first: d, last: u, st: tm.st, en: tm.en, status: "확정", memo: (a.p_memo || "").trim() || null, source: "site" });
+      save();
+      return { ok: true, id: id };
+    },
+    lesson_room_cancel: function (a, uid) {
+      lrSeed();
+      var who = lrActor(uid);
+      if (who.err) return fail("선생님 · 관리자만 할 수 있어요.");
+      var b = db.lr.bookings.filter(function (x) { return x.id === a.p_id && x.status === "확정"; })[0];
+      if (!b) return fail("이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.");
+      if (!who.adm && !(who.t && b.teacher === who.t.id)) return fail("내 예약만 취소할 수 있어요.");
+      if (b.kind === "보강" || a.p_mode === "all") { b.status = "취소"; save(); return { ok: true, done: "all" }; }
+      var d = lrDate(a.p_on);
+      if (!d || wdOf(d) !== b.weekday || d < b.first || (b.last && d > b.last)) return fail("그날은 이 정규 수업이 있는 날이 아니에요.");
+      if (a.p_mode === "once") { db.lr.skips.push({ id: b.id, day: d }); save(); return { ok: true, done: "once" }; }
+      if (a.p_mode === "from") { if (d <= b.first) b.status = "취소"; else b.last = addDays(d, -1); save(); return { ok: true, done: "from" }; }
+      return fail("취소 방법을 골라주세요.");
+    },
+    lesson_room_move: function (a, uid) {
+      lrSeed();
+      var who = lrActor(uid);
+      if (who.err) return fail("선생님 · 관리자만 할 수 있어요.");
+      var b = db.lr.bookings.filter(function (x) { return x.id === a.p_id && x.status === "확정"; })[0];
+      if (!b) return fail("이미 취소됐거나 없는 예약이에요. 새로고침해 주세요.");
+      if (!who.adm && !(who.t && b.teacher === who.t.id)) return fail("내 예약만 옮길 수 있어요.");
+      if (LR_ROOMS.indexOf(a.p_room) < 0) return fail("레슨실을 골라주세요.");
+      var d = lrDate(a.p_date);
+      if (!d) return fail("새 날짜를 골라주세요.");
+      var tm = lrTime(a.p_start, a.p_minutes);
+      if (tm.err) return fail(tm.err);
+      var c, id;
+      if (b.kind === "보강") {
+        c = lrClash(a.p_room, b.member, wdOf(d), d, d, tm.st, tm.en, b.id);
+        if (c) return fail("겹치는 예약이 있어요: " + c);
+        b.room = a.p_room; b.weekday = wdOf(d); b.first = b.last = d; b.st = tm.st; b.en = tm.en; save();
+        return { ok: true, id: b.id };
+      }
+      if (a.p_mode === "once") {
+        var o = lrDate(a.p_on);
+        if (!o || wdOf(o) !== b.weekday || o < b.first || (b.last && o > b.last)) return fail("옮길 수업 날짜가 이 정규 수업 날이 아니에요.");
+        db.lr.skips.push({ id: b.id, day: o });
+        c = lrClash(a.p_room, b.member, wdOf(d), d, d, tm.st, tm.en, null);
+        if (c) { db.lr.skips.pop(); return fail("겹치는 예약이 있어요: " + c); }
+        id = db.lr.next++;
+        db.lr.bookings.push({ id: id, room: a.p_room, member: b.member, name: b.name, teacher: b.teacher, kind: "보강", weekday: wdOf(d), first: d, last: d,
+          st: tm.st, en: tm.en, status: "확정", memo: Number(o.slice(5, 7)) + "/" + Number(o.slice(8)) + " 정규에서 옮김", source: b.source });
+        save();
+        return { ok: true, id: id };
+      }
+      if (a.p_mode === "from") {
+        c = lrClash(a.p_room, b.member, wdOf(d), d, b.last, tm.st, tm.en, b.id);
+        if (c) return fail("겹치는 예약이 있어요: " + c);
+        var keep = b.last && b.last >= d ? b.last : null;
+        if (d <= b.first) b.status = "취소"; else if (!b.last || b.last >= d) b.last = addDays(d, -1);
+        id = db.lr.next++;
+        db.lr.bookings.push({ id: id, room: a.p_room, member: b.member, name: b.name, teacher: b.teacher, kind: "정규", weekday: wdOf(d), first: d, last: keep,
+          st: tm.st, en: tm.en, status: "확정", memo: b.memo, source: b.source });
+        save();
+        return { ok: true, id: id };
+      }
+      return fail("옮기는 방법을 골라주세요.");
+    },
     teacher_rooms: function (a, uid) {
       var t = myTeacher(uid);
       if (!t) return fail("승인된 선생님만 예약할 수 있어요.");
@@ -1532,6 +1639,49 @@
 
   function rvSort(x, y) { return x.audition_date < y.audition_date ? 1 : x.audition_date > y.audition_date ? -1 : y.id - x.id; }
   function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, kind: r.kind || null, gender: r.gender, birth: r.birth, height: r.height, weight: r.weight, songVocal: r.song_vocal, songDance: r.song_dance, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
+  /* 레슨실 예약 (체험, 원장님 2026-11-24): 서버 lesson_room_* 와 같은 규칙. 정규 = 매주, 보강 = 한 번, 10분 단위, 24시간. */
+  var LR_ROOMS = ["A1", "A2", "A3", "A4"];
+  function wdOf(d) { return new Date(d + "T00:00:00Z").getUTCDay(); }
+  function lrSeed() {
+    if (db.lr && db.lr.v === 1) return;
+    var base = addDays(nowKst().today, -35);
+    function on(w) { var d = base; while (wdOf(d) !== w) d = addDays(d, 1); return d; }
+    function tid(n) { return (db.teachers.filter(function (x) { return x.name === n; })[0] || {}).id; }
+    db.lr = { v: 1, next: 1, bookings: [], skips: [] };
+    // [방, 수강 ID, 이름, 담당, 요일, 시작(분), 길이]
+    [["A2", "S002", "이하늘", "안유정", 1, 1090, 50], ["A2", "S004", "정다온", "안유정", 3, 1020, 50], ["A1", "S001", "김시우", "원장님", 2, 900, 50],
+     ["A3", null, "박서진", "이수빈", 4, 1140, 50], ["A3", null, "윤하린", "이수빈", 4, 1200, 50], ["A4", null, "최유나", "최홍주", 5, 960, 50],
+     ["A1", null, "강도윤", "이하섬", 6, 780, 50], ["A4", null, "한서윤", "이윤지", 1, 1020, 30]].forEach(function (r) {
+      db.lr.bookings.push({ id: db.lr.next++, room: r[0], member: r[1], name: r[2], teacher: tid(r[3]), kind: "정규", weekday: r[4], first: on(r[4]), last: null,
+        st: r[5], en: r[5] + r[6], status: "확정", memo: null, source: "site" });
+    });
+    var fri = addDays(nowKst().today, (5 - wdOf(nowKst().today) + 7) % 7);
+    db.lr.bookings.push({ id: db.lr.next++, room: "A1", member: "S002", name: "이하늘", teacher: tid("안유정"), kind: "보강", weekday: 5, first: fri, last: fri,
+      st: 840, en: 890, status: "확정", memo: "체험 보강", source: "site" });
+  }
+  function lrActor(uid) {
+    var t = myTeacher(uid), adm = !uid;
+    if (!adm && !t) return { err: "선생님 · 관리자만 볼 수 있어요." };
+    return { t: t, adm: adm, dir: adm || (t && t.name === "원장님") };
+  }
+  function lrClash(room, member, wd, first, last, st, en, ex) {
+    var hit = db.lr.bookings.filter(function (b) {
+      return b.status === "확정" && b.id !== ex && (b.room === room || (member && b.member === member)) && b.weekday === wd
+        && b.st < en && st < b.en && b.first <= (last || "9999-12-31") && (b.last || "9999-12-31") >= first
+        && !(first === last && db.lr.skips.some(function (k) { return k.id === b.id && k.day === first; }));
+    }).sort(function (x, y) { return (y.room === room) - (x.room === room) || x.st - y.st; })[0];
+    if (!hit) return null;
+    return (hit.room === room ? "" : "이 학생은 ") + hit.room + " · " + hit.kind + " · " + hit.name + " · "
+      + (hit.kind === "정규" ? "매주 " + WD[hit.weekday] + " " : Number(hit.first.slice(5, 7)) + "/" + Number(hit.first.slice(8)) + " ") + hhmm(hit.st) + "~" + hhmm(hit.en);
+  }
+  function lrTime(p_start, p_minutes) {
+    var st = toMin(p_start), n = Number(p_minutes);
+    if (st == null || st % 10 || st >= 1440) return { err: "시작 시간은 10분 단위로 골라주세요." };
+    if (!(n >= 10 && n <= 240 && n % 10 === 0)) return { err: "수업 시간은 10분 단위로 10분 ~ 4시간 안에서 골라주세요." };
+    if (st + n > 1440) return { err: "밤 12시를 넘기는 수업은 넣을 수 없어요." };
+    return { st: st, en: st + n };
+  }
+  function lrDate(v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : null; }
   function myTeacher(uid) { return uid ? db.teachers.filter(function (x) { return x.kakao_user === uid && x.active; })[0] || null : null; }
   function teaches(t, mid) {
     var m = db.members.filter(function (x) { return x.id === mid; })[0];
