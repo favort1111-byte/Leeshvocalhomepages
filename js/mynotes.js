@@ -375,6 +375,48 @@
     });
   }
 
+  /* 전체 화면으로 보기 (학생 의견 2026-11-24 "휴대폰에서 양옆 여백 때문에 레슨 노트 보기가 힘들어요"):
+     시트만 화면 가득. 닫기 · Esc · 휴대폰 뒤로 가기로 닫힘. build(body) = 안에 그릴 것 */
+  function fullView(title, build) {
+    var ov = el("div", "nfull");
+    ov.setAttribute("role", "dialog");
+    ov.setAttribute("aria-modal", "true");
+    var bar = el("div", "nfull__bar");
+    bar.appendChild(el("p", "nfull__title", title));
+    var close = el("button", "nfull__close", "✕ 닫기");
+    close.type = "button";
+    bar.appendChild(close);
+    var body = el("div", "nfull__body");
+    ov.appendChild(bar);
+    ov.appendChild(body);
+    document.body.appendChild(ov);
+    document.documentElement.classList.add("nfull-open");
+    build(body);
+    var done = false;
+    var shut = function (fromBack) {
+      if (done) return;
+      done = true;
+      ov.remove();
+      document.documentElement.classList.remove("nfull-open");
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onPop);
+      if (!fromBack && history.state && history.state.nfull) history.back();
+    };
+    var onKey = function (e) { if (e.key === "Escape") shut(); };
+    var onPop = function () { shut(true); };
+    try { history.pushState({ nfull: 1 }, ""); window.addEventListener("popstate", onPop); } catch (e) { /* 뒤로 가기 없이 */ }
+    document.addEventListener("keydown", onKey);
+    close.addEventListener("click", function () { shut(); });
+    close.focus();
+  }
+  function fullBtn(title, build) {
+    var b = el("button", "sys-link lnote__full", "⛶ 크게 보기");
+    b.type = "button";
+    b.title = "시트만 화면 가득 보기";
+    b.addEventListener("click", function () { fullView(title, build); });
+    return b;
+  }
+
   /* 곡·자료 · 가사지 (원장님 2026-11-10 "이전 시트에서 진행했던 가사지가 안 보인다"): 선생님 시트의 날짜 탭이 아닌 탭(가사 · 곡 노트 · 오디션 일정 …)을
      보기만. OT · 양식처럼 개인정보가 든 시트는 서버(member_sheets)가 빼고 보내요. 이름만 먼저, 누르면 그 표를 불러와요. */
   function renderSheets(box) {
@@ -420,7 +462,12 @@
               scene.querySelectorAll(".lnote__toggle, .lsheets__toggle").forEach(function (x) { if (x._draw) x._draw(); });
             });
             tg._draw = draw;
-            slot.appendChild(tg);
+            var tools = el("div", "lnote__tools");
+            tools.appendChild(fullBtn(it.title || "시트", function (fb) {
+              fb.appendChild(notesMode() === "sum" ? LeeshGrid.summary({ sheet: r.sheet }, []) : LeeshGrid.view(r.sheet, { zoom: true }));
+            }));
+            tools.appendChild(tg);
+            slot.appendChild(tools);
             slot.appendChild(body);
             draw();
           });
@@ -454,10 +501,14 @@
         var fold = el("button", "sys-link lnote__fold");
         fold.type = "button";
         var opened = idx < NOTES_OPEN;
+        var full = fullBtn(dayLabel(n.date) + (n.teacher ? " · " + n.teacher + " 선생님" : ""), function (fb) {
+          fb.appendChild(notesMode() === "sum" ? LeeshGrid.summary(n, (window.LEESH || {}).lessonFields) : LeeshGrid.view(n.sheet, { zoom: true }));
+        });
         var draw = function () {
           slot.textContent = "";
           slot.hidden = !opened;
           tg.hidden = !opened;
+          full.hidden = !opened;
           fold.textContent = opened ? "접기 ▴" : "펼쳐 보기 ▾";
           card.classList.toggle("is-folded", !opened);
           if (!opened) return;   // 접힌 노트는 그리지 않아요 (펼칠 때 그림)
@@ -478,6 +529,7 @@
         });
         fold.addEventListener("click", function () { opened = !opened; draw(); });
         tg._draw = draw;
+        head.appendChild(full);
         head.appendChild(tg);
         head.appendChild(fold);
         card.appendChild(slot);
