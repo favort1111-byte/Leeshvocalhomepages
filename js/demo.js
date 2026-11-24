@@ -1353,7 +1353,14 @@
         .sort(function (x, y) { return x.name === "원장님" ? -1 : y.name === "원장님" ? 1 : x.name < y.name ? -1 : 1; });
       return { ok: true, today: today, director: who.dir, me: who.t ? who.t.id : null, teachers: list.map(function (t) {
         var h = db.thours[t.id];
+        var lessonsAt = function (o) {
+          return db.lr.bookings.filter(function (b) { return b.teacher === t.id && b.status === "확정" && b.weekday === wdOf(o.day) && b.first <= o.day && (!b.last || b.last >= o.day)
+            && !db.lr.skips.some(function (k) { return k.id === b.id && k.day === o.day; }) && b.st < (o.e == null ? 1440 : o.e) && (o.s == null ? 0 : o.s) < b.en; }).length;
+        };
+        var offOut = function (o) { return { id: o.id, day: o.day, wd: wdOf(o.day), start: o.s == null ? null : hhmm(o.s), end: o.e == null ? null : hhmm(o.e), memo: o.memo, by: o.by, lessons: lessonsAt(o) }; };
         return { id: t.id, name: t.name, set: !!h, hours: h ? [0, 1, 2, 3, 4, 5, 6].map(function (w) { return h[w]; }) : [], updated: null,
+          offs: (db.toffs || []).filter(function (o) { return o.teacher === t.id && o.day >= today && o.day <= addDays(today, 60); })
+            .sort(function (x, y) { return x.day < y.day ? -1 : x.day > y.day ? 1 : (x.s || 0) - (y.s || 0); }).map(offOut),
           weekly: [1, 2, 3, 4, 5, 6, 0].map(function (w) {
             var work = workOf(t.id, w), busy = db.lr.bookings.filter(function (b) { return b.teacher === t.id && b.status === "확정" && b.kind === "정규" && b.weekday === w && (!b.last || b.last >= today); })
               .map(function (b) { return [b.st, b.en]; });
@@ -1364,9 +1371,39 @@
             var busy = db.lr.bookings.filter(function (b) { return b.teacher === t.id && b.status === "확정" && b.weekday === w && b.first <= d && (!b.last || b.last >= d)
               && !db.lr.skips.some(function (k) { return k.id === b.id && k.day === d; }); }).map(function (b) { return [b.st, b.en]; });
             if (d === today) busy.push([0, Math.max(n.min, 1)]);
-            return { date: d, wd: w, off: !work.length, free: freeOf(work, busy) };
+            var offs = offsOf(t.id, d);
+            offs.forEach(function (o) { busy.push([o.s == null ? 0 : o.s, o.e == null ? 1440 : o.e]); });
+            return { date: d, wd: w, off: !work.length || offs.some(function (o) { return o.s == null; }), offs: offs.map(function (o) { return { id: o.id, start: o.s == null ? null : hhmm(o.s), end: o.e == null ? null : hhmm(o.e), memo: o.memo }; }), free: freeOf(work, busy) };
           }) };
       }) };
+    },
+    teacher_off_add: function (a, uid) {
+      lrSeed(); hoursSeed();
+      var who = lrActor(uid);
+      if (who.err) return fail("선생님 · 관리자만 할 수 있어요.");
+      var tid = a.p_teacher || (who.t && who.t.id), today = nowKst().today;
+      if (!who.dir && tid !== (who.t && who.t.id)) return fail("내 휴무만 넣을 수 있어요.");
+      var d = lrDate(a.p_day);
+      if (!d) return fail("날짜를 골라 주세요.");
+      if (d < today) return fail("지난 날짜는 넣을 수 없어요.");
+      var s0 = a.p_start ? toMin(a.p_start) : null, e0 = a.p_end ? toMin(a.p_end) : null;
+      if ((s0 == null) !== (e0 == null)) return fail("시작과 끝을 둘 다 고르거나, 하루 종일로 골라 주세요.");
+      if (s0 != null && s0 >= e0) return fail("끝 시간이 시작보다 늦어야 해요 (10분 단위).");
+      db.toffs = db.toffs || []; db.toffNext = (db.toffNext || 0) + 1;
+      var o = { id: db.toffNext, teacher: tid, day: d, s: s0, e: e0, memo: (a.p_memo || "").trim() || null, by: who.adm ? "관리자" : who.t.name };
+      db.toffs.push(o); save();
+      var n = db.lr.bookings.filter(function (b) { return b.teacher === tid && b.status === "확정" && b.weekday === wdOf(d) && b.first <= d && (!b.last || b.last >= d)
+        && b.st < (e0 == null ? 1440 : e0) && (s0 == null ? 0 : s0) < b.en; }).length;
+      return { ok: true, id: o.id, lessons: n };
+    },
+    teacher_off_delete: function (a, uid) {
+      var who = lrActor(uid);
+      if (who.err) return fail("선생님 · 관리자만 할 수 있어요.");
+      var o = (db.toffs || []).filter(function (x) { return x.id === a.p_id; })[0];
+      if (!o) return fail("이미 지워졌어요. 새로고침해 주세요.");
+      if (!who.dir && o.teacher !== (who.t && who.t.id)) return fail("내 휴무만 지울 수 있어요.");
+      db.toffs = db.toffs.filter(function (x) { return x !== o; }); save();
+      return { ok: true };
     },
     teacher_hours_save: function (a, uid) {
       lrSeed(); hoursSeed();
@@ -1417,6 +1454,7 @@
       var tid = who.t && teaches(who.t, m.id) ? who.t.id : tt ? tt.id : null;
       var c = lrClash(a.p_room, m.id, tid, wdOf(d), d, u, tm.st, tm.en, null, who);
       if (c) return fail("겹치는 예약이 있어요: " + c);
+      if (a.p_kind === "보강" && tid) { var oh = lrOffHit(tid, d, tm.st, tm.en); if (oh) return fail(oh); }
       var id = db.lr.next++;
       db.lr.bookings.push({ id: id, room: a.p_room, member: m.id, name: m.name, teacher: tid,
         kind: a.p_kind, weekday: wdOf(d), first: d, last: u, st: tm.st, en: tm.en, status: "확정", memo: (a.p_memo || "").trim() || null, source: "site" });
@@ -1474,6 +1512,7 @@
         if (b.first === now.today && b.st <= now.min) return fail("이미 시작한 보강은 옮길 수 없어요.");
         c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, d, tm.st, tm.en, b.id, who);
         if (c) return fail("겹치는 예약이 있어요: " + c);
+        if (b.teacher && lrOffHit(b.teacher, d, tm.st, tm.en)) return fail(lrOffHit(b.teacher, d, tm.st, tm.en));
         b.room = a.p_room; b.weekday = wdOf(d); b.first = b.last = d; b.st = tm.st; b.en = tm.en; save();
         return { ok: true, id: b.id };
       }
@@ -1485,6 +1524,7 @@
         db.lr.skips.push({ id: b.id, day: o });
         c = lrClash(a.p_room, b.member, b.teacher, wdOf(d), d, d, tm.st, tm.en, null, who);
         if (c) { db.lr.skips.pop(); return fail("겹치는 예약이 있어요: " + c); }
+        if (b.teacher && lrOffHit(b.teacher, d, tm.st, tm.en)) { db.lr.skips.pop(); return fail(lrOffHit(b.teacher, d, tm.st, tm.en)); }
         id = db.lr.next++;
         db.lr.bookings.push({ id: id, room: a.p_room, member: b.member, name: b.name, teacher: b.teacher, kind: "보강", weekday: wdOf(d), first: d, last: d,
           st: tm.st, en: tm.en, status: "확정", memo: Number(o.slice(5, 7)) + "/" + Number(o.slice(8)) + " 정규에서 옮김", source: b.source });
@@ -1795,6 +1835,7 @@
     });
     return out.filter(function (s) { return s[1] - s[0] >= 30; }).sort(function (x, y) { return x[0] - y[0]; }).map(function (s) { return [hhmm(s[0]), hhmm(s[1])]; });
   }
+  function offsOf(tid, d) { return (db.toffs || []).filter(function (o) { return o.teacher === tid && o.day === d; }); }
   function workOf(tid, wd) {
     var h = db.thours[tid];
     if (!h) return [[600, 1320]];
@@ -1807,6 +1848,12 @@
     var t = myTeacher(uid), adm = !uid;
     if (!adm && !t) return { err: "선생님 · 관리자만 볼 수 있어요." };
     return { t: t, adm: adm, dir: adm || (t && t.name === "원장님") };
+  }
+  function lrOffHit(teacher, d, st, en) {
+    var o = (db.toffs || []).filter(function (x) { return x.teacher === teacher && x.day === d && (x.s == null ? 0 : x.s) < en && st < (x.e == null ? 1440 : x.e); })[0];
+    if (!o) return null;
+    var t = db.teachers.filter(function (x) { return x.id === teacher; })[0] || {};
+    return (t.name === "원장님" ? "원장님" : t.name + " 선생님") + "은 " + Number(d.slice(5, 7)) + "/" + Number(d.slice(8)) + " " + (o.s == null ? "하루 휴무" : hhmm(o.s) + "~" + hhmm(o.e) + " 불가") + (o.memo ? " (" + o.memo + ")" : "") + "예요. 다른 시간으로 골라 주세요.";
   }
   function lrClash(room, member, teacher, wd, first, last, st, en, ex) {
     var hit = db.lr.bookings.filter(function (b) {

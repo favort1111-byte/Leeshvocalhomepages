@@ -414,8 +414,10 @@
         drawFree(fd);
       });
     }
+    function offText(o) { return (o.start ? o.start + "~" + o.end + " 불가" : "하루 휴무") + (o.memo ? " · " + o.memo : ""); }
     function freeCell(td, f, date) {
-      if (f.off) { td.appendChild(el("span", "lr__off", "휴무")); return; }
+      (f.offs || []).forEach(function (o) { td.appendChild(el("small", "lr__offtag", "🏖 " + offText(o))); });
+      if (f.off) { if (!(f.offs || []).some(function (o) { return !o.start; })) td.appendChild(el("span", "lr__off", "휴무")); return; }
       if (!f.free.length) { td.appendChild(el("span", "lr__none", "없음")); return; }
       f.free.forEach(function (g) {
         var c = btn(g[0] + "~" + g[1], "lr__wkfree lr__fchip");
@@ -433,6 +435,7 @@
         var me = ts[0];
         if (!me) { body.appendChild(el("p", "sys-note", "선생님 정보를 찾지 못했어요.")); return; }
         body.appendChild(hoursEditor(me, false));
+        body.appendChild(offEditor(me, false));
       } else {
         body.appendChild(el("p", "lr__hint", "선생님 빈 시간 = 근무 시간 − 레슨실 수업(방 상관없이) · 30분 넘게 빈 곳만. 새 학생을 배정할 때 보세요." + (st.can ? " 빈 시간을 누르면 그 날짜 · 시간으로 예약 칸이 열려요." : "")));
       }
@@ -455,6 +458,9 @@
         ts.forEach(function (x) {
           var td = el("td"), f = (x.weekly || []).filter(function (y) { return y.wd === w; })[0] || { off: true, free: [] };
           freeCell(td, f, nextDate(w));
+          (x.offs || []).filter(function (o) { return o.wd === w && o.day <= addDays(fd.today, 13); }).forEach(function (o) {
+            td.appendChild(el("small", "lr__offtag", "※ " + md(o.day) + " " + offText(o)));
+          });
           var h = (x.hours || []).filter(function (y) { return y.wd === w; })[0];
           if (h && h.memo) td.appendChild(el("small", "lr__fmemo", "💬 " + h.memo));
           tr.appendChild(td);
@@ -463,6 +469,8 @@
       });
       t.appendChild(tb); wrap.appendChild(t); sec.appendChild(wrap);
       body.appendChild(sec);
+      // 관리자 · 원장님: 앞으로의 특정 날 휴무 · 불가 시간 (모든 선생님)
+      if (fd.director) body.appendChild(offList(ts, true));
       // 날짜별 (오늘부터 14일, 보강 · 빠진 날까지)
       var sec2 = el("details", "lr__fsec");
       sec2.open = !fd.director;
@@ -487,11 +495,73 @@
         var pickT = el("select", "lr__tfilter");
         ts.forEach(function (x) { var o = el("option", null, tname(x.name) + (x.set ? "" : " (미입력)")); o.value = x.id; pickT.appendChild(o); });
         var holder = el("div");
-        function show2() { holder.textContent = ""; var x = ts.filter(function (y) { return String(y.id) === pickT.value; })[0]; if (x) holder.appendChild(hoursEditor(x, true)); }
+        function show2() { holder.textContent = ""; var x = ts.filter(function (y) { return String(y.id) === pickT.value; })[0]; if (x) { holder.appendChild(hoursEditor(x, true)); holder.appendChild(offEditor(x, true)); } }
         pickT.addEventListener("change", show2);
         sec3.appendChild(pickT); sec3.appendChild(holder); show2();
         body.appendChild(sec3);
       }
+    }
+    function offRow(o, x, showName) {
+      var li = el("div", "lr__offrow" + (o.lessons ? " has-lesson" : ""));
+      li.appendChild(el("b", null, md(o.day)));
+      if (showName) li.appendChild(el("span", "lr__offname", tname(x.name)));
+      li.appendChild(el("span", null, offText(o)));
+      if (o.lessons) li.appendChild(el("span", "lr__offwarn", "⚠️ 그 시간 수업 " + o.lessons + "개 · 빼기 · 옮기기 필요"));
+      var del = btn("지우기", "sys-link lr__danger");
+      arm(del, "한 번 더 누르면 지워요", function () {
+        call("teacher_off_delete", { p_id: o.id }).then(function (r) {
+          if (!r || !r.ok) { toast.textContent = (r && r.error) || "지우지 못했어요."; toast.className = "sys-msg sys-msg--error lr__toast"; return; }
+          toast.textContent = "휴무를 지웠어요."; toast.className = "sys-msg sys-msg--ok lr__toast"; loadFree();
+        });
+      });
+      li.appendChild(del);
+      return li;
+    }
+    // 앞으로 휴무 목록 (관리자 · 원장님 = 모든 선생님)
+    function offList(ts, all) {
+      var box = el("div", "lr__fsec");
+      var rows = [];
+      ts.forEach(function (x) { (x.offs || []).forEach(function (o) { rows.push({ o: o, x: x }); }); });
+      rows.sort(function (a, b) { return a.o.day < b.o.day ? -1 : a.o.day > b.o.day ? 1 : (a.o.start || "") < (b.o.start || "") ? -1 : 1; });
+      box.appendChild(el("b", "lr__fsec-title", "🏖 앞으로 휴무 · 불가 시간 (60일)" + (rows.length ? " " + rows.length + "개" : "")));
+      if (!rows.length) { box.appendChild(el("span", "sys-note", "넣은 휴무가 없어요. 선생님 근무 시간 고치기에서 넣을 수 있어요.")); return box; }
+      rows.forEach(function (r) { box.appendChild(offRow(r.o, r.x, true)); });
+      return box;
+    }
+    // 특정 날 휴무 · 불가 시간 넣기 (선생님 = 내 것, 관리자 · 원장님 = 고른 선생님)
+    function offEditor(x, asAdmin) {
+      var box = el("div", "lr__hours lr__offbox");
+      box.appendChild(el("b", "lr__fsec-title", asAdmin ? "🏖 " + tname(x.name) + " 특정 날 휴무 · 불가 시간" : "🏖 특정 날 휴무 · 불가 시간"));
+      box.appendChild(el("p", "lr__hint", "그날만 쉬거나 안 되는 시간을 넣으면 빈 시간에서 빠지고, 그 시간에는 보강을 잡을 수 없어요. 이미 잡힌 수업은 그대로라 따로 빼거나 옮겨 주세요."));
+      var row = el("div", "lr__offform");
+      var date = el("input"); date.type = "date"; date.min = st.data.today; date.value = st.data.today;
+      var whole = el("label", "lr__offwhole"), cb = el("input"); cb.type = "checkbox"; cb.checked = true;
+      whole.appendChild(cb); whole.appendChild(document.createTextNode(" 하루 종일"));
+      var s0 = timePick(""), e0 = timePick(""), memo = el("input", "lr__hmemo"); memo.maxLength = 200; memo.placeholder = "사유 (선택) 예) 병원";
+      var tm = el("span", "lr__time"); tm.appendChild(s0); tm.appendChild(document.createTextNode(" ~ ")); tm.appendChild(e0);
+      tm.hidden = true;
+      cb.addEventListener("change", function () { tm.hidden = cb.checked; });
+      [date, whole, tm, memo].forEach(function (n) { row.appendChild(n); });
+      box.appendChild(row);
+      var go = btn("휴무 넣기"), m = el("p", "sys-msg");
+      go.addEventListener("click", function () {
+        if (!date.value) { say(m, "날짜를 골라 주세요.", "error"); return; }
+        go.disabled = true; say(m, "넣는 중…");
+        call("teacher_off_add", { p_teacher: asAdmin ? x.id : null, p_day: date.value, p_start: cb.checked ? "" : s0.value, p_end: cb.checked ? "" : e0.value, p_memo: memo.value }).then(function (r) {
+          go.disabled = false;
+          if (!r || !r.ok) { say(m, (r && r.error) || "넣지 못했어요.", "error"); return; }
+          toast.textContent = "휴무를 넣었어요." + (r.lessons ? " ⚠️ 그 시간에 수업 " + r.lessons + "개가 있어요. 빼거나 옮겨 주세요." : "");
+          toast.className = "sys-msg sys-msg--" + (r.lessons ? "error" : "ok") + " lr__toast";
+          loadFree();
+        });
+      });
+      box.appendChild(go); box.appendChild(m);
+      var list = (x.offs || []);
+      if (list.length) {
+        box.appendChild(el("b", null, "앞으로 넣은 휴무 " + list.length + "개"));
+        list.forEach(function (o) { box.appendChild(offRow(o, x, false)); });
+      }
+      return box;
     }
     function timePick(v) {
       var s = el("select", "lr__hsel"), o = el("option", null, "—"); o.value = ""; s.appendChild(o);
@@ -503,7 +573,7 @@
     function hoursEditor(x, asAdmin) {
       var box = el("div", "lr__hours");
       box.appendChild(el("b", "lr__fsec-title", asAdmin ? "⏰ " + tname(x.name) + " 근무 시간" : "⏰ 내 근무 시간 (요일별 출근 ~ 퇴근)"));
-      box.appendChild(el("p", "lr__hint", "요일마다 구간 2개까지 (예: 13:00 ~ 16:00, 18:00 ~ 21:00). 비워 두면 그 요일은 휴무예요. 수업이 있는 시간은 저절로 빠지고 남는 시간이 관리자에게 보여요. 특정 날 휴무 · 안 되는 시간은 실장님께 카톡으로 알려 주세요."
+      box.appendChild(el("p", "lr__hint", "요일마다 구간 2개까지 (예: 13:00 ~ 16:00, 18:00 ~ 21:00). 비워 두면 그 요일은 휴무예요. 수업이 있는 시간은 저절로 빠지고 남는 시간이 관리자에게 보여요. 특정 날 휴무 · 안 되는 시간은 아래 \"특정 날 휴무\"에 넣어 주세요."
         + (x.set ? "" : " 아직 입력 전이라 지금은 10:00 ~ 22:00 전체로 보고 있어요.")));
       var wrap = el("div", "lr__wkwrap"), t = el("table", "lr__wk lr__htbl"), hr = el("tr");
       ["요일", "시작 1", "끝 1", "시작 2", "끝 2", "메모 (선택)"].forEach(function (h) { hr.appendChild(el("th", null, h)); });
