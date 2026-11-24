@@ -7,6 +7,7 @@ sys.path.insert(0, HERE)
 import blog_content as blog  # facts from the academy's Naver blog
 import privacy
 import guide  # 홈페이지 사용법 (guide.html)
+import pixel_icons  # 첫 화면 메뉴 8비트 아이콘 (2026-11-24)
 import welcome  # 신규 수강 안내 (welcome.html, 첫 레슨 알림톡 버튼이 여는 페이지)
 IMG = {int(k): v for k, v in json.load(open(os.path.join(HERE, "images.json"))).items()}
 
@@ -158,9 +159,9 @@ CLIP = ('<svg class="clip" viewBox="0 0 26 60" aria-hidden="true">'
         '</svg>')
 
 # 아이콘 영어 이름 밑 작은 한글 (원장님 2026-11-24, map · my folder처럼)
-ICON_KO = {"YouTube": "유튜브", "Instagram": "인스타그램", "stage.jpg": "원장님 소개", "lesson.jpg": "레슨 과정",
-           "practice room.jpg": "연습실", "audition.jpg": "오디션 소식", "results.jpg": "합격 실적", "vocal.jpg": "학원 특징",
-           "hobby.jpg": "원포인트 레슨", "school.jpg": "입시 · 학교", "debut.jpg": "오디션 케어", "games.exe": "보컬 오락실"}
+ICON_KO = {"YouTube": "유튜브", "Instagram": "인스타그램", "stage": "원장님 소개", "lesson": "레슨 과정",
+           "practice room": "연습실", "audition": "오디션 소식", "results": "합격 실적", "vocal": "학원 특징",
+           "hobby": "원포인트 레슨", "school": "입시 · 학교", "debut": "오디션 케어", "games.exe": "보컬 오락실"}
 
 def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", scene=None, ko=None):
     if "<small>" not in label and label in ICON_KO:
@@ -177,9 +178,14 @@ def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=Fa
             f'      <span class="icon__label">{label}</span>\n'
             f'    </a>')
 
+PIX_OF = {"stage": "stage", "lesson": "lesson", "room": "room", "audition": "audition", "results": "results",
+          "voice": "vocal", "hobby": "hobby", "school": "school", "debut": "debut"}
+PIX = 44  # 8비트 아이콘 크기 (유튜브 · 인스타 아이콘과 비슷하게)
+
 def thumb(left, top, w, h, i, label, href="about.html", scene=None, ko=None):
-    inner = f'<img src="{img(i)}" alt="" loading="lazy">'
-    return icon(left, top, w, h, label, href, inner, scene=scene, ko=ko)
+    # 예전엔 사진 썸네일(img(i)) → 메뉴 내용이 보이는 8비트 그림으로 (원장님 2026-11-24), 자리는 예전 사진 칸의 가운데
+    inner = pixel_icons.svg(PIX_OF[scene])
+    return icon(round(left + (w - PIX) / 2, 1), round(top + (h - PIX) / 2, 1), PIX, PIX, label.replace(".jpg", ""), href, inner, scene=scene, ko=ko)
 
 YT = "https://www.youtube.com/@vocallesson1533"
 MAP = "https://map.naver.com/p/search/%EC%9D%B4%EC%86%A1%ED%9D%AC%EB%B3%B4%EC%BB%AC%EB%A0%88%EC%8A%A8"
@@ -266,7 +272,7 @@ home_icons = "\n".join([
     icon(504.5, 152.5, 48, 48, "map<small>오시는 길</small>", MAP, FINDER, scene="map", ko="오시는 길 (네이버 지도)"),
     thumb(563, 256.5, 61.5, 47.5, 6, "hobby.jpg", scene="hobby", ko="원포인트 레슨"),
     thumb(637.5, 119.5, 73.5, 43, 9, "school.jpg", scene="school", ko="입시 · 합격 결과 · 학교 찾기"),
-    thumb(699, 150, 43.5, 49, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
+    thumb(714, 178, 44, 44, 8, "debut.jpg", scene="debut", ko="데뷔 · 오디션 케어"),
     icon(674.5, 339.5, 58, 48.5, "my folder<small>내 폴더</small>", "booking.html", FOLDER, scene="me", ko="내 폴더 · 예약·일정·월말평가"),
     icon(590, 352, 44, 44, "games.exe", "games.html", GAME_ICON, ko="미니게임"),
 ])
