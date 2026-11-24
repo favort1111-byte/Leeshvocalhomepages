@@ -1318,7 +1318,16 @@
       return { ok: true, today: today, from: from, days: n, admin: who.adm, director: who.dir, me: who.t ? who.t.name : null, open: !!db.lr.open, can_edit: can,
         rooms: LR_ROOMS.map(function (r, i) { return { id: i + 1, name: r }; }), items: items,
         students: !can ? [] : db.members.filter(function (m) { return (m.status === "재원" || m.status === "외부") && (who.adm || teaches(who.t, m.id)); })
-          .map(function (m) { var d = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return { id: m.id, name: m.name, teacher: d ? d[1] : null }; }) };
+          .map(function (m) { var d = /담당\s*([^\s·,]+)/.exec(m.memo || ""); return { id: m.id, name: m.name, teacher: d ? d[1] : null }; }),
+        // 정규 레슨실 예약이 없는 재원생 (선생님 = 내 담당만)
+        missing: db.members.filter(function (m) {
+          return m.status === "재원" && m.id !== "DEMO" && (who.dir || teaches(who.t, m.id))
+            && !db.lr.bookings.some(function (b) { return b.member === m.id && b.status === "확정" && b.kind === "정규" && (!b.last || b.last >= today); });
+        }).map(function (m) {
+          var d = /담당\s*([^\s·,]+)/.exec(m.memo || "");
+          return { id: m.id, name: m.name, teacher: d ? d[1] : null,
+            makeup: db.lr.bookings.some(function (b) { return b.member === m.id && b.status === "확정" && b.kind === "보강" && b.first >= today; }), ended: null };
+        }) };
     },
     admin_lesson_rooms_set: function (a, uid) {
       if (uid) return fail("관리자만 할 수 있어요.");

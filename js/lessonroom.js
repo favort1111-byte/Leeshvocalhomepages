@@ -61,6 +61,8 @@
     box.classList.add("lr");
     var note = el("p", "lr__sim");
     note.hidden = true;
+    var miss = el("div", "lr__miss");
+    miss.hidden = true;
     var nav = el("div", "lr__nav");
     var prev = btn("◀ 지난주", "sys-btn sys-btn--ghost lr__step");
     var week = el("b", "lr__week-label");
@@ -84,7 +86,7 @@
     panel.hidden = true;
     var body = el("div", "lr__body");
     var toast = el("p", "sys-msg lr__toast");
-    [note, nav, days, toast, panel, body].forEach(function (n) { box.appendChild(n); });
+    [note, miss, nav, days, toast, panel, body].forEach(function (n) { box.appendChild(n); });
 
     function load() {
       body.textContent = "";
@@ -96,6 +98,7 @@
         st.can = d.can_edit !== false;
         if (st.day < st.from || st.day > addDays(st.from, 6)) st.day = st.from;
         drawNote(d);
+        drawMiss(d);
         drawFilter(d);
         add.hidden = !st.can;
         week.textContent = md(st.from) + " ~ " + md(addDays(st.from, 6));
@@ -126,6 +129,25 @@
         });
         note.appendChild(sw);
       }
+    }
+    // 재원생인데 정규 레슨실 예약이 없는 학생 (선생님 = 내 담당만, 관리자 · 원장님 = 전부): 다른 선생님이 빈방으로 알고 잡지 않게
+    function drawMiss(d) {
+      var list = d.missing || [];
+      miss.textContent = "";
+      miss.hidden = !list.length;
+      if (!list.length) return;
+      miss.appendChild(el("b", null, (d.director ? "⚠️ 정규 레슨실 예약이 없는 재원생 " : "⚠️ 내 담당 학생 중 정규 레슨실 예약이 없는 학생 ") + list.length + "명"));
+      miss.appendChild(el("span", "lr__miss-hint", "수업이 있으면 예약을 걸어 주세요. 안 걸면 다른 선생님이 빈방인 줄 알고 예약할 수 있어요." + (st.can ? " 이름을 누르면 바로 예약 칸이 열려요." : "")));
+      var row = el("div", "lr__miss-row");
+      list.forEach(function (m) {
+        var label = (d.director && m.teacher ? (m.teacher === "원장님" ? "원장님" : m.teacher + "T") + " · " : "") + m.name
+          + (m.makeup ? " (보강만)" : m.ended ? " (" + md(m.ended) + " 정규 끝)" : "");
+        var c = btn(label, "lr__miss-chip");
+        if (!st.can || !(st.data.students || []).some(function (x) { return x.id === m.id; })) c.disabled = true;
+        else c.addEventListener("click", function () { openForm({ member: m.id, date: st.day }); });
+        row.appendChild(c);
+      });
+      miss.appendChild(row);
     }
     function drawFilter(d) {
       who_.hidden = !d.director;
