@@ -22,6 +22,7 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">\n'
 
 PAGES = [("home", "index.html"), ("about", "about.html"), ("audition", "audition.html"), ("school", "schools.html"), ("contact", "contact.html"),
          ("consult", "consult.html"), ("booking", "booking.html")]
+CUR = ' aria-current="page"'
 # 영어 메뉴 밑에 작은 한글 (원장님 2026-11-24 "어린 학생이 많아서 영어를 보기 어렵대, 오시는 길처럼 한글을 밑에")
 NAV_KO = {"home": "홈", "about": "학원 소개", "audition": "오디션", "school": "입시 학교", "contact": "오시는 길",
           "consult": "상담 신청", "booking": "연습실 예약"}
@@ -197,15 +198,15 @@ KAKAO = "https://pf.kakao.com/_xgNYbK"
 # These are the pages the old scenes' "자세히" buttons pointed to.
 # 원장님 2026-10-29: vocal → 우리 학원만의 특징, hobby → 원포인트 레슨, exam → 입시 합격 실적.
 ICON_LINKS = {
-    "results": ("about.html#results", False),
-    "stage": ("about.html#teacher", False),
-    "lesson": ("about.html#steps", False),
+    "results": ("about-results.html", False),
+    "stage": ("about-director.html", False),
+    "lesson": ("about-lesson.html", False),
     "room": ("booking.html", False),
     "audition": ("audition.html", False),
-    "voice": ("about.html#why", False),
-    "hobby": ("about.html#tips", False),
+    "voice": ("about-why.html", False),
+    "hobby": ("about-tips.html", False),
     "school": ("schools.html", False),  # 원장님 2026-11-04: exam.jpg 대신 school.jpg → 입시 합격 결과 + 학교 찾기
-    "debut": ("about.html#care", False),
+    "debut": ("about-care.html", False),
     "youtube": (YT, True),
     "map": (MAP, True),
 }
@@ -376,12 +377,61 @@ about_groups = "\n".join([
     ], "Hobby", "노래방에서 바로 써먹는 발성. 고음·호흡·음정을 제대로 배우는 취미반."),
 ])
 
+# 학원 소개를 주제별 페이지로 나눔 (원장님 2026-11-25 "학원 소개가 길게 쭉 나오고 누를 때마다 내려감 → 원장님 소개 · 레슨 과정 · 오디션 케어 · 원포인트 레슨 등 주제별로")
+# (파일, 영어 이름, 한글 이름, 8비트 아이콘, 내용, 예전 about.html#앵커들, 설명)
+ABOUT_PAGES = [
+    ("about-director.html", "the teacher", "원장님 소개", "stage", blog.teacher_section, ["teacher"], "이송희 원장 소개 · 경력 · 강사진."),
+    ("about-lesson.html", "4 steps", "레슨 과정", "lesson", blog.steps_section, ["steps", "advanced"], "반별 커리큘럼 4 STEP과 오디션 심화반 추가 커리큘럼."),
+    ("about-rules.html", "lesson rules", "강의 규정", "rules", blog.rules_section, ["rules"], "보강 신청 · 스케줄 변경 · 결석 규정 안내."),
+    ("about-why.html", "why us", "학원 특징", "vocal", blog.why_section, ["why"], "이송희보컬레슨만의 특징."),
+    ("about-care.html", "audition care", "오디션 케어", "debut", blog.care_section, ["care"], "오디션 코칭 · 매일 관리 · 비주얼 케어 · 오디션 세미나."),
+    ("about-results.html", "results", "합격 실적", "results", blog.results_section, ["results"], "기획사 · 방송 · 입시 합격 실적."),
+    ("about-rooms.html", "practice rooms", "연습실", "room", blog.rooms_section, ["rooms"], "24시간 개인 연습실 · C hall 안내."),
+    ("about-tips.html", "one-point lesson", "원포인트 레슨", "hobby", blog.tips_section, ["tips"], "고음 · 호흡 · 오디션 준비 원포인트 레슨."),
+]
+ABOUT_OLD = {a: f for f, _, _, _, _, anchors, _ in ABOUT_PAGES for a in anchors}
+
+def about_index(current=None):
+    """주제 칩 줄 (모든 주제 페이지 위에 같이). 지금 페이지는 진하게."""
+    chips = "".join(
+        f'<li><a href="{f}"{CUR if f == current else ""}>{ko}</a></li>' for f, _, ko, *_ in ABOUT_PAGES)
+    return (f'  <nav class="scrap__index" aria-label="학원 소개 주제"><ul><li><a href="about.html"{CUR if current is None else ""}>반 소개</a></li>{chips}</ul></nav>\n'
+            # 휴대폰: 지금 주제 칩이 줄 밖이면 보이게 옆으로 밀어 둠
+            '  <script>(function(){var u=document.querySelector(".scrap__index ul"),a=u&&u.querySelector("[aria-current]");if(a)u.scrollLeft=a.offsetLeft-(u.clientWidth-a.offsetWidth)/2;})();</script>\n')
+
+def about_cards():
+    """about.html 아래: 주제 카드 (8비트 아이콘 + 한글 + 영어), 누르면 그 주제 페이지로."""
+    cards = "".join(
+        f'<li><a class="atopic" href="{f}"><span class="atopic__icon">{pixel_icons.svg(icon)}</span>'
+        f'<b>{ko}</b><small>{en}</small><span class="atopic__desc">{desc}</span></a></li>'
+        for f, en, ko, icon, _, _, desc in ABOUT_PAGES)
+    return ('<section class="scrap" aria-label="학원 소개 주제">\n' + about_index()
+            + '  <div class="scrap__block">\n'
+            + '    <header class="scrap__head"><p class="scrap__kicker">about us</p><h2 class="scrap__title">더 알아보기</h2></header>\n'
+            + f'    <ul class="atopics">{cards}</ul>\n  </div>\n</section>\n'
+            # 예전 주소(about.html#rules 등)로 들어오면 그 주제 페이지로
+            + '<script>(function(){var m=' + json.dumps(ABOUT_OLD) + ',h=location.hash.slice(1);if(m[h])location.replace(m[h]+"#"+h);})();</script>\n')
+
 about = (head("About | 이송희보컬레슨",
               "이송희보컬레슨의 오디션 심화반, 오디션·입시반, 전문반, 취미반 소개.")
          + '<main class="stage about">\n'
          + nav("about", "cardboard") + "\n"
          +   '  <h1 class="about__title">our vocal<br>classes</h1>\n'
-         + about_groups + "\n</main>\n" + blog.about_sections() + foot("passboard"))
+         + about_groups + "\n</main>\n" + about_cards() + foot())
+
+def about_sub(i):
+    f, en, ko, icon, body, anchors, desc = ABOUT_PAGES[i]
+    prev_ = ABOUT_PAGES[i - 1] if i > 0 else None
+    next_ = ABOUT_PAGES[i + 1] if i + 1 < len(ABOUT_PAGES) else None
+    pn = '    <nav class="apager" aria-label="다른 주제">'
+    pn += f'<a class="apager__prev" href="{prev_[0]}">← {prev_[2]}</a>' if prev_ else '<a class="apager__prev" href="about.html">← 반 소개</a>'
+    pn += f'<a class="apager__next" href="{next_[0]}">{next_[2]} →</a>' if next_ else '<a class="apager__next" href="about.html">반 소개 →</a>'
+    pn += '</nav>\n'
+    return (head(f"{ko} | 이송희보컬레슨", "이송희보컬레슨 " + desc)
+            + '<main class="stage about about--sub">\n' + nav("about", "cardboard") + "\n</main>\n"
+            + '<section class="scrap scrap--sub" aria-label="' + ko + '">\n' + about_index(f)
+            + '  <div class="scrap__block">\n' + body() + pn + '  </div>\n</section>\n'
+            + foot(*(["passboard"] if f == "about-results.html" else [])))
 
 # ---------- CONTACT (reference 800x612) ----------
 def cph(left, top, w, h, i, kind, rot, z):
@@ -445,7 +495,7 @@ CONSULT_FORM = f"""  <section class="modal sys consult__box" aria-labelledby="co
       <li>상담은 1인 1회가 원칙입니다.</li>
       <li>담당 선생님이 직접 상담하므로 레슨 중에는 답장이 늦어질 수 있습니다.</li>
       <li>월 · 일요일과 공휴일은 상담 확정이 늦어질 수 있습니다.</li>
-      <li>보강 · 결석 규정은 <a href="about.html#rules">강의 규정 안내</a>에서 확인할 수 있습니다.</li>
+      <li>보강 · 결석 규정은 <a href="about-rules.html">강의 규정 안내</a>에서 확인할 수 있습니다.</li>
     </ul>
   </section>
 """
@@ -685,7 +735,7 @@ games_page = (head("보컬 오락실 | 이송희보컬레슨", "이송희보컬�
               + games_menu + "\n"
               + "".join(game_window(g[0], g[2], GAMES_BODY.get(g[0], '        <div class="g2" data-g2></div>\n')) for g in GAME_LIST)
               + '    </div>\n'
-              + '    <p class="arcade__more">실력은 레슨에서 → <a href="about.html#steps">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
+              + '    <p class="arcade__more">실력은 레슨에서 → <a href="about-lesson.html">커리큘럼 보기</a> · <a href="consult.html">상담 신청</a></p>\n'
               + "  </div>\n"
               + "</main>\n" + foot("signin", "gate", "gameevent", "games", "games2"))
 
@@ -795,7 +845,7 @@ RESULTS_BODY = (
     '    <section class="news__sec" data-news="합격" aria-labelledby="news-pass">\n'
     '      <h2 id="news-pass">합격자 현황</h2>\n'
     + news_list("합격", 20) +
-    '      <p class="news__lede"><a href="about.html#results">기획사·방송·입시 합격 실적 전체 보기 →</a></p>\n'
+    '      <p class="news__lede"><a href="about-results.html">기획사·방송·입시 합격 실적 전체 보기 →</a></p>\n'
     '    </section>\n'
     + news_foot() +
     '  </div>\n')
@@ -922,7 +972,7 @@ notfound_page = (head("페이지를 찾을 수 없습니다 | 이송희보컬레
                  '  </div>\n'
                  + "</main>\n" + foot())
 
-out = {"welcome.html": welcome_page, "interview.html": interview_page, "schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "parent.html": parent_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
+out = {"welcome.html": welcome_page, "interview.html": interview_page, "schools.html": schools_page, "404.html": notfound_page, "guide.html": guide_page, "teacher.html": teacher_page, "parent.html": parent_page, "apply.html": apply_page, "audition.html": audition_page, "results.html": results_page, "tips.html": tips_page, "post.html": post_page, "privacy.html": privacy_page, "index.html": home, "about.html": about, **{p[0]: about_sub(i) for i, p in enumerate(ABOUT_PAGES)}, "contact.html": contact, "consult.html": consult, "booking.html": booking, "games.html": games_page}
 # css/js links carry ?v=<content hash>, so a browser never mixes a new script with an old stylesheet
 # (2026-10-28: the new home button showed up page-sized while style.css was still the cached one)
 ASSET = re.compile(r'((?:href|src)="((?:css|js)/[^"?]+))(?:\?v=[0-9a-f]+)?"')
@@ -939,7 +989,7 @@ target = sys.argv[1] if len(sys.argv) > 1 else REPO
 # 방문자 통계 (원장님 2026-11-10): 네이버 애널리틱스, 원장님 네이버 계정에서만 봄. 발급 ID는 페이지 소스에 원래 보이는 값(비밀 아님).
 # 누구나 보는 페이지만 셈 — 관리자 · 선생님 · 학부모 · 예약 · 오락실 · 신청서(학생 · 선생님 도구 화면)는 뺌. 미리보기에서는 build_preview.py가 지움.
 NAVER_WA = "1d7488aff4c28c0"
-ANALYTICS_PAGES = {"index.html", "about.html", "schools.html", "audition.html", "results.html", "interview.html", "tips.html", "post.html",
+ANALYTICS_PAGES = {"index.html", "about.html", *[p[0] for p in ABOUT_PAGES], "schools.html", "audition.html", "results.html", "interview.html", "tips.html", "post.html",
                    "contact.html", "consult.html", "guide.html", "privacy.html", "404.html"}
 ANALYTICS = ('<!-- naver analytics -->\n<script src="https://wcs.pstatic.net/wcslog.js"></script>\n'
              '<script>if (!window.wcs_add) window.wcs_add = {}; wcs_add["wa"] = "' + NAVER_WA + '"; if (window.wcs) wcs_do();</script>\n'
@@ -959,7 +1009,7 @@ for name, html in out.items():
     with open(os.path.join(target, name), "w") as f:
         f.write(fill(name, stamp(html)))
 # 검색엔진 안내 (2026-10-31): 관리자·선생님 화면은 빼고, 공개 페이지 + 옮겨온 블로그 글
-SITEMAP_PAGES = ["", "about.html", "schools.html", "audition.html", "results.html", "interview.html", "tips.html", "contact.html", "consult.html",
+SITEMAP_PAGES = ["", "about.html", *[p[0] for p in ABOUT_PAGES], "schools.html", "audition.html", "results.html", "interview.html", "tips.html", "contact.html", "consult.html",
                  "guide.html", "games.html", "booking.html", "privacy.html"]
 with open(os.path.join(target, "robots.txt"), "w") as f:
     f.write("User-agent: *\nDisallow: /admin.html\nDisallow: /teacher.html\nDisallow: /parent.html\nAllow: /\n\nSitemap: " + SITE + "sitemap.xml\n")

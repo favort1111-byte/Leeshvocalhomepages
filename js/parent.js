@@ -219,7 +219,7 @@
     })).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     var plain = (res.notices || []).filter(function (n) { return !n.start; });
     var rules = el("a", "rec__more", "보강 · 결석 규정 보기 (강의 규정 안내) →");
-    rules.href = "about.html#rules";
+    rules.href = "about-rules.html";
     box.appendChild(rules);
     if (plans.length) {
       box.appendChild(el("h3", "rec__title", "다가오는 일정"));

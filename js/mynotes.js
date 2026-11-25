@@ -734,7 +734,7 @@
     box.appendChild(el("h3", "rec__title", "학원 규정 · 안내"));
     // 강의 규정 (원장님 2026-11-05): 보강 · 결석 규칙은 about에. 원장님 2026-11-19: 일정 탭에 있던 링크를 공지 탭 "학원 규정 · 안내"로 옮김
     var rules = el("a", "rec__more fold__ruleslink", "보강 · 결석 규정 보기 (강의 규정 안내) →");
-    rules.href = "about.html#rules";
+    rules.href = "about-rules.html";
     box.appendChild(rules);
     // 연습실 예약 및 이용 안내 + 와이파이 (원장님 2026-11-06) — js/roomrules.js, 와이파이는 펼칠 때 서버에서
     if (window.LeeshRoomRules) {
