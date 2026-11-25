@@ -781,7 +781,7 @@
       var leaving = book.page ? book.page.leave() : Promise.resolve(true);
       return leaving.then(function (ok) {
         if (ok === false) return; // 저장이 안 됐으면 (너무 긴 칸 등) 그대로 둬요
-        var p = target && target.kind === "s" ? sheetForm(book, target.obj) : noteForm(book, target ? target.obj : null, target && target.draft);
+        var p = target && target.kind === "s" ? sheetForm(book, target.obj) : noteForm(book, target ? target.obj : null, target && target.draft, target && target.fresh);
         slot.textContent = "";
         slot.appendChild(p.node);
         book.page = p;
@@ -892,7 +892,7 @@
       pick: function (i) { var e = items[i].entry; if (e) book.go(e); },
       addTitle: "새 시트 · 새 일지",
       addMenu: [
-        ["새 일지 (오늘 수업)", function () { book.go(null); }],
+        ["새 일지 (오늘 수업)", function () { book.go({ kind: "new", fresh: true }); }],
         ["새 빈 시트 (곡 · 가사 · 자료)", function () { newSheet(book); }],
         ["OT (첫 수업 시트)", function () { newSheet(book, "OT", otTemplate(book.s.name)); }]
       ],
@@ -1153,7 +1153,7 @@
    * 일지 한 장. editing = 내가 쓴 일지 (없으면 새 일지). draft = 이 기기에 보관된 저장 안 된 새 일지.
    * 칸마다 꾸미기 (js/grid.js) + 쓰는 동안 저절로 저장 (원장님 2026-10-29: 수업하면서 같이 보며 씀).
    */
-  function noteForm(book, editing, draft) {
+  function noteForm(book, editing, draft, fresh) {
     var s = book.s, notes = book.notes;
     var f = el("form", "sys tch__form");
     var head = el("h4", "rec__title", editing ? dayLabel(editing.date) + " 수업 내용 고치기" : "오늘의 수업 내용");
@@ -1176,6 +1176,8 @@
     var noteId = editing ? editing.id : null;
     var key = draft && draft.a && draft.a.p_key ? draft.a.p_key : uid(); // 새 일지: 끊겨서 다시 보내도 한 장만
     var name = draft && draft.title != null ? draft.title : (editing ? null : "");
+    // 새 일지를 "+"로 만들었거나 날짜 · 탭 이름을 바꿨으면 내용이 비어도 남겨요 (선생님 의견 2026-11-25: 날짜별로 미리 만들어 두고 수업)
+    var keep = !!fresh || !!(draft && draft.a);
     var saved = editing ? draftGet(s.id + ":n:" + editing.id) : null; // 이 일지를 고치다가 못 보낸 것
     var data = draft && draft.a ? draft.a.p_sheet : saved && saved.a ? saved.a.p_sheet : editing ? LeeshGrid.fromNote(editing, FIELDS) : startSheet;
     if (saved && saved.a) date.value = saved.a.p_date;
@@ -1213,7 +1215,7 @@
       args: function () {
         var sheet = grid.get();
         // 칸 이름만 있는 새 표는 아직 저장하지 않아요
-        if (!LeeshGrid.text(sheet) || (!noteId && JSON.stringify(sheet.c) === blank)) return null;
+        if (!LeeshGrid.text(sheet) || (!noteId && !keep && JSON.stringify(sheet.c) === blank)) return null;
         var a = { p_member: s.id, p_date: date.value, p_note: noteId, p_rich: true, p_sheet: sheet, p_key: noteId ? null : key };
         if (!noteId && name) a.p_title = name;
         return a;
@@ -1234,6 +1236,7 @@
       rekey: function () { return noteId ? s.id + ":n:" + noteId : null; }
     });
     if ((draft && draft.a) || (saved && saved.a)) setTimeout(function () { sv.push(false); }, 300);
+    else if (fresh) sv.later(); // "+ 새 일지"는 만들자마자 탭으로 남김
     // 저장한 일지를 이 화면의 목록에도 (시트 탭 · 지난 일지 불러오기가 최신 내용을 쓰게)
     function remember(a) {
       var n = notes.filter(function (x) { return x.id === noteId; })[0];
@@ -1247,7 +1250,7 @@
       FIELDS.forEach(function (fd) { n[fd[0]] = null; });
       notes.sort(function (x, y) { return x.date < y.date ? 1 : x.date > y.date ? -1 : (y.id || 0) - (x.id || 0); });
     }
-    date.addEventListener("change", function () { if (noteId) sv.later(); grid.tabs(tabsFor(book, cur())); });
+    date.addEventListener("change", function () { keep = true; sv.later(); grid.tabs(tabsFor(book, cur())); });
 
     f.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -1264,7 +1267,11 @@
     return {
       node: f, msg: msg, leave: sv.leave, stop: sv.stop,
       redrawTabs: function () { grid.tabs(tabsFor(book, cur())); },
-      setName: function (v) { name = v; grid.tabs(tabsFor(book, cur())); if (noteId) LeeshAPI.rpc("teacher_note_title", { p_note: noteId, p_title: v }); }
+      setName: function (v) {
+        name = v; grid.tabs(tabsFor(book, cur()));
+        if (noteId) LeeshAPI.rpc("teacher_note_title", { p_note: noteId, p_title: v });
+        else { keep = true; sv.later(); } // 이름을 붙인 새 일지는 바로 남겨요
+      }
     };
   }
 
