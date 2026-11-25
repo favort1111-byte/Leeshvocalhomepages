@@ -604,6 +604,57 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .apager a{padding:10px 16px;border:1px solid rgba(246,235,221,.6);border-radius:999px;text-decoration:none;font-size:15px;}
 .apager a:hover{background:rgba(246,235,221,.12);}
 .apager__next{margin-left:auto;}
+/* 학원 소개 주제별 페이지 읽기 쉽게 (원장님 2026-11-25 "문단 나누고 간격 띄우고 글에 배경색") */
+.scrap--sub .scrap__block{line-height:1.75;word-break:keep-all;}
+.scrap--sub .scrap__head{margin-bottom:30px;padding-bottom:18px;border-bottom:1px solid rgba(246,235,221,.28);}
+.scrap--sub .scrap__sub{margin:52px 0 16px;padding-left:14px;border-left:5px solid var(--manila);line-height:1.3;}
+.scrap--sub .scrap__lede,.scrap--sub .scrap__note{max-width:none;margin:0 0 26px;padding:18px 22px;border-radius:12px;background:var(--cream);color:var(--ink);font-size:16px;line-height:1.8;opacity:1;box-shadow:0 4px 14px rgba(20,10,5,.22);}
+.scrap--sub .scrap__note{margin-top:30px;font-size:15px;}
+.scrap--sub .scrap__note a{color:var(--brown);font-weight:700;}
+.scrap--sub .facts{gap:10px;margin-bottom:34px;padding:20px 22px;border-radius:12px;background:#FBF6EE;color:var(--ink);box-shadow:0 4px 14px rgba(20,10,5,.22);}
+.scrap--sub .facts li{padding:8px 0 8px 2px;border-bottom:1px dashed rgba(110,59,40,.22);}
+.scrap--sub .facts li::before{color:#2F7A4F;font-weight:700;}
+.scrap--sub .whys{gap:20px;}
+.scrap--sub .why{padding:24px 22px;border:0;border-radius:12px;background:var(--cream);color:var(--ink);box-shadow:0 4px 14px rgba(20,10,5,.22);}
+.scrap--sub .why__no{color:var(--brown);}
+.scrap--sub .why h3{margin:6px 0 14px;padding-bottom:12px;border-bottom:2px solid var(--manila);}
+.scrap--sub .why ul,.scrap--sub .card--paper ul{line-height:1.7;}
+.scrap--sub .why li,.scrap--sub .card--paper li,.scrap--sub .faq li{margin:0 0 9px;}
+.scrap--sub .card__chips--light li{background:var(--cream);color:var(--ink);border-color:var(--cream);font-size:15px;padding:4px 12px;}
+.scrap--sub .card__chips--light li.pass-new{background:var(--manila);color:var(--ink);border-color:var(--manila);font-weight:700;}
+.scrap--sub .steps{gap:24px;}
+.scrap--sub .step{padding:26px 26px 22px;}
+.scrap--sub .step h3{margin:12px 0 14px;}
+.scrap--sub .card--paper{padding:28px 30px;}
+.scrap--sub .card__col h4,.scrap--sub .card__col h3{margin-bottom:12px;}
+.scrap--sub .cowall{margin-top:40px;padding:22px;background:rgba(246,235,221,.1);}
+.scrap--sub .faq{margin-top:40px;padding:26px 30px;line-height:1.8;}
+.scrap--sub .motto{max-width:none;margin:40px 0 0;padding:30px 24px;border-radius:12px;background:var(--cream);color:var(--brown);box-shadow:0 4px 14px rgba(20,10,5,.22);}
+.scrap--sub .motto footer{color:var(--ink);opacity:.75;}
+.scrap--sub .cares{gap:20px;}
+.scrap--sub .care li{margin:0 0 8px;line-height:1.7;}
+.scrap--sub .partners{margin-top:36px;padding:20px 22px;border-radius:12px;background:var(--cream);color:var(--ink);box-shadow:0 4px 14px rgba(20,10,5,.22);}
+.scrap--sub .partners p{font-weight:700;}
+.scrap--sub .partners .card__chips li{border-color:rgba(110,59,40,.35);background:#FFFDF8;}
+.scrap--sub .online{margin-top:36px;}
+.scrap--sub .stats{gap:14px;margin-bottom:30px;}
+.scrap--sub .stats li{padding:16px 20px;border:0;border-radius:12px;background:var(--cream);color:var(--ink);box-shadow:0 4px 14px rgba(20,10,5,.22);}
+.scrap--sub .stats b{color:var(--brown);}
+.scrap--sub .stats span{opacity:1;color:var(--taupe,#6B5A50);}
+.scrap--sub .agencies{gap:14px;}
+.scrap--sub .agency{padding:14px 16px;}
+.scrap--sub .agency ul{line-height:1.65;}
+.scrap--sub .tips{gap:0 28px;padding:10px 24px;border-radius:12px;background:var(--cream);color:var(--ink);box-shadow:0 4px 14px rgba(20,10,5,.22);}
+.scrap--sub .tips a{padding:14px 0;border-bottom:1px dashed rgba(110,59,40,.28);}
+.scrap--sub .tips a::before{color:var(--brown);}
+.scrap--sub .channels{margin-top:30px;}
+.scrap--sub .gallery{margin-top:10px;}
+@media (max-width:760px){
+  .scrap--sub .scrap__lede,.scrap--sub .scrap__note,.scrap--sub .facts,.scrap--sub .partners,.scrap--sub .why,.scrap--sub .stats li{padding:16px 16px;}
+  .scrap--sub .card--paper,.scrap--sub .faq{padding:20px 18px;}
+  .scrap--sub .tips{padding:6px 16px;}
+  .scrap--sub .scrap__sub{margin-top:40px;}
+}
 
 .scrap__block{max-width:1080px;margin:0 auto;padding-top:56px;}
 .scrap__head{scroll-margin-top:70px;margin-bottom:22px;}
