@@ -163,7 +163,7 @@ CLIP = ('<svg class="clip" viewBox="0 0 26 60" aria-hidden="true">'
 
 # 아이콘 영어 이름 밑 작은 한글 (원장님 2026-11-24, map · my folder처럼)
 ICON_KO = {"YouTube": "유튜브", "Instagram": "인스타그램", "stage": "원장님 소개", "lesson": "레슨 과정",
-           "practice room": "연습실", "audition": "오디션 소식", "results": "합격 실적", "vocal": "학원 특징",
+           "practice room": "연습실 예약", "audition": "오디션 소식", "results": "합격 실적", "vocal": "학원 특징",
            "hobby": "원포인트 레슨", "school": "입시 · 학교", "debut": "오디션 케어", "games.exe": "보컬 오락실"}
 
 def icon(left, top, w, h, label, href, inner, img_class="icon__img", external=False, extra="", scene=None, ko=None):
