@@ -57,6 +57,10 @@
     });
     return best;
   }
+  // 날짜가 하나라도 적힌 학교인지 (없으면 "일정 확인 중")
+  function hasDate(majors) {
+    return majors.some(function (x) { return (x.rounds || []).length || (x.exams || []).length || x.exam || x.result; });
+  }
   function norm(v) { return String(v || "").replace(/\s+/g, "").toLowerCase(); }
   // 줄임말 (원장님 2026-11-04 "서울예대로 검색하면 안 나와요"): 첫 글자가 같고 나머지 글자가 학교 이름에 차례대로 들어 있으면
   // 서울예대 → 서울예술대학교, 한예종 → 한국예술종합학교, 동아방송대 → 동아방송예술대학교, 한림예고 → 한림연예예술고등학교
@@ -185,19 +189,37 @@
     }
     var by = {}, order = [];
     list.forEach(function (x) { if (!by[x.school]) { by[x.school] = []; order.push(x.school); } by[x.school].push(x); });
-    var next = {};
-    order.forEach(function (n) { next[n] = nextOf(by[n]); });
-    // 추천순: 학원 합격 이력이 있는 학교 먼저, 그다음 지역 · 이름 순 / 다가오는 일정순: 아직 안 끝난 가장 가까운 일정
+    var next = {}, grp = {};
+    order.forEach(function (n) { next[n] = nextOf(by[n]); grp[n] = next[n] < Infinity ? 0 : hasDate(by[n]) ? 2 : 1; });
+    // 원장님 2026-11-25 "맨 위는 지금 모집 중인 학교, 끝난 학교도 홈페이지에 떠야 해":
+    // 묶음 ① 접수 중 · 일정이 남은 학교 → ② 일정 확인 중 → ③ 2027 일정이 모두 끝난 학교 (숨기지 않고 아래에)
+    // 묶음 안: 추천순 = 학원 합격 이력이 있는 학교 먼저, 그다음 지역 · 이름 순 / 다가오는 일정순 = 아직 안 끝난 가장 가까운 일정
     order.sort(function (a, b) {
+      if (grp[a] !== grp[b]) return grp[a] - grp[b];
       if (sortBy === "date" && next[a] !== next[b]) return next[a] < next[b] ? -1 : 1;
       var pa = by[a].some(function (x) { return x.pass; }), pb = by[b].some(function (x) { return x.pass; });
       if (pa !== pb) return pa ? -1 : 1;
       var ra = by[a][0].sido + by[a][0].sigungu, rb = by[b][0].sido + by[b][0].sigungu;
       return ra < rb ? -1 : ra > rb ? 1 : a < b ? -1 : 1;
     });
-    var ul = el("ul", "sch-list");
-    order.forEach(function (name) { ul.appendChild(card(name, by[name])); });
-    res.appendChild(ul);
+    var GROUPS = ["접수 중 · 일정이 남은 학교", "2027 일정 확인 중", "2027 접수가 끝난 학교"];
+    var GROUP_NOTE = ["", "모집요강의 날짜가 아직 정리되지 않았습니다. 입학처에서 확인하세요.", "올해 원서 접수 · 실기 · 발표가 모두 끝났습니다. 다음 입시 준비에 참고하세요."];
+    var cnt = [0, 0, 0];
+    order.forEach(function (n) { cnt[grp[n]]++; });
+    var many = cnt.filter(Boolean).length > 1, ul = null, cur = -1;
+    order.forEach(function (name) {
+      if (grp[name] !== cur) {
+        cur = grp[name];
+        if (many) {
+          var gh = el("h3", "sch-group" + (cur === 2 ? " sch-group--done" : ""), GROUPS[cur] + " " + cnt[cur] + "곳");
+          res.appendChild(gh);
+          if (GROUP_NOTE[cur]) res.appendChild(el("p", "sch-group__note", GROUP_NOTE[cur]));
+        }
+        ul = el("ul", "sch-list" + (cur === 2 ? " sch-list--done" : ""));
+        res.appendChild(ul);
+      }
+      ul.appendChild(card(name, by[name]));
+    });
     app.appendChild(res);
   }
 
