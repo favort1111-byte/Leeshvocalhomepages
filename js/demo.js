@@ -9,7 +9,7 @@
   cfg.lessonRooms = true; // 레슨실 (실제와 같이 선생님은 보기만, 관리자 "선생님 예약 열기"를 누르면 체험에서도 열림)
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 38; // bump when the demo defaults change
+  var VERSION = 39; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -21,6 +21,11 @@
     var dt = new Date(d + "T00:00:00Z");
     dt.setUTCDate(dt.getUTCDate() + n);
     return dt.toISOString().slice(0, 10);
+  }
+  // 내방 · 월말평가 신청서 마감 = 마감일(없으면 전날) 오후 6시 (원장님 2026-11-25)
+  function visitOpen(n) {
+    var close = n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), k = nowKst();
+    return !close || close > k.today || (close === k.today && k.min < 18 * 60);
   }
   function diffDays(a, b) { return Math.round((new Date(b + "T00:00:00Z") - new Date(a + "T00:00:00Z")) / 86400000); }
   function hhmm(m) { return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }
@@ -150,6 +155,9 @@
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 44, kind: "내방", pick: "vd", company: "샘플 뮤직", title: "학원 내방 오디션", event_date: addDays(t, 2), deadline: null,
           body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 46, kind: "내방", pick: "all", form: "eval", company: "월말평가", title: "이번 달 월말평가 1부", event_date: addDays(t, 6), deadline: null,
+          body: "일시 : 목요일 오후 6시\n신청서 : 이름 · 담임선생님 · 클래스 · 성별 · 나이(년생) · 키 · 몸무게 · 지원분야(보컬 · 랩 · 댄스 자유롭게) · 비고\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 45, kind: "내방", company: "예시 엔터테인먼트", title: "학원 내방 오디션", event_date: addDays(t, -4), deadline: null,
           body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
@@ -513,13 +521,14 @@
       return { ok: true, path: p.path };
     },
     teacher_visit_month: function (a) {
+      // 신청 마감 = 마감일(없으면 전날) 오후 6시 (원장님 2026-11-25)
       var ym = nowKst().today.slice(0, 7);
       return { ok: true, items: db.audition_news.filter(function (n) { return n.published && n.kind === "내방" && n.event_date && n.event_date.slice(0, 7) === ym; })
         .sort(function (x, y) { return x.event_date < y.event_date ? -1 : 1; })
         .map(function (n) {
           var app = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === a.p_member; })[0];
           var dl = n.deadline; if (!dl) { var t = new Date(n.event_date + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - 1); dl = t.toISOString().slice(0, 10); }
-          return { id: n.id, company: n.company, date: n.event_date, deadline: dl, applied: !!app, field: app ? app.field : null, note: app ? app.note : null };
+          return { id: n.id, company: n.company, title: n.title, form: n.form || null, date: n.event_date, deadline: dl, closed: !visitOpen(n), applied: !!app, field: app ? app.field : null, note: app ? app.note : null };
         }) };
     },
     teacher_log_photos: function (a) {
@@ -1056,18 +1065,20 @@
       return { ok: true, id: row.id };
     },
     member_visit_open: function (a, uid) {
+      // 신청 마감 = 마감일(없으면 오디션 전날) 오후 6시 (원장님 2026-11-25)
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
       var today = nowKst().today;
       var lastApp = db.visit_applications.filter(function (x) { return x.member_id === who.id; })
         .sort(function (x, y) { return (y.updated_at || "") < (x.updated_at || "") ? -1 : 1; })[0];
-      return { ok: true, name: who.name,
-        last: lastApp ? { name: lastApp.name, gender: lastApp.gender, birth: lastApp.birth, body_size: lastApp.body_size, field: lastApp.field } : null,
+      var me = db.members.filter(function (x) { return x.id === who.id; })[0] || {};
+      return { ok: true, name: who.name, teacher: ((me.memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null,
+        last: lastApp ? { name: lastApp.name, gender: lastApp.gender, birth: lastApp.birth, body_size: lastApp.body_size, field: lastApp.field, class: lastApp.class || null } : null,
         auditions: db.audition_news.filter(function (n) {
-        return n.kind === "내방" && n.published && (n.deadline || (n.event_date ? addDays(n.event_date, -1) : today)) >= today; // 마감일 없으면 하루 전까지
+        return n.kind === "내방" && n.published && visitOpen(n);
       }).map(function (n) {
         var mine = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0] || null;
-        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), body: n.body, image: n.image, pick: n.pick || "1", mine: mine };
+        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), body: n.body, image: n.image, pick: n.pick || "1", form: n.form || null, mine: mine };
       }) };
     },
     member_visit_apply: function (a, uid) {
@@ -1075,20 +1086,27 @@
       if (!who.ok) return who;
       var n = db.audition_news.filter(function (x) { return x.id === a.p_news && x.kind === "내방"; })[0];
       if (!n) return fail("신청할 오디션을 찾을 수 없어요.");
+      if (!visitOpen(n)) return fail("신청이 마감됐어요 (전날 오후 6시까지). 학원(실장님)에 연락해주세요.");
       if (!a.p_field) return fail("지원분야를 골라주세요.");
       var fl = String(a.p_field).split(" + "), pk = n.pick || "1";
       if (pk === "1" && fl.length !== 1) return fail("지원분야는 하나만 골라주세요.");
+      if (pk === "all" && !(fl.length >= 1 && fl.every(function (x) { return ["보컬", "랩", "댄스"].indexOf(x) !== -1; }))) return fail("지원분야는 보컬 · 랩 · 댄스 중에서 골라주세요.");
+      if (n.form === "eval" && ["오디션 심화반", "오디션반", "입시반", "전문반", "취미반"].indexOf(a.p_class) === -1) return fail("클래스를 골라주세요.");
       if (pk === "vd" && !(fl.length >= 1 && fl.length <= 2 && fl.every(function (x) { return ["보컬", "랩", "댄스"].indexOf(x) !== -1; }))) return fail("이 오디션은 보컬 · 랩 · 댄스 중에서 1~2개를 골라주세요.");
       var row = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0];
       if (!row) { row = { id: ++db.next, news_id: n.id, member_id: who.id, created_at: new Date().toISOString() }; db.visit_applications.push(row); }
       Object.assign(row, { audition: (n.company ? n.company + " " : "") + n.title, name: a.p_name, gender: a.p_gender, birth: a.p_birth,
-        body_size: a.p_size, field: a.p_field, music: a.p_music || row.music || null, note: a.p_note, updated_at: new Date().toISOString() });
+        body_size: a.p_size, field: a.p_field, music: a.p_music || row.music || null, note: a.p_note, class: n.form === "eval" ? a.p_class : null,
+        teacher: n.form === "eval" ? ((((db.members.filter(function (x) { return x.id === who.id; })[0] || {}).memo || "").match(/담당\s*([^\s·,]+)/) || [])[1] || null) : null,
+        updated_at: new Date().toISOString() });
       save();
       return { ok: true, id: row.id };
     },
     member_visit_cancel: function (a, uid) {
       var who = checkReady(a.p_id, a.p_pin, uid);
       if (!who.ok) return who;
+      var nn = db.audition_news.filter(function (x) { return x.id === a.p_news; })[0];
+      if (nn && !visitOpen(nn)) return fail("신청 마감(전날 오후 6시)이 지나서 취소할 수 없어요. 학원(실장님)에 연락해주세요.");
       var before = db.visit_applications.length;
       db.visit_applications = db.visit_applications.filter(function (x) { return !(x.news_id === a.p_news && x.member_id === who.id); });
       if (db.visit_applications.length === before) return fail("취소할 신청이 없어요.");

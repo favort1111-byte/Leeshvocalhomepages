@@ -23,6 +23,10 @@
     var dt = new Date(d + "T00:00:00Z");
     return (dt.getUTCMonth() + 1) + "월 " + dt.getUTCDate() + "일 (" + WD[dt.getUTCDay()] + ")";
   }
+  // 신청 마감 = 마감일(없으면 오디션 전날) 오후 6시 (원장님 2026-11-25)
+  function closeText(a) { return a.deadline ? day(a.deadline) + " 오후 6시" : ""; }
+  function nameOf(a) { return a.form === "eval" ? a.title : (a.company ? a.company + " " : "") + a.title; }
+  var CLASSES = ["오디션 심화반", "오디션반", "입시반", "전문반", "취미반"];
   function field(label, input, help) {
     var l = el("label", "sys-field");
     l.appendChild(el("span", null, label));
@@ -97,7 +101,7 @@
       if (list.length > 1) {
         var chips = el("div", "sys-chips");
         list.forEach(function (a) {
-          var b = el("button", "sys-chip", (a.company || a.title) + (a.date ? " · " + day(a.date) : ""));
+          var b = el("button", "sys-chip", (a.form === "eval" ? a.title : (a.company || a.title)) + (a.date ? " · " + day(a.date) : ""));
           b.type = "button";
           b.setAttribute("aria-pressed", a === open ? "true" : "false");
           b.addEventListener("click", function () { want = a.id; load(name); });
@@ -105,49 +109,63 @@
         });
         area.appendChild(chips);
       }
-      area.appendChild(form(open, res.name || name, res.last));
+      area.appendChild(form(open, res.name || name, res.last, res.teacher));
     });
   }
 
   /* One audition: what the director wrote (일시 · 장소 · 지원자격 · 지원분야 …) and the questions under it. */
-  function form(a, name, last) {
-    var mine = a.mine;
+  function form(a, name, last, teacher) {
+    var mine = a.mine, isEval = a.form === "eval";  // 월말평가 신청서 (원장님 2026-11-25): 담임선생님 · 클래스 · 지원분야 자유 · 비고
     var wrap = el("article", "apply");
     var head = el("header", "apply__head");
     if (a.image) {
       var img = el("img", "apply__poster");
       img.src = LeeshAPI.storage.newsUrl(a.image);
-      img.alt = (a.company ? a.company + " " : "") + a.title + " 포스터";
+      img.alt = nameOf(a) + " 포스터";
       head.appendChild(img);
     }
-    head.appendChild(el("h2", "apply__title", (a.company ? a.company + " " : "") + a.title));
+    head.appendChild(el("h2", "apply__title", nameOf(a)));
     var facts = el("p", "apply__facts");
-    if (a.date) facts.appendChild(el("span", null, "오디션 " + day(a.date)));
-    if (a.deadline) facts.appendChild(el("span", null, "신청 마감 " + day(a.deadline)));
+    if (a.date) facts.appendChild(el("span", null, (isEval ? "월말평가 " : "오디션 ") + day(a.date)));
+    if (a.deadline) facts.appendChild(el("span", "apply__close", "신청 마감 " + closeText(a) + "까지"));
     if (facts.firstChild) head.appendChild(facts);
     if (a.body) head.appendChild(el("p", "apply__body", a.body));
     if (mine) head.appendChild(el("p", "sys-msg sys-msg--ok", "신청했어요. 고칠 게 있으면 아래에서 고쳐서 다시 보내주세요. 못 가게 됐다면 맨 아래 \"신청 취소하기\"를 눌러주세요."));
     // 지난번 신청 내용을 미리 채움 (원장님 2026-11-06): 이름 · 성별 · 출생년도 · 키/몸무게 · 지원분야
     else if (last) head.appendChild(el("p", "sys-note apply__last", "지난번에 쓴 내용(이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야)을 미리 채워 뒀어요. 바뀐 게 있으면 고쳐서 보내주세요."));
     wrap.appendChild(head);
-    if (window.LeeshVisitRules) wrap.appendChild(LeeshVisitRules.box(true));
+    if (window.LeeshVisitRules && !isEval) wrap.appendChild(LeeshVisitRules.box(true));
 
     var f = el("form", "sys apply__form");
     var nm = el("input"); nm.name = "name"; nm.maxLength = 30; nm.required = true; nm.value = mine ? mine.name : (last && last.name) || name || "";
     f.appendChild(field("이름", nm));
+    var cls = null;
+    if (isEval) {
+      // 담임선생님은 수강 ID 명단에서 저절로 (고치기 없음), 클래스는 꼭 고르기
+      var tch = el("input"); tch.value = teacher || "(명단에 담당 선생님이 없어요 · 비고에 적어주세요)"; tch.readOnly = true; tch.className = "apply__ro";
+      f.appendChild(field("담임선생님", tch));
+      var cs = el("fieldset", "apply__set");
+      cs.appendChild(el("legend", null, "클래스"));
+      cls = radios("cls", CLASSES, (mine || last || {}).class || null);
+      cs.appendChild(cls);
+      f.appendChild(cs);
+    }
     var g = el("fieldset", "apply__set");
     g.appendChild(el("legend", null, "성별"));
     g.appendChild(radios("gender", ["남", "여"], (mine || last || {}).gender));
     f.appendChild(g);
     var birth = el("input"); birth.name = "birth"; birth.maxLength = 30; birth.placeholder = "예) 10년/17살"; birth.value = (mine || last || {}).birth || "";
-    f.appendChild(field("출생년도/나이", birth, "ex) 10년/17살"));
+    f.appendChild(field(isEval ? "나이 (년생)" : "출생년도/나이", birth, "ex) 10년/17살"));
     var size = el("input"); size.name = "size"; size.maxLength = 30; size.placeholder = "예) 168/48"; size.value = (mine || last || {}).body_size || "";
     f.appendChild(field("키/몸무게", size, "ex) 168/48"));
     var fs = el("fieldset", "apply__set");
     fs.appendChild(el("legend", null, "지원분야"));
     // 오디션마다 고르는 방식 (원장님 2026-11-12): pick '1' 택 1 · '2' 2개까지 · 'vd' 보컬 · 랩 · 댄스 중 1~2개 (2026-11-14: 꼭 2개가 아니라 하나만도 됨)
     var pick = a.pick || "1", prev = (mine || last || {}).field || "";
-    if (pick === "1") {
+    if (pick === "all") {
+      fs.appendChild(el("p", "apply__pick", "✅ 보컬 · 랩 · 댄스 중 자유롭게 골라요 (여러 개 가능)"));
+      fs.appendChild(checks("field", ["보컬", "랩", "댄스"], mine ? mine.field.split(" + ") : prev ? prev.split(" + ").filter(function (x) { return ["보컬", "랩", "댄스"].indexOf(x) !== -1; }) : []));
+    } else if (pick === "1") {
       fs.appendChild(el("small", "apply__help", "*보컬, 랩, 댄스, 라이브 퍼포먼스, 연기 중 택 1만 가능"));
       fs.appendChild(radios("field", FIELDS, prev.indexOf(" + ") === -1 ? prev : null));
     } else {
@@ -174,12 +192,13 @@
 
     // 특이사항 before 댄스음원 (원장님 2026-10-28: 이름 · 성별 · 출생년도/나이 · 키/몸무게 · 지원분야 · 특이사항 · 댄스음원)
     var note = el("textarea"); note.name = "note"; note.rows = 3; note.maxLength = 1000; note.value = mine && mine.note || "";
-    f.appendChild(field("특이사항", note, "순서 조정이 필요한 경우 작성해주세요! ex) 학교가 늦게 끝나서 뒷순서로 배정 부탁드립니다(7시 이후) · 지방에 살아서 7시에는 학원에서 나가야 해서 앞순서로 배정 부탁드립니다."));
+    f.appendChild(isEval ? field("비고", note, "전달할 내용이 있으면 적어주세요. ex) 순서 조정 · 준비한 곡")
+      : field("특이사항", note, "순서 조정이 필요한 경우 작성해주세요! ex) 학교가 늦게 끝나서 뒷순서로 배정 부탁드립니다(7시 이후) · 지방에 살아서 7시에는 학원에서 나가야 해서 앞순서로 배정 부탁드립니다."));
 
     // 댄스음원 (always shown, like the Google Form): required for 댄스 (MP3); a big file goes to 실장님 on KakaoTalk
     var dance = el("fieldset", "apply__set apply__music");
     dance.appendChild(el("legend", null, "댄스음원"));
-    dance.appendChild(el("small", "apply__help", "* 댄스 지원자의 경우 음원 제출 필수(MP3파일)"));
+    dance.appendChild(el("small", "apply__help", isEval ? "* 댄스 음원이 있으면 올려주세요 (MP3파일, 선택)" : "* 댄스 지원자의 경우 음원 제출 필수(MP3파일)"));
     dance.appendChild(el("small", "apply__help", "* 댄스곡의 시작점은 본인이 편집해서 제출해주세요. (ex. \"0:10초부터 틀어주세요\"는 안 돼요 ❌)"));
     dance.appendChild(el("small", "apply__help", "* 용량이 클 시 실장님께 카톡으로 제출해주세요-!"));
     if (cfg.visitKakaoId) dance.appendChild(el("small", "apply__help", "카톡아이디 : " + cfg.visitKakaoId));
@@ -198,7 +217,7 @@
     var ok = el("input"); ok.type = "checkbox"; ok.name = "agree"; ok.checked = !!mine;
     okBox.appendChild(ok);
     okBox.appendChild(document.createTextNode(" 위 주요 공지 사항을 읽고 확인했어요"));
-    f.appendChild(okBox);
+    if (!isEval) f.appendChild(okBox);
 
     var btn = el("button", "sys-btn sys-btn--block", mine ? "고친 내용 보내기" : "제출");
     btn.type = "submit";
@@ -210,7 +229,7 @@
     // 신청 취소 (원장님 2026-11-12): 신청 마감 전까지 직접, 두 번 눌러야 취소
     if (mine) {
       var cbox = el("div", "apply__cancel");
-      cbox.appendChild(el("p", "sys-note", "못 가게 됐다면 신청을 취소해 주세요. 신청 마감" + (a.deadline ? "(" + day(a.deadline) + ")" : "") + " 뒤에는 학원(실장님)에 연락해 주세요."));
+      cbox.appendChild(el("p", "sys-note", "못 가게 됐다면 신청을 취소해 주세요. 신청 마감" + (a.deadline ? "(" + closeText(a) + ")" : "") + " 뒤에는 학원(실장님)에 연락해 주세요."));
       var cb = el("button", "sys-btn sys-btn--ghost apply__cancelbtn", "신청 취소하기");
       cb.type = "button";
       var cmsg = el("p", "sys-msg");
@@ -237,12 +256,14 @@
       e.preventDefault();
       var gender = picked(f, "gender"), flds = pickedAll(f, "field"), fld = flds.join(" + "), file = music.files[0];
       if (!nm.value.trim()) { say(msg, "이름을 적어주세요.", "error"); return; }
-      if (!ok.checked) { say(msg, "주요 공지 사항을 읽고 \"확인했어요\"에 체크해주세요.", "error"); return; }
+      if (!isEval && !ok.checked) { say(msg, "주요 공지 사항을 읽고 \"확인했어요\"에 체크해주세요.", "error"); return; }
+      var clsv = isEval ? picked(f, "cls") : null;
+      if (isEval && !clsv) { say(msg, "클래스를 골라주세요.", "error"); return; }
       if (!gender) { say(msg, "성별을 골라주세요.", "error"); return; }
       if (!fld) { say(msg, pick === "1" ? "지원분야를 하나 골라주세요." : "지원분야를 골라주세요.", "error"); return; }
       if (pick === "2" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
       if (pick === "vd" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
-      if (flds.indexOf("댄스") !== -1 && !file && !(mine && mine.music) && !bk.checked) {
+      if (!isEval && flds.indexOf("댄스") !== -1 && !file && !(mine && mine.music) && !bk.checked) {
         say(msg, "댄스 지원자는 음원을 올려주세요. 용량이 크면 \"음원은 실장님께 카톡으로 보낼게요\"를 체크해주세요.", "error");
         return;
       }
@@ -265,12 +286,12 @@
         return LeeshAPI.rpc("member_visit_apply", {
           p_id: who.id, p_pin: who.key, p_news: a.id, p_name: nm.value.trim(), p_gender: gender,
           p_birth: birth.value.trim() || null, p_size: size.value.trim() || null, p_field: fld,
-          p_music: m, p_note: (extra + note.value.trim()).trim() || null
+          p_music: m, p_note: (extra + note.value.trim()).trim() || null, p_class: clsv
         });
       }).then(function (res) {
         btn.disabled = false;
         if (!res.ok) { say(msg, res.error, "error"); return; }
-        say(msg, mine ? "고쳤어요." : "신청했어요! 순서와 안내는 학원에서 따로 알려드려요.", "ok");
+        say(msg, mine ? "고쳤어요." : isEval ? "월말평가 신청했어요! 순서와 안내는 학원에서 따로 알려드려요." : "신청했어요! 순서와 안내는 학원에서 따로 알려드려요.", "ok");
         want = a.id;
         setTimeout(function () { load(name); }, 1200);
       }, function () {

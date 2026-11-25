@@ -676,8 +676,11 @@
     nbox.textContent = "";
     var today = todayKst(), month = today.slice(0, 7);
     var plans = (res.visits || []).map(function (a) {
-      return { date: a.date, kind: "내방 오디션", title: (a.company ? a.company + " " : "") + a.title, href: "audition.html",
-               closed: (a.deadline || prevDay(a.date)) < today };
+      // 신청 마감 = 마감일(없으면 오디션 전날) 오후 6시 (원장님 2026-11-25), 월말평가 신청서도 같은 칸
+      var close = a.deadline || prevDay(a.date), ev = /월말\s*평가/.test(a.title);
+      return { date: a.date, kind: ev ? "월말평가" : "내방 오디션", visit: true, title: ev ? a.title : (a.company ? a.company + " " : "") + a.title,
+               href: ev ? "apply.html" : "audition.html",
+               closed: close < today || (close === today && new Date(Date.now() + 9 * 3600000).getUTCHours() >= 18) };
     }).concat((res.notices || []).filter(function (n) { return n.start; }).map(function (n) {
       return { date: n.start, end: n.end, kind: /월말\s*평가/.test(n.title) ? "월말평가" : /휴원|휴강|쉬는/.test(n.title) ? "휴원" : "학원 일정", notice: n };
     })).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
@@ -713,11 +716,11 @@
           var a = el("a", "fold__planlink", p.title + " →");
           a.href = p.href;
           row.appendChild(a);
-          if (form && p.kind === "내방 오디션") {
+          if (form && p.visit) {
             var line = el("p", "fold__planapply");
-            if (p.closed) line.appendChild(el("span", "sys-note", "신청 마감 (오디션 하루 전까지 받아요)"));
+            if (p.closed) line.appendChild(el("span", "sys-note", "신청 마감 (전날 오후 6시까지 받아요)"));
             else {
-              var ap = el("a", "sys-link", "이 오디션 신청하기 →");
+              var ap = el("a", "sys-link", p.kind === "월말평가" ? "월말평가 신청하기 →" : "이 오디션 신청하기 →");
               ap.href = form;
               line.appendChild(ap);
             }

@@ -1372,10 +1372,10 @@
       var ul = el("ul", "tch__songs");
       r.items.forEach(function (v) {
         var li = el("li", v.date < today ? "is-past" : null);
-        var tag = v.applied ? "신청함" : v.date < today ? "지남" : v.deadline < today ? "마감" : "미신청";
+        var tag = v.applied ? "신청함" : v.date < today ? "지남" : v.closed ? "마감" : "미신청";
         li.appendChild(el("span", "fold__tag" + (v.applied ? " is-done" : ""), tag));
         li.appendChild(el("b", null, " " + dayLabel(v.date) + " "));
-        li.appendChild(document.createTextNode(v.company || "내방 오디션"));
+        li.appendChild(document.createTextNode(v.form === "eval" ? (v.title || "월말평가") : (v.company || "내방 오디션")));
         if (v.applied && v.field) li.appendChild(el("small", null, " (" + v.field + ")"));
         if (v.applied && v.note) li.appendChild(el("small", "tch__visitnote", v.note));
         ul.appendChild(li);

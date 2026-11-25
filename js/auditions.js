@@ -13,6 +13,11 @@
     if (text != null) n.textContent = text;
     return n;
   }
+  function applyOpen(p, today) {
+    var close = p.deadline || dayBefore(p.event_date);
+    if (!close) return true;
+    return close > today || (close === today && new Date(Date.now() + 9 * 3600000).getUTCHours() < 18);
+  }
   function todayKst() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
   function days(from, to) { return Math.round((new Date(to + "T00:00:00Z") - new Date(from + "T00:00:00Z")) / 86400000); }
   function label(d) {
@@ -67,7 +72,7 @@
       img.loading = "lazy";
       body.appendChild(img);
     }
-    if (p.kind === "내방" && (p.deadline || dayBefore(p.event_date) || today) >= today) { // 신청서는 마감일, 없으면 오디션 하루 전까지
+    if (p.kind === "내방" && applyOpen(p, today)) { // 신청서는 마감일(없으면 오디션 전날) 오후 6시까지 (원장님 2026-11-25)
       var ap = el("a", "pill-btn news__applybtn", "이 오디션 신청하기");
       ap.href = "apply.html?news=" + p.id;
       body.appendChild(ap);
@@ -171,7 +176,9 @@
   LeeshAPI.request("/rest/v1/audition_news?select=*&published=eq.true&order=event_date.desc.nullslast,created_at.desc", {
     headers: LeeshAPI.headers()
   }).then(function (res) {
-    if (!res.ok || !Array.isArray(res.data) || !res.data.length) return;
+    if (!res.ok || !Array.isArray(res.data)) return;
+    res.data = res.data.filter(function (p) { return p.form !== "eval"; }); // 월말평가 신청서는 학생 화면에만
+    if (!res.data.length) return;
     var today = todayKst();
     // 이번 달 오디션 (원장님 2026-11-06): 내방 · 기획사 오디션 중 일정이나 마감이 이번 달인 것
     // 순서 (원장님 2026-11-10 "마감 가장 빠른 것부터 위에서 아래로"): 아직 안 끝난 것을 마감일(없으면 오디션 날) 빠른 순, 끝난 것은 맨 아래 흐리게

@@ -7,7 +7,7 @@
     if (text != null) n.textContent = text;
     return n;
   }
-  // 접수는 담당쌤 카톡 대신 홈페이지 신청서로, 마감은 오디션 하루 전 (원장님 2026-11-06)
+  // 접수는 담당쌤 카톡 대신 홈페이지 신청서로, 마감은 오디션 전날 오후 6시 (원장님 2026-11-06 → 2026-11-25)
   var RULES = [
     ["접수 후 선곡 및 특이사항 변경 불가하니 신중하게 지원해 주세요!", "(부득이한 경우는 담당쌤께 말씀해 주세요!)"],
     ["특이사항 요청 시 지원할 때 말씀해 주세요!", "(ex. 학교 수업 때문에 7시 이후 순서로 잡아주세요 · ex. 지방이라 버스를 타야 해서 6시에 시작하게 해주세요 등)"],
@@ -23,8 +23,8 @@
     var how = el("ul", "apply__how");
     var li = el("li");
     li.appendChild(document.createTextNode("접수 기간 : "));
-    li.appendChild(el("b", "apply__red", "오디션 하루 전"));
-    li.appendChild(document.createTextNode("까지 홈페이지 신청서로 보내기! (오디션 당일에는 신청서가 닫혀요)"));
+    li.appendChild(el("b", "apply__red", "오디션 전날 오후 6시"));
+    li.appendChild(document.createTextNode("까지 홈페이지 신청서로 보내기! (6시가 지나면 신청서가 닫혀요)"));
     how.appendChild(li);
     li = el("li");
     li.appendChild(document.createTextNode("오디션 일정은 인스타 참고! :) 팔로우하여 일정 확인해주세요! "));

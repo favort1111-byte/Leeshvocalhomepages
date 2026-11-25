@@ -15,7 +15,7 @@
     });
   }
   Promise.all([
-    newest("/rest/v1/audition_news?select=created_at&published=eq.true&order=created_at.desc&limit=1", "created_at"),
+    newest("/rest/v1/audition_news?select=created_at&published=eq.true&form=is.null&order=created_at.desc&limit=1", "created_at"),
     newest("/rest/v1/ig_posts?select=posted_at&kind=in.(%EB%82%B4%EB%B0%A9,%EC%98%A4%EB%94%94%EC%85%98,%ED%95%A9%EA%B2%A9)&order=posted_at.desc&limit=1", "posted_at")
   ]).then(function (t) {
     var at = Math.max(t[0], t[1]);

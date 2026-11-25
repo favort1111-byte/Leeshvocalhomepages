@@ -1507,7 +1507,7 @@
         top.appendChild(el("span", "adm__badge adm__badge--kind", NEWS_KIND[p.kind]));
         top.appendChild(el("strong", null, (p.company ? p.company + " · " : "") + p.title));
         if (p.event_date) top.appendChild(el("span", "sys-note", p.event_date));
-        if (p.kind === "내방" && p.pick && p.pick !== "1") top.appendChild(el("span", "sys-note", p.pick === "vd" ? "2개까지 (보컬 · 랩 · 댄스)" : "2개까지"));
+        if (p.kind === "내방" && p.pick && p.pick !== "1") top.appendChild(el("span", "sys-note", p.pick === "vd" ? "2개까지 (보컬 · 랩 · 댄스)" : p.pick === "all" ? "자유롭게 (보컬 · 랩 · 댄스)" : "2개까지"));
         if (!p.published) top.appendChild(el("span", "sys-note", "숨김"));
         li.appendChild(top);
         if (p.body) li.appendChild(el("p", "adm__quote", p.body.length > 120 ? p.body.slice(0, 120) + "…" : p.body));
@@ -1812,6 +1812,7 @@
           return dd;
         }
         line("이름", a.name);
+        if (a.class || a.teacher) { line("담임선생님", a.teacher); line("클래스", a.class); } // 월말평가 신청서 (2026-11-25)
         line("성별", a.gender);
         line("출생년도/나이", a.birth);
         line("키/몸무게", a.body_size);
@@ -1861,10 +1862,11 @@
   $("#visitPick").addEventListener("change", loadVisitList);
   $("#visitCopy").addEventListener("click", function () {
     if (!visitRows.length) { msg($("#visitMsg"), "복사할 신청이 없어요.", "error"); return; }
-    var lines = [["순번", "이름", "성별", "출생년도/나이", "키/몸무게", "지원분야", "특이사항", "댄스음원", "신청 시각"].join("\t")];
+    var ev = visitRows.some(function (a) { return a.class || a.teacher; }); // 월말평가 = 담임선생님 · 클래스 칸
+    var lines = [["순번", "이름"].concat(ev ? ["담임선생님", "클래스"] : [], ["성별", "출생년도/나이", "키/몸무게", "지원분야", ev ? "비고" : "특이사항", "댄스음원", "신청 시각"]).join("\t")];
     visitRows.forEach(function (a, i) {
-      lines.push([i + 1, a.name, a.gender || "", a.birth || "", a.body_size || "", a.field || "",
-        String(a.note || "").replace(/\s+/g, " "), a.music ? "있음" : "", stamp(a.created_at)].join("\t"));
+      lines.push([i + 1, a.name].concat(ev ? [a.teacher || "", a.class || ""] : [], [a.gender || "", a.birth || "", a.body_size || "", a.field || "",
+        String(a.note || "").replace(/\s+/g, " "), a.music ? "있음" : "", stamp(a.created_at)]).join("\t"));
     });
     copyText(lines.join("\n"), $("#visitCopy"));
   });
