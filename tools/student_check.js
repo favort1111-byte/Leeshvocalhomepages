@@ -350,6 +350,14 @@ async function passConsent(page, wait) {
     });
     const picked = await page.locator('.apply__picked').first().textContent().catch(() => '');
     check('1개 고르면 "이대로 신청할 수 있어요"', /1개 골랐어요/.test(picked), picked);
+    // 보컬 · 랩은 같이 못 고름 (vd, 원장님 2026-11-25): 랩을 누르면 보컬이 꺼지고, 다시 보컬만으로
+    const swap = await page.evaluate(() => {
+      const v = document.querySelector('[name=field][value="보컬"]'), r = document.querySelector('[name=field][value="랩"]');
+      r.click(); const a = (v.checked ? 'V' : '') + (r.checked ? 'R' : '');
+      v.click(); const b = (v.checked ? 'V' : '') + (r.checked ? 'R' : '');
+      return a + '/' + b;
+    });
+    check('보컬 · 랩 같이 고르면 하나가 꺼짐 (레토피아 · 디네이션)', swap === 'R/V', swap);
     await page.locator('form button[type=submit]').first().click(); await wait(1200);
     const msg = await page.evaluate(() => Array.from(document.querySelectorAll('.sys-msg')).map((m) => m.textContent).filter(Boolean).join(' | '));
     check('1개만 골라도 신청 완료', /신청했어요/.test(msg) && !/골라주세요|2개/.test(msg), msg.slice(0, 50));

@@ -174,15 +174,21 @@
     } else {
       // 원장님 2026-11-18 "꼭 2개를 골라야 신청된다고 함" → 실제로는 1개만 골라도 되는데(11/14부터) 작은 회색 글씨라 안 보였음
       // → 초록 상자로 크게 + 고를 때마다 "1개 골랐어요 · 이대로 신청돼요" 한 줄
+      // vd = 보컬 또는 랩 + 댄스: 보컬과 랩은 같이 못 고름 (원장님 2026-11-25, 레토피아 · 디네이션)
       fs.appendChild(el("p", "apply__pick", pick === "vd"
-        ? "✅ 1개만 골라도 신청돼요 · 최대 2개까지 (보컬 · 랩 · 댄스 중)"
+        ? "✅ 1개만 골라도 신청돼요 · 최대 2개까지 (보컬 또는 랩 + 댄스)"
         : "✅ 1개만 골라도 신청돼요 · 최대 2개까지"));
+      if (pick === "vd") fs.appendChild(el("p", "apply__only", "⚠️ 이 오디션은 보컬과 랩을 같이 고를 수 없어요. 보컬 + 댄스 또는 랩 + 댄스로 골라 주세요."));
       var cks = checks("field", pick === "vd" ? ["보컬", "랩", "댄스"] : FIELDS, mine ? mine.field.split(" + ") : []);
       fs.appendChild(cks);
       var cnt = el("p", "apply__picked");
       cnt.setAttribute("role", "status");
       fs.appendChild(cnt);
-      var count = function () {
+      var count = function (e) {
+        if (pick === "vd") { // 보컬을 고르면 랩이 꺼지고, 랩을 고르면 보컬이 꺼짐
+          var v = cks.querySelector('[value="보컬"]'), r = cks.querySelector('[value="랩"]');
+          if (v.checked && r.checked) (e && e.target === r ? v : r).checked = false;
+        }
         var n = cks.querySelectorAll("input:checked").length;
         cnt.textContent = n === 0 ? "아직 안 골랐어요" : n === 1 ? "1개 골랐어요 · 이대로 신청할 수 있어요" : n === 2 ? "2개 골랐어요 · 신청할 수 있어요" : "2개까지만 고를 수 있어요 · 하나를 빼 주세요";
         cnt.classList.toggle("is-over", n > 2);
@@ -267,6 +273,7 @@
       if (!fld) { say(msg, pick === "1" ? "지원분야를 하나 골라주세요." : "지원분야를 골라주세요.", "error"); return; }
       if (pick === "2" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
       if (pick === "vd" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
+      if (pick === "vd" && flds.indexOf("보컬") !== -1 && flds.indexOf("랩") !== -1) { say(msg, "이 오디션은 보컬과 랩을 같이 고를 수 없어요. 보컬 + 댄스 또는 랩 + 댄스로 골라 주세요.", "error"); return; }
       if (!isEval && flds.indexOf("댄스") !== -1 && !file && !(mine && mine.music) && !bk.checked) {
         say(msg, "댄스 지원자는 음원을 올려주세요. 용량이 크면 \"음원은 실장님께 카톡으로 보낼게요\"를 체크해주세요.", "error");
         return;

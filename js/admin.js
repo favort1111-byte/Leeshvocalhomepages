@@ -1510,7 +1510,7 @@
         top.appendChild(el("span", "adm__badge adm__badge--kind", NEWS_KIND[p.kind]));
         top.appendChild(el("strong", null, (p.company ? p.company + " · " : "") + p.title));
         if (p.event_date) top.appendChild(el("span", "sys-note", p.event_date));
-        if (p.kind === "내방" && p.pick && p.pick !== "1") top.appendChild(el("span", "sys-note", p.pick === "vd" ? "2개까지 (보컬 · 랩 · 댄스)" : p.pick === "all" ? "자유롭게 (보컬 · 랩 · 댄스)" : "2개까지"));
+        if (p.kind === "내방" && p.pick && p.pick !== "1") top.appendChild(el("span", "sys-note", p.pick === "vd" ? "보컬 또는 랩 + 댄스 (보컬 · 랩 같이 안 됨)" : p.pick === "all" ? "자유롭게 (보컬 · 랩 · 댄스)" : "2개까지"));
         if (p.kind === "내방" && p.only_gender) top.appendChild(el("span", "sys-note", p.only_gender + "학생만"));
         if (!p.published) top.appendChild(el("span", "sys-note", "숨김"));
         li.appendChild(top);

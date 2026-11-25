@@ -9,7 +9,7 @@
   cfg.lessonRooms = true; // 레슨실 (실제와 같이 선생님은 보기만, 관리자 "선생님 예약 열기"를 누르면 체험에서도 열림)
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 40; // bump when the demo defaults change
+  var VERSION = 41; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -1094,6 +1094,7 @@
       if (pk === "all" && !(fl.length >= 1 && fl.every(function (x) { return ["보컬", "랩", "댄스"].indexOf(x) !== -1; }))) return fail("지원분야는 보컬 · 랩 · 댄스 중에서 골라주세요.");
       if (n.form === "eval" && ["오디션 심화반", "오디션반", "입시반", "전문반", "취미반"].indexOf(a.p_class) === -1) return fail("클래스를 골라주세요.");
       if (pk === "vd" && !(fl.length >= 1 && fl.length <= 2 && fl.every(function (x) { return ["보컬", "랩", "댄스"].indexOf(x) !== -1; }))) return fail("이 오디션은 보컬 · 랩 · 댄스 중에서 1~2개를 골라주세요.");
+      if (pk === "vd" && fl.indexOf("보컬") !== -1 && fl.indexOf("랩") !== -1) return fail("이 오디션은 보컬과 랩을 같이 고를 수 없어요. (보컬 + 댄스 · 랩 + 댄스 · 하나만)");
       var row = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0];
       if (!row) { row = { id: ++db.next, news_id: n.id, member_id: who.id, created_at: new Date().toISOString() }; db.visit_applications.push(row); }
       Object.assign(row, { audition: (n.company ? n.company + " " : "") + n.title, name: a.p_name, gender: a.p_gender, birth: a.p_birth,
