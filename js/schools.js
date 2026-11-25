@@ -201,11 +201,18 @@
     app.appendChild(res);
   }
 
+  var SCHOOL_LOGOS = { "경희대학교": "khu", "고양예술고등학교": "goyangarts", "동서울대학교": "dsu", "동아방송예술대학교": "dima",
+    "리라아트고등학교": "lila", "명지전문대학교": "mjc", "서경대학교": "skuniv", "서울예술고등학교": "seoularts",
+    "서울예술대학교": "seoulinst", "한림예술고등학교": "hanlim", "한림연예예술고등학교": "hanlim", "한양대학교": "hyu",
+    "한양대학교(서울)": "hyu", "한양대학교ERICA": "hyu", "한양대학교미래인재교육원": "hyu", "한양여자대학교": "hywu",
+    "명지전문대학": "mjc", "경희대학교국제캠퍼스": "khu", "서경대학교예술교육원": "skuniv" };
   function card(name, majors) {
     // 같은 학교의 여러 줄 중 비어 있지 않은 값 (시트에 시군구 · 설립이 한 줄에만 적힌 학교가 있어서)
     function any(k) { for (var i = 0; i < majors.length; i++) if (majors[i][k]) return majors[i][k]; return ""; }
     var first = { found: any("found"), sub: any("sub"), sido: any("sido"), sigungu: any("sigungu") }, li = el("li", "sch-card");
     var top = el("div", "sch-card__top");
+    var logo = SCHOOL_LOGOS[String(name).replace(/\s+/g, "")];  // 학교 로고 (원장님 2026-11-25, assets/img/logos)
+    if (logo) { var im = el("img", "sch-card__logo"); im.src = "assets/img/logos/" + logo + ".webp"; im.alt = ""; im.loading = "lazy"; top.appendChild(im); }
     top.appendChild(el("h3", "sch-card__name", name));
     if (first.found) top.appendChild(el("span", "sch-tag", first.found));
     if (first.sub) top.appendChild(el("span", "sch-tag sch-tag--sub", first.sub));

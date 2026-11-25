@@ -112,6 +112,18 @@ LOGOS = {
     "mnh": ["MNH"], "inkode": ["인코드", "INKODE"], "s2": ["S2"], "hihat": ["하이햇", "하이헷"], "dnation": ["디네이션"],
     "morevision": ["모어비전"], "atrp": ["ATRP"], "titan": ["타이탄콘텐츠"], "shofar": ["쇼파르"], "fnf": ["F&F"],
     "thelivelabel": ["더라이브레이블"], "init": ["이닛"], "newkit": ["NEWKiT STUDIO", "뉴킷스튜디오"],
+    # 2026-11-25 둘째 묶음 (로컬 세션이 모음): 기획사 · 그룹 · 방송 · 학교
+    "label131": ["131LABEL"], "e143": ["143"], "blade": ["BLADE"], "cjenm": ["CJ ENM"], "dod": ["DOD"],
+    "rbw": ["RBW"], "nch": ["nCH"], "withhc": ["withHC"], "greatm": ["그레이트엠"], "nouer": ["누아", "NOUER"],
+    "deepstudio": ["딥스튜디오"], "letopia": ["레토피아살롱"], "mystic": ["미스틱스토리", "미스틱"], "vine": ["바인"],
+    "beat": ["비트인터렉티브"], "vill": ["빌"], "starship": ["스타쉽"], "entcup": ["컵", "엔터테인먼트컵"],
+    "allart": ["올라트"], "woollim": ["울림"], "wolfburn": ["울프번"], "warner": ["워너뮤직", "워너뮤직코리아"],
+    "eden": ["이든"], "justfocus": ["저스트포커스"], "hooners": ["후너스"],
+    "triples": ["tripleS"], "meovv": ["MEOVV"],
+    "mbc": ["MBC"], "jtbc": ["JTBC"], "sbs": ["SBS"], "mnet": ["Mnet"], "tvchosun": ["TV조선", "〈내일은 미스트롯〉"], "pockettv": ["포켓TV"],
+    "khu": ["경희대학교"], "goyangarts": ["고양예술고등학교"], "dsu": ["동서울대학교"], "dima": ["동아방송예술대학교"],
+    "lila": ["리라아트고등학교", "리라아트고"], "mjc": ["명지전문대학교"], "skuniv": ["서경대학교"], "seoularts": ["서울예술고등학교"],
+    "seoulinst": ["서울예술대학교"], "hanlim": ["한림예술고등학교"], "hyu": ["한양대학교"], "hywu": ["한양여자대학교"],
 }
 
 
@@ -125,17 +137,26 @@ _LOGO_OF = {_norm(a): slug for slug, names in LOGOS.items() for a in names}
 
 
 # 흰 글씨 로고 (투명 바탕) → 어두운 칸에. 드라이브의 "WM엔터테인먼트.png"는 다른 회사(STRANGE LAB) 로고라 안 씀 (2026-11-25)
-LOGO_DARK = {"abyss", "attrakt", "cube", "highup", "modhaus"}
+LOGO_DARK = {"abyss", "attrakt", "cube", "highup", "modhaus", "mnet", "greatm", "vill", "entcup", "woollim", "eden"}
 
 
 def logo_cls(slug):
     return " is-dark" if slug in LOGO_DARK else ""
 
 
+def _logo_img(name, cls):
+    f = logo_of(name)
+    return f'<img class="{cls}{logo_cls(f)}" src="assets/img/logos/{f}.webp" alt="" loading="lazy">' if f else ""
+
+
 def logo_of(name):
     """회사 이름 → 로고 파일 이름 (없으면 "")."""
     import re, os
-    keys = [_norm(name)] + [_norm(m) for m in re.findall(r"\((.*?)\)", name)]
+    bare = re.sub(r"[〈<].*?[〉>]", "", name)  # "JTBC 〈날아라 병아리〉" → "JTBC"
+    keys = [_norm(name), _norm(bare)] + [_norm(m) for m in re.findall(r"\((.*?)\)", name)]
+    m = re.match(r"\S+?(학교|고등학교|대학교)", name)  # "서울예술대학교 1차 합격 3명" → 학교 이름
+    if m: keys.append(_norm(m.group(0)))
+    if bare.split(): keys.append(_norm(bare.split()[0]))  # "JTBC 신규 여성 보컬 프로그램" → JTBC
     for k in keys:
         slug = _LOGO_OF.get(k)
         if slug and os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "img", "logos", slug + ".webp")):
@@ -473,7 +494,7 @@ def care_section():
 
 
 def results_section():
-    debuts = "".join(f'<li class="debut"><b>{g}</b>{f"<span>{n}</span>" if n else ""}<small>{t}</small></li>'
+    debuts = "".join(f'<li class="debut">{_logo_img(g, "debut__logo")}<b>{g}</b>{f"<span>{n}</span>" if n else ""}<small>{t}</small></li>'
                       for g, n, t in DEBUTS)
 
     def cards(rows):
@@ -507,7 +528,11 @@ def results_section():
 
 def school_pass():
     """입시 합격 결과 카드 (about 합격 소식 · school 페이지 맨 위가 같이 씀, js/passboard.js가 새 입시 합격을 더함)."""
-    schools = "".join(f'<div class="card__col"><h4>{t}</h4>{_ul(items)}</div>' for t, items in SCHOOLS)
+    def li(x):
+        f = logo_of(x)
+        return (f'<li class="school--logo"><img class="school__logo{logo_cls(f)}" src="assets/img/logos/{f}.webp" alt="" loading="lazy"><span>{x}</span></li>'
+                if f else f"<li>{x}</li>")
+    schools = "".join(f'<div class="card__col"><h4>{t}</h4><ul>{"".join(li(x) for x in items)}</ul></div>' for t, items in SCHOOLS)
     return f'    <article class="card card--paper" id="passSchools"><div class="card__cols">{schools}</div></article>\n'
 
 
