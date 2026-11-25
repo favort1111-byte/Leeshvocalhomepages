@@ -1124,6 +1124,8 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .apply__set legend{padding:0;margin-bottom:2px;font-size:14px;}
 .apply__help{display:block;font-size:12.5px;line-height:1.5;color:#7A6656;}
 .apply__pick{margin:0 0 8px;padding:9px 12px;border-radius:10px;background:#E6F3EA;border:1.5px solid #2E6B45;color:#1D4A30;font-size:14px;font-weight:700;line-height:1.5;}
+.apply__only{margin:0 0 8px;padding:9px 12px;border-radius:10px;background:#FDECEF;border:1.5px solid #B23A55;color:#7A1F33;font-size:14px;font-weight:700;line-height:1.5;}
+.apply__radios label.is-off{opacity:.4;text-decoration:line-through;cursor:not-allowed;}
 .apply__picked{margin:8px 0 0;font-size:13px;line-height:1.5;color:#7A6656;}
 .apply__picked.is-ok{color:#2E6B45;font-weight:700;}
 .apply__picked.is-over{color:#B3261E;font-weight:700;}

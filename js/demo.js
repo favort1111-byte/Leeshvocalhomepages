@@ -9,7 +9,7 @@
   cfg.lessonRooms = true; // 레슨실 (실제와 같이 선생님은 보기만, 관리자 "선생님 예약 열기"를 누르면 체험에서도 열림)
   cfg.demoImages = true; // 내 폴더 shows the sample report pages even without a (fake) Kakao sign-in
   var KEY = "leesh_demo_db";
-  var VERSION = 39; // bump when the demo defaults change
+  var VERSION = 40; // bump when the demo defaults change
   var demoTg = { bot: null, chats: 0, bookings: false }; // 텔레그램 알림 (체험 모드, 새로고침하면 처음으로)
   var WD = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -153,7 +153,7 @@
         { id: 41, kind: "내방", company: "체험 엔터테인먼트", title: "다음 달 학원 내방 오디션", event_date: addDays(t, 18), deadline: addDays(t, 12),
           body: "일시 : 다음 달 금요일 오후 6시30분\n장소 : 이송희보컬레슨 C홀\n지원자격 : 남녀 04~15년생\n지원분야 : 보컬, 랩, 댄스, 라이브퍼포먼스, 연기 중 택 1\n\n체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: 44, kind: "내방", pick: "vd", company: "샘플 뮤직", title: "학원 내방 오디션", event_date: addDays(t, 2), deadline: null,
+        { id: 44, kind: "내방", pick: "vd", only_gender: "여", company: "샘플 뮤직", title: "학원 내방 오디션", event_date: addDays(t, 2), deadline: null,
           body: "체험 모드 예시 글이에요.", link: null, image: null, published: true,
           created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: 46, kind: "내방", pick: "all", form: "eval", company: "월말평가", title: "이번 달 월말평가 1부", event_date: addDays(t, 6), deadline: null,
@@ -1078,7 +1078,7 @@
         return n.kind === "내방" && n.published && visitOpen(n);
       }).map(function (n) {
         var mine = db.visit_applications.filter(function (x) { return x.news_id === n.id && x.member_id === who.id; })[0] || null;
-        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), body: n.body, image: n.image, pick: n.pick || "1", form: n.form || null, mine: mine };
+        return { id: n.id, company: n.company, title: n.title, date: n.event_date, deadline: n.deadline || (n.event_date ? addDays(n.event_date, -1) : null), body: n.body, image: n.image, pick: n.pick || "1", form: n.form || null, only_gender: n.only_gender || null, mine: mine };
       }) };
     },
     member_visit_apply: function (a, uid) {
@@ -1087,6 +1087,7 @@
       var n = db.audition_news.filter(function (x) { return x.id === a.p_news && x.kind === "내방"; })[0];
       if (!n) return fail("신청할 오디션을 찾을 수 없어요.");
       if (!visitOpen(n)) return fail("신청이 마감됐어요 (전날 오후 6시까지). 학원(실장님)에 연락해주세요.");
+      if (n.only_gender && a.p_gender !== n.only_gender) return fail("이 오디션은 " + n.only_gender + "학생만 신청할 수 있어요.");
       if (!a.p_field) return fail("지원분야를 골라주세요.");
       var fl = String(a.p_field).split(" + "), pk = n.pick || "1";
       if (pk === "1" && fl.length !== 1) return fail("지원분야는 하나만 골라주세요.");

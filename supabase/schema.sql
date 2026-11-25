@@ -12298,3 +12298,101 @@ begin
     where n.kind = '내방' and n.published and n.event_date is not null
       and date_trunc('month', n.event_date) = date_trunc('month', d)), '[]'::jsonb));
 end $function$;
+-- ===== leesh_visit_only_gender (2026-11-25) =====
+-- 내방 오디션 성별 제한 (원장님 2026-11-25 "디네이션은 여학생만, 남학생은 신청을 막아줘")
+alter table public.audition_news add column if not exists only_gender text;
+alter table public.audition_news drop constraint if exists audition_news_only_gender;
+alter table public.audition_news add constraint audition_news_only_gender check (only_gender is null or only_gender in ('남', '여'));
+
+create or replace function public.member_visit_open(p_id text, p_pin text)
+ returns jsonb language plpgsql security definer set search_path to '' as $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  v_teacher text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select substring(m.memo from '담당\s*([^\s·,]+)') into v_teacher from public.members m where m.id = mid;
+  return jsonb_build_object('ok', true, 'name', who ->> 'name', 'teacher', v_teacher,
+    'last', (select jsonb_build_object('name', a.name, 'gender', a.gender, 'birth', a.birth, 'body_size', a.body_size, 'field', a.field, 'class', a.class)
+             from public.visit_applications a where a.member_id = mid order by a.updated_at desc nulls last, a.id desc limit 1),
+    'auditions', coalesce((
+    select jsonb_agg(jsonb_build_object('id', n.id, 'company', n.company, 'title', n.title, 'date', n.event_date,
+             'deadline', coalesce(n.deadline, n.event_date - 1), 'close_at', private.visit_close(n), 'form', n.form,
+             'body', n.body, 'image', n.image, 'pick', coalesce(n.pick, '1'), 'only_gender', n.only_gender,
+             'mine', (select to_jsonb(a) - 'member_id' from public.visit_applications a where a.news_id = n.id and a.member_id = mid))
+             order by n.event_date nulls last, n.id)
+    from public.audition_news n
+    where n.kind = '내방' and n.published and coalesce(private.visit_close(n) > now(), true)
+  ), '[]'::jsonb));
+end $function$;
+
+create or replace function public.member_visit_apply(p_id text, p_pin text, p_news bigint, p_name text, p_gender text default null,
+  p_birth text default null, p_size text default null, p_field text default null, p_music jsonb default null, p_note text default null,
+  p_class text default null)
+ returns jsonb language plpgsql security definer set search_path to '' as $function$
+declare
+  is_new boolean;
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text;
+  n public.audition_news;
+  v_name text := trim(coalesce(p_name, ''));
+  app_id bigint;
+  flds text[];
+  v_field text;
+  v_teacher text;
+  v_class text := nullif(trim(coalesce(p_class, '')), '');
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  select * into n from public.audition_news where id = p_news and kind = '내방' and published;
+  if n.id is null then return private.fail('신청할 오디션을 찾을 수 없어요.'); end if;
+  -- 마감 = 전날 오후 6시 (원장님 2026-11-25)
+  if private.visit_close(n) is not null and now() >= private.visit_close(n) then
+    return private.fail('신청이 마감됐어요 (전날 오후 6시까지). 학원에 문의해주세요.');
+  end if;
+  if v_name = '' or char_length(v_name) > 30 then return private.fail('이름을 적어주세요.'); end if;
+  if p_gender is not null and p_gender not in ('남', '여') then return private.fail('성별을 골라주세요.'); end if;
+  -- 성별 제한 (디네이션 여학생만, 원장님 2026-11-25)
+  if n.only_gender is not null and p_gender is distinct from n.only_gender then
+    return private.fail('이 오디션은 ' || n.only_gender || '학생만 신청할 수 있어요.');
+  end if;
+  flds := array(select distinct trim(x) from unnest(string_to_array(coalesce(p_field, ''), '+')) x where trim(x) <> '');
+  if cardinality(flds) = 0 or not flds <@ array['보컬', '랩', '댄스', '라이브퍼포먼스', '연기'] then return private.fail('지원분야를 골라주세요.'); end if;
+  if coalesce(n.pick, '1') = '1' and cardinality(flds) <> 1 then return private.fail('지원분야는 하나만 골라주세요.'); end if;
+  if n.pick = '2' and cardinality(flds) > 2 then return private.fail('지원분야는 2개까지 고를 수 있어요.'); end if;
+  if n.pick = 'vd' and not (cardinality(flds) between 1 and 2 and flds <@ array['보컬', '랩', '댄스']) then
+    return private.fail('이 오디션은 보컬 · 랩 · 댄스 중에서 1~2개를 골라주세요.');
+  end if;
+  -- 'all' = 보컬 · 랩 · 댄스 중 자유롭게 (월말평가, 원장님 2026-11-25)
+  if n.pick = 'all' and not flds <@ array['보컬', '랩', '댄스'] then
+    return private.fail('보컬 · 랩 · 댄스 중에서 골라주세요.');
+  end if;
+  if n.form = 'eval' then
+    if v_class is null or v_class not in ('오디션 심화반', '오디션반', '입시반', '전문반', '취미반') then return private.fail('클래스를 골라주세요.'); end if;
+  else
+    v_class := null;
+  end if;
+  v_field := array_to_string(array(select f from unnest(array['보컬', '랩', '댄스', '라이브퍼포먼스', '연기']) f where f = any(flds)), ' + ');
+  if char_length(coalesce(p_birth, '')) > 30 or char_length(coalesce(p_size, '')) > 30 or char_length(coalesce(p_note, '')) > 1000 then
+    return private.fail('글이 너무 길어요.');
+  end if;
+  if p_music is not null and coalesce(p_music ->> 'path', '') not like mid || '/%' then return private.fail('음원을 다시 올려주세요.'); end if;
+  select left(substring(m.memo from '담당\s*([^\s·,]+)'), 30) into v_teacher from public.members m where m.id = mid;
+  insert into public.visit_applications (news_id, audition, member_id, name, gender, birth, body_size, field, music, note, teacher, class)
+  values (n.id, left(coalesce(n.company || ' ', '') || n.title, 120), mid, v_name, p_gender,
+          nullif(trim(coalesce(p_birth, '')), ''), nullif(trim(coalesce(p_size, '')), ''), v_field, p_music,
+          nullif(trim(coalesce(p_note, '')), ''), v_teacher, v_class)
+  on conflict (news_id, member_id) do update set name = excluded.name, gender = excluded.gender, birth = excluded.birth,
+    body_size = excluded.body_size, field = excluded.field, music = coalesce(excluded.music, public.visit_applications.music),
+    note = excluded.note, teacher = excluded.teacher, class = excluded.class, updated_at = now()
+  returning id, (xmax = 0) into app_id, is_new;
+  if is_new then perform private.notify((case when n.form = 'eval' then '📝 월말평가 신청: ' else '🎤 내방 오디션 신청: ' end)
+    || v_name || ' · ' || v_field || chr(10) || coalesce(n.company || ' ', '') || n.title); end if;
+  return jsonb_build_object('ok', true, 'id', app_id, 'new', is_new);
+end $function$;
+revoke execute on function public.member_visit_apply(text, text, bigint, text, text, text, text, text, jsonb, text, text) from public;
+grant execute on function public.member_visit_apply(text, text, bigint, text, text, text, text, text, jsonb, text, text) to anon, authenticated;
+
+update public.audition_news set only_gender = '여' where id = 13794;

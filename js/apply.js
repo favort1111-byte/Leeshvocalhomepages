@@ -152,7 +152,10 @@
     }
     var g = el("fieldset", "apply__set");
     g.appendChild(el("legend", null, "성별"));
-    g.appendChild(radios("gender", ["남", "여"], (mine || last || {}).gender));
+    var only = a.only_gender || null; // 여학생만 · 남학생만 (원장님 2026-11-25, 서버도 막음)
+    if (only) g.appendChild(el("p", "apply__only", (only === "여" ? "👩 " : "👦 ") + "이 오디션은 " + only + "학생만 신청할 수 있어요."));
+    g.appendChild(radios("gender", ["남", "여"], only || (mine || last || {}).gender));
+    if (only) g.querySelectorAll("[name=gender]").forEach(function (r) { if (r.value !== only) { r.disabled = true; r.parentNode.classList.add("is-off"); } });
     f.appendChild(g);
     var birth = el("input"); birth.name = "birth"; birth.maxLength = 30; birth.placeholder = "예) 10년/17살"; birth.value = (mine || last || {}).birth || "";
     f.appendChild(field(isEval ? "나이 (년생)" : "출생년도/나이", birth, "ex) 10년/17살"));
@@ -260,6 +263,7 @@
       var clsv = isEval ? picked(f, "cls") : null;
       if (isEval && !clsv) { say(msg, "클래스를 골라주세요.", "error"); return; }
       if (!gender) { say(msg, "성별을 골라주세요.", "error"); return; }
+      if (only && gender !== only) { say(msg, "이 오디션은 " + only + "학생만 신청할 수 있어요.", "error"); return; }
       if (!fld) { say(msg, pick === "1" ? "지원분야를 하나 골라주세요." : "지원분야를 골라주세요.", "error"); return; }
       if (pick === "2" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
       if (pick === "vd" && flds.length > 2) { say(msg, "지원분야는 2개까지 고를 수 있어요.", "error"); return; }
