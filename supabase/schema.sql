@@ -12071,3 +12071,71 @@ begin
   return jsonb_build_object('count', jsonb_array_length(rows), 'rows', rows);
 end $$;
 revoke all on function private.claude_auto_ends_report() from public, anon, authenticated;
+
+-- 오디션 후기: 공개 오디션 + 추가 곡 2칸 (원장님 2026-11-25, 마이그레이션 leesh_review_open_extra_songs)
+alter table public.audition_reviews add column if not exists song_vocal2 text, add column if not exists song_dance2 text;
+alter table public.audition_reviews drop constraint audition_reviews_kind;
+alter table public.audition_reviews add constraint audition_reviews_kind check (kind is null or kind in ('내방', '본사', '공개'));
+alter table public.audition_reviews add constraint audition_reviews_song2_len check (char_length(coalesce(song_vocal2, '')) <= 300 and char_length(coalesce(song_dance2, '')) <= 300);
+create or replace function private.review_json(r public.audition_reviews) returns jsonb language sql stable set search_path to '' as $f$
+  select jsonb_build_object('id', r.id, 'date', r.audition_date, 'company', r.company, 'kind', r.kind, 'gender', r.gender, 'birth', r.birth, 'height', r.height, 'weight', r.weight,
+    'songVocal', r.song_vocal, 'songDance', r.song_dance, 'songVocal2', r.song_vocal2, 'songDance2', r.song_dance2, 'asked', r.asked, 'tip', r.tip, 'process', r.process, 'note', r.note,
+    'at', r.created_at, 'updated', r.updated_at);
+$f$;
+CREATE OR REPLACE FUNCTION public.member_review_save(p_id text, p_pin text, p_review bigint, p_data jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  who jsonb := private.check_ready(p_id, p_pin);
+  mid text; d date; today date := private.now_kst()::date; v_id bigint; v_name text;
+  f_company text; f_gender text; f_birth text; f_height text; f_weight text; f_vocal text; f_dance text; f_asked text; f_tip text; f_process text; f_note text; f_kind text; f_vocal2 text; f_dance2 text;
+begin
+  if not (who ->> 'ok')::boolean then return who; end if;
+  mid := who ->> 'id';
+  if jsonb_typeof(p_data) <> 'object' then return private.fail('보낸 내용이 이상해요.'); end if;
+  f_gender := nullif(trim(coalesce(p_data ->> 'gender', '')), '');
+  if f_gender is null or f_gender not in ('남', '여') then return private.fail('성별을 골라주세요.'); end if;
+  f_birth := left(trim(coalesce(p_data ->> 'birth', '')), 20);
+  if f_birth !~ '\d{2}' then return private.fail('생년월일을 적어주세요. 예) 2009.03.15'); end if;
+  -- 학원 내방 / 본사 / 공개 오디션 (원장님 2026-11-18 · 공개는 2026-11-25). 예전 화면에서 보내면 비어 있을 수 있어요.
+  f_kind := nullif(trim(coalesce(p_data ->> 'kind', '')), '');
+  if f_kind is not null and f_kind not in ('내방', '본사', '공개') then return private.fail('어떤 오디션이었는지 골라주세요.'); end if;
+  f_height := nullif(left(trim(coalesce(p_data ->> 'height', '')), 20), '');
+  f_weight := nullif(left(trim(coalesce(p_data ->> 'weight', '')), 20), '');
+  f_company := left(trim(coalesce(p_data ->> 'company', '')), 60);
+  if f_company = '' then return private.fail('기획사 이름을 적어주세요.'); end if;
+  begin d := (p_data ->> 'date')::date; exception when others then return private.fail('오디션 본 날짜를 골라주세요.'); end;
+  if d is null or d > today or d < today - 730 then return private.fail('오디션 본 날짜는 오늘부터 2년 전까지로 골라주세요.'); end if;
+  f_vocal := nullif(left(trim(coalesce(p_data ->> 'songVocal', '')), 300), '');
+  f_dance := nullif(left(trim(coalesce(p_data ->> 'songDance', '')), 300), '');
+  f_vocal2 := nullif(left(trim(coalesce(p_data ->> 'songVocal2', '')), 300), '');
+  f_dance2 := nullif(left(trim(coalesce(p_data ->> 'songDance2', '')), 300), '');
+  f_asked := nullif(trim(coalesce(p_data ->> 'asked', '')), '');
+  f_tip := nullif(trim(coalesce(p_data ->> 'tip', '')), '');
+  f_process := nullif(trim(coalesce(p_data ->> 'process', '')), '');
+  f_note := nullif(trim(coalesce(p_data ->> 'note', '')), '');
+  if char_length(coalesce(f_asked, '')) > 2000 or char_length(coalesce(f_tip, '')) > 2000
+     or char_length(coalesce(f_process, '')) > 2000 or char_length(coalesce(f_note, '')) > 1000 then
+    return private.fail('글이 너무 길어요. 조금 줄여주세요.');
+  end if;
+  if coalesce(f_vocal, f_dance, f_vocal2, f_dance2, f_asked, f_tip, f_process, f_note) is null then return private.fail('준비한 곡이나 후기를 하나 이상 적어주세요.'); end if;
+  if p_review is null then
+    if (select count(*) from public.audition_reviews where member_id = mid and created_at > now() - interval '1 day') >= 10 then
+      return private.fail('하루에 10개까지 쓸 수 있어요.');
+    end if;
+    insert into public.audition_reviews (member_id, audition_date, company, kind, gender, birth, height, weight, song_vocal, song_dance, song_vocal2, song_dance2, asked, tip, process, note)
+    values (mid, d, f_company, f_kind, f_gender, f_birth, f_height, f_weight, f_vocal, f_dance, f_vocal2, f_dance2, f_asked, f_tip, f_process, f_note)
+    returning id into v_id;
+    select name into v_name from public.members where id = mid;
+    perform private.notify('📝 오디션 후기 · ' || coalesce(v_name, mid) || ' · ' || f_company || coalesce(' · ' || case f_kind when '내방' then '학원 내방 오디션' when '공개' then '공개 오디션' else '본사 오디션' end, '') || ' (' || to_char(d, 'MM/DD') || ')');
+    return jsonb_build_object('ok', true, 'id', v_id, 'new', true);
+  end if;
+  update public.audition_reviews set audition_date = d, company = f_company, kind = coalesce(f_kind, kind), gender = f_gender, birth = f_birth, height = f_height, weight = f_weight, song_vocal = f_vocal,
+    song_dance = f_dance, song_vocal2 = f_vocal2, song_dance2 = f_dance2, asked = f_asked, tip = f_tip, process = f_process, note = f_note, updated_at = now()
+  where id = p_review and member_id = mid returning id into v_id;
+  if v_id is null then return private.fail('후기를 찾을 수 없어요.'); end if;
+  return jsonb_build_object('ok', true, 'id', v_id, 'new', false);
+end $function$;

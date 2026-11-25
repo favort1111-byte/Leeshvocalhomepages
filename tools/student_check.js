@@ -11,7 +11,7 @@
     5. 예약 화면에 오전 · 오후와 고른 내용 한 줄이 보이는지
     7. 제휴 업체 탭: 신청 칸 없이 업체 홈페이지 링크 + 실장님 카톡 안내
     6. 카카오톡 안에서 열었을 때 마이크 안내
-    8. 오디션 후기 쓰기: 내방 / 본사 고르기 · 오디션 본 날짜
+    8. 오디션 후기 쓰기: 학원 내방 / 본사 / 공개 고르기 · 오디션 본 날짜 · 추가 곡 2칸
    10. 내방 오디션 신청서: 2개까지 고르는 오디션은 1개만 골라도 신청됨
    11. 연습실 예약: 밤 12시에 열릴 날(모레)을 미리 보기 — 막힌 칸만 보이고 예약은 안 됨, 12시가 되면 그날이 바로 열림
     9. 보컬 오락실: 소리 장치가 멈춘 뒤(다른 앱 · 마이크 · 아이폰 interrupted)에도 다음 게임에서 소리가 나는지
@@ -270,11 +270,13 @@ async function passConsent(page, wait) {
     await enter(page, base, wait); await passConsent(page, wait);
     await page.locator('[data-book-tab="reviews"]').click(); await wait(600);
     const card = await page.locator('#myReviews article.rv').first().innerText().catch(() => '');
-    check('내 후기 카드에 오디션 종류 · 본 날짜', /(내방|본사) 오디션/.test(card) && /오디션 본 날/.test(card), card.split('\n').slice(0, 3).join(' | '));
+    check('내 후기 카드에 오디션 종류 · 본 날짜', /(내방|본사|공개) 오디션/.test(card) && /오디션 본 날/.test(card), card.split('\n').slice(0, 3).join(' | '));
     await page.locator('#myReviews .rv__newbtn').click(); await wait(300);
     const form = page.locator('#myReviews .rv__new form');
     const st = { kinds: await form.locator('[name=rvkind]').count(), date: await form.locator('input[type=date]').inputValue() };
-    check('새 후기: 내방 / 본사 고르는 칸', st.kinds === 2, st.kinds + '개');
+    check('새 후기: 학원 내방 / 본사 / 공개 고르는 칸', st.kinds === 3, st.kinds + '개');
+    const lbl = await form.innerText();
+    check('새 후기: 추가 곡 보컬곡 · 댄스곡 칸', /추가 곡 · 보컬곡/.test(lbl) && /추가 곡 · 댄스곡/.test(lbl));
     check('새 후기: 오디션 본 날짜는 비어 있음 (직접 골라야)', st.date === '', JSON.stringify(st.date));
     check('안 고르면 보내지지 않음', !(await form.evaluate((f) => f.checkValidity())));
     check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));

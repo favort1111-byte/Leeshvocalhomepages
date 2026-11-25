@@ -1724,8 +1724,8 @@
     ["process", "진행 순서 · 상황 설명", "예) 번호표 → 5명씩 입장 → 자기소개 30초 → 노래 1분 → 춤. 심사위원 2명, 분위기 편했어요", 2000, 4],
     ["note", "특이사항", "예) 현장에서 영상 촬영함 / 다음 주에 2차 연락 준다고 함", 1000, 2]
   ];
-  // 원장님 2026-11-18: 내방 오디션인지 본사 오디션인지 고르기 + 오디션 본 날짜를 또렷하게
-  var RV_KIND = { "내방": "🏫 내방 오디션", "본사": "🏢 본사 오디션" };
+  // 원장님 2026-11-18: 오디션 종류 고르기 + 오디션 본 날짜를 또렷하게 (2026-11-25 공개 오디션 더함)
+  var RV_KIND = { "내방": "🏫 학원 내방 오디션", "본사": "🏢 본사 오디션 (기획사)", "공개": "📣 공개 오디션 (기획사)" };
   var rvMeta = {};
   var reviews = [];
   function loadReviews() {
@@ -1739,15 +1739,17 @@
   function rvView(r) {
     var c = el("article", "lnote rv");
     var head = el("p", "lnote__date", r.company);
-    if (r.kind) head.appendChild(el("span", "rv__kind rv__kind--" + (r.kind === "내방" ? "visit" : "hq"), RV_KIND[r.kind] || r.kind));
+    if (r.kind) head.appendChild(el("span", "rv__kind rv__kind--" + ({ "내방": "visit", "공개": "open" }[r.kind] || "hq"), RV_KIND[r.kind] || r.kind));
     c.appendChild(head);
     c.appendChild(el("p", "rv__when", "📅 오디션 본 날 · " + String(r.date).slice(0, 4) + "년 " + dayLabel(r.date)));
     var info = [r.gender, r.birth, r.height && "키 " + r.height, r.weight && "몸무게 " + r.weight].filter(Boolean).join(" · ");
     if (info) c.appendChild(el("p", "rv__info", info));
-    if (r.songVocal || r.songDance) {
+    if (r.songVocal || r.songDance || r.songVocal2 || r.songDance2) {
       c.appendChild(el("p", "rv__label", "준비한 곡"));
       if (r.songVocal) c.appendChild(el("p", "lnote__did", "🎤 보컬곡 · " + r.songVocal));
       if (r.songDance) c.appendChild(el("p", "lnote__did", "💃 댄스곡 · " + r.songDance));
+      if (r.songVocal2) c.appendChild(el("p", "lnote__did", "🎤 추가 곡 (보컬곡) · " + r.songVocal2));
+      if (r.songDance2) c.appendChild(el("p", "lnote__did", "💃 추가 곡 (댄스곡) · " + r.songDance2));
     }
     RV_TEXT.forEach(function (f) {
       if (!r[f[0]]) return;
@@ -1768,7 +1770,7 @@
     var kindSet = el("fieldset", "apply__set rv__kindset");
     kindSet.appendChild(el("legend", null, "어떤 오디션이었나요?"));
     var kindRow = el("div", "sys-radios apply__radios");
-    [["내방", "🏫 내방 오디션 (학원에서 봄)"], ["본사", "🏢 본사 오디션 (기획사에 가서 봄)"]].forEach(function (k) {
+    [["내방", "🏫 학원 내방 오디션"], ["본사", "🏢 본사 오디션 (기획사)"], ["공개", "📣 공개 오디션 (기획사)"]].forEach(function (k) {
       var l = el("label"), ra = el("input");
       ra.type = "radio"; ra.name = "rvkind"; ra.value = k[0]; ra.required = true;
       if (r && r.kind === k[0]) ra.checked = true;
@@ -1804,6 +1806,13 @@
     row3.appendChild(field2("준비한 곡 · 보컬곡", sv));
     row3.appendChild(field2("준비한 곡 · 댄스곡", sd));
     f.appendChild(row3);
+    // 추가 곡 (원장님 2026-11-25): 현장에서 한 곡 더 시킬 때를 대비해 준비한 곡
+    var sv2 = el("input"); sv2.maxLength = 300; sv2.placeholder = "예) 추가로 준비한 보컬곡 (없으면 비워 두기)"; sv2.value = r && r.songVocal2 || "";
+    var sd2 = el("input"); sd2.maxLength = 300; sd2.placeholder = "예) 추가로 준비한 댄스곡 (없으면 비워 두기)"; sd2.value = r && r.songDance2 || "";
+    var row4 = el("div", "sys-row");
+    row4.appendChild(field2("추가 곡 · 보컬곡", sv2));
+    row4.appendChild(field2("추가 곡 · 댄스곡", sd2));
+    f.appendChild(row4);
     var boxes = {};
     RV_TEXT.forEach(function (x) {
       var ta = el("textarea"); ta.rows = x[4]; ta.maxLength = x[3]; ta.placeholder = x[2]; ta.value = r && r[x[0]] || "";
@@ -1831,9 +1840,9 @@
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       var picked = f.querySelector("[name=rvkind]:checked");
-      if (!picked) { note.textContent = "내방 오디션인지 본사 오디션인지 골라주세요."; note.className = "sys-msg sys-msg--error"; return; }
+      if (!picked) { note.textContent = "어떤 오디션이었는지 골라주세요."; note.className = "sys-msg sys-msg--error"; return; }
       if (!day.value) { note.textContent = "오디션 본 날짜를 골라주세요."; note.className = "sys-msg sys-msg--error"; return; }
-      var data = { kind: picked.value, gender: gender.value, birth: birth.value, height: ht.value, weight: wt.value, company: co.value, date: day.value, songVocal: sv.value, songDance: sd.value };
+      var data = { kind: picked.value, gender: gender.value, birth: birth.value, height: ht.value, weight: wt.value, company: co.value, date: day.value, songVocal: sv.value, songDance: sd.value, songVocal2: sv2.value, songDance2: sd2.value };
       RV_TEXT.forEach(function (x) { data[x[0]] = boxes[x[0]].value; });
       save.disabled = true;
       note.textContent = "보내는 중…"; note.className = "sys-msg";

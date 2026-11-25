@@ -195,8 +195,8 @@
       ],
       // 오디션 후기 (학생이 내 폴더에서 씀, 선생님 모두 · 관리자가 봄)
       audition_reviews: [
-        { id: 91, member_id: "S001", audition_date: addDays(t, -4), company: "예시 엔터테인먼트", kind: "본사", gender: "여", birth: "2009.03.15",
-          song_vocal: "태연 - Rain (1절 + 후렴)", song_dance: null,
+        { id: 91, member_id: "S001", audition_date: addDays(t, -4), company: "예시 엔터테인먼트", kind: "공개", gender: "여", birth: "2009.03.15",
+          song_vocal: "태연 - Rain (1절 + 후렴)", song_dance: null, song_vocal2: "백예린 - Square (후렴만)", song_dance2: null,
           asked: "자기소개 해보세요 / 다른 곡 한 소절 더 해볼 수 있어요? / 연습생 경험 있어요?",
           tip: "대기가 40분 넘게 길어요. 물 꼭 챙기기! 첫 음은 잘 잡았는데 긴장해서 후렴 호흡이 모자랐어요.",
           process: "번호표 → 5명씩 입장 → 자기소개 30초 → 노래 1분. 심사위원 2명, 분위기 편했어요.", note: "다음 주에 2차 연락 준다고 했어요.",
@@ -729,13 +729,13 @@
       if (["남", "여"].indexOf(d.gender) < 0) return fail("성별을 골라주세요.");
       if (!/\d{2}/.test(d.birth || "")) return fail("생년월일을 적어주세요. 예) 2009.03.15");
       if (!String(d.company || "").trim()) return fail("기획사 이름을 적어주세요.");
-      if (!["songVocal", "songDance", "asked", "tip", "process", "note"].some(function (k) { return String(d[k] || "").trim(); })) return fail("준비한 곡이나 후기를 하나 이상 적어주세요.");
+      if (!["songVocal", "songDance", "songVocal2", "songDance2", "asked", "tip", "process", "note"].some(function (k) { return String(d[k] || "").trim(); })) return fail("준비한 곡이나 후기를 하나 이상 적어주세요.");
       db.audition_reviews = db.audition_reviews || [];
       var row = a.p_review ? db.audition_reviews.filter(function (r) { return r.id === a.p_review && r.member_id === who.id; })[0] : null;
       if (a.p_review && !row) return fail("후기를 찾을 수 없어요.");
       if (!row) { row = { id: ++db.next, member_id: who.id, created_at: new Date().toISOString() }; db.audition_reviews.push(row); }
-      if (d.kind && ["내방", "본사"].indexOf(d.kind) < 0) return fail("내방 오디션인지 본사 오디션인지 골라주세요.");
-      Object.assign(row, { audition_date: d.date, company: String(d.company).trim(), kind: d.kind || row.kind || null, gender: d.gender, birth: d.birth, height: d.height || null, weight: d.weight || null, song_vocal: d.songVocal || null, song_dance: d.songDance || null,
+      if (d.kind && ["내방", "본사", "공개"].indexOf(d.kind) < 0) return fail("어떤 오디션이었는지 골라주세요.");
+      Object.assign(row, { audition_date: d.date, company: String(d.company).trim(), kind: d.kind || row.kind || null, gender: d.gender, birth: d.birth, height: d.height || null, weight: d.weight || null, song_vocal: d.songVocal || null, song_dance: d.songDance || null, song_vocal2: d.songVocal2 || null, song_dance2: d.songDance2 || null,
         asked: d.asked || null, tip: d.tip || null, process: d.process || null, note: d.note || null, updated_at: new Date().toISOString() });
       save();
       return { ok: true, id: row.id, "new": !a.p_review };
@@ -1789,7 +1789,7 @@
   };
 
   function rvSort(x, y) { return x.audition_date < y.audition_date ? 1 : x.audition_date > y.audition_date ? -1 : y.id - x.id; }
-  function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, kind: r.kind || null, gender: r.gender, birth: r.birth, height: r.height, weight: r.weight, songVocal: r.song_vocal, songDance: r.song_dance, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
+  function rvJson(r) { return { id: r.id, date: r.audition_date, company: r.company, kind: r.kind || null, gender: r.gender, birth: r.birth, height: r.height, weight: r.weight, songVocal: r.song_vocal, songDance: r.song_dance, songVocal2: r.song_vocal2 || null, songDance2: r.song_dance2 || null, asked: r.asked, tip: r.tip, process: r.process, note: r.note, at: r.created_at, updated: r.updated_at }; }
   /* 레슨실 예약 (체험, 원장님 2026-11-24): 서버 lesson_room_* 와 같은 규칙. 정규 = 매주, 보강 = 한 번, 10분 단위, 24시간. */
   var LR_ROOMS = ["A1", "A2", "A3", "A4"];
   function wdOf(d) { return new Date(d + "T00:00:00Z").getUTCDay(); }

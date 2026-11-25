@@ -483,6 +483,7 @@
 .rv__kind{display:inline-block;margin-left:6px;padding:1px 9px;border-radius:999px;font-size:12.5px;font-weight:500;white-space:nowrap;vertical-align:middle;}
 .rv__kind--visit{background:#E7F1EF;color:#1D4948;border:1px solid #A9CBC6;}
 .rv__kind--hq{background:#FFF1D6;color:#7A4B00;border:1px solid #E6C27A;}
+.rv__kind--open{background:#EFE9F8;color:#4B3577;border:1px solid #C7B6E6;}
 .rv__head .rv__kind{margin-left:0;}
 .rv__when{margin:0 0 6px;font-size:14px;font-weight:700;color:#3C2A21;}
 .rv__kinds{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
