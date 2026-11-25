@@ -19,13 +19,15 @@
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="assets/img/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="이송희보컬">
 <meta name="theme-color" content="#1D4948">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css?v=cda96783">
-<link rel="stylesheet" href="css/system.css?v=a0f582ad">
+<link rel="stylesheet" href="css/system.css?v=a1b0cf4c">
 </head>
 <body data-page="guide">
 <main class="stage booking">
@@ -94,8 +96,8 @@
       <div>
         <h3>휴대폰 홈 화면에 추가하기</h3>
         <p class="guide__lede">앱처럼 바로 열 수 있습니다.</p>
-        <ul><li><b>아이폰</b>: 사파리로 홈페이지 열기 → 아래 <b>공유(□↑)</b> → <b>홈 화면에 추가</b></li><li><b>안드로이드</b>: 크롬으로 홈페이지 열기 → 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b></li></ul>
-        
+        <ul><li><b>아이폰</b>: 사파리로 홈페이지 열기 → 아래 <b>공유(□↑)</b> → <b>홈 화면에 추가</b> → <b>추가</b> (애플이 버튼으로 바로 추가하는 것을 막아 두었습니다)</li><li><b>안드로이드</b>: 아래 <b>📲 홈 화면에 추가하기</b> 버튼 한 번 → <b>설치</b> (버튼이 안 되면 크롬 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b>)</li><li>카카오톡 안에서 열었다면 먼저 크롬 · 사파리로 열어야 합니다 (버튼을 누르면 안내가 나옵니다)</li></ul>
+        <button type="button" class="pill-btn guide__go guide__install" data-install>📲 홈 화면에 추가하기</button>
       </div>
     </section>
     <section>
@@ -110,6 +112,7 @@
 <script src="js/config.js?v=103fc485"></script>
 <script src="js/api.js?v=9cf8a23f"></script>
 <script src="js/pagenav.js?v=3b47d44f"></script>
+<script src="js/install.js?v=0c8e688c"></script>
 <!-- naver analytics -->
 <script src="https://wcs.pstatic.net/wcslog.js"></script>
 <script>if (!window.wcs_add) window.wcs_add = {}; wcs_add["wa"] = "1d7488aff4c28c0"; if (window.wcs) wcs_do();</script>

@@ -29,7 +29,7 @@ def body():
 {pics}    <section class="wel__last">
       <p>홈페이지 내 폴더 <b>공지</b>의</p>
       <p class="wel__blue">'강의 규정'과 '보강 공지'를<br>꼭 정독하신 후<br>확인 답변 부탁드립니다!</p>
-      <p class="wel__go"><a class="wel__btn" href="index.html#me">내 폴더 열기 →</a><a class="wel__btn" href="booking.html">연습실 예약하기 →</a><a class="wel__btn" href="guide.html">홈페이지 사용법 →</a><a class="wel__btn" href="{KAKAO}/chat" target="_blank" rel="noopener">카카오톡으로 답변하기 →</a></p>
+      <p class="wel__go"><a class="wel__btn" href="index.html#me">내 폴더 열기 →</a><a class="wel__btn" href="booking.html">연습실 예약하기 →</a><a class="wel__btn" href="guide.html">홈페이지 사용법 →</a><button type="button" class="wel__btn guide__install" data-install>📲 홈 화면에 추가하기</button><a class="wel__btn" href="{KAKAO}/chat" target="_blank" rel="noopener">카카오톡으로 답변하기 →</a></p>
       <p class="wel__bye">궁금하신 점은 언제든 편하게 남겨주세요 🍀</p>
     </section>
   </article>

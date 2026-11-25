@@ -58,6 +58,8 @@ def head(title, desc):
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="assets/img/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="이송희보컬">
 <meta name="theme-color" content="#1D4948">
 {{{{LD}}}}{FONTS}
 <link rel="stylesheet" href="css/style.css">
@@ -84,7 +86,7 @@ LEGAL = ('<footer class="legal"><a href="privacy.html"><b>개인정보처리방�
          '<span class="legal__tel">(상담문의 : <a href="tel:01044585448">010-4458-5448</a>)</span></span></footer>\n')
 
 def foot(*extra):
-    scripts = ["config", "api"] + list(extra) + ["pagenav"]  # 홈으로 · 맨 위로 (skips the desktop by itself)
+    scripts = ["config", "api"] + list(extra) + ["pagenav", "install"]  # 홈으로 · 맨 위로 (skips the desktop by itself)
     return LEGAL + "".join(f'<script src="js/{n}.js"></script>\n' for n in scripts) + "</body>\n</html>\n"
 
 

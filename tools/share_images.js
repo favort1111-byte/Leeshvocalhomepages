@@ -42,5 +42,9 @@ const u = p => 'file://' + path.join(R, p);
   await pg.evaluate(() => document.fonts.ready);
   await pg.waitForTimeout(300);
   await pg.screenshot({ path: path.join(R, 'assets/img/icon-512.png') });
+  // 홈 화면 앱 아이콘 (원장님 2026-11-25): 안드로이드가 동그랗게 잘라도 글씨가 안 잘리게 72%로 줄인 것
+  await pg.addStyleTag({ content: 'body{transform:scale(.72)}html{background:#1D4948}' });
+  await pg.waitForTimeout(100);
+  await pg.screenshot({ path: path.join(R, 'assets/img/icon-maskable-512.png') });
   await b.close();
 })();

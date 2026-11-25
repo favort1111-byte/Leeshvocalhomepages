@@ -757,3 +757,29 @@ details.lr__fsec>summary.lr__fsec-title{cursor:pointer;}
 }
 .lr__pick{width:auto !important;max-width:170px;}
 .lr__nav .lr__modes{flex:none;}
+
+/* 홈 화면에 추가 (js/install.js, 원장님 2026-11-25) */
+.inst__bar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:9000;display:flex;align-items:center;gap:10px;
+  padding:9px 8px 9px 10px;border-radius:16px;background:#1D4948;color:#fff;box-shadow:0 8px 26px rgba(0,0,0,.28);font-size:14px;line-height:1.35;
+  animation:instUp .35s ease-out;max-width:520px;margin:0 auto}
+.inst__bar img{width:38px;height:38px;border-radius:9px;flex:none;border:1px solid rgba(255,255,255,.35)}
+.inst__bar span{flex:1;min-width:0}
+.inst__add{flex:none;border:0;border-radius:99px;background:#F5C518;color:#1D2B2A;font:inherit;font-weight:700;padding:8px 14px;cursor:pointer}
+.inst__x{flex:none;border:0;background:none;color:#fff;opacity:.75;font-size:16px;padding:6px;cursor:pointer}
+@keyframes instUp{from{transform:translateY(120%);opacity:0}to{transform:none;opacity:1}}
+.inst__wrap{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.inst__card{background:#fff;color:#222;border-radius:20px;padding:22px 20px 16px;width:100%;max-width:420px;max-height:90vh;overflow:auto;
+  margin-bottom:env(safe-area-inset-bottom);text-align:left;font-size:15px;line-height:1.6;animation:instUp .3s ease-out}
+.inst__app{display:block;width:56px;height:56px;border-radius:14px;margin:0 auto 10px}
+.inst__card h2{font-size:18px;margin:0 0 6px;text-align:center}
+.inst__card p{margin:0 0 10px;color:#555;text-align:center;font-size:14px}
+.inst__card ol{margin:6px 0 14px;padding-left:22px}
+.inst__card li{margin:6px 0}
+.inst__ico{display:inline-block;border:1px solid #bbb;border-radius:6px;padding:0 5px;font-size:13px;line-height:1.5;background:#f4f4f4}
+.inst__go,.inst__close{display:block;width:100%;box-sizing:border-box;text-align:center;border-radius:99px;padding:11px;font:inherit;font-weight:700;cursor:pointer}
+.inst__go{background:#F5C518;color:#1D2B2A;text-decoration:none;margin-bottom:8px;border:0}
+.inst__close{background:#EEF1F0;color:#1D4948;border:0}
+.inst__toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9600;background:#222;color:#fff;
+  padding:10px 16px;border-radius:99px;font-size:14px;transition:opacity .5s;max-width:90vw;text-align:center}
+.inst__toast.is-out{opacity:0}
+.guide__install{border:0;cursor:pointer;font:inherit}

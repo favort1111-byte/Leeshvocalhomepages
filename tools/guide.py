@@ -47,9 +47,10 @@ STEPS = [
       "자녀가 여러 명이면 한 계정으로 모두 볼 수 있습니다. 예약 · 신청은 학생 계정에서 합니다"],
      ("학부모 화면 열기", "parent.html")),
     ("7", "휴대폰 홈 화면에 추가하기", "앱처럼 바로 열 수 있습니다.",
-     ["<b>아이폰</b>: 사파리로 홈페이지 열기 → 아래 <b>공유(□↑)</b> → <b>홈 화면에 추가</b>",
-      "<b>안드로이드</b>: 크롬으로 홈페이지 열기 → 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b>"],
-     None),
+     ["<b>아이폰</b>: 사파리로 홈페이지 열기 → 아래 <b>공유(□↑)</b> → <b>홈 화면에 추가</b> → <b>추가</b> (애플이 버튼으로 바로 추가하는 것을 막아 두었습니다)",
+      "<b>안드로이드</b>: 아래 <b>📲 홈 화면에 추가하기</b> 버튼 한 번 → <b>설치</b> (버튼이 안 되면 크롬 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b>)",
+      "카카오톡 안에서 열었다면 먼저 크롬 · 사파리로 열어야 합니다 (버튼을 누르면 안내가 나옵니다)"],
+     ("📲 홈 화면에 추가하기", "#install")),
 ]
 
 FAQ = [
@@ -79,7 +80,7 @@ def body():
         <h3>{t}</h3>
         <p class="guide__lede">{lede}</p>
         <ul>{"".join(f"<li>{x}</li>" for x in items)}</ul>
-        {f'<a class="pill-btn guide__go" href="{go[1]}">{go[0]} →</a>' if go else ""}
+        {(f'<button type="button" class="pill-btn guide__go guide__install" data-install>{go[0]}</button>' if go[1] == "#install" else f'<a class="pill-btn guide__go" href="{go[1]}">{go[0]} →</a>') if go else ""}
       </div>
     </section>
 ''' for n, t, lede, items, go in STEPS)
