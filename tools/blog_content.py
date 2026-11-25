@@ -4,6 +4,7 @@ transcription is kept in docs/blog.md. build_pages.py renders this into the abou
 
 No tuition anywhere (house rule). Student names are left out: the blog only shows them masked."""
 from html import escape
+import json
 
 BLOG = "https://blog.naver.com/o_oa8"
 BLOG_RESULTS = "https://blog.naver.com/PostList.naver?blogId=o_oa8&categoryNo=24"
@@ -98,6 +99,50 @@ WHY = [
 # 내방 · 비공개 오디션을 함께한 곳 (원장님 2026-11-06 "로고로 여태 오디션 본 곳 다, 길더라도"): 옮겨온 블로그 내방 오디션 글
 # 제목(🌟회사🌟) + 관리자 내방 오디션 + 예전 문구(HYBE · ADOR …)에서 모음. 로고 그림이 있으면 assets/img/logos/<파일>.webp, 없으면 이름 칸.
 # 로고를 더 받으면 파일 이름만 적으면 됨 (원장님 드라이브 "홈페이지 로고" 폴더 → 여백 자르고 240px WebP).
+# 기획사 로고 (원장님 2026-11-25 "합격 실적이랑 학원 특징의 기획사에 로고"): 원본 = 원장님 드라이브 "홈페이지 로고" 폴더 PNG
+# → 여백 자르고 assets/img/logos/<이름>.webp (tools/logos.sh). 이름이 아래 중 하나와 같으면(띄어쓰기 · "엔터테인먼트" · 괄호 무시) 로고가 붙음.
+# 로고 파일이 없는 곳은 지금처럼 글자로. 새 로고 = 드라이브 폴더에 넣고 → 받아서 tools/logos.sh → 여기 한 줄.
+LOGOS = {
+    "sm": ["SM", "SM엔터테인먼트"], "jyp": ["JYP"], "yg": ["YG"], "hybe": ["HYBE", "하이브"],
+    "bighit": ["빅히트 뮤직", "빅히트"], "sourcemusic": ["쏘스뮤직"], "pledis": ["플레디스"], "belift": ["빌리프랩", "BE:LIFT"],
+    "koz": ["KOZ"], "ador": ["어도어", "ADOR"], "theblacklabel": ["더블랙레이블"], "kakaoent": ["카카오엔터테인먼트"],
+    "antenna": ["안테나"], "cube": ["큐브", "CUBE"], "fnc": ["FNC"], "jellyfish": ["젤리피쉬"], "fantagio": ["판타지오"],
+    "wakeone": ["웨이크원"], "yuehua": ["위에화"], "ist": ["IST"], "pnation": ["피네이션", "P NATION"],
+    "attrakt": ["어트랙트"], "modhaus": ["모드하우스"], "highup": ["하이업"], "abyss": ["어비스컴퍼니"], "topmedia": ["티오피미디어", "TOP미디어"],
+    "mnh": ["MNH"], "inkode": ["인코드", "INKODE"], "s2": ["S2"], "hihat": ["하이햇", "하이헷"], "dnation": ["디네이션"],
+    "morevision": ["모어비전"], "atrp": ["ATRP"], "titan": ["타이탄콘텐츠"], "shofar": ["쇼파르"], "fnf": ["F&F"],
+    "thelivelabel": ["더라이브레이블"], "init": ["이닛"], "newkit": ["NEWKiT STUDIO", "뉴킷스튜디오"],
+}
+
+
+def _norm(name):
+    import re
+    n = re.sub(r"\(.*?\)", "", name)  # 어도어 (ADOR) → 어도어
+    return re.sub(r"\s+|엔터테인먼트|엔터$|ent\.?$", "", n, flags=re.I).lower()
+
+
+_LOGO_OF = {_norm(a): slug for slug, names in LOGOS.items() for a in names}
+
+
+# 흰 글씨 로고 (투명 바탕) → 어두운 칸에. 드라이브의 "WM엔터테인먼트.png"는 다른 회사(STRANGE LAB) 로고라 안 씀 (2026-11-25)
+LOGO_DARK = {"abyss", "attrakt", "cube", "highup", "modhaus"}
+
+
+def logo_cls(slug):
+    return " is-dark" if slug in LOGO_DARK else ""
+
+
+def logo_of(name):
+    """회사 이름 → 로고 파일 이름 (없으면 "")."""
+    import re, os
+    keys = [_norm(name)] + [_norm(m) for m in re.findall(r"\((.*?)\)", name)]
+    for k in keys:
+        slug = _LOGO_OF.get(k)
+        if slug and os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "img", "logos", slug + ".webp")):
+            return slug
+    return ""
+
+
 WHY_COMPANIES = [
     ("HYBE", "hybe"), ("SM엔터테인먼트", "sm"), ("YG엔터테인먼트", "yg"), ("JYP엔터테인먼트", "jyp"),
     ("빅히트 뮤직", ""), ("쏘스뮤직", ""), ("플레디스", ""), ("빌리프랩", ""), ("KOZ엔터테인먼트", ""), ("어도어", ""),
@@ -396,8 +441,8 @@ def why_section():
             + f'    <ol class="whys">{cards}</ol>\n'
             + '    <div class="cowall">\n      <p class="cowall__title">내방 · 비공개 오디션을 함께한 곳</p>\n'
             + '      <ul class="cowall__list">' + "".join(
-                (f'<li class="cowall__item cowall__item--logo"><img src="assets/img/logos/{f}.webp" alt="{escape(n)}" loading="lazy"></li>' if f
-                 else f'<li class="cowall__item">{escape(n)}</li>') for n, f in WHY_COMPANIES) + '</ul>\n'
+                (f'<li class="cowall__item cowall__item--logo{logo_cls(f)}" title="{escape(n)}"><img src="assets/img/logos/{f}.webp" alt="{escape(n)}" loading="lazy"><span>{escape(n)}</span></li>' if f
+                 else f'<li class="cowall__item">{escape(n)}</li>') for n, f in ((n, f or logo_of(n)) for n, f in WHY_COMPANIES)) + '</ul>\n'
             + f'      <p class="cowall__more">그 외 다수 · 총 {len(WHY_COMPANIES)}곳+</p>\n    </div>\n'
             + '    <div class="faq">\n'
             + f'      <p class="faq__q">Q. {FAQ_Q}</p>\n'
@@ -432,9 +477,11 @@ def results_section():
                       for g, n, t in DEBUTS)
 
     def cards(rows):
-        return "".join(f'<li class="agency"><h4>{n}</h4>{_ul(r)}</li>' for n, r in rows)
+        return "".join((f'<li class="agency agency--logo"><img class="agency__logo{logo_cls(logo_of(n))}" src="assets/img/logos/{logo_of(n)}.webp" alt="" loading="lazy"><h4>{n}</h4>{_ul(r)}</li>'
+                        if logo_of(n) else f'<li class="agency"><h4>{n}</h4>{_ul(r)}</li>') for n, r in rows)
     first, rest = AGENCIES[:15], AGENCIES[15:]
-    recent = "".join(f"<li>{r}</li>" for r in RECENT_2025)
+    recent = "".join((f'<li class="chip--logo"><img class="{logo_cls(logo_of(r)).strip()}" src="assets/img/logos/{logo_of(r)}.webp" alt="" loading="lazy">{r}</li>' if logo_of(r) else f"<li>{r}</li>")
+                     for r in RECENT_2025)
     total = len(AGENCIES) + len(SHOWS)
     return (_head("results", "합격 소식", "results")
             # ids/data-*: js/passboard.js adds the 합격 소식 posted in the admin page (audition_news) to this board
@@ -448,7 +495,7 @@ def results_section():
             + f'    <ul class="card__chips card__chips--light">{recent}</ul>\n'
             + '    </div></div>\n'
             + '    <h3 class="scrap__sub">기획사 오디션</h3>\n'
-            + f'    <ul class="agencies" id="passAgencies">{cards(first)}</ul>\n'
+            + f'    <ul class="agencies" id="passAgencies" data-logos="{escape(json.dumps({a: logo_of(a) for names in LOGOS.values() for a in names if logo_of(a)}, ensure_ascii=False))}" data-logos-dark="{" ".join(sorted(LOGO_DARK))}">{cards(first)}</ul>\n'
             + f'    <details class="more"><summary>기획사 {len(rest)}곳 더 보기</summary><ul class="agencies" id="passAgenciesMore">{cards(rest)}</ul></details>\n'
             + '    <h3 class="scrap__sub">방송 · 프로그램</h3>\n'
             + f'    <ul class="agencies" id="passShows">{cards(SHOWS)}</ul>\n'

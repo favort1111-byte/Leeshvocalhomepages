@@ -16,6 +16,17 @@
   function key(name) {
     return String(name || "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/엔터테인먼트|entertainment|ent\.?|주식회사|\(주\)/g, "").replace(/[\s·.]/g, "");
   }
+  var LOGOS = null;
+  function logoOf(name) {
+    if (!LOGOS) {
+      LOGOS = {};
+      var src = document.getElementById("passAgencies"), raw = {};
+      try { raw = JSON.parse((src && src.getAttribute("data-logos")) || "{}"); } catch (e) {}
+      Object.keys(raw).forEach(function (n) { LOGOS[key(n)] = raw[n]; });
+    }
+    var k = key(name), m = String(name || "").match(/\(([^)]*)\)/);
+    return LOGOS[k] || (m && LOGOS[key(m[1])]) || "";
+  }
   function cardsIn(ids) {
     var map = {};
     ids.forEach(function (id) {
@@ -73,6 +84,9 @@
       if (!cards[k]) {
         // a company new to the board: its own card at the front
         var li = el("li", "agency pass-new");
+        var logo = logoOf(p.company);  // 로고가 있는 회사면 카드 위에 (tools/blog_content.py LOGOS)
+        if (logo) { var dark = ((document.getElementById("passAgencies") || {}).getAttribute ? document.getElementById("passAgencies").getAttribute("data-logos-dark") || "" : "").split(" ").indexOf(logo) >= 0;
+          var im = el("img", "agency__logo" + (dark ? " is-dark" : "")); im.src = "assets/img/logos/" + logo + ".webp"; im.alt = ""; li.appendChild(im); li.className += " agency--logo"; }
         li.appendChild(el("h4", null, p.company));
         li.appendChild(el("ul"));
         var grid = document.getElementById(type === "방송" ? "passShows" : "passAgencies");

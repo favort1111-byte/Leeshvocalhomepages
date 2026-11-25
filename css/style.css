@@ -1458,3 +1458,16 @@ body[data-page="contact"]{--paper:#ECE5D8;}
 body[data-page="guide"]{--paper:#E9E5DF;}
 body[data-page="booking"]{--paper:#E6E8E9;}
 body[data-page="welcome"]{--paper:#EEE6DB;}
+
+/* 기획사 로고 (원장님 2026-11-25, 로고 = assets/img/logos, tools/blog_content.py LOGOS) */
+.cowall__item--logo{flex-direction:column;gap:5px;min-height:74px;padding:8px 6px 6px;}
+.cowall__item--logo img{display:block;width:auto;max-width:92%;height:34px;object-fit:contain;}
+.cowall__item--logo span{font-size:10.5px;line-height:1.2;color:#6B6258;}
+.agency--logo{position:relative;}
+.agency__logo{display:block;height:34px;width:auto;max-width:150px;object-fit:contain;margin:0 0 8px;padding:6px 10px;box-sizing:content-box;
+  background:#fff;border-radius:6px;border:1px solid rgba(0,0,0,.08);}
+.chip--logo{display:inline-flex;align-items:center;gap:6px;}
+.chip--logo img{height:16px;width:auto;max-width:48px;object-fit:contain;background:#fff;border-radius:3px;padding:2px 3px;}
+.cowall__item--logo.is-dark{background:#2A2622;}
+.cowall__item--logo.is-dark span{color:#D9D0C4;}
+.agency__logo.is-dark,.chip--logo img.is-dark{background:#2A2622;}
