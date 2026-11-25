@@ -1001,6 +1001,8 @@ def fill(name, html):
     if name in ("post.html", "404.html"):  # post.html?id=… 글마다 주소가 달라서 대표 주소를 적지 않음
         html = re.sub(r'<link rel="canonical"[^>]*>\n|<meta property="og:url"[^>]*>\n', "", html)
     html = html.replace("{{PAGE}}", "" if name == "index.html" else name).replace("{{LD}}", ld)
+    # 페이지마다 색을 조금씩 다르게 (원장님 2026-11-25 "톤온톤") — css/style.css [data-page]
+    html = html.replace("<body>", f'<body data-page="{name[:-5]}">', 1)
     if name == "404.html":  # /a/b/없는주소 에서도 css·그림·링크가 맞게
         html = re.sub(r'((?:href|src)=")(?!https?:|/|#|mailto:|tel:|data:)', r'\1/', html)
         html = html.replace("url('assets/", "url('/assets/")

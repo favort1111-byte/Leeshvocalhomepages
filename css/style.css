@@ -585,6 +585,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .scrap--paper::before{background-image:var(--grain);opacity:.12;mix-blend-mode:multiply;}
 
 .scrap__index{position:sticky;top:0;z-index:10;margin:0 -20px;padding:12px 20px;background:rgba(98,55,43,.92);backdrop-filter:blur(6px);}
+.scrap__index{background:color-mix(in srgb, var(--cardboard-deep, #62372B) 92%, transparent);}
 .scrap__index ul{list-style:none;margin:0 auto;padding:0;max-width:1080px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
 .scrap__index a{display:block;white-space:nowrap;padding:6px 14px;border:1px solid rgba(246,235,221,.6);border-radius:999px;font-size:14px;text-decoration:none;}
 .scrap__index a:hover{background:rgba(246,235,221,.12);}
@@ -1436,3 +1437,24 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .rv__gift{display:grid;gap:4px;word-break:keep-all;margin:14px 0 6px !important;padding:12px 14px;border:2px solid #E0A100;border-radius:12px;background:#FFF3C4;color:#5A3A00;text-align:center;line-height:1.45;}
 .rv__gift b{font-size:16px;color:#B3261E;}
 .rv__gift span{font-size:15px;font-weight:500;}
+
+/* ---------- 페이지마다 톤온톤 (원장님 2026-11-25 "컬러감이 톤온톤 느낌으로 페이지마다 조금씩 다르게") ----------
+   같은 갈색 · 종이 계열 안에서 색만 조금씩 옮김. 학원 소개 주제 페이지 = 갈색 판(--cardboard), 나머지 = 종이 바탕(--paper). */
+body{--cardboard-deep:#62372B;}
+body[data-page="about-director"]{--cardboard:#7A4739;--cardboard-deep:#5F362B;}
+body[data-page="about-lesson"]{--cardboard:#6E4B3B;--cardboard-deep:#55392D;}
+body[data-page="about-rules"]{--cardboard:#80503E;--cardboard-deep:#643D2F;}
+body[data-page="about-why"]{--cardboard:#8A513D;--cardboard-deep:#6C3E2F;}
+body[data-page="about-care"]{--cardboard:#784449;--cardboard-deep:#5D3438;}
+body[data-page="about-results"]{--cardboard:#69412F;--cardboard-deep:#513224;}
+body[data-page="about-rooms"]{--cardboard:#7E5842;--cardboard-deep:#624432;}
+body[data-page="about-tips"]{--cardboard:#744940;--cardboard-deep:#5A3831;}
+body[data-page="audition"],body[data-page="post"]{--paper:#EFE4DA;}
+body[data-page="results"]{--paper:#EEE2E0;}
+body[data-page="interview"]{--paper:#EAE3E9;}
+body[data-page="tips"]{--paper:#E8E7DC;}
+body[data-page="schools"]{--paper:#E3E8E4;}
+body[data-page="contact"]{--paper:#ECE5D8;}
+body[data-page="guide"]{--paper:#E9E5DF;}
+body[data-page="booking"]{--paper:#E6E8E9;}
+body[data-page="welcome"]{--paper:#EEE6DB;}
