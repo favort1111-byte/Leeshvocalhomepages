@@ -383,6 +383,7 @@ about_groups = "\n".join([
 # (파일, 영어 이름, 한글 이름, 8비트 아이콘, 내용, 예전 about.html#앵커들, 설명)
 ABOUT_PAGES = [
     ("about-director.html", "the teacher", "원장님 소개", "stage", blog.teacher_section, ["teacher"], "이송희 원장 소개 · 경력 · 강사진."),
+    ("about-teachers.html", "our trainers", "선생님 소개", "trainers", blog.trainers_section, ["trainers"], "보컬 트레이너 선생님 소개 · 학력 · 경력 · 합격생."),
     ("about-lesson.html", "4 steps", "레슨 과정", "lesson", blog.steps_section, ["steps", "advanced"], "반별 커리큘럼 4 STEP과 오디션 심화반 추가 커리큘럼."),
     ("about-rules.html", "lesson rules", "강의 규정", "rules", blog.rules_section, ["rules"], "보강 신청 · 스케줄 변경 · 결석 규정 안내."),
     ("about-why.html", "why us", "학원 특징", "vocal", blog.why_section, ["why"], "이송희보컬레슨만의 특징."),

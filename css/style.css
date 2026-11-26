@@ -710,6 +710,23 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
 .teacher__photos .snap img{aspect-ratio:1;}
 .teacher__photos .snap--portrait img{aspect-ratio:4/5;object-position:center top;}
 .teacher--dance .teacher__photos .snap img{aspect-ratio:9/10;object-position:top;}
+/* 선생님 소개 (원장님 2026-11-26, about-teachers.html) */
+.tjump ul{list-style:none;margin:0 0 30px;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
+.tjump a{display:inline-block;padding:7px 14px;border-radius:999px;background:#FBFAF7;color:var(--ink);font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 2px 6px rgba(20,10,5,.25);}
+.tjump a:hover{background:#F6E7B4;}
+.teacher--trainer{scroll-margin-top:80px;padding-bottom:34px;border-bottom:1px dashed rgba(251,250,247,.35);}
+.teacher--trainer:last-of-type{border-bottom:0;}
+.card__intro{margin:0 0 18px;font-size:15px;line-height:1.75;color:var(--ink);}
+.card__intro p{margin:0 0 8px;}
+.card__col--wide{grid-column:1/-1;}
+.card__list{columns:2 260px;column-gap:28px;}
+.card__list li{break-inside:avoid;}
+.card__more{margin-top:6px;}
+.card__more summary{cursor:pointer;display:inline-block;padding:5px 12px;border-radius:999px;background:#F6E7B4;color:var(--brown);font-size:14px;font-weight:700;list-style:none;}
+.card__more summary::-webkit-details-marker{display:none;}
+.card__more summary::after{content:" ▾";}
+.card__more[open] summary::after{content:" ▴";}
+.card__more[open] summary{margin-bottom:8px;}
 
 /* curriculum */
 .classes{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-wrap:wrap;gap:10px;}
@@ -1450,6 +1467,7 @@ body:has(.scene:not([hidden])) .wall--live .icon{animation-play-state:paused;}
    같은 갈색 · 종이 계열 안에서 색만 조금씩 옮김. 학원 소개 주제 페이지 = 갈색 판(--cardboard), 나머지 = 종이 바탕(--paper). */
 body{--cardboard-deep:#62372B;}
 body[data-page="about-director"]{--cardboard:#7A4739;--cardboard-deep:#5F362B;}
+body[data-page="about-teachers"]{--cardboard:#73503F;--cardboard-deep:#593D30;}
 body[data-page="about-lesson"]{--cardboard:#6E4B3B;--cardboard-deep:#55392D;}
 body[data-page="about-rules"]{--cardboard:#80503E;--cardboard-deep:#643D2F;}
 body[data-page="about-why"]{--cardboard:#8A513D;--cardboard-deep:#6C3E2F;}

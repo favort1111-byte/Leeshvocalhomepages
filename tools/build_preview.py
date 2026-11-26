@@ -8,7 +8,7 @@ builds the 설명용 copy (원장님 2026-11-07): same fake data, but the bar on
 import os, re, shutil, sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGES = ["welcome.html", "interview.html", "schools.html", "index.html", "about.html", "about-director.html", "about-lesson.html", "about-rules.html", "about-why.html", "about-care.html", "about-results.html", "about-rooms.html", "about-tips.html", "contact.html", "consult.html", "booking.html", "games.html", "audition.html", "results.html", "tips.html", "post.html", "privacy.html", "apply.html", "teacher.html", "parent.html", "guide.html", "admin.html"]
+PAGES = ["welcome.html", "interview.html", "schools.html", "index.html", "about.html", "about-director.html", "about-teachers.html", "about-lesson.html", "about-rules.html", "about-why.html", "about-care.html", "about-results.html", "about-rooms.html", "about-tips.html", "contact.html", "consult.html", "booking.html", "games.html", "audition.html", "results.html", "tips.html", "post.html", "privacy.html", "apply.html", "teacher.html", "parent.html", "guide.html", "admin.html"]
 API = '<script src="js/api.js"></script>\n'
 BLOG_BASE = "https://raw.githubusercontent.com/favort1111-byte/Leeshvocalhomepages/claude/dazzling-bardeen-mw08yt/"
 

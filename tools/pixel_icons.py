@@ -5,6 +5,24 @@ PAL = {"k": "#1E1E1E", "W": "#FFFFFF", "w": "#E6E6E6", "Y": "#F6C445", "y": "#D9
        "C": "#1D4948", "c": "#2E6B69", "G": "#B9BEC4", "g": "#7F868E", "P": "#7C5CD6", "S": "#C9CED4", "s": "#8E969E",
        "L": "#9BD7F5", "O": "#FF8A3D", "o": "#D9661E"}
 ICONS = {
+"trainers": [
+"................",
+"...kkkk..kkkk...",
+"..kHHHHkkHHHHk..",
+"..kHFFHkkHFFHk..",
+"..kkFFkkkkFFkk..",
+"..kFFFFkkFFFFk..",
+"..kFppFkkFppFk..",
+"...kkkk..kkkk...",
+"..kCCCCk.kRRRRk.",
+".kCCCCCCkRRRRRRk",
+".kCCWWCCkRRWWRRk",
+".kCCWWCCkRRWWRRk",
+".kCCCCCCkRRRRRRk",
+".kCCCCCCkRRRRRRk",
+".kkkkkkkkkkkkkkk",
+"................",
+],
 "school": [
 "........kRRR....",
 "........kRR.....",
