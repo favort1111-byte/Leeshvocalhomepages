@@ -45,16 +45,46 @@
       lede: "먼저 " + (ios ? "사파리로" : "크롬으로") + " 열어 주세요. 열린 화면에서 이 버튼을 한 번 더 누르면 돼요.",
       list: kakao
         ? ["아래 <b>" + (ios ? "사파리로" : "크롬으로") + " 열기</b> 누르기", "(안 되면) 오른쪽 " + (ios ? "아래" : "위") + " <b>⋮</b> 또는 <b>공유</b> → <b>다른 브라우저로 열기</b>"]
-        : ["오른쪽 위 <b>⋮</b> 또는 <b>⋯</b> → <b>다른 브라우저로 열기</b> (또는 <b>" + (ios ? "Safari" : "Chrome") + "로 열기</b>)"],
-      open: kakao
+        : ["오른쪽 위 <b>⋮</b> 또는 <b>⋯</b> → <b>다른 브라우저로 열기</b> (또는 <b>" + (ios ? "Safari" : "Chrome") + "로 열기</b>)", "메뉴가 없으면 아래 <b>주소 복사</b> → " + (ios ? "사파리" : "크롬") + "에 붙여넣기"],
+      open: kakao, copy: !kakao
     };
-    if (ios) return {
-      title: "아이폰은 이렇게 추가해요",
-      lede: "애플이 버튼으로 바로 추가하는 걸 막아 둬서, 세 번만 눌러 주세요." + (iosOther ? " (안 보이면 <b>사파리</b>로 열어서)" : ""),
-      list: ["화면 아래(또는 위)의 <b>공유 버튼 <span class=\"inst__ico\">□↑</span></b> 누르기 — 안 보이면 오른쪽 아래 <b>⋯</b>을 먼저",
-        "목록을 아래로 내려 <b>홈 화면에 추가 <span class=\"inst__ico\">⊞</span></b> 누르기",
-        "오른쪽 위 <b>추가</b> 누르기"]
-    };
+    if (ios) {
+      // 아이폰 (원장님 2026-11-27 "아이폰 학생이 70%쯤인데 홈 화면 추가가 잘 안 된대") — 브라우저 · 버전마다 메뉴 자리가 달라서 나눔
+      var tail = '<p class="inst__tip">· <b>홈 화면에 추가</b>가 목록에 없으면: 사파리 <b>개인정보 보호 브라우징</b>을 끄고 다시 해 보세요.<br>'
+        + '· 추가한 뒤 아이콘으로 처음 열면 <b>카카오 로그인을 한 번 더</b> 해요 (아이폰은 사파리와 따로 기억해요). '
+        + '이때 <b>카카오톡으로 로그인</b>이 안 되면 <b>카카오계정(이메일 · 비밀번호)</b>으로 로그인해 주세요.</p>';
+      if (/CriOS/i.test(ua)) return {
+        title: "아이폰 크롬은 이렇게 추가해요",
+        list: ["주소창 오른쪽의 <b>공유 <span class=\"inst__ico\">□↑</span></b> 누르기",
+          "<b>홈 화면에 추가 <span class=\"inst__ico\">⊞</span></b> 누르기 (안 보이면 아래 <b>더 보기</b>)",
+          "오른쪽 위 <b>추가</b> 누르기"],
+        tail: tail
+      };
+      if (iosOther) return {
+        title: "사파리로 열어 주세요",
+        lede: "이 브라우저에서는 홈 화면 추가가 잘 안 돼요. 주소를 복사해서 <b>사파리</b>에 붙여 넣고, 거기서 이 버튼을 한 번 더 눌러 주세요.",
+        list: ["아래 <b>주소 복사</b> 누르기", "<b>사파리</b> 열기 → 주소창에 붙여넣기"],
+        copy: true
+      };
+      var v = Number((ua.match(/Version\/(\d+)/) || [])[1] || 0);
+      if (v >= 26) return {
+        title: "아이폰은 이렇게 추가해요",
+        lede: "애플이 버튼으로 바로 추가하는 걸 막아 둬서, 아래 순서대로 눌러 주세요.",
+        list: ["화면 아래 오른쪽 <b>⋯</b> 누르기",
+          "<b>공유 <span class=\"inst__ico\">□↑</span></b> 누르기",
+          "목록을 아래로 내려 <b>홈 화면에 추가 <span class=\"inst__ico\">⊞</span></b> 누르기 (안 보이면 <b>더 보기</b>)",
+          "<b>웹 앱으로 열기</b>가 켜진 그대로 오른쪽 위 <b>추가</b> 누르기"],
+        tail: tail
+      };
+      return {
+        title: "아이폰은 이렇게 추가해요",
+        lede: "애플이 버튼으로 바로 추가하는 걸 막아 둬서, 세 번만 눌러 주세요.",
+        list: ["<b>공유 버튼 <span class=\"inst__ico\">□↑</span></b> 누르기 — 주소창이 아래면 <b>아래 가운데</b>, 위면 <b>위 오른쪽</b>",
+          "목록을 아래로 내려 <b>홈 화면에 추가 <span class=\"inst__ico\">⊞</span></b> 누르기 (안 보이면 맨 아래 <b>작업 편집</b>에서 켜기)",
+          "오른쪽 위 <b>추가</b> 누르기"],
+        tail: tail
+      };
+    }
     if (samsung) return {
       title: "삼성 인터넷은 이렇게 추가해요",
       list: ["아래 <b>≡</b> (메뉴) 누르기", "<b>현재 페이지 추가</b> → <b>홈 화면</b>", "<b>추가</b> 누르기"]
@@ -78,11 +108,21 @@
     card.setAttribute("role", "dialog"); card.setAttribute("aria-label", s.title);
     card.innerHTML = '<img class="inst__app" src="assets/img/icon-192.png" alt="">'
       + "<h2>" + s.title + "</h2>" + (s.lede ? "<p>" + s.lede + "</p>" : "")
-      + "<ol>" + s.list.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ol>";
+      + "<ol>" + s.list.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ol>" + (s.tail || "");
     if (s.open) {
       var o = el("a", "inst__go", (ios ? "사파리로" : "크롬으로") + " 열기");
       o.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(location.href);
       card.appendChild(o);
+    }
+    if (s.copy) {
+      var cp = el("button", "inst__go", "주소 복사"); cp.type = "button";
+      cp.onclick = function () {
+        var u = location.href.split("#")[0];
+        var done = function () { cp.textContent = "복사했어요 · 사파리에 붙여넣기"; };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(done, function () { prompt("이 주소를 복사해 주세요", u); });
+        else prompt("이 주소를 복사해 주세요", u);
+      };
+      card.appendChild(cp);
     }
     var x = el("button", "inst__close", "닫기"); x.type = "button";
     card.appendChild(x);

@@ -153,6 +153,14 @@
       c.addEventListener("change", function () { kakao.setPublic(!c.checked); text(); });
       w.appendChild(l);
       w.appendChild(n);
+      // 아이폰 홈 화면 아이콘으로 연 경우: "카카오톡으로 로그인"은 카카오톡 앱 → 사파리로 돌아가서 이 화면은 그대로일 수 있음 (2026-11-27)
+      var ua = navigator.userAgent || "";
+      if (/iPhone|iPad|iPod/i.test(ua) && navigator.standalone === true) {
+        var tip = document.createElement("p");
+        tip.className = "sys-msg sys-msg--soon";
+        tip.textContent = "📱 홈 화면 아이콘으로 열었어요. 카카오 화면에서 \u201C카카오톡으로 로그인\u201D을 눌렀는데 여기로 안 돌아오면, \u201C카카오계정으로 로그인\u201D(이메일 · 비밀번호)으로 해 주세요.";
+        w.appendChild(tip);
+      }
       return w;
     },
     /**
