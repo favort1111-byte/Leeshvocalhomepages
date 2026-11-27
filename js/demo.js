@@ -789,7 +789,8 @@
       return { ok: true, synced: new Date().toISOString(), director: !uid || (myTeacher(uid) || {}).name === "원장님", items: [
         { gid: "1", name: "김시우", klass: "평일A반", section: "평일", teacher: "안유정", mine: true, count: 2, last: "11/4 화요일 19시" },
         { gid: "2", name: "박하늘", klass: "주말B반", section: "주말", teacher: "이수빈", mine: false, count: 1, last: "10/26 일요일 14시" },
-        { gid: "3", name: "최가을", klass: "평일B반", section: "퇴원", teacher: "이수빈", mine: false, count: 1, last: "8/12 수요일 18시" }].filter(function (x) {
+        { gid: "3", name: "최가을", klass: "평일B반", section: "퇴원", teacher: "이수빈", mine: false, count: 1, last: "8/12 수요일 18시" },
+        { gid: "m:S904", name: "한서윤", klass: "일반 학생", section: "일반", teacher: "안유정", mine: true, sheetless: true, count: 1, last: "2026-11-20" }].filter(function (x) {
           var dir = !uid || (myTeacher(uid) || {}).name === "원장님"; // 퇴원 탭은 원장님 · 관리자만
           return dir || (x.mine && x.section !== "퇴원");
         }) };
@@ -802,6 +803,7 @@
         return { ok: true, gid: "3", name: "최가을", klass: "평일B반", member: null, head: head, rows: [
           ["8/12 수요일 18시", "최가을 (11) / 수빈쌤", "11년생 / 중3\n160 / 45", "26.02 부터 수강\n약 6개월", "선곡 체크 · 발성 기본기\n\n수빈쌤 전달: 호흡 연습 위주"]] };
       }
+      if (a.p_gid === "m:S904") return { ok: true, gid: "m:S904", name: "한서윤", klass: "일반 학생", member: "S904", head: [], rows: [], sheetless: true };
       if (a.p_gid === "2") return { ok: true, gid: "2", name: "박하늘", klass: "주말B반", member: "S900", head: head, rows: [
         ["10/26 일요일 14시", "박하늘 (10) / 수빈쌤", "10년생 / 고1\n고음에서 목이 조임", "26.03 부터 수강\n약 7개월\n\n합격이력없음", "현재 노래체크\n- 고음 전 호흡 미리 준비\n\n다음 시간: 메인곡 액팅까지 같이 체크"]] };
       return { ok: true, gid: "1", name: "김시우", klass: "평일A반", member: "S001", head: head, rows: [

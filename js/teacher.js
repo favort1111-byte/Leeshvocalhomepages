@@ -438,7 +438,7 @@
     back.addEventListener("click", start);
     app.appendChild(back);
     app.appendChild(el("h3", "tch__name", "🎯 원장 컨설팅 (심화반)"));
-    var note = el("p", "sys-note", "원장님이 심화반 학생과 한 1:1 컨설팅 기록이에요. 선생님은 자기 담당 학생 것만 보고, 학생 · 학부모에게는 보이지 않아요.");
+    var note = el("p", "sys-note", "원장님이 학생과 한 1:1 컨설팅 기록이에요 (심화반 + 컨설팅을 신청한 일반 학생). 선생님은 자기 담당 학생 것만 보고, 학생 본인 · 학부모 · 다른 선생님에게는 보이지 않아요.");
     app.appendChild(note);
     var box = el("div", "cs");
     box.appendChild(el("p", "sys-note", "불러오는 중…"));
@@ -479,12 +479,12 @@
       function draw() {
         var w = q.value.trim();
         groups.textContent = "";
-        ["평일", "주말"].forEach(function (sec) {
+        ["평일", "주말", "일반"].forEach(function (sec) {
           var hit = items.filter(function (x) {
             return x.section === sec && (!w || (x.name + " " + (x.klass || "")).indexOf(w) !== -1);
           });
           if (!hit.length) return;
-          groups.appendChild(el("p", "rv__label", sec + "반 " + hit.length + "명"));
+          groups.appendChild(el("p", "rv__label", sec === "일반" ? "일반 학생 (심화반 밖 · 홈페이지 결과) " + hit.length + "명" : sec + "반 " + hit.length + "명"));
           var row = el("div", "cs__chips");
           hit.forEach(function (x) {
             var b = button("", "sys-chip cs__chip" + (cur === x.gid ? " is-on" : ""));
@@ -543,15 +543,16 @@
       detail.textContent = "";
       if (!r.ok) { detail.appendChild(el("p", "sys-msg sys-msg--error", r.error || "불러오지 못했어요.")); return; }
       var times = (r.rows || []).filter(function (row) { return String(row[0] || "").trim(); }).length;
-      detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 시트 기록 " + times + "회"));
+      // 시트에 탭이 없는 학생(일반 학생 신청 등, 2026-11-27)은 홈페이지에 쓴 결과만
+      detail.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + (r.sheetless ? " · 홈페이지 컨설팅 결과" : " · 시트 기록 " + times + "회")));
       // 홈페이지에서 쓴 컨설팅 결과 (원장님 2026-11-16) — 원장님은 쓰기 · 고치기, 담당 선생님은 보기만
       if (r.member && window.LeeshConsultNote) {
         var cn = el("div");
         detail.appendChild(cn);
         LeeshConsultNote.list(cn, { call: function (fn, args) { return LeeshAPI.rpc(fn, args); }, member: r.member, name: r.name });
-        detail.appendChild(el("p", "rv__label", "📒 원장님 구글시트 기록 (지난 컨설팅 · 1시간마다 저절로 들어와요)"));
+        if (!r.sheetless) detail.appendChild(el("p", "rv__label", "📒 원장님 구글시트 기록 (지난 컨설팅 · 1시간마다 저절로 들어와요)"));
       }
-      LeeshConsultNote.sheetCards(detail, r);
+      if (!r.sheetless) LeeshConsultNote.sheetCards(detail, r);
       detail.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }

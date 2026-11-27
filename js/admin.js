@@ -2585,14 +2585,15 @@
       box.textContent = "";
       if (!res.ok || !r.ok) { box.appendChild(el("p", "sys-msg sys-msg--error", r.error || friendly(res, "불러오지 못했어요."))); return; }
       var times = (r.rows || []).filter(function (row) { return String(row[0] || "").trim(); }).length;
-      box.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + " · 시트 기록 " + times + "회"));
+      // 시트에 탭이 없는 학생(일반 학생 신청 등, 2026-11-27)은 홈페이지에 쓴 결과만
+      box.appendChild(el("h4", "cs__who", r.name + (r.klass ? " · " + r.klass : "") + (r.sheetless ? " · 홈페이지 컨설팅 결과" : " · 시트 기록 " + times + "회")));
       if (r.member && window.LeeshConsultNote) {
         var cn = el("div");
         box.appendChild(cn);
         LeeshConsultNote.list(cn, { call: rpcCall, member: r.member, name: r.name });
-        box.appendChild(el("p", "rv__label", "📒 원장님 구글시트 기록 (지난 컨설팅 · 1시간마다 저절로 들어와요)"));
+        if (!r.sheetless) box.appendChild(el("p", "rv__label", "📒 원장님 구글시트 기록 (지난 컨설팅 · 1시간마다 저절로 들어와요)"));
       }
-      LeeshConsultNote.sheetCards(box, r);
+      if (!r.sheetless) LeeshConsultNote.sheetCards(box, r);
       box.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
