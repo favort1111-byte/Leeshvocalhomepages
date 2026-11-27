@@ -61,6 +61,11 @@
         return;
       }
     }
+    // 원장님 2026-11-27: "퇴원생 정보는 스프레드시트에만 기입 가능" + "퇴원 처리 때 반드시 시트에 사유 작성"
+    var rule = el("div", "dp__rule");
+    rule.appendChild(el("p", null, "📌 퇴원생 정보는 스프레드시트(「" + (d.teacher_name || "○○") + " 학생현황 확인」 시트)에만 기입 가능해요. 홈페이지에서는 보기만 할 수 있어요."));
+    rule.appendChild(el("p", "dp__rule--must", "⚠️ 퇴원 처리 시 반드시 시트의 '④ 퇴원 이유 기록'에 사유를 작성하셔야 됩니다."));
+    box.appendChild(rule);
     if (!data) {
       box.appendChild(el("p", "book__empty", "아직 시트에서 들어온 내용이 없어요. 1시간마다 저절로 들어와요."));
       return;

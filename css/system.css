@@ -786,6 +786,9 @@ details.lr__fsec>summary.lr__fsec-title{cursor:pointer;}
 .guide__install{border:0;cursor:pointer;font:inherit}
 
 /* 퇴원 · 휴원 학생 (원장님 2026-11-27, js/dropouts.js): 선생님 화면 · 관리자, 선생님 「학생현황 확인」 시트 탭 그대로 보기만 */
+.dp__rule{background:#FFF6D6;border:1.5px solid #E8C24A;border-radius:12px;padding:10px 12px;margin:4px 0 12px;font-size:14px;line-height:1.6;color:#4A3B00}
+.dp__rule p{margin:0}
+.dp__rule .dp__rule--must{margin-top:6px;color:#B3261E;font-weight:700}
 .dp__bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 10px;}
 .dp .dp__pick{width:auto;max-width:100%;margin:0;}
 .dp__sum{margin:6px 0 2px;font-weight:700;}
