@@ -756,6 +756,33 @@
       save();
       return { ok: true };
     },
+    // 퇴원 · 휴원 학생 (체험, 원장님 2026-11-27): 가짜 학생 · 가짜 이유
+    teacher_dropouts: function (a, uid) {
+      var t = uid ? myTeacher(uid) : null;
+      if (uid && !t) return fail("선생님으로 연결된 계정만 볼 수 있어요.");
+      var dir = !uid || t.name === "원장님";
+      var sheets = {
+        501: { summary: ["현재 수업 중 12명   ·   휴원 중 1명   ·   퇴원 누적 3명 (2026년 8월 시스템 시작 이후)", "⚠ 퇴원 이유를 아직 안 적은 학생: 정하람"],
+          months: [["2026년 11월", "2", "1", "0", ""], ["2026년 10월", "1", "0", "2", "정하람, 윤바다"], ["2026년 9월", "3", "0", "1", "한겨울"], ["2026년 8월", "-", "0", "0", ""], ["누적", "6", "1", "3", ""]],
+          monthsNote: "※ 퇴원·휴원한 달은 그 학생의 '마지막 수업일' 기준입니다.",
+          people: [{ id: "S951", name: "서봄", status: "휴원", kind: "입시", first: "2026-08-06", last: "2026-11-19", count: "21", reason: "" },
+            { id: "S952", name: "정하람", status: "종료", kind: "오디션", first: "2026-08-06", last: "2026-10-20", count: "18", reason: "" },
+            { id: "S953", name: "윤바다", status: "종료", kind: "오디션", first: "2026-08-11", last: "2026-10-13", count: "10", reason: "학교 방과후 시간이 겹침 / 시간 조율 후 다시 등록 예정" },
+            { id: "S954", name: "한겨울", status: "종료", kind: "심화", first: "2026-08-07", last: "2026-09-03", count: "4", reason: "기말 시험 준비로 잠시 쉬기로 함 (부모님 연락)" }],
+          records: [{ name: "윤바다", klass: "오디션반", age: "12년생", period: "2개월 / 2026-08-11 ~ 2026-10-13", reason: "학교 방과후 시간이 겹침 / 시간 조율 후 다시 등록 예정" },
+            { name: "한겨울", klass: "심화반", age: "11년생", period: "1개월 / 2026-08-07 ~ 2026-09-03", reason: "기말 시험 준비로 잠시 쉬기로 함 (부모님 연락)" },
+            { name: "오솔", klass: "오디션반", age: "12년생", period: "4개월 / 2026-02-26 ~ 2026-06-09", reason: "다른 활동에 집중해 보기로 함" }] },
+        505: { summary: ["현재 수업 중 9명   ·   휴원 중 0명   ·   퇴원 누적 1명 (2026년 8월 시스템 시작 이후)", "✅ 종료된 학생의 퇴원 이유가 모두 적혀 있습니다"],
+          months: [["2026년 11월", "1", "0", "1", "강들"], ["누적", "1", "0", "1", ""]], monthsNote: "",
+          people: [{ id: "S955", name: "강들", status: "종료", kind: "오디션", first: "2026-09-02", last: "2026-11-05", count: "9", reason: "이사로 거리가 멀어짐" }],
+          records: [{ name: "강들", klass: "오디션반", age: "13년생", period: "2개월 / 2026-09-02 ~ 2026-11-05", reason: "이사로 거리가 멀어짐" }] }
+      };
+      var names = { 501: "안유정", 505: "이수빈" };
+      var target = dir ? (a.p_teacher || 501) : t.id;
+      return { ok: true, director: dir, teacher: target, teacher_name: names[target] || (t && t.name),
+        teachers: dir ? [{ id: 501, name: "안유정", people: 4 }, { id: 505, name: "이수빈", people: 1 }] : [],
+        synced: new Date().toISOString(), data: sheets[target] || null };
+    },
     // 원장 컨설팅 (체험): 가짜 학생 두 명
     teacher_consults: function (a, uid) {
       if (uid && !myTeacher(uid)) return fail("선생님으로 연결된 계정만 볼 수 있어요.");

@@ -140,6 +140,12 @@
     var cons = button("🎯 원장 컨설팅", "sys-link");
     cons.addEventListener("click", consultPage);
     side.appendChild(cons);
+    // 퇴원 · 휴원 학생 (원장님 2026-11-27): 선생님 「학생현황 확인」 시트의 탭을 1시간마다 가져와 보기만 (js/dropouts.js)
+    if (window.LeeshDropouts) {
+      var dpb = button("📋 퇴원·휴원 학생", "sys-link");
+      dpb.addEventListener("click", dropoutPage);
+      side.appendChild(dpb);
+    }
     // 레슨실 예약 (원장님 2026-11-24, A1~A4 · 선생님 · 관리자만): 메뉴는 config.js lessonRooms, 예약 · 바꾸기는 서버 lesson_rooms_open(관리자 스위치)
     if ((cfg.lessonRooms || me === "원장님") && window.LeeshLessonRoom) {
       var lr = button("🎹 레슨실 예약", "sys-link");
@@ -408,6 +414,19 @@
     var box = el("div");
     app.appendChild(box);
     LeeshLessonRoom.render(box, function (fn, args) { return LeeshAPI.rpc(fn, args); });
+  }
+
+  /* 퇴원 · 휴원 학생 (원장님 2026-11-27): 자기 「학생현황 확인」 시트 탭 그대로, 원장님은 선생님 고르기 */
+  function dropoutPage() {
+    clear();
+    app.appendChild(header());
+    var back = button("← 담당 학생", "sys-link tch__back");
+    back.addEventListener("click", start);
+    app.appendChild(back);
+    app.appendChild(el("h3", "tch__name", "📋 퇴원 · 휴원 학생"));
+    var box = el("div");
+    app.appendChild(box);
+    LeeshDropouts.render(box, function (fn, args) { return LeeshAPI.rpc(fn, args); });
   }
 
   /* 원장 컨설팅 (원장님 2026-11-11 "심화반만 하는 원장님 특별 컨설팅, 선생님들만 볼 수 있게 · 학생은 보면 안 됨 · 학생별로"):

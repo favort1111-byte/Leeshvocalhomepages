@@ -15,6 +15,7 @@
  * 원장님 레슨 노트(구글시트 "원장님 · 학생 레슨 노트", 학생 한 명 = 탭 하나, 수업 한 번 = 줄 하나)도 같이 가져와요 (원장님 2026-11-04).
  *   탭 맨 위 "이름 · 수강ID · 원장님"과 탭 이름이 같은 탭만, 날짜 · 회차 · 수업 내용 … 특이사항(A~G칸)과 곡 노트(L칸부터)만 읽어요.
  *   학생 카드(I~J칸: 생년월일 · 사는 곳 · 상담 메모)는 읽지도 않아요.
+ * 퇴원 · 휴원 학생 (원장님 2026-11-27): 선생님 파일 "○○ 학생현황 확인"의 '퇴원·휴원 학생' 탭도 1시간마다 읽어서 선생님 화면에 보여요 (읽기만).
  * 제목이 상담 · 등록 일지인 탭은 안 보내요. OT처럼 생년월일 · 사는 곳이 적힌 탭은 "곡·자료"로만 들어가요(담당 선생님 · 관리자만 봄, 2026-11-09). 휴대폰 번호는 "(전화번호 뺌)".
  */
 
@@ -77,6 +78,8 @@ function run_() {
       }
     }
     result.pending = plan.pending;
+    // 퇴원 · 휴원 학생 탭 (원장님 2026-11-27): 선생님 파일 "○○ 학생현황 확인" 6개, 매번 가볍게 다시 읽음
+    try { result.dropouts = syncDropouts_(key); } catch (e3) { result.errors.push("퇴원·휴원: " + String(e3.message || e3).slice(0, 200)); }
   } catch (e) {
     result.ok = false;
     result.error = String(e.message || e).slice(0, 300);
@@ -466,6 +469,86 @@ function toSheet_(data) {
   return sheet;
 }
 
+/* ---------------- 퇴원 · 휴원 학생 (선생님 파일 "○○ 학생현황 확인"의 '퇴원·휴원 학생' 탭) ----------------
+ * 원장님 2026-11-27 "각 선생님 스프레드시트에 퇴원생 현황 탭이 오픈됐어 → 홈페이지 선생님 화면에".
+ * 탭은 읽기만. ① 월별 현황 · ② 명단(숨은 V~AE칸의 수강ID 표) · ④ 퇴원 이유 기록만 보냄. ③ 수업기록 다시 보기는 안 보냄.
+ * 선생님 화면에는 자기 파일만, 원장님 · 관리자 화면에는 모든 선생님 것. 학생 · 학부모는 못 봄. */
+var DROPOUT_TAB = "퇴원·휴원 학생";
+
+function dropoutFiles_() {
+  var res = drive_("files", {
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains '학생현황 확인' and not name contains '백업' and not name contains '사본'",
+    fields: "files(id,name,modifiedTime)", pageSize: 50, supportsAllDrives: true, includeItemsFromAllDrives: true
+  });
+  return (res.files || []).filter(function (f) { return /^\S+\s*학생현황\s*확인$/.test(String(f.name).trim()); });
+}
+
+function syncDropouts_(key) {
+  var out = { files: 0, sent: 0, people: 0, errors: 0 };
+  dropoutFiles_().forEach(function (f) {
+    out.files++;
+    try {
+      var res = sheets_(f.id, { _path: "/values/" + encodeURIComponent("'" + DROPOUT_TAB + "'!A1:AE800"), majorDimension: "ROWS" });
+      var data = dropoutParse_(res.values || []);
+      var r = call_("dropout_sync_push", { p_key: key, p_file: f.id, p_title: f.name, p_modified: f.modifiedTime, p_data: data });
+      if (r.ok) { out.sent++; out.people += r.people || 0; } else out.errors++;
+    } catch (e) { out.errors++; }   // 탭이 없는 파일은 넘어감
+  });
+  return out;
+}
+
+function dpCell_(v) { return String(v == null ? "" : v).replace(/[\x00-\x09\x0b-\x1f\x7f]/g, "").trim().slice(0, 2000); }
+
+/** 탭 값(줄마다 A~AE) → { summary, months, monthsNote, people, records } */
+function dropoutParse_(rows) {
+  var A = function (i) { return dpCell_((rows[i] || [])[0]); };
+  var out = { summary: [], months: [], monthsNote: "", people: [], records: [] };
+  for (var s = 1; s < Math.min(rows.length, 6); s++) {
+    var t = A(s);
+    if (/현재 수업 중|퇴원 이유를 아직|퇴원 이유가 모두/.test(t)) out.summary.push(t);
+  }
+  var i, r;
+  // ① 월별 현황: "① …" 다음 "월" 머리 줄 아래, "누적"까지
+  for (i = 0; i < rows.length; i++) if (/^①/.test(A(i))) break;
+  for (i = i + 1; i < rows.length && i < 80; i++) {
+    var a = A(i);
+    if (/^②|^③|^④/.test(a)) break;
+    if (a === "월" || !a) continue;
+    if (/^※/.test(a)) { out.monthsNote = a; continue; }
+    if (/년\s*\d+월|누적/.test(a)) {
+      r = rows[i] || [];
+      out.months.push([a, dpCell_(r[1]), dpCell_(r[2]), dpCell_(r[3]), dpCell_(r[4])]);
+    }
+  }
+  // ② 명단: 숨은 V~AE칸 (V 수강ID · W 학생 · X 상태 · Y 수업구분 · Z 첫 수업 · AA 마지막 수업 · AB 기록 수 · AC 이유 작성 · AE 퇴원 이유)
+  var V = 21, head = -1;
+  for (i = 0; i < Math.min(rows.length, 20); i++) if (dpCell_((rows[i] || [])[V]) === "수강ID") { head = i; break; }
+  if (head >= 0) {
+    for (i = head + 1; i < rows.length; i++) {
+      r = rows[i] || [];
+      var id = dpCell_(r[V]);
+      if (!/^[A-Z]\d{2,}$/.test(id)) { if (!id) break; continue; }
+      var st = dpCell_(r[V + 2]);
+      if (st !== "종료" && st !== "휴원") continue;
+      var why = dpCell_(r[V + 9]);
+      out.people.push({ id: id, name: dpCell_(r[V + 1]), status: st, kind: dpCell_(r[V + 3]), first: dpCell_(r[V + 4]),
+        last: dpCell_(r[V + 5]), count: dpCell_(r[V + 6]), reason: why === "-" || why === "미작성" ? "" : why });
+    }
+    out.people.sort(function (x, y) { return x.last < y.last ? 1 : x.last > y.last ? -1 : 0; });
+  }
+  // ④ 퇴원 이유 기록: "④ …" 다음 "이름" 머리 줄 아래 (A 이름 · B 클래스명 · C 나이 · D 기간 · E 퇴원 이유)
+  for (i = 0; i < rows.length; i++) if (/^④/.test(A(i))) break;
+  for (i = i + 1; i < rows.length; i++) if (A(i) === "이름") break;
+  for (i = i + 1; i < rows.length; i++) {
+    r = rows[i] || [];
+    var nm = A(i);
+    if (!nm) continue;
+    out.records.push({ name: nm, klass: dpCell_(r[1]), age: dpCell_(r[2]), period: dpCell_(r[3]), reason: dpCell_(r[4]) });
+    if (out.records.length >= 400) break;
+  }
+  return out;
+}
+
 /* ---------------- 통신 ---------------- */
 
 function google_(url) {
@@ -487,4 +570,4 @@ function call_(fn, args) {
   try { return JSON.parse(res.getContentText()); } catch (e) { return { ok: false, error: "HTTP " + res.getResponseCode() }; }
 }
 
-if (typeof module !== "undefined") module.exports = { tabDate_: tabDate_, toSheet_: toSheet_, cell_: cell_, directorTab_: directorTab_, directorHead_: directorHead_ };
+if (typeof module !== "undefined") module.exports = { tabDate_: tabDate_, toSheet_: toSheet_, cell_: cell_, directorTab_: directorTab_, directorHead_: directorHead_, dropoutParse_: dropoutParse_ };

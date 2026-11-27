@@ -179,6 +179,7 @@
     if (name === "journal") loadJournal();
     if (name === "reviews") loadReviews();
     if (name === "director") loadDirector();
+    if (name === "dropouts" && window.LeeshDropouts) LeeshDropouts.render($("#dpBox"), rpcCall);
     if (name === "feedback") loadFeedback();
     if (name === "lroom" && window.LeeshLessonRoom) LeeshLessonRoom.render($("#lroomBox"), rpcCall);
     if (name === "adminlog") loadLog();

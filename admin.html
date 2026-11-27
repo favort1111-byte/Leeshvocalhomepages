@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/system.css?v=a1b0cf4c">
+<link rel="stylesheet" href="css/system.css?v=cea225d2">
 <link rel="stylesheet" href="css/admin.css?v=fdb414d3">
 </head>
 <body class="sys adm">
@@ -61,6 +61,7 @@
       <button type="button" role="tab" data-tab="journal" aria-selected="false">연습 일지 <span class="adm__badge" id="journalBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="reviews" aria-selected="false">오디션 후기 <span class="adm__badge" id="reviewBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="director" aria-selected="false">원장 컨설팅</button>
+      <button type="button" role="tab" data-tab="dropouts" aria-selected="false">퇴원·휴원 학생</button>
       <button type="button" role="tab" data-tab="feedback" aria-selected="false">컨설팅 신청</button>
       <button type="button" role="tab" data-tab="partners" aria-selected="false">제휴 신청 <span class="adm__badge" id="partnerBadge" hidden></span></button>
       <button type="button" role="tab" data-tab="consults" aria-selected="false">상담 신청 <span class="adm__badge" id="consultBadge" hidden></span></button>
@@ -498,6 +499,13 @@
       <div class="cs__detail" id="dcDetail"></div>
     </section>
 
+    <!-- 퇴원 · 휴원 학생 (원장님 2026-11-27): 선생님 「학생현황 확인」 시트의 '퇴원·휴원 학생' 탭, 1시간마다 (js/dropouts.js) -->
+    <section class="sys-card" data-panel="dropouts" hidden>
+      <h3 class="sys-h">퇴원 · 휴원 학생 (선생님별)</h3>
+      <p class="sys-note">선생님마다 「학생현황 확인」 시트의 '퇴원·휴원 학생' 탭을 원장님 구글 계정의 레슨 시트 가져오기 스크립트가 1시간마다 읽어 와요. 보기만 하고, 고칠 때는 시트 ④ 퇴원 이유 기록에서 고쳐요. 선생님 화면 "📋 퇴원·휴원 학생"에서는 선생님마다 자기 파일만 보이고, 학생 · 학부모에게는 안 보여요.</p>
+      <div id="dpBox"></div>
+    </section>
+
     <!-- 원장님 컨설팅 신청 (원장님 2026-11-11): 심화반 학생만 내 폴더에서 신청, 한 타임 한 명 -->
     <!-- 레슨실 예약 (원장님 2026-11-24): A1~A4 · 선생님 · 관리자만, 시트 "레슨실 예약" · "수업방관리"를 홈페이지로 (js/lessonroom.js) -->
     <section class="sys-card" data-panel="lroom" hidden>
@@ -747,7 +755,8 @@
 <script src="js/photos.js?v=a00ab1e5"></script>
 <script src="js/fbstatus.js?v=dcea5374"></script>
 <script src="js/lessonroom.js?v=9eb107be"></script>
+<script src="js/dropouts.js?v=1b20dbe9"></script>
 <script src="js/consultnote.js?v=42226ed5"></script>
-<script src="js/admin.js?v=a36214c0"></script>
+<script src="js/admin.js?v=003cc868"></script>
 </body>
 </html>
