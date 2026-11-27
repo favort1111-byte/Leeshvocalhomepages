@@ -82,7 +82,8 @@
     }
 
     // ② 명단
-    var people = data.people || [];
+    var people = data.people || [], recBy = {};
+    (data.records || []).forEach(function (r) { if (r.reason) recBy[r.name.replace(/\s/g, "")] = r.reason; });
     box.appendChild(el("h4", "dp__h", "② 퇴원 · 휴원 학생 " + people.length + "명"));
     if (!people.length) box.appendChild(el("p", "book__empty", "퇴원 · 휴원한 학생이 없어요."));
     else {
@@ -94,8 +95,10 @@
         top.appendChild(el("span", "dp__tag" + (p.status === "휴원" ? " dp__tag--rest" : ""), p.status === "종료" ? "퇴원" : p.status));
         if (p.kind) top.appendChild(el("span", "dp__kind", p.kind));
         c.appendChild(top);
-        c.appendChild(el("p", "dp__period", "수업 " + md(p.first) + " ~ " + md(p.last) + (p.count ? " · " + p.count + "회" : "")));
-        if (p.reason) c.appendChild(el("p", "dp__reason", p.reason));
+        var per = p.period || (p.first ? md(p.first) + " ~ " + md(p.last) + (p.count ? " (" + p.count + "회)" : "") : "");
+        if (per) c.appendChild(el("p", "dp__period", "수업 " + per));
+        var why = p.reason || recBy[String(p.name || "").replace(/\s/g, "")] || "";
+        if (why) c.appendChild(el("p", "dp__reason", why));
         else if (p.status === "종료") c.appendChild(el("p", "dp__none", "퇴원 이유 미작성 · 시트 ④에 적어 주세요"));
         list.appendChild(c);
       });

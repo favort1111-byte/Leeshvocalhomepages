@@ -471,7 +471,7 @@ function toSheet_(data) {
 
 /* ---------------- 퇴원 · 휴원 학생 (선생님 파일 "○○ 학생현황 확인"의 '퇴원·휴원 학생' 탭) ----------------
  * 원장님 2026-11-27 "각 선생님 스프레드시트에 퇴원생 현황 탭이 오픈됐어 → 홈페이지 선생님 화면에".
- * 탭은 읽기만. ① 월별 현황 · ② 명단(숨은 V~AE칸의 수강ID 표) · ④ 퇴원 이유 기록만 보냄. ③ 수업기록 다시 보기는 안 보냄.
+ * 탭은 읽기만. ① 월별 현황 · ② 명단 · ④ 퇴원 이유 기록만 보냄. ③ 수업기록 다시 보기는 안 보냄.
  * 선생님 화면에는 자기 파일만, 원장님 · 관리자 화면에는 모든 선생님 것. 학생 · 학부모는 못 봄. */
 var DROPOUT_TAB = "퇴원·휴원 학생";
 
@@ -488,7 +488,7 @@ function syncDropouts_(key) {
   dropoutFiles_().forEach(function (f) {
     out.files++;
     try {
-      var res = sheets_(f.id, { _path: "/values/" + encodeURIComponent("'" + DROPOUT_TAB + "'!A1:AE800"), majorDimension: "ROWS" });
+      var res = sheets_(f.id, { _path: "/values/" + encodeURIComponent("'" + DROPOUT_TAB + "'!A1:E800"), majorDimension: "ROWS" });
       var data = dropoutParse_(res.values || []);
       var r = call_("dropout_sync_push", { p_key: key, p_file: f.id, p_title: f.name, p_modified: f.modifiedTime, p_data: data });
       if (r.ok) { out.sent++; out.people += r.people || 0; } else out.errors++;
@@ -520,21 +520,19 @@ function dropoutParse_(rows) {
       out.months.push([a, dpCell_(r[1]), dpCell_(r[2]), dpCell_(r[3]), dpCell_(r[4])]);
     }
   }
-  // ② 명단: 숨은 V~AE칸 (V 수강ID · W 학생 · X 상태 · Y 수업구분 · Z 첫 수업 · AA 마지막 수업 · AB 기록 수 · AC 이유 작성 · AE 퇴원 이유)
-  var V = 21, head = -1;
-  for (i = 0; i < Math.min(rows.length, 20); i++) if (dpCell_((rows[i] || [])[V]) === "수강ID") { head = i; break; }
-  if (head >= 0) {
-    for (i = head + 1; i < rows.length; i++) {
-      r = rows[i] || [];
-      var id = dpCell_(r[V]);
-      if (!/^[A-Z]\d{2,}$/.test(id)) { if (!id) break; continue; }
-      var st = dpCell_(r[V + 2]);
-      if (st !== "종료" && st !== "휴원") continue;
-      var why = dpCell_(r[V + 9]);
-      out.people.push({ id: id, name: dpCell_(r[V + 1]), status: st, kind: dpCell_(r[V + 3]), first: dpCell_(r[V + 4]),
-        last: dpCell_(r[V + 5]), count: dpCell_(r[V + 6]), reason: why === "-" || why === "미작성" ? "" : why });
-    }
-    out.people.sort(function (x, y) { return x.last < y.last ? 1 : x.last > y.last ? -1 : 0; });
+  // ② 명단: "② …" 아래 "학생" 머리 줄부터 "③" 전까지 (학생 · 상태 · 수업구분 · 수업 기간 · 퇴원 이유). 수업기록 없는 학생도 여기엔 있음.
+  for (i = 0; i < rows.length; i++) if (/^②/.test(A(i))) break;
+  for (i = i + 1; i < rows.length; i++) if (A(i) === "학생") break;
+  for (i = i + 1; i < rows.length; i++) {
+    var nm2 = A(i);
+    if (/^③|^④/.test(nm2)) break;
+    r = rows[i] || [];
+    var st = dpCell_(r[1]);
+    if (!nm2 || (st !== "종료" && st !== "휴원")) continue;
+    var why = dpCell_(r[4]);
+    out.people.push({ name: nm2, status: st, kind: dpCell_(r[2]), period: dpCell_(r[3]),
+      reason: why === "-" || why === "미작성" ? "" : why });
+    if (out.people.length >= 200) break;
   }
   // ④ 퇴원 이유 기록: "④ …" 다음 "이름" 머리 줄 아래 (A 이름 · B 클래스명 · C 나이 · D 기간 · E 퇴원 이유)
   for (i = 0; i < rows.length; i++) if (/^④/.test(A(i))) break;
