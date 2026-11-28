@@ -126,6 +126,14 @@
 .sys-legend .is-past::before{background:repeating-linear-gradient(135deg,var(--board-past) 0 3px,#E2DBD4 3px 5px);}
 #boardWrap .sys-chips{margin-bottom:14px;}
 .sys-board + .sys-section{padding-top:24px;border-top:1px solid var(--sys-line);}
+.sys-board__hint{margin:0 0 8px;font-size:13px;color:var(--sys-muted);}
+.sys-board__grid.is-narrow .sys-board__cell, .sys-board__grid.is-narrow .sys-board__name{cursor:pointer;}
+@media (max-width:700px){
+  /* 학생 의견 2026-11-28 "시간 누르는 칸이 작아서 클릭이 잘 안 돼요": 시간 버튼 크게, 한 줄에 3개 꽉 차게 */
+  .sys-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));}
+  .sys-slot{min-height:48px;min-width:0;font-size:15px;padding:0 6px;}
+  .sys-rooms .sys-chip{min-height:44px;}
+}
 @media (max-width:520px){
   .sys-board{--board-name:62px;}
   .sys-board__grid{gap:1px;}

@@ -218,6 +218,12 @@ async function passConsent(page, wait) {
     if (await free.count()) { await free.click().catch(() => {}); await run(500); }
     const pick = await page.$eval('#pickLabel', (e) => e.textContent).catch(() => '');
     check('고른 내용 한 줄 (날짜 · 방 · 시간)', /(오늘|내일).+(새벽|오전|낮|오후).+시간\)/.test(pick), pick);
+    // 학생 의견 2026-11-28 "시간 누르는 칸이 작아서 클릭이 잘 안 돼요": 휴대폰에선 표 칸을 누르지 않고 큰 버튼으로
+    const tap = await page.evaluate(() => ({ h: Math.min(...[...document.querySelectorAll('.sys-slot')].map((e) => e.getBoundingClientRect().height)), cells: document.querySelectorAll('button.sys-board__cell').length }));
+    check('휴대폰 시간 버튼 높이 44px 넘음 · 표의 작은 칸은 버튼 아님', tap.h >= 44 && tap.cells === 0, '버튼 ' + Math.round(tap.h) + 'px · 표 버튼 ' + tap.cells + '개');
+    await page.locator('.sys-board__cell[data-room]').nth(3).click().catch(() => {}); await run(800);
+    const roomOn = await page.$eval('#rooms .sys-chip[aria-pressed=true]', (e) => e.textContent).catch(() => '');
+    check('표의 줄을 누르면 그 방이 골라짐', /B1/.test(roomOn), roomOn);
     check('자바스크립트 오류 없음', !errs.length, errs.slice(0, 3).join(' | '));
     await page.close();
   }

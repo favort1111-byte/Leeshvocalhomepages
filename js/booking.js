@@ -242,6 +242,19 @@
     var now = res.now == null ? -1 : res.now; // an hour that has started is gone (18:05 → from 19:00)
     var grid = el("div", "sys-board__grid");
     grid.style.gridTemplateColumns = "var(--board-name) repeat(" + cols + ", minmax(0, 1fr))";
+    // 휴대폰 (학생 의견 2026-11-28 "시간 누르는 칸이 작아서 클릭이 잘 안 돼요"): 한 칸이 6~9px라 정확히 누를 수 없음
+    // → 표는 보기용, 줄 어디를 눌러도 그 방이 골라지고 아래 큰 시간 버튼으로 내려감
+    var narrow = !!(window.matchMedia && window.matchMedia("(max-width: 700px)").matches);
+    if (narrow) {
+      grid.className += " is-narrow";
+      if (!res.preview) board.appendChild(el("p", "sys-board__hint", "📱 줄을 누르면 그 방이 골라져요. 시간은 아래 큰 버튼으로 골라 주세요."));
+      grid.addEventListener("click", function (e) {
+        var hit = e.target.closest && e.target.closest("[data-room]");
+        if (!hit) return;
+        var room = res.rooms.filter(function (r) { return r.name === hit.getAttribute("data-room"); })[0];
+        if (room) pickRoomRow(room);
+      });
+    }
 
     grid.appendChild(el("span", "sys-board__corner"));
     for (var h = open; h < close; h += unit) {
@@ -257,7 +270,8 @@
       var name = el("button", "sys-board__name", room.name);
       name.type = "button";
       name.setAttribute("aria-pressed", room.name === state.room ? "true" : "false");
-      name.addEventListener("click", function () { chooseRoom(room.name); });
+      if (narrow) name.setAttribute("data-room", room.name);
+      else name.addEventListener("click", function () { chooseRoom(room.name); });
       grid.appendChild(name);
       var free = room.free.map(toMin);
       for (var t = open; t < close; t += unit) {
@@ -266,6 +280,11 @@
           var soon = el("span", "sys-board__cell is-free is-soon"); // 미리 보기: 비어 있지만 밤 12시에 열림
           soon.title = label + " 빈 시간 (밤 12시에 열려요)";
           grid.appendChild(soon);
+        } else if (free.indexOf(t) !== -1 && narrow) {
+          var nc = el("span", "sys-board__cell is-free" + (state.pick && state.pick.room === room.name && state.pick.start === hhmm(t) ? " is-picked" : ""));
+          nc.title = label + " 빈 시간";
+          nc.setAttribute("data-room", room.name);
+          grid.appendChild(nc);
         } else if (free.indexOf(t) !== -1) {
           var cell = el("button", "sys-board__cell is-free");
           cell.type = "button";
@@ -278,6 +297,7 @@
           var past = t <= now;
           var span = el("span", "sys-board__cell " + (past ? "is-past" : "is-taken"));
           span.title = label + (past ? " 지난 시간" : " 예약됨");
+          if (narrow) span.setAttribute("data-room", room.name);
           grid.appendChild(span);
         }
       }
@@ -293,6 +313,18 @@
     updatePick();
     renderBoard(state.rooms);
     renderRooms(state.rooms);
+  }
+
+  // 휴대폰: 표의 줄을 누르면 그 방을 고르고 아래 큰 시간 버튼으로 (2026-11-28)
+  function pickRoomRow(room) {
+    chooseRoom(room.name);
+    if (!state.who) {
+      sign.note(room.name + " 골랐어요. 로그인하면 아래에서 시간을 고를 수 있어요.");
+      whoBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      return;
+    }
+    var target = $("#rooms") && $("#rooms").querySelector(".sys-slots");
+    if (target) target.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
   function pickFromBoard(room, t) {
